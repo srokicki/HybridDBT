@@ -71,6 +71,7 @@ int firstPassTranslator(uint32 *mipsBinaries,
 	unsigned char localUnresolvedJumps_type[65536];
 	unsigned int localUnresolvedJumps[65536];
 
+	insertions[0] = 0;
 
 	//We call the accelerator (or the software counterpart if no accelerator)
 	int returnedValue = generateInterpretationBinaries_loop(mipsBinaries,
@@ -105,6 +106,7 @@ int firstPassTranslator(uint32 *mipsBinaries,
 	* TODO: if we allow the splitting of the binaries to translate into several smaller pieces, we will need to
 	* check here if the destination is translated or not.
 	*
+	* Note: Insertions from memory 'insertions' contains addresses with the offset placeCode already applied
 	************************************************************/
 	for (int oneUnresolvedJump = 0; oneUnresolvedJump<numberUnresolvedJumps; oneUnresolvedJump++){
 
@@ -118,7 +120,7 @@ int firstPassTranslator(uint32 *mipsBinaries,
 		if (type == UNRESOLVED_JUMP_ABSOLUTE){
 			//In here we solve an absolute jump
 
-
+			initialDestination += *placeCode;
 			for (int oneInsertion = 1; oneInsertion <= insertions[0]; oneInsertion++){
 				if (insertions[oneInsertion] < 0 && -insertions[oneInsertion] <= initialDestination){
 					initialDestination--;
@@ -129,15 +131,16 @@ int firstPassTranslator(uint32 *mipsBinaries,
 			}
 
 			//We modify the jump instruction to make it jump at the correct place
-			indexOfDestination = initialDestination + 1 + *placeCode;
+			indexOfDestination = initialDestination + 1;
+			initialDestination = initialDestination + 1;
 
-			initialDestination = initialDestination + 1 + *placeCode;
 			writeInt(vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
 
 		}
 		else{
 			//In here we solve a relative jump
 
+			initialDestination += *placeCode;
 			for (int oneInsertion = 1; oneInsertion <= insertions[0]; oneInsertion++){
 
 				int savedInitialDestination = initialDestination;
@@ -148,9 +151,9 @@ int firstPassTranslator(uint32 *mipsBinaries,
 					initialDestination++;
 				}
 			}
-			indexOfDestination = initialDestination + 1;
+			indexOfDestination = initialDestination;
 
-			initialDestination = initialDestination - (source) + 1;
+			initialDestination = initialDestination - (source);
 
 
 			//We modify the jump instruction to make it jump at the correct place
@@ -250,7 +253,7 @@ int generateInterpretationBinaries_loop(uint32 code[1024],
 	unsigned char nextInstructionNop = 0;
 
 
-	uint5 reg1_mul = 0, reg2_mul = 0;
+	acu5 reg1_mul = 0, reg2_mul = 0;
 	acs16 imm_mul = 0;
 	acu1 is_imm_mul = 0;
 
@@ -313,11 +316,11 @@ int generateInterpretationBinaries_loop(uint32 code[1024],
 			acu6 op = oneInstruction.slc<6>(26);
 
 			acu6 funct = oneInstruction.slc<6>(0);
-			uint5 shamt = oneInstruction.slc<5>(6);
-			uint5 rd = oneInstruction.slc<5>(11);
-			uint5 rt = oneInstruction.slc<5>(16);
-			uint5 rs = oneInstruction.slc<5>(21);
-			uint5 regimm = rt;
+			acu5 shamt = oneInstruction.slc<5>(6);
+			acu5 rd = oneInstruction.slc<5>(11);
+			acu5 rt = oneInstruction.slc<5>(16);
+			acu5 rs = oneInstruction.slc<5>(21);
+			acu5 regimm = rt;
 			acs16 address = oneInstruction.slc<16>(0);
 
 			acs26 tgtadr = oneInstruction.slc<26>(0);;
