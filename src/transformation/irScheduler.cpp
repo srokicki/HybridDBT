@@ -224,13 +224,17 @@ void getFirstInstruction(int type){
     	}
 }
 
-
+/*
+ * FIXME: current implementation only works for 4-issue VLIW: need to increase size of vliw binaries and of the binaries word
+ * used to write in it.
+ *
+ */
 
 //The argument optLevel is here to set the difficulty of the scheduling : 0 mean that there is just a binary priority and 1 mean that we'll consider the entire priority value
-ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBlockSize, ac_int<32, false> bytecode[1024], ac_int<32, false> binaries[1024], ac_int<6, false> placeOfRegisters[512], ac_int<6, false> numberFreeRegister, ac_int<6, false> freeRegisters[64],ac_int<4, false> issue_width, ac_int<MAX_ISSUE_WIDTH * 2, false> way_specialisation, ac_int<32, false> placeOfInstr[256]){
+ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBlockSize, ac_int<128, false> bytecode[256], ac_int<128, false> binaries[1024],ac_int<16, false> addressInBinaries,  ac_int<6, false> placeOfRegisters[512], ac_int<6, false> numberFreeRegister, ac_int<6, false> freeRegisters[64],ac_int<4, false> issue_width, ac_int<MAX_ISSUE_WIDTH * 2, false> way_specialisation, ac_int<32, false> placeOfInstr[256]){
     ac_int<32, false> cycleNumber = 0; //This is the current cycle
     ac_int<1, false> lineNumber = 0;
-    ac_int<32,false> writeInBinaries =0;
+    ac_int<32,false> writeInBinaries =addressInBinaries;
     writeFreeRegister = numberFreeRegister;
 
     for (int i=0; i<64; i++){
@@ -260,11 +264,11 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
     globalOptLevel = optLevel;
 
 	for(int i = 0; i<basicBlockSize;i++){
-		instructions[i] = bytecode[i*4];
-		instructionsEnd[i] = bytecode[i*4+1].slc<18>(14);
-		numbersOfDependencies[i] = bytecode[i*4+1].slc<8>(6);
-		priorities[i] = bytecode[i*4+2].slc<8>(24);
-		numbersOfRegisterDependencies[i] = bytecode[i*4+1].slc<3>(3);
+		instructions[i] = bytecode[i].slc<32>(96);
+		instructionsEnd[i] = bytecode[i].slc<18>(14+64);
+		numbersOfDependencies[i] = bytecode[i].slc<8>(6+64);
+		priorities[i] = bytecode[i].slc<8>(24+32);
+		numbersOfRegisterDependencies[i] = bytecode[i].slc<3>(3+64);
 
 		if (numbersOfDependencies[i] == 0){
 		    if (fifoNumberElement == 64)
@@ -318,6 +322,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
         //We declare array for used registers and used successors
         ac_int<3, false> stageForSuccessors = 0;
 
+        ac_int<128, false> binariesWord = 0;
 
         //For each functional unit, we assign the most prior instruction
         for (ac_int<6, false> stage = 0; stage < issue_width; stage++){
@@ -344,10 +349,11 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
             	isSchedulable = 1;
 
     			//We read the bytecode
-    			ac_int<32, false> bytecode_word1 = bytecode[4*returnGetFirstNumber + 0];
-    			ac_int<32, false> bytecode_word2 = bytecode[4*returnGetFirstNumber + 1];
-    			ac_int<32, false> bytecode_word3 = bytecode[4*returnGetFirstNumber + 2];
-    			ac_int<32, false> bytecode_word4 = bytecode[4*returnGetFirstNumber + 3];
+            	ac_int<128, false> bytecode_word = bytecode[returnGetFirstNumber];
+    			ac_int<32, false> bytecode_word1 = bytecode_word.slc<32>(96);
+    			ac_int<32, false> bytecode_word2 = bytecode_word.slc<32>(64);
+    			ac_int<32, false> bytecode_word3 = bytecode_word.slc<32>(32);
+    			ac_int<32, false> bytecode_word4 = bytecode_word.slc<32>(0);
 
 
 				ac_int<50, false> instruction = 0;
@@ -485,11 +491,12 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 					}
 				}
             }
-
-			binaries[writeInBinaries] = generatedInstruction;
-            writeInBinaries++;
+            binariesWord.set_slc(stage*32, generatedInstruction);
         }
 
+        //after all stages has been filled, we commit the word
+		binaries[writeInBinaries] = binariesWord;
+        writeInBinaries++;
 
         if (scheduledInstructions >= basicBlockSize)
         	break;
