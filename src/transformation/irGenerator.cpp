@@ -1181,9 +1181,9 @@ ac_int<128, false> assembleIBytecodeInstruction(ac_int<2, false> stageCode, ac_i
 	return result;
 }
 
-unsigned int DBTFrontend_loop(ac_int<128, false> srcBinaries[1024], unsigned int blockSize,
-		ac_int<128, false> bytecode_code[1024], int globalVariables[64],
-		ac_int<64, false> registersUsage[1], int globalVariableCounter){
+unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries, uint32 blockSize,
+		uint128 bytecode[1024], uint32 globalVariables[64],
+		uint64 registersUsage[1], uint32 globalVariableCounter){
 
 	ac_int<1, false> const0 = 0;
 	ac_int<1, false> const1 = 1;
@@ -1248,7 +1248,7 @@ unsigned int DBTFrontend_loop(ac_int<128, false> srcBinaries[1024], unsigned int
 			ac_int<9, true> insertMove_src;
 
 
-			ac_int<128, false> oneVLIWSyllabus = srcBinaries[indexInSourceBinaries];
+			ac_int<128, false> oneVLIWSyllabus = srcBinaries[indexInSourceBinaries+addressInBinaries];
 			ac_int<32, false> oneInstruction = 0;
 			if (previousVLIWSyllabus.slc<32>(0) != 0){
 				//We fetch the instruction from the previous syllabus
@@ -1666,7 +1666,7 @@ unsigned int DBTFrontend_loop(ac_int<128, false> srcBinaries[1024], unsigned int
 			//We add dependencies
 			if (pred1_succ_ena){
 
-				ac_int<3, false> nbSucc_pred1 = writeSuccessor_ac(bytecode_code, pred1_succ_src, indexInCurrentBlock, pred1_succ_isData);
+				ac_int<3, false> nbSucc_pred1 = writeSuccessor_ac(bytecode, pred1_succ_src, indexInCurrentBlock, pred1_succ_isData);
 				if (pred1_succ_isData & (nbSucc_pred1 == 7)){
 						insertMove_ena = 1;
 						insertMove_src = pred1;
@@ -1677,7 +1677,7 @@ unsigned int DBTFrontend_loop(ac_int<128, false> srcBinaries[1024], unsigned int
 			}
 
 			if (pred2_succ_ena){
-				ac_int<3, false> nbSucc_pred2 = writeSuccessor_ac(bytecode_code, pred2_succ_src, indexInCurrentBlock, pred2_succ_isData);
+				ac_int<3, false> nbSucc_pred2 = writeSuccessor_ac(bytecode, pred2_succ_src, indexInCurrentBlock, pred2_succ_isData);
 				if (pred2_succ_isData & (nbSucc_pred2 == 7)){
 						insertMove_ena = 1;
 						insertMove_src = pred2;
@@ -1689,15 +1689,15 @@ unsigned int DBTFrontend_loop(ac_int<128, false> srcBinaries[1024], unsigned int
 
 
 			if (global_succ_ena_1){
-				writeSuccessor_ac(bytecode_code, global_succ_src_1, indexInCurrentBlock, const0);
+				writeSuccessor_ac(bytecode, global_succ_src_1, indexInCurrentBlock, const0);
 			}
 
 			if (global_succ_ena_2){
-				writeSuccessor_ac(bytecode_code, global_succ_src_2, indexInCurrentBlock, const0);
+				writeSuccessor_ac(bytecode, global_succ_src_2, indexInCurrentBlock, const0);
 			}
 
 			if (global_succ_ena_3){
-				writeSuccessor_ac(bytecode_code, global_succ_src_3, indexInCurrentBlock, const0);
+				writeSuccessor_ac(bytecode, global_succ_src_3, indexInCurrentBlock, const0);
 			}
 
 
@@ -1776,7 +1776,7 @@ unsigned int DBTFrontend_loop(ac_int<128, false> srcBinaries[1024], unsigned int
 
 
 			//We place the instruction in memory
-			bytecode_code[indexInCurrentBlock] = oneBytecode;
+			bytecode[indexInCurrentBlock] = oneBytecode;
 
 
 			if (!insertMove_ena)
@@ -1785,12 +1785,12 @@ unsigned int DBTFrontend_loop(ac_int<128, false> srcBinaries[1024], unsigned int
 		while (indexInSourceBinaries<=blockSize && indexInCurrentBlock<255);
 
 		if (haveJump){
-			ac_int<128, false> jumpBytecodeWord = bytecode_code[jumpID];
+			ac_int<128, false> jumpBytecodeWord = bytecode[jumpID];
 			ac_int<8, false> numberDependencies = jumpBytecodeWord.slc<8>(64+6);
 
 			for (int oneInstructionFromBlock = 0; oneInstructionFromBlock < indexInCurrentBlock; oneInstructionFromBlock++){
 
-				ac_int<128, false> bytecodeWord = bytecode_code[oneInstructionFromBlock];
+				ac_int<128, false> bytecodeWord = bytecode[oneInstructionFromBlock];
 				ac_int<3, false> nbSucc = bytecodeWord.slc<3>(64);
 
 				if (nbSucc == 0 && oneInstructionFromBlock != jumpID){
@@ -1799,11 +1799,11 @@ unsigned int DBTFrontend_loop(ac_int<128, false> srcBinaries[1024], unsigned int
 					nbSucc++;
 					numberDependencies++;
 					bytecodeWord.set_slc(64, nbSucc);
-					bytecode_code[oneInstructionFromBlock] = bytecodeWord;
+					bytecode[oneInstructionFromBlock] = bytecodeWord;
 				}
 			}
 			jumpBytecodeWord.set_slc(64+6, numberDependencies);
-			bytecode_code[jumpID] = jumpBytecodeWord;
+			bytecode[jumpID] = jumpBytecodeWord;
 		}
 
 	return indexInCurrentBlock;
@@ -1811,10 +1811,7 @@ unsigned int DBTFrontend_loop(ac_int<128, false> srcBinaries[1024], unsigned int
 
 }
 
-int globalVariables[64] = {256,257,258,259,260,261,262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278,
-		279,280,281,282,283,284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306,
-		307,308,309,310,311,312,313,314,315,316,317,318,319
-};
+
 
 #endif
 
@@ -1831,19 +1828,25 @@ int irGenerator(unsigned char* code, unsigned int *size, unsigned int addressSta
 		unsigned char* bytecode, unsigned int *placeCode,
 		short* blocksBoundaries, short* proceduresBoundaries, int* insertions){
 
+	uint32 globalVariables[64] = {256,257,258,259,260,261,262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278,
+			279,280,281,282,283,284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306,
+			307,308,309,310,311,312,313,314,315,316,317,318,319
+	};
 
-	int globalVariableCounter = 288;
-	unsigned long long registersUsage[256];
+	uint32 globalVariableCounter = 288;
+	uint64 registersUsage[1];
 
 #ifndef __NIOS
 
 	//If we are not running on the hardware platform, we emulate its functionment and create/copy data un ac_int memories
-	ac_int<128, false> localBytecode_code[1024];
+	ac_int<128, false> localBytecode_code[256];
 	ac_int<128, false> localBinaries[4096];
 
 	int blockSize = 0;
 	int blockStart = 181;
 	int indexInSourceBinaries = 167;
+
+
 	for (int oneBinary = blockStart; oneBinary<432; oneBinary++){
 		ac_int<128, false> syllabus = 0;
 
@@ -1897,7 +1900,7 @@ int irGenerator(unsigned char* code, unsigned int *size, unsigned int addressSta
 	}
 	acu64 local_registersUsage[1];
 
-	blockSize = DBTFrontend_loop(localBinaries, blockSize, localBytecode_code, globalVariables, local_registersUsage, globalVariableCounter);
+	blockSize = irGenerator_hw(localBinaries,0, blockSize, localBytecode_code, globalVariables, local_registersUsage, globalVariableCounter);
 	printf("blockSize %d\n", blockSize);
 
 
@@ -1911,16 +1914,10 @@ int irGenerator(unsigned char* code, unsigned int *size, unsigned int addressSta
 	ac_int<6, 0> freeRegisters[64] = {36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63};
 	ac_int<32, false> placeOfInstr[256];
 
-	ac_int<32, false> localBytecode_scheduling[1024];
-	for (int i = 0; i<blockSize;i++){
-		localBytecode_scheduling[i*4] = localBytecode_code[i].slc<32>(96);
-		localBytecode_scheduling[i*4+1] = localBytecode_code[i].slc<32>(64);
-		localBytecode_scheduling[i*4+2] = localBytecode_code[i].slc<32>(32);
-		localBytecode_scheduling[i*4+3] = localBytecode_code[i].slc<32>(0);
-	}
+
 	ac_int<32, false> localCode_scheduling[1024];
 
-	int binaSize = scheduling(1,blockSize, localBytecode_scheduling,localCode_scheduling, placeOfRegisters, 32, freeRegisters, 4, 0xadb4, placeOfInstr);
+	int binaSize = scheduling(1,blockSize, localBytecode_code,localBinaries,0, placeOfRegisters, 32, freeRegisters, 4, 0xadb4, placeOfInstr);
 	binaSize = binaSize & 0xffff;
 
 	printf("Block is scheduled in %d cycles\n", binaSize);
