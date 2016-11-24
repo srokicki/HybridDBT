@@ -151,9 +151,9 @@ int firstPassTranslator(uint32 *mipsBinaries,
 					initialDestination++;
 				}
 			}
-			indexOfDestination = initialDestination;
+			indexOfDestination = initialDestination + 1;
 
-			initialDestination = initialDestination - (source);
+			initialDestination = initialDestination - (source) + 1;
 
 
 			//We modify the jump instruction to make it jump at the correct place
