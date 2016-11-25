@@ -7,6 +7,8 @@
 #include <lib/endianness.h>
 #include <lib/tools.h>
 #include <isa/vexISA.h>
+#include <isa/irISA.h>
+
 #include <isa/mipsToVexISA.h>
 
 
@@ -1120,69 +1122,10 @@ inline unsigned int writeSuccessor_ac(ac_int<128, false> bytecode[1024], ac_int<
 	return nbSucc;
 }
 
-ac_int<128, false> assembleRBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
-		ac_int<7, false> opcode, ac_int<9, false> regA, ac_int<9, false> regB, ac_int<9, false> regDest,
-		ac_int<8, false> nbDep){
 
-	ac_int<128, false> result = 0;
-	//Node: Type is zero: no need to write it for real. Same for isImm
-
-	result.set_slc(96+30, stageCode);
-	result.set_slc(96+27, isAlloc);
-	result.set_slc(96+19, opcode);
-	result.set_slc(96+0, regA);
-
-	result.set_slc(64+23, regB);
-	result.set_slc(64+14, regDest);
-	result.set_slc(64+6, nbDep);
-
-	return result;
-}
-
-ac_int<128, false> assembleRiBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
-		ac_int<7, false> opcode, ac_int<9, false> regA, ac_int<13, false> imm13,
-		ac_int<9, false> regDest, ac_int<8, false> nbDep){
-
-	ac_int<128, false> result = 0;
-	ac_int<1, false> isImm = 1;
-
-	//Node: Type is zero: no need to write it for real.
-
-	result.set_slc(96+30, stageCode);
-	result.set_slc(96+27, isAlloc);
-	result.set_slc(96+19, opcode);
-	result.set_slc(96+18, isImm);
-	result.set_slc(96+0, imm13);
-
-	result.set_slc(64+23, regA);
-	result.set_slc(64+14, regDest);
-	result.set_slc(64+6, nbDep);
-
-	return result;
-}
-
-ac_int<128, false> assembleIBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
-		ac_int<7, false> opcode, ac_int<9, false> reg, ac_int<19, true> imm19, ac_int<8, false> nbDep){
-
-	ac_int<128, false> result = 0;
-	ac_int<2, false> typeCode = 2;
-	ac_int<1, false> isImm = 1;
-
-	result.set_slc(96+30, stageCode);
-	result.set_slc(96+28, typeCode);
-	result.set_slc(96+27, isAlloc);
-	result.set_slc(96+19, opcode);
-	result.set_slc(96+18, isImm);
-
-	result.set_slc(64+23, imm19);
-	result.set_slc(64+14, reg);
-	result.set_slc(64+6, nbDep);
-
-	return result;
-}
 
 unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries, uint32 blockSize,
-		uint128 bytecode[1024], uint32 globalVariables[64],
+		uint128 bytecode[1024], int32 globalVariables[64],
 		uint64 registersUsage[1], uint32 globalVariableCounter){
 
 	ac_int<1, false> const0 = 0;
@@ -1287,7 +1230,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 
 			ac_int<7, false> opcode = oneInstruction.slc<7>(0);
 			ac_int<13, true> imm13 = oneInstruction.slc<13>(7);
-			ac_int<13, true> imm19 = oneInstruction.slc<19>(7);
+			ac_int<19, true> imm19 = oneInstruction.slc<19>(7);
 			ac_int<6, false> reg14 = oneInstruction.slc<6>(14);
 			ac_int<6, false> reg20 = oneInstruction.slc<6>(20);
 			ac_int<6, false> reg26 = oneInstruction.slc<6>(26);
@@ -1318,7 +1261,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				pred1_ena = 1;
 
 			//Solving accessed register 2
-			if (isStoreType || isArith2)
+			if (isStoreType || isArith2 || isMultType)
 				pred2_ena = 1;
 
 			//Solving written register
@@ -1330,7 +1273,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				dest_ena = 1;
 				dest_reg = reg26;
 			}
-			else if (isArith2){
+			else if (isArith2 || isMultType){
 				dest_ena = 1;
 				dest_reg = reg14;
 			}
@@ -1590,6 +1533,8 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 
 			if (dest_ena) {
 				if (dest_global_access < 0 || insertMove_ena){
+					printf("for %d global is %d\n", dest_reg, dest_global_access);
+
 					registers[dest_reg] = indexInCurrentBlock;
 
 					//We mark the value as a write which is potentially not read
@@ -1619,6 +1564,9 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 					lastReaderOnGlobalCounter_access_dest = 0;
 
 				}
+			}
+			else {
+				alloc=0;
 			}
 			destination = temp_destination;
 
@@ -1828,7 +1776,7 @@ int irGenerator(unsigned char* code, unsigned int *size, unsigned int addressSta
 		unsigned char* bytecode, unsigned int *placeCode,
 		short* blocksBoundaries, short* proceduresBoundaries, int* insertions){
 
-	uint32 globalVariables[64] = {256,257,258,259,260,261,262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278,
+	int32 globalVariables[64] = {256,257,258,259,260,261,262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278,
 			279,280,281,282,283,284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306,
 			307,308,309,310,311,312,313,314,315,316,317,318,319
 	};
