@@ -8,7 +8,7 @@
 #ifndef INCLUDES_TRANSFORMATION_OPTIMIZEBASICBLOCK_H_
 #define INCLUDES_TRANSFORMATION_OPTIMIZEBASICBLOCK_H_
 
-void optimizeBasicBlock(unsigned int basicBlockStart, unsigned int basicBlockEnds, DBTPlateform platform);
+void optimizeBasicBlock(unsigned int basicBlockStart, unsigned int basicBlockEnds, DBTPlateform *platform);
 
 
 
