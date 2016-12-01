@@ -13,6 +13,10 @@
 #include <isa/irISA.h>
 
 
+/********************************************************************
+ * Declaration functions to assemble uint128 instruction for IR
+ * ******************************************************************/
+
 ac_int<128, false> assembleRBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
 		ac_int<7, false> opcode, ac_int<9, false> regA, ac_int<9, false> regB, ac_int<9, false> regDest,
 		ac_int<8, false> nbDep){
@@ -74,6 +78,10 @@ ac_int<128, false> assembleIBytecodeInstruction(ac_int<2, false> stageCode, ac_i
 	return result;
 }
 
+
+/********************************************************************
+ * Declaration of debug function
+ * ******************************************************************/
 void printBytecodeInstruction(int index, ac_int<128, false> oneInstruction){
 	uint32 instructionPart1 = oneInstruction.slc<32>(96);
 	uint32 instructionPart2 = oneInstruction.slc<32>(64);
@@ -144,3 +152,19 @@ void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instr
 
 }
 
+/********************************************************************
+ * Declaration of a data structure to represent the control flow of the binaries analyzed.
+ * ******************************************************************/
+
+IRProcedure::IRProcedure(int startAddress, int endAddress, IRBlock* blocks, int nbBlock){
+	this->blocks = blocks;
+	this->vliwStartAddress = startAddress;
+	this->vliwEndAddress = endAddress;
+	this->nbBlock = nbBlock;
+}
+
+
+IRBlock::IRBlock(int startAddress, int endAddress){
+	this->vliwEndAddress = endAddress;
+	this->vliwStartAddress = startAddress;
+}

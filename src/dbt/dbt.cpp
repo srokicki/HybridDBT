@@ -8,9 +8,13 @@
 
 #include <transformation/firstPassTranslator.h>
 #include <transformation/irGenerator.h>
+#include <transformation/optimizeBasicBlock.h>
+#include <transformation/buildControlFlow.h>
 
 
-#ifdef __LINUX_API
+
+
+#ifndef __NO_LINUX_API
 
 #include <lib/elfFile.h>
 
@@ -83,13 +87,10 @@ int main(int argc, char *argv[])
 	 *
 	 *
 	 ********************************************************/
-	for (int i=0;i<placeCode;i++){
-		printf("0x%xl, 0x%xl, 0x%xl, 0x%xl,\n", (int) dbtPlateform.vliwBinaries[i].slc<32>(0),
-				(int) dbtPlateform.vliwBinaries[i].slc<32>(32),
-				(int) dbtPlateform.vliwBinaries[i].slc<32>(64),
-				(int) dbtPlateform.vliwBinaries[i].slc<32>(96));
-	}
-	//We launch the actual generation
+
+//We launch the actual generation
+
+	int previousPlaceCode = placeCode;
 	firstPassTranslator(dbtPlateform.mipsBinaries,
 			&size,
 			addressStart,
@@ -99,25 +100,37 @@ int main(int argc, char *argv[])
 			dbtPlateform.blockBoundaries,
 			dbtPlateform.procedureBoundaries);
 
+	IRProcedure *controlFlow;
+	int nbProc = buildBasicControlFlow(dbtPlateform, previousPlaceCode, placeCode, &controlFlow);
+
+	for (int oneProcedure = 0; oneProcedure<nbProc; oneProcedure++){
+		printf("Procedure %d going from %d to %d\n Procedure has %d blocks :\n",oneProcedure, controlFlow[oneProcedure].vliwStartAddress,controlFlow[oneProcedure].vliwEndAddress, controlFlow[oneProcedure].nbBlock);
+		for (int oneBlock = 0; oneBlock<controlFlow[oneProcedure].nbBlock; oneBlock++)
+			printf("\tBlock from %d to %d\n", controlFlow[oneProcedure].blocks[oneBlock].vliwStartAddress, controlFlow[oneProcedure].blocks[oneBlock].vliwEndAddress);
+	}
+
+
 	//We write back the result if needed
 	void* destinationBinariesFile = openWriteFile((void*) "./binaries");
 	unsigned int sizeBinaries = (placeCode<<4);
 
 
-	for (int i=0;i<sizeBinaries>>4;i++){
-		printf("0x%xl, 0x%xl, 0x%xl, 0x%xl,\n", (int) dbtPlateform.vliwBinaries[i].slc<32>(0),
-				(int) dbtPlateform.vliwBinaries[i].slc<32>(32),
-				(int) dbtPlateform.vliwBinaries[i].slc<32>(64),
-				(int) dbtPlateform.vliwBinaries[i].slc<32>(96));
-	}
+//	for (int i=0;i<sizeBinaries>>4;i++){
+//		printf("0x%xl, 0x%xl, 0x%xl, 0x%xl,\n", (int) dbtPlateform.vliwBinaries[i].slc<32>(0),
+//				(int) dbtPlateform.vliwBinaries[i].slc<32>(32),
+//				(int) dbtPlateform.vliwBinaries[i].slc<32>(64),
+//				(int) dbtPlateform.vliwBinaries[i].slc<32>(96));
+//	}
+
+	optimizeBasicBlock(273, 355, &dbtPlateform);
+	optimizeBasicBlock(355, 462, &dbtPlateform);
 
 
 	//We initialize the VLIW processor with binaries and data from elf file
 	VexSimulator *simulator = new VexSimulator();
+	simulator->debugLevel = 2;
 
 	simulator->initializeCodeMemory(dbtPlateform.vliwBinaries, sizeBinaries, 0);
-	simulator->debugLevel = 1;
-
 	for (unsigned int sectionCounter = 0; sectionCounter<elfFile.sectionTable->size(); sectionCounter++){
 		ElfSection *section = elfFile.sectionTable->at(sectionCounter);
 		//if (!section->getName().compare(".data")){
@@ -126,6 +139,7 @@ int main(int argc, char *argv[])
 			free(data);
 		//}
 	}
+
 
 
 	//We also add information on insertions
@@ -269,7 +283,7 @@ int main(int argc, char *argv[])
 
 #endif
 
-#ifndef __LINUX_API
+#ifdef __NO_LINUX_API
 #include <binaries_content.h>
 
 int main(int argc, char *argv[])
