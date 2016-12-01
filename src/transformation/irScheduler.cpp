@@ -527,6 +527,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 				ac_int<6, false> place = placeOfRegisters[usedRegister[oldLineNumber][i]].slc<6>(0);
 
 				if (numberDep == 0){
+						printf("Register %d is freed\n", place);
 						freeRegisters[writeFreeRegister] = place;
 						writeFreeRegister++;
 						numberFreeRegister++;

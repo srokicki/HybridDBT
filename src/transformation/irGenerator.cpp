@@ -52,7 +52,7 @@ using namespace std;
 const unsigned int debugLevel = 5;
 
 
-#if !defined(__USE_AC) && !defined(__SIMULATION_ACCELERATE)
+#ifdef __NOT_USE_AC
 /* Global values */
 char isOutsideNext = 0;
 char droppedInstruction = 0;
@@ -1058,7 +1058,7 @@ int irGenerator(unsigned char* code, unsigned int *size, unsigned int addressSta
 }
 #endif
 
-#ifdef __USE_AC
+#ifndef __NOT_USE_AC
 typedef ac_int<5,false> acu5;
 typedef ac_int<32,false> acu32;
 typedef ac_int<64,false> acu64;
@@ -1280,7 +1280,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 
 
 
-			//FIXME check these three lines
 			numbersSuccessor[indexInCurrentBlock] = 0;
 			numbersPredecessor[indexInCurrentBlock] = 0;
 
@@ -1333,7 +1332,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			ac_int<10, true> lastReaderOnGlobal_value_dest_1 = lastReaderOnGlobal[dest_reg][0];
 			ac_int<10, true> lastReaderOnGlobal_value_dest_2 = lastReaderOnGlobal[dest_reg][1];
 			ac_int<10, true> lastReaderOnGlobal_value_dest_3 = lastReaderOnGlobal[dest_reg][2];
-
+			ac_int<2, false> lastReaderOnGlobalPlaceToWrite_access_dest = lastReaderOnGlobalPlaceToWrite[dest_reg];
 
 
 			if (pred1_ena){
@@ -1352,6 +1351,8 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 						temp_pred1 = pred1_global_access;
 					}
 
+
+
 					pred1_global_value = temp_pred1;
 
 					//** We also mark this node as a reader of the global value. Should this value be modified
@@ -1359,7 +1360,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 
 
 					if (lastReaderOnGlobalCounter_access_pred1 < 3){
-
 						lastReaderOnGlobalCounter_access_pred1++;
 						//** We handle successors: if the value in a global register has been written in the same
 						//** basic block, we add a dependency from the writer node to this instruction.
@@ -1457,7 +1457,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				}
 				else{
 					//We are facing a simple data dependency
-					printf("Reaching non global for dest 2\n");
 					pred2_succ_ena = 1;
 					pred2_succ_src = temp_pred2;
 					pred2_succ_isData = 1;
@@ -1533,7 +1532,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 
 			if (dest_ena) {
 				if (dest_global_access < 0 || insertMove_ena){
-					printf("for %d global is %d\n", dest_reg, dest_global_access);
 
 					registers[dest_reg] = indexInCurrentBlock;
 
@@ -1541,6 +1539,9 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 					currentRegistresUsageWord[dest_reg] = 1;
 				}
 				else{
+
+
+
 					alloc = 0;
 					temp_destination = dest_global_access;
 					lastWriterOnGlobal_access_dest = indexInCurrentBlock;
@@ -1562,6 +1563,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 					}
 
 					lastReaderOnGlobalCounter_access_dest = 0;
+					lastReaderOnGlobalPlaceToWrite_access_dest = 0;
 
 				}
 			}
@@ -1609,6 +1611,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			//We write back values in corresponding memories for dest
 			lastWriterOnGlobal[dest_reg] = lastWriterOnGlobal_access_dest;
 			lastReaderOnGlobalCounter[dest_reg] = lastReaderOnGlobalCounter_access_dest;
+			lastReaderOnGlobalPlaceToWrite[dest_reg] = lastReaderOnGlobalPlaceToWrite_access_dest;
 
 
 			//We add dependencies
