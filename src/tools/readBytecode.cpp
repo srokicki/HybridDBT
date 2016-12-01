@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <lib/tools.h>
 #include <lib/ac_int.h>
+#include <types.h>
 
 #define SWAP_2(x) ( (((x) & 0xff) << 8) | ((unsigned short)(x) >> 8) )
 #define SWAP_4(x) ( ((x) << 24) | \
@@ -87,59 +88,13 @@ int main(int argc, char *argv[])
 
 			for (int oneInstruction = 0; oneInstruction < blockHeader.nbrInstr; oneInstruction++){
 
-				ac_int<32, false> instructionPart1 = code[4*oneInstruction+0];
-				ac_int<32, false> instructionPart2 = code[4*oneInstruction+1];
-				ac_int<32, false> instructionPart3 = code[4*oneInstruction+2];
-				ac_int<32, false> instructionPart4 = code[4*oneInstruction+3];
 
+				uint32 instructionPart1 = code[4*oneInstruction+0];
+				uint32 instructionPart2 = code[4*oneInstruction+1];
+				uint32 instructionPart3 = code[4*oneInstruction+2];
+				uint32 instructionPart4 = code[4*oneInstruction+3];
 
-
-				ac_int<2, false> stageCode = instructionPart1.slc<2>(30);
-				ac_int<2, false> typeCode = instructionPart1.slc<2>(28);
-				ac_int<1, false> alloc = instructionPart1[27];
-				ac_int<1, false> allocBr = instructionPart1[26];
-				ac_int<7, false> opCode = instructionPart1.slc<7>(19);
-				ac_int<1, false> isImm = instructionPart1[18];
-				ac_int<1, false> isBr = instructionPart1[17];
-				ac_int<9, false> virtualRDest = instructionPart2.slc<9>(14);
-				ac_int<9, false> virtualRIn2 = instructionPart2.slc<9>(23);
-				ac_int<9, false> virtualRIn1_imm9 = instructionPart1.slc<9>(0);
-				ac_int<11, false> imm11 = instructionPart1.slc<11>(0);
-				ac_int<19, false> imm19 = 0;
-				imm19.set_slc(0, instructionPart2.slc<9>(23));
-				imm19.set_slc(9, instructionPart1.slc<10>(0));
-				ac_int<9, false> brCode = instructionPart1.slc<9>(9);
-
-				ac_int<8, false> nbDep = instructionPart2.slc<8>(6);
-				ac_int<3, false> nbSucc = instructionPart2.slc<3>(3);
-				ac_int<3, false> nbDSucc = instructionPart2.slc<3>(0);
-
-				printf("%d : ", oneInstruction);
-
-				if (typeCode == 0){
-					//R type
-					printf("op=%x, r%d = r%d, ", (int) opCode, (int) virtualRDest, (int) virtualRIn2);
-					if (isImm)
-						printf("%d ", (int) imm11);
-					else
-						printf("r%d ", (int) virtualRIn1_imm9);
-
-
-				}
-				else if (typeCode == 1){
-					//Rext Type
-				}
-				else {
-					//I type
-					printf("op=%x, r%d %d, ", (int) opCode, (int) virtualRDest, (int) imm19);
-
-				}
-
-				printf("nbDep=%d, nbDSucc = %d, nbSucc = %d, ", (int) nbDep, (int) nbSucc, (int) nbDSucc);
-
-				printf("%x %x    alloc=%d\n", (int)instructionPart3, (int)instructionPart4, (int) alloc);
-
-//				printf("%x %x %x %x\n", code[4*oneInstruction+0], code[4*oneInstruction+1], code[4*oneInstruction+2], code[4*oneInstruction+3]);
+				printBytecodeInstruction(oneInstruction, instructionPart1, instructionPart2, instructionPart3, instructionPart4);
 			}
 
 

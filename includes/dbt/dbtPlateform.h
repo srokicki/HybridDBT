@@ -18,7 +18,7 @@
  ********************************************************************/
 
 
-#ifdef __USE_AC
+#ifndef __NOT_USE_AC
 #include <lib/ac_int.h>
 class DBTPlateform
 {

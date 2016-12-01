@@ -23,7 +23,6 @@ void writeInt(ac_int<128,false>* bytecode, int place, unsigned int value){
 
 	ac_int<32, false> valueAsAcInt = value;
 	bytecode[place>>4].set_slc(32*(3-((place>>2) & 0x3)), valueAsAcInt);
-	printf("Wrote %x in %d\n",valueAsAcInt, place>>4);
 }
 
 unsigned int readInt(unsigned char* bytecode, int place){
@@ -40,7 +39,6 @@ unsigned int readInt(unsigned char* bytecode, int place){
 }
 
 uint32 readInt(uint128* bytecode, int place){
-
 	return bytecode[place>>4].slc<32>(32*(3-((place>>2) & 0x3)));
 
 }
