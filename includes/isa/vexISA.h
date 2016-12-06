@@ -44,6 +44,7 @@
 #define VEX_BRF 0x26
 #define VEX_RETURN 0x27
 #define VEX_MOVI 0x28
+#define VEX_AUIPC 0x29
 
 #define VEX_STOP 0x2f
 #define VEX_SLCTF 0x30

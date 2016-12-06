@@ -344,7 +344,8 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 			| (dctoEx.opCode == VEX_ADD) |  (dctoEx.opCode == VEX_SH1ADD) |  (dctoEx.opCode == VEX_SH2ADD)
 			| (dctoEx.opCode == VEX_SH3ADD) |  (dctoEx.opCode == VEX_SH4ADD)
 			| (dctoEx.opCode == VEX_ADDi) |  (dctoEx.opCode == VEX_SH1ADDi) |  (dctoEx.opCode == VEX_SH2ADDi)
-			| (dctoEx.opCode == VEX_SH3ADDi) |  (dctoEx.opCode == VEX_SH4ADDi) | (dctoEx.opCode == VEX_SH3bADD) |  (dctoEx.opCode == VEX_SH3bADDi) ;
+			| (dctoEx.opCode == VEX_SH3ADDi) |  (dctoEx.opCode == VEX_SH4ADDi) | (dctoEx.opCode == VEX_SH3bADD) |  (dctoEx.opCode == VEX_SH3bADDi)
+			| (dctoEx.opCode == VEX_AUIPC);
 
 	ac_int<1, false> selectSub = (dctoEx.opCode == VEX_SUB)| (dctoEx.opCode == VEX_SUBi);
 	ac_int<1, false> selectSll = (dctoEx.opCode == VEX_SLL)| (dctoEx.opCode == VEX_SLLi);
@@ -469,11 +470,19 @@ void VexSimulator::doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	if (isIType){
 		//The instruction is I type
 		dctoEx->dest = RA;
+
 		dctoEx->dataa.set_slc(0, IMM19);
 		if (IMM19[18])
 			dctoEx->dataa.set_slc(19, const1_13);
 		else
 			dctoEx->dataa.set_slc(19, const0_13);
+
+
+		if (OP == VEX_AUIPC)
+			dctoEx->dataa = dctoEx->dataa<<12;
+
+		dctoEx->datab = PC-1; //This will be used for AUIPC
+
 	}
 	else{
 		//The instruction is R type
@@ -538,6 +547,11 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 			dctoEx->dataa.set_slc(19, const1_13);
 		else
 			dctoEx->dataa.set_slc(19, const0_13);
+
+		if (OP == VEX_AUIPC)
+			dctoEx->dataa = dctoEx->dataa<<12;
+
+		dctoEx->datab = PC-1; //This will be used for AUIPC
 	}
 	else{
 		//The instruction is R type
