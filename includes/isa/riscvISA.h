@@ -65,5 +65,28 @@
 #define RISCV_OP_SR_SRL 0x0
 #define RISCV_OP_SR_SRA 0x20
 
+//FIXME some special operations of the base instruction set are not yet supported.
+
+/******************************************************************************************************
+* Specification of the standard M extension
+********************************************
+* This extension brings the support for multiplication operation.
+* It is composed of the RISCV_OP opcode then a dedicated value for funct7 which identify it.
+* Then funct3 is used to determine which of the eight operation to use.
+* Added operations are MUL, MULH, MULHSU, MLHU, DIV, DIVU, REM, REMU
+*****************************************************************************************************/
+
+#define RISCV_OP_M 0x1
+
+#define RISCV_OP_M_MUL 0x0
+#define RISCV_OP_M_MULH 0x1
+#define RISCV_OP_M_MULHSU 0x2
+#define RISCV_OP_M_MULHU 0x3
+#define RISCV_OP_M_DIV 0x4
+#define RISCV_OP_M_DIVU 0x5
+#define RISCV_OP_M_REM 0x6
+#define RISCV_OP_M_REMU 0x7
+
+
 
 #endif /* INCLUDES_ISA_RISCVISA_H_ */

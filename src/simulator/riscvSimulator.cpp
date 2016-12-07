@@ -50,7 +50,7 @@ int RiscvSimulator::doSimulation(int start){
 
 		do{
 			ins = this->ldw(pc);;
-			fprintf(stderr,"%d;%x;%x", n_inst, pc, ins);
+			fprintf(stderr,"%d;%x;%x", (int)n_inst, (int)pc, (int)ins);
 
 
 			pc = pc + 4;
@@ -97,6 +97,7 @@ int RiscvSimulator::doSimulation(int start){
 			ac_int<32, false> unsignedReg1 = 0;
 			ac_int<32, false> unsignedReg2 = 0;
 
+			ac_int<64, true> longResult;
 
 			switch (opcode)
 			{
@@ -104,10 +105,9 @@ int RiscvSimulator::doSimulation(int start){
 				reg[rd] = imm31_12;
 			break;
 			case RISCV_AUIPC:
-				reg[rd] = pc + imm31_12;
+				reg[rd] = pc -4 + imm31_12;
 			break;
 			case RISCV_JAL:
-				fprintf(stderr,"In jal destination is %x rd is %d\t", (int) pc - 4 + imm21_1_signed,(int) rd);
 				reg[rd] = pc;
 				pc = pc - 4 + imm21_1_signed;
 			break;
@@ -136,14 +136,14 @@ int RiscvSimulator::doSimulation(int start){
 				break;
 				case RISCV_BR_BLTU:
 					unsignedReg1.set_slc(0, reg[rs1].slc<32>(0));
-					unsignedReg1.set_slc(0, reg[rs2].slc<32>(0));
+					unsignedReg2.set_slc(0, reg[rs2].slc<32>(0));
 
 					if (unsignedReg1 < unsignedReg2)
 						pc = pc + (imm13_signed) - 4;
 				break;
 				case RISCV_BR_BGEU:
 					unsignedReg1.set_slc(0, reg[rs1].slc<32>(0));
-					unsignedReg1.set_slc(0, reg[rs2].slc<32>(0));
+					unsignedReg2.set_slc(0, reg[rs2].slc<32>(0));
 
 					if (unsignedReg1 >= unsignedReg2)
 						pc = pc + (imm13_signed) - 4;
@@ -233,49 +233,95 @@ int RiscvSimulator::doSimulation(int start){
 				}
 			break;
 			case RISCV_OP:
-				switch(funct3)
-				{
-				case RISCV_OP_ADD:
-					if (funct7 == RISCV_OP_ADD_ADD)
-						reg[rd] = reg[rs1] + reg[rs2];
-					else
-						reg[rd] = reg[rs1] - reg[rs2];
-				break;
-				case RISCV_OP_SLL:
-					reg[rd] = reg[rs1] << rs2;
-				break;
-				case RISCV_OP_SLT:
-					reg[rd] = (reg[rs1] < reg[rs2]) ? 1 : 0;
-				break;
-				case RISCV_OP_SLTU:
-					unsignedReg1.set_slc(0, reg[rs1].slc<32>(0));
-					unsignedReg2.set_slc(0, reg[rs2].slc<32>(0));
+				if (funct7 == 1){
+					//Switch case for multiplication operations (in standard extension RV32M)
+					switch (funct3)
+					{
+					case RISCV_OP_M_MUL:
+						longResult = reg[rs1] * reg[rs2];
+						reg[rd] = longResult.slc<32>(0);
+					break;
+					case RISCV_OP_M_MULH:
+						longResult = reg[rs1] * reg[rs2];
+						reg[rd] = longResult.slc<32>(32);
+					break;
+					case RISCV_OP_M_MULHSU:
+						unsignedReg2 = reg[rs2];
+						longResult = reg[rs1] * unsignedReg2;
+						reg[rd] = longResult.slc<32>(32);
+					break;
+					case RISCV_OP_M_MULHU:
+						unsignedReg1 = reg[rs1];
+						unsignedReg2 = reg[rs2];
+						longResult = unsignedReg1 * unsignedReg2;
+						reg[rd] = longResult.slc<32>(32);
+					break;
+					case RISCV_OP_M_DIV:
+						reg[rd] = (reg[rs1] / reg[rs2]);
+					break;
+					case RISCV_OP_M_DIVU:
+						unsignedReg1 = reg[rs1];
+						unsignedReg2 = reg[rs2];
+						reg[rd] = unsignedReg1 / unsignedReg2;
+					break;
+					case RISCV_OP_M_REM:
+						reg[rd] = (reg[rs1] % reg[rs2]);
+					break;
+					case RISCV_OP_M_REMU:
+						unsignedReg1 = reg[rs1];
+						unsignedReg2 = reg[rs2];
+						reg[rd] = unsignedReg1 % unsignedReg2;
+					break;
+					}
 
-					reg[rd] = (unsignedReg1 < unsignedReg2) ? 1 : 0;
-				break;
-				case RISCV_OP_XOR:
-					reg[rd] = reg[rs1] ^ reg[rs2];
-				break;
-				case RISCV_OP_SR:
-					if (funct7 == RISCV_OP_SR_SRL)
-						reg[rd] = (reg[rs1] >> rs2) & shiftMask[rs2];
-					else //SRA
-						reg[rd] = reg[rs1] >> rs2;
-				break;
-				case RISCV_OP_OR:
-					reg[rd] = reg[rs1] | reg[rs2];
-				break;
-				case RISCV_OP_AND:
-					reg[rd] = reg[rs1] & reg[rs2];
+				}
+				else{
+
+					//Switch case for base OP operation
+					switch(funct3)
+					{
+					case RISCV_OP_ADD:
+						if (funct7 == RISCV_OP_ADD_ADD)
+							reg[rd] = reg[rs1] + reg[rs2];
+						else
+							reg[rd] = reg[rs1] - reg[rs2];
+					break;
+					case RISCV_OP_SLL:
+						reg[rd] = reg[rs1] << rs2;
+					break;
+					case RISCV_OP_SLT:
+						reg[rd] = (reg[rs1] < reg[rs2]) ? 1 : 0;
+					break;
+					case RISCV_OP_SLTU:
+						unsignedReg1.set_slc(0, reg[rs1].slc<32>(0));
+						unsignedReg2.set_slc(0, reg[rs2].slc<32>(0));
+
+						reg[rd] = (unsignedReg1 < unsignedReg2) ? 1 : 0;
+					break;
+					case RISCV_OP_XOR:
+						reg[rd] = reg[rs1] ^ reg[rs2];
+					break;
+					case RISCV_OP_SR:
+						if (funct7 == RISCV_OP_SR_SRL)
+							reg[rd] = (reg[rs1] >> rs2) & shiftMask[rs2];
+						else //SRA
+							reg[rd] = reg[rs1] >> rs2;
+					break;
+					case RISCV_OP_OR:
+						reg[rd] = reg[rs1] | reg[rs2];
+					break;
+					case RISCV_OP_AND:
+						reg[rd] = reg[rs1] & reg[rs2];
+					break;
+					default:
+						printf("In OP switch case, this should never happen... Instr was %x\n", (int)ins);
+					break;
+					}
 				break;
 				default:
-					printf("In OP switch case, this should never happen... Instr was %x\n", (int)ins);
+					printf("In default part of switch opcode, instr %x is not handled yet\n", (int) ins);
 				break;
 				}
-			break;
-			default:
-				printf("In default part of switch opcode, instr %x is not handled yet\n", (int) ins);
-			break;
 			}
 			reg[0] = 0;
 			n_inst = n_inst + 1;
@@ -285,7 +331,7 @@ int RiscvSimulator::doSimulation(int start){
 			fprintf(stderr, "\n");
 
 		}
-		while (pc != 0 && pc != 0x10aec && n_inst<100000000); //Apparently, return from main function is always at address 0x4000074
+		while (pc != 0 && pc != 0x108dc && n_inst<100000000); //Apparently, return from main function is always at address 0x4000074
 		fprintf(stderr,"Simulation finished in %d cycles\n",n_inst);
 
 		return 0;
