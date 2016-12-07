@@ -65,7 +65,22 @@
 #define RISCV_OP_SR_SRL 0x0
 #define RISCV_OP_SR_SRA 0x20
 
-//FIXME some special operations of the base instruction set are not yet supported.
+#define RISCV_SYSTEM 0x73
+
+#define RISCV_SYSTEM_ENV 0x0
+#define RISCV_SYSTEM_ENV_ECALL 0x0
+#define RISCV_SYSTEM_ENV_EBREAK 0x1
+
+
+#define RISCV_SYSTEM_CSRRW 0x1
+#define RISCV_SYSTEM_CSRRS 0x2
+#define RISCV_SYSTEM_CSRRC 0x3
+#define RISCV_SYSTEM_CSRRWI 0x5
+#define RISCV_SYSTEM_CSRRSI 0x6
+#define RISCV_SYSTEM_CSRRCI 0x7
+
+
+//FIXME some special operations of the base instruction set are not yet supported. (FENCE)
 
 /******************************************************************************************************
 * Specification of the standard M extension
