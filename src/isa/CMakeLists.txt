@@ -2,6 +2,8 @@ set(SOURCE
    ${SOURCE}
    ${CMAKE_CURRENT_SOURCE_DIR}/vexISA.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/irISA.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/riscvISA.cpp
+   
    
    PARENT_SCOPE
 )
