@@ -10,14 +10,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define TEMP_PROCEDURE_STORAGE_SIZE 10
-#define TEMP_BLOCK_STORAGE_SIZE 30
+#define TEMP_PROCEDURE_STORAGE_SIZE 20
+#define TEMP_BLOCK_STORAGE_SIZE 300
 
 
 int buildBasicControlFlow(DBTPlateform dbtPlateform, int startAddress, int endAddress, IRProcedure** result){
 
 	int sizeNewlyTranslated = endAddress-startAddress;
-
 
 
 	//This first step consists of mapping insertions in order to easily say if isntr n is an insertion or not.
@@ -27,7 +26,7 @@ int buildBasicControlFlow(DBTPlateform dbtPlateform, int startAddress, int endAd
 	for (int oneInstruction = 0; oneInstruction < sizeNewlyTranslated; oneInstruction++)
 		insertionMap[oneInstruction] = 0;
 
-	for (int oneInsertion = 0; oneInsertion < dbtPlateform.insertions[0]; oneInsertion++){
+	for (int oneInsertion = 1; oneInsertion <= dbtPlateform.insertions[0]; oneInsertion++){
 		//We mark the destination as an insertion
 		int index = dbtPlateform.insertions[oneInsertion] - startAddress;
 		insertionMap[index] = 1;
@@ -46,13 +45,11 @@ int buildBasicControlFlow(DBTPlateform dbtPlateform, int startAddress, int endAd
 	int previousProcedureStart = -1;
 	int previousBlockStart = -1;
 	for (int oneInstruction = 0; oneInstruction < sizeNewlyTranslated; oneInstruction++){
-
 		if (dbtPlateform.blockBoundaries[indexInMipsBinaries]){
 			if (previousProcedureStart != -1){
 
 				//We reach the end of a block: we create the block and mark this place as a new start
 				tempBlocks[blockCounter] = IRBlock(previousBlockStart+startAddress, indexInVLIWBinaries+startAddress);
-
 				blockCounter++;
 				if (blockCounter > TEMP_BLOCK_STORAGE_SIZE){
 					fprintf(stderr, "Error while building basic control flow: temporary storage size for blocks is too small and nothing has been implemented to handle this...\n");

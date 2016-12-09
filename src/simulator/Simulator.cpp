@@ -171,11 +171,6 @@
 #define COP1_CMP_SULE 0xF
 
 
-
-//Adding custom instructions to support dynamic reconfiguration
-#define SWAPKEY 44
-#define TRANSLATE 45
-
 #define IADDR(x)	(((x)&0x0000ffff)>>2)
 
 

@@ -1243,7 +1243,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			ac_int<1, false> isStoreType = opcode == VEX_STB | opcode == VEX_STH | opcode == VEX_STW;
 			ac_int<1, false> isBranchWithNoReg = opcode == VEX_GOTO | opcode == VEX_CALL | opcode == VEX_RETURN
 					| opcode == VEX_STOP;
-			ac_int<1, false> isBranchWithReg = opcode == VEX_IGOTO | opcode == VEX_ICALL | opcode == VEX_BR
+			ac_int<1, false> isBranchWithReg = opcode == VEX_GOTOR | opcode == VEX_CALLR | opcode == VEX_BR
 					| opcode == VEX_BRF;
 			ac_int<1, false> isMovi = opcode == VEX_MOVI;
 			ac_int<1, false> isArith1 = opcode == VEX_NOT | opcode == VEX_SXTH | opcode == VEX_SXTB

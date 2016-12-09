@@ -11,7 +11,7 @@
 #include <transformation/optimizeBasicBlock.h>
 #include <transformation/buildControlFlow.h>
 
-
+#include <lib/debugFunctions.h>
 
 
 #ifndef __NO_LINUX_API
@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 	ac_int<32, false> placeCode = 0; //As 4 instruction bundle
 
 	//We add initialization code to the vliw binaries
-	placeCode = getInitCode(dbtPlateform.vliwBinaries, placeCode);
+	placeCode = getInitCode(dbtPlateform.vliwBinaries, placeCode, addressStart);
 
 	/********************************************************
 	 * First part of DBT: generating the first pass translation of binaries
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 //We launch the actual generation
 
 	int previousPlaceCode = placeCode;
-	firstPassTranslator(dbtPlateform.mipsBinaries,
+	firstPassTranslator_RISCV(dbtPlateform.mipsBinaries,
 			&size,
 			addressStart,
 			dbtPlateform.vliwBinaries,
@@ -100,6 +100,9 @@ int main(int argc, char *argv[])
 			dbtPlateform.blockBoundaries,
 			dbtPlateform.procedureBoundaries);
 
+
+	debugFirstPassResult(dbtPlateform, previousPlaceCode+1, placeCode, addressStart);
+exit(-1);
 	IRProcedure *controlFlow;
 	int nbProc = buildBasicControlFlow(dbtPlateform, previousPlaceCode, placeCode, &controlFlow);
 
@@ -122,8 +125,8 @@ int main(int argc, char *argv[])
 //				(int) dbtPlateform.vliwBinaries[i].slc<32>(96));
 //	}
 
-	optimizeBasicBlock(273, 355, &dbtPlateform);
-	optimizeBasicBlock(355, 462, &dbtPlateform);
+//	optimizeBasicBlock(273, 355, &dbtPlateform);
+//	optimizeBasicBlock(355, 462, &dbtPlateform);
 
 
 	//We initialize the VLIW processor with binaries and data from elf file
@@ -147,7 +150,7 @@ int main(int argc, char *argv[])
 	simulator->initializeDataMemory(dbtPlateform.insertions, (1+insertionSize)*4, 0x7000000);
 
 
-	if (simulator->debugLevel == 1)
+	//if (simulator->debugLevel == 1)
 		for (int oneInsertion = 1; oneInsertion<=dbtPlateform.insertions[0]; oneInsertion++)
 			fprintf(stderr, "insert;%d\n",(int) dbtPlateform.insertions[oneInsertion]);
 

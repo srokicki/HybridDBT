@@ -391,7 +391,7 @@ int generateInterpretationBinaries_loop(uint32 code[1024],
 					boundary1 = indexInSourceBinaries + 2;
 
 					if (pred1_reg == 63){
-						binaries = assembleIInstruction(VEX_IGOTO, 0, pred1_reg);
+						binaries = assembleIInstruction(VEX_GOTOR, 0, pred1_reg);
 
 					}
 					else{

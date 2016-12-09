@@ -50,8 +50,8 @@ int RiscvSimulator::doSimulation(int start){
 
 		do{
 			ins = this->ldw(pc);;
-			fprintf(stderr,"%d;%x;%x", (int)n_inst, (int)pc, (int)ins);
-
+			fprintf(stderr,"%d;%x;", (int)n_inst, (int)pc);
+			printDecodedInstrRISCV(ins);
 
 			pc = pc + 4;
 

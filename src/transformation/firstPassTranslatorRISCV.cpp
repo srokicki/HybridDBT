@@ -282,13 +282,13 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 			stage = nextInstruction_stage;
 			wasExternalInstr = 1;
 			enableNextInstruction = 0;
+			isInsertion = 1;
 
 			if (enableSecondNextInstruction){
 				enableSecondNextInstruction = 0;
 				enableNextInstruction = 1;
 				nextInstruction = secondNextInstruction;
 				nextInstruction_stage = secondNextInstruction_stage;
-				isInsertion = 1;
 			}
 		}
 		else if (nextInstructionNop){
@@ -373,6 +373,9 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				if (funct7 == RISCV_OP_M){
 					//We are in the part dedicated to RV32M extension
 					binaries =  assembleRInstruction(functBindingMULT[funct3], rd, rs1, rs2);
+					stage = 2;
+
+					//TODO: should certainly insert a nop
 
 				}
 				else if (funct3 == RISCV_OP_SLL || funct3 == RISCV_OP_SR){
@@ -393,18 +396,12 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 			}
 			else if (opcode == RISCV_AUIPC){
 
-				//TODO RISCV immediates are on 20 bits whereas we only handle 19-bit immediates...
-
-				//AUIPC instruction has to be translated using indexInSourceBinaries
-				binaries = assembleIInstruction(VEX_AUIPC, imm31_12.slc<19>(0), rd);
-
 				ac_int<32, false> value = addressStart + (indexInSourceBinaries<<2) + imm31_12_signed;
 
 				if (blocksBoundaries[indexInSourceBinaries]){
 
 					binaries = assembleIInstruction(VEX_MOVI, value.slc<19>(12), rd);
 					nextInstruction = assembleRiInstruction(VEX_SLLi, rd, rd, 12);
-
 					secondNextInstruction = assembleRiInstruction(VEX_ADDi, rd, rd, value.slc<12>(0));
 
 					//Mark the insertion
@@ -412,7 +409,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					enableNextInstruction = 1;
 					enableSecondNextInstruction = 1;
 					secondNextInstruction_stage = 0;
-					isInsertion = 1;
+
 				}
 				else{
 					previousBinaries.set_slc(0, assembleIInstruction(VEX_MOVI, value.slc<19>(12), 33));
@@ -422,7 +419,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					//Mark the insertion
 					nextInstruction_stage = 0;
 					enableNextInstruction = 1;
-					isInsertion = 1;
+
 				}
 
 
@@ -441,7 +438,6 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					//Mark the insertion
 					nextInstruction_stage = 0;
 					enableNextInstruction = 1;
-					isInsertion = 1;
 				}
 				else{
 					previousBinaries.set_slc(0, assembleIInstruction(VEX_MOVI, imm31_12.slc<19>(12), 33));
@@ -509,7 +505,6 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 					nextInstruction = assembleIInstruction((rd == 63) ? VEX_CALL : VEX_GOTO, 4, 0);
 					enableNextInstruction = 1;
-					isInsertion = 1;
 				}
 
 
@@ -562,7 +557,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					nextInstruction_stage = 0;
 					enableNextInstruction = 1;
 
-					isInsertion = 1;
+
 				}
 
 				//In order to deal with the fact that RISCV do not execute the isntruction following a branch,

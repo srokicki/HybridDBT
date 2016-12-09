@@ -6,11 +6,11 @@
 
 
 #ifdef __NIOS
-unsigned int getInitCode(unsigned int *binaries, int start){
+unsigned int getInitCode(unsigned int *binaries, int start, unsigned int startAddress){
 #endif
 
 #ifdef __USE_AC
-unsigned int getInitCode(ac_int<128, false> *binaries, int start){
+unsigned int getInitCode(ac_int<128, false> *binaries, int start, unsigned int startAddress){
 #endif
 
 	int cycle = start;
@@ -47,7 +47,7 @@ unsigned int getInitCode(ac_int<128, false> *binaries, int start){
 	writeInt(binaries, cycle*16+0, assembleRiInstruction(VEX_SLLi, 4, 4, 16));		//r4 = r4 << 16
 	writeInt(binaries, cycle*16+4, assembleRiInstruction(VEX_STW, 5, 29, 4));		//stw r5 4(sp)
 	writeInt(binaries, cycle*16+8, 0);
-	writeInt(binaries, cycle*16+12, assembleIInstruction(VEX_MOVI, 0x28008, 5));	//r5 = 0xa0025 FIXME param
+	writeInt(binaries, cycle*16+12, assembleIInstruction(VEX_MOVI, (startAddress>>14), 5));	//r5 = 0xa0025 FIXME param
 
 	cycle++;
 	writeInt(binaries, cycle*16+0, assembleRiInstruction(VEX_SLLi, 5, 5, 14));		//r5 = r5 << 14
@@ -56,7 +56,7 @@ unsigned int getInitCode(ac_int<128, false> *binaries, int start){
 	writeInt(binaries, cycle*16+12, 0);
 
 	cycle++;
-	writeInt(binaries, cycle*16+0, assembleRiInstruction(VEX_ADDi, 5, 5, 0x40));	//r5 = r5 + 0x40 -> r5 = 0xa0020040
+	writeInt(binaries, cycle*16+0, assembleRiInstruction(VEX_ADDi, 5, 5, (startAddress & 0x3fff)));	//r5 = r5 + 0x40 -> r5 = 0xa0020040
 	writeInt(binaries, cycle*16+4, assembleRiInstruction(VEX_STW, 7, 29, 12));		//stw r7 12(sp)
 	writeInt(binaries, cycle*16+8, 0);
 	writeInt(binaries, cycle*16+12, 0);
@@ -75,7 +75,7 @@ unsigned int getInitCode(ac_int<128, false> *binaries, int start){
 
 	cycle++;
 	writeInt(binaries, cycle*16+0, assembleRiInstruction(VEX_SLLi, 5, 5, 2));		//r5 = r5 * 4
-	writeInt(binaries, cycle*16+4, assembleRInstruction(VEX_ADD, 6, 0, 33));		//r6 = r33
+	writeInt(binaries, cycle*16+4, assembleRiInstruction(VEX_ADDi, 33, 33, 26));		//r33 = r33 + 26
 	writeInt(binaries, cycle*16+8, 0);
 	writeInt(binaries, cycle*16+12, 0);
 
@@ -145,7 +145,7 @@ unsigned int getInitCode(ac_int<128, false> *binaries, int start){
 
 	//finBcl
 	cycle++;
-	writeInt(binaries, cycle*16+0, assembleRiInstruction(VEX_ADDi, 33, 33, 27));
+	writeInt(binaries, cycle*16+0, 0);
 	writeInt(binaries, cycle*16+4, assembleRiInstruction(VEX_LDW, 4, 29, 0));		//ldw r4 0(sp)
 	writeInt(binaries, cycle*16+8, 0);
 	writeInt(binaries, cycle*16+12, 0);
@@ -163,7 +163,7 @@ unsigned int getInitCode(ac_int<128, false> *binaries, int start){
 	writeInt(binaries, cycle*16+12, 0);
 
 	cycle++;
-	writeInt(binaries, cycle*16+0, assembleIInstruction(VEX_IGOTO, 0, 33));
+	writeInt(binaries, cycle*16+0, assembleIInstruction(VEX_GOTOR, 0, 33));
 	writeInt(binaries, cycle*16+4, assembleRiInstruction(VEX_LDW, 7, 29, 12));		//ldw r7 12(sp)
 	writeInt(binaries, cycle*16+8, 0);
 	writeInt(binaries, cycle*16+12, 0);
