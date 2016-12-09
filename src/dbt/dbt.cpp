@@ -101,8 +101,8 @@ int main(int argc, char *argv[])
 			dbtPlateform.procedureBoundaries);
 
 
-	debugFirstPassResult(dbtPlateform, previousPlaceCode+1, placeCode, addressStart);
-exit(-1);
+//	debugFirstPassResult(dbtPlateform, previousPlaceCode+1, placeCode, addressStart);
+
 	IRProcedure *controlFlow;
 	int nbProc = buildBasicControlFlow(dbtPlateform, previousPlaceCode, placeCode, &controlFlow);
 
