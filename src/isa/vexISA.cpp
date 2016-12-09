@@ -1,5 +1,9 @@
 #include <lib/ac_int.h>
 #include <isa/vexISA.h>
+#include <string.h>
+#include <strings.h>
+#include <iomanip>
+#include <sstream>
 
 ac_int<32, false> assembleIInstruction(ac_int<7, false> opcode, ac_int<19, true> imm19, ac_int<6, false> regA){
 	ac_int<32, false> result = 0;
@@ -41,7 +45,7 @@ const char* opcodeNames[128] = {
 		"SRLi", "SRAi", "SUBi", "XORi", "SXTHi", "ZXTBi", "ZXTHi", "SXTBi", "?", "CMPEQi", "CMPGEi", "CMPGEUi", "CMPGTi", "CMPGTUi", "CMPLEi", "CMPLEUi"};
 
 
-void printDecodedInstr(ac_int<32, false> instruction){
+std::string printDecodedInstr(ac_int<32, false> instruction){
 	ac_int<6, false> RA = instruction.slc<6>(26);
 	ac_int<6, false> RB = instruction.slc<6>(20);
 	ac_int<6, false> RC = instruction.slc<6>(14);
@@ -54,15 +58,23 @@ void printDecodedInstr(ac_int<32, false> instruction){
 	ac_int<1, false> isIType = (OP.slc<3>(4) == 2);
 	ac_int<1, false> isImm = OP.slc<3>(4) == 1 || OP.slc<3>(4) == 6 || OP.slc<3>(4) == 7;
 
+	std::stringstream stream;
 
-	fprintf(stderr,"%s", opcodeNames[OP]);
+	stream << opcodeNames[OP];
 	if (OP == 0){
-
 	}
 	else if (isIType)
-		fprintf(stderr," r%d 0x%x", (int) RA, (int) IMM19);
-	else if (isImm)
-		fprintf(stderr," r%d = %d 0x%x (=%d)",(int) RB, (int) RA, (int) IMM13, (int) IMM13);
+		stream << " r" + std::to_string(RA) + ", " + std::to_string(IMM19);
+	else if (isImm){
+		stream << " r" + std::to_string(RB) + "  = " + std::to_string(RA) + " 0x";
+		stream << std::hex << IMM13;
+	}
 	else
-		fprintf(stderr," r%d = r%d r%d",(int) RC, (int) RA, (int) RB);
+		stream << " r" + std::to_string(RA) + "  = " + std::to_string(RB) + " " + std::to_string(RC);
+
+	std::string result(stream.str());
+	for (int addedSpace = result.size(); addedSpace < 20; addedSpace++)
+		result.append(" ");
+
+	return result;
 }

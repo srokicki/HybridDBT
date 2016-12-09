@@ -16,7 +16,6 @@
 
 
 
-void printDecodedInstr(ac_int<32, false> instruction);
 
 
 class VexSimulator {
@@ -35,7 +34,7 @@ class VexSimulator {
 		for (int oneReg = 0; oneReg < 64; oneReg++){
 			REG[oneReg] = 0;
 		}
-		REG[29] = 0x7fffeffc;
+		REG[29] = 0;
 	};
 
 	~VexSimulator(void) {

@@ -5,7 +5,7 @@
  *      Author: simon
  */
 #include <lib/ac_int.h>
-
+#include <string.h>
 #ifndef INCLUDES_VEX_H_
 #define INCLUDES_VEX_H_
 
@@ -37,9 +37,9 @@
 
 
 #define VEX_GOTO 0x21
-#define VEX_IGOTO 0x22
+#define VEX_GOTOR 0x22
 #define VEX_CALL 0x23
-#define VEX_ICALL 0x24
+#define VEX_CALLR 0x24
 #define VEX_BR 0x25
 #define VEX_BRF 0x26
 #define VEX_RETURN 0x27
@@ -122,7 +122,7 @@ ac_int<32, false> assembleRiInstruction(ac_int<7, false> opcode, ac_int<6, false
 
 
 extern const char* opcodeNames[128];
-void printDecodedInstr(ac_int<32, false> instruction);
+std::string printDecodedInstr(ac_int<32, false> instruction);
 
 
 #endif /* INCLUDES_VEX_H_ */

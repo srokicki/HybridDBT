@@ -507,7 +507,7 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<6, false> RA = ftoDC.instruction.slc<6>(26);
 	ac_int<6, false> RB = ftoDC.instruction.slc<6>(20);
 	ac_int<6, false> RC = ftoDC.instruction.slc<6>(14);
-	ac_int<19, false> IMM19 = ftoDC.instruction.slc<19>(7);
+	ac_int<19, true> IMM19 = ftoDC.instruction.slc<19>(7);
 	ac_int<13, false> IMM13 = ftoDC.instruction.slc<13>(7);
 	ac_int<7, false> OP = ftoDC.instruction.slc<7>(0);
 	ac_int<3, false> BEXT = ftoDC.instruction.slc<3>(8);
@@ -542,11 +542,8 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	if (isIType){
 		//The instruction is I type
 		dctoEx->dest = RA;
-		dctoEx->dataa.set_slc(0, IMM19);
-		if (IMM19[18])
-			dctoEx->dataa.set_slc(19, const1_13);
-		else
-			dctoEx->dataa.set_slc(19, const0_13);
+		dctoEx->dataa = IMM19;
+
 
 		if (OP == VEX_AUIPC)
 			dctoEx->dataa = dctoEx->dataa<<12;
@@ -586,15 +583,15 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 				}
 				break; // CALL
 
-			case VEX_ICALL :
+			case VEX_CALLR :
 				dctoEx->opCode = 0;
 				REG[63] = PC + 1;
-				NEXT_PC = regValueA;
+				NEXT_PC = regValueA + IMM19;
 				break; // ICALL
 
-			case VEX_IGOTO :
+			case VEX_GOTOR :
 				dctoEx->opCode = 0;
-				NEXT_PC = regValueA;
+				NEXT_PC = regValueA+IMM19;
 				if (debugLevel >= 3)
 					fprintf(stderr, "[Cycle %d / PC %d] Returning...\n", cycle, PC);
 				break; //IGOTO
@@ -775,11 +772,16 @@ int VexSimulator::run(int mainPc){
 
 
 		if (debugLevel >= 1){
-			fprintf(stderr, "%d;%d; ", (int) cycle, (int) pcValueForDebug);
-			printDecodedInstr(ftoDC1.instruction); fprintf(stderr, " ");
-			printDecodedInstr(ftoDC2.instruction); fprintf(stderr, " ");
-			printDecodedInstr(ftoDC3.instruction); fprintf(stderr, " ");
-			printDecodedInstr(ftoDC4.instruction); fprintf(stderr, " ");
+			std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
+			std::cerr << printDecodedInstr(ftoDC1.instruction);
+			std::cerr << " ";
+			std::cerr << printDecodedInstr(ftoDC2.instruction);
+			std::cerr << " ";
+			std::cerr << printDecodedInstr(ftoDC3.instruction);
+			std::cerr << " ";
+			std::cerr << printDecodedInstr(ftoDC4.instruction);
+			std::cerr << " ";
+
 		}
 
 		if (debugLevel >= 1){

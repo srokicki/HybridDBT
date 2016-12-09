@@ -8,6 +8,9 @@
 #ifndef INCLUDES_ISA_RISCVISA_H_
 #define INCLUDES_ISA_RISCVISA_H_
 
+#include <types.h>
+#include <string.h>
+
 #define RISCV_LUI 0x37
 #define RISCV_AUIPC 0x17
 #define RISCV_JAL 0x6f
@@ -102,6 +105,16 @@
 #define RISCV_OP_M_REM 0x6
 #define RISCV_OP_M_REMU 0x7
 
+
+std::string printDecodedInstrRISCV(ac_int<32, false> instruction);
+
+
+extern const char* riscvNamesOP[8];
+extern const char* riscvNamesOPI[8];
+extern const char* riscvNamesLD[8];
+extern const char* riscvNamesST[8];
+extern const char* riscvNamesBR[8];
+extern const char* riscvNames[8];
 
 
 #endif /* INCLUDES_ISA_RISCVISA_H_ */
