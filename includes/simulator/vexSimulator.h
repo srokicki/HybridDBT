@@ -67,6 +67,8 @@ class VexSimulator {
 	void doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
 	void doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
 
+	void doStep();
+
 };
 
 

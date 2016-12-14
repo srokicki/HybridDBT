@@ -129,6 +129,7 @@ ac_int<32, false> VexSimulator::ldw(unsigned int addr){
 	result.set_slc(16, ldb(addr+2));
 	result.set_slc(8, ldb(addr+1));
 	result.set_slc(0, ldb(addr+0));
+	printf("ld at %d %d\n", addr, result);
 	return result;
 }
 
@@ -191,7 +192,6 @@ void VexSimulator::doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB){
 			case VEX_LDBU:
 				//ldbu
 				memtoWB->result = ldb(address);
-
 				break;
 			case VEX_LDB:
 				//ldb
@@ -447,8 +447,7 @@ void VexSimulator::doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<1, false> isUnsigned = (OP == VEX_MPYLLU) | (OP == VEX_MPYLHU) | (OP == VEX_MPYHHU) | (OP == VEX_MPYLU)
 			| (OP == VEX_MPYHU) | (OP == VEX_CMPLTU) | (OP == VEX_CMPLTUi) | (OP == VEX_CMPGEU) | (OP == VEX_CMPGEUi)
 			| (OP == VEX_ZXTB)  | (OP == VEX_ZXTBi) | (OP == VEX_ZXTH) | (OP == VEX_ZXTHi) | (OP == VEX_CMPGTU)
-			| (OP == VEX_CMPGTUi) | (OP == VEX_CMPLEU) | (OP == VEX_CMPLEUi) | (OP == VEX_ORi)
-			| (OP == VEX_ANDi)| (OP == VEX_XORi)| (OP == VEX_NOTi)| (OP == VEX_NORi) ;
+			| (OP == VEX_CMPGTUi) | (OP == VEX_CMPLEU) | (OP == VEX_CMPLEUi);
 
 
 	ac_int<23, false> const0_23 = 0;
@@ -519,8 +518,7 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<1, false> isUnsigned = (OP == VEX_MPYLLU) | (OP == VEX_MPYLHU) | (OP == VEX_MPYHHU) | (OP == VEX_MPYLU)
 			| (OP == VEX_MPYHU) | (OP == VEX_CMPLTU) | (OP == VEX_CMPLTUi) | (OP == VEX_CMPGEU) | (OP == VEX_CMPGEUi)
 			| (OP == VEX_ZXTB)  | (OP == VEX_ZXTBi) | (OP == VEX_ZXTH) | (OP == VEX_ZXTHi) | (OP == VEX_CMPGTU)
-			| (OP == VEX_CMPGTUi) | (OP == VEX_CMPLEU) | (OP == VEX_CMPLEUi) | (OP == VEX_ORi)
-			| (OP == VEX_ANDi)| (OP == VEX_XORi)| (OP == VEX_NOTi)| (OP == VEX_NORi) ;
+			| (OP == VEX_CMPGTUi) | (OP == VEX_CMPLEU) | (OP == VEX_CMPLEUi);
 
 
 	ac_int<23, false> const0_23 = 0;
@@ -889,5 +887,8 @@ void VexSimulator::initializeCodeMemory(ac_int<128, false>* content, unsigned in
 	}
 }
 
+void VexSimulator::doStep(){
+
+}
 
 #endif
