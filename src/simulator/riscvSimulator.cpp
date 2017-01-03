@@ -44,14 +44,15 @@ int RiscvSimulator::doSimulation(int start){
 		//We initialize registers
 		for (i = 0; i < 32; i++)
 			reg[i] = 0;
+		reg[2] = 0x70000;
 
 
 
 
 		do{
 			ins = this->ldw(pc);;
-			fprintf(stderr,"%d;%x;", (int)n_inst, (int)pc);
-			printDecodedInstrRISCV(ins);
+			fprintf(stderr,"%d;%x;%x", (int)n_inst, (int)pc, (int) ins);
+			std::cerr << printDecodedInstrRISCV(ins);
 
 			pc = pc + 4;
 
@@ -96,6 +97,8 @@ int RiscvSimulator::doSimulation(int start){
 
 			ac_int<32, false> unsignedReg1 = 0;
 			ac_int<32, false> unsignedReg2 = 0;
+
+			ac_int<32, true> valueRegA;
 
 			ac_int<64, true> longResult;
 
@@ -166,12 +169,14 @@ int RiscvSimulator::doSimulation(int start){
 					reg[rd] = this->ldw(reg[rs1] + imm12_I_signed);
 				break;
 				case RISCV_LD_LBU:
+					valueRegA = reg[rs1];
 					reg[rd] = 0;
-					reg[rd].set_slc(0, this->ldb(reg[rs1] + imm12_I_signed));
+					reg[rd].set_slc(0, this->ldb(valueRegA + imm12_I_signed));
 				break;
 				case RISCV_LD_LHU:
+					valueRegA = reg[rs1];
 					reg[rd] = 0;
-					reg[rd].set_slc(0, this->ldh(reg[rs1] + imm12_I_signed));
+					reg[rd].set_slc(0, this->ldh(valueRegA + imm12_I_signed));
 				break;
 				default:
 					printf("In LD switch case, this should never happen... Instr was %x\n", (int)ins);
@@ -287,7 +292,7 @@ int RiscvSimulator::doSimulation(int start){
 							reg[rd] = reg[rs1] - reg[rs2];
 					break;
 					case RISCV_OP_SLL:
-						reg[rd] = reg[rs1] << rs2;
+						reg[rd] = reg[rs1] << (reg[rs2] & 0x1f);
 					break;
 					case RISCV_OP_SLT:
 						reg[rd] = (reg[rs1] < reg[rs2]) ? 1 : 0;
@@ -303,9 +308,9 @@ int RiscvSimulator::doSimulation(int start){
 					break;
 					case RISCV_OP_SR:
 						if (funct7 == RISCV_OP_SR_SRL)
-							reg[rd] = (reg[rs1] >> rs2) & shiftMask[rs2];
+							reg[rd] = (reg[rs1] >> (reg[rs2] & 0x1f)) & shiftMask[reg[rs2]];
 						else //SRA
-							reg[rd] = reg[rs1] >> rs2;
+							reg[rd] = reg[rs1] >> (reg[rs2] & 0x1f);
 					break;
 					case RISCV_OP_OR:
 						reg[rd] = reg[rs1] | reg[rs2];
@@ -317,6 +322,10 @@ int RiscvSimulator::doSimulation(int start){
 						printf("In OP switch case, this should never happen... Instr was %x\n", (int)ins);
 					break;
 					}
+				break;
+				case RISCV_SYSTEM:
+					if (funct3 == 0 && funct7 == 0)
+						pc = 0; //Currently we break on ECALL
 				break;
 				default:
 					printf("In default part of switch opcode, instr %x is not handled yet\n", (int) ins);
@@ -331,7 +340,7 @@ int RiscvSimulator::doSimulation(int start){
 			fprintf(stderr, "\n");
 
 		}
-		while (pc != 0 && pc != 0x108dc && n_inst<100000000); //Apparently, return from main function is always at address 0x4000074
+		while (pc != 0 && n_inst<100000000); //Apparently, return from main function is always at address 0x4000074
 		fprintf(stderr,"Simulation finished in %d cycles\n",n_inst);
 
 		return 0;
@@ -343,21 +352,23 @@ void RiscvSimulator::stb(int addr, ac_int<8, true> value){
 		printf("%c",(char) value&0xff);
 	else
 		this->memory[addr] = value & 0xff;
+
+//	fprintf(stderr, "memwrite %x %x\n", addr, value);
+
 }
 
 
 
-//Little endian version
 void RiscvSimulator::sth(int addr, ac_int<16, true> value){
-	this->memory[addr+1] = (value>>8) & 0xff;
-	this->memory[addr+0] = (value) & 0xff;
+	this->stb(addr+1, value.slc<8>(8));
+	this->stb(addr+0, value.slc<8>(0));
 }
 
 void RiscvSimulator::stw(int addr, ac_int<32, true> value){
-	this->memory[addr+3] = (value>>24) & 0xff;
-	this->memory[addr+2] = (value>>16) & 0xff;
-	this->memory[addr+1] = (value>>8) & 0xff;
-	this->memory[addr+0] = (value) & 0xff;
+	this->stb(addr+3, value.slc<8>(24));
+	this->stb(addr+2, value.slc<8>(16));
+	this->stb(addr+1, value.slc<8>(8));
+	this->stb(addr+0, value.slc<8>(0));
 }
 
 
@@ -372,6 +383,7 @@ ac_int<8, true> RiscvSimulator::ldb(int addr){
 	else
 		result= 0;
 
+//	fprintf(stderr, "memread %x %x\n", addr, result);
 
 	return result;
 }
@@ -396,4 +408,6 @@ ac_int<32, false> RiscvSimulator::ldw(int addr){
 	return result;
 }
 
+void RiscvSimulator::doStep(){
 
+}

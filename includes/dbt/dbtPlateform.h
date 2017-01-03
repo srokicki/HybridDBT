@@ -17,6 +17,7 @@
  *
  ********************************************************************/
 
+#define MEMORY_SIZE 4096
 
 #ifndef __NOT_USE_AC
 #include <lib/ac_int.h>
@@ -24,13 +25,13 @@ class DBTPlateform
 {
 
 public:
-	ac_int<128, false> vliwBinaries[1024];
-	ac_int<32, false> mipsBinaries[1024];
-	ac_int<32, false> insertions[1024];
-	ac_int<8, false> insertions_type[1024];
-	ac_int<32, false> insertions_src[1024];
-	ac_int<16, true> blockBoundaries[1024];
-	ac_int<16, true> procedureBoundaries[1024];
+	ac_int<128, false> vliwBinaries[MEMORY_SIZE];
+	ac_int<32, false> mipsBinaries[MEMORY_SIZE];
+	ac_int<32, false> insertions[MEMORY_SIZE];
+	ac_int<8, false> insertions_type[MEMORY_SIZE];
+	ac_int<32, false> insertions_src[MEMORY_SIZE];
+	ac_int<16, true> blockBoundaries[MEMORY_SIZE];
+	ac_int<16, true> procedureBoundaries[MEMORY_SIZE];
 	ac_int<128, false> bytecode[256];
 	ac_int<32, false> globalVariables[64];
 };

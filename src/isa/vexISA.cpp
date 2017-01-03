@@ -51,6 +51,8 @@ std::string printDecodedInstr(ac_int<32, false> instruction){
 	ac_int<6, false> RC = instruction.slc<6>(14);
 	ac_int<19, false> IMM19 = instruction.slc<19>(7);
 	ac_int<13, false> IMM13 = instruction.slc<13>(7);
+	ac_int<13, true> IMM13_signed = instruction.slc<13>(7);
+
 	ac_int<7, false> OP = instruction.slc<7>(0);
 	ac_int<3, false> BEXT = instruction.slc<3>(8);
 	ac_int<9, false> IMM9 = instruction.slc<9>(11);
@@ -67,10 +69,10 @@ std::string printDecodedInstr(ac_int<32, false> instruction){
 		stream << " r" + std::to_string(RA) + ", " + std::to_string(IMM19);
 	else if (isImm){
 		stream << " r" + std::to_string(RB) + "  = " + std::to_string(RA) + " 0x";
-		stream << std::hex << IMM13;
+		stream << std::hex << IMM13_signed;
 	}
 	else
-		stream << " r" + std::to_string(RA) + "  = " + std::to_string(RB) + " " + std::to_string(RC);
+		stream << " r" + std::to_string(RC) + "  = " + std::to_string(RA) + " " + std::to_string(RB);
 
 	std::string result(stream.str());
 	for (int addedSpace = result.size(); addedSpace < 20; addedSpace++)

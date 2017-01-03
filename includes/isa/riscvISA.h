@@ -50,8 +50,8 @@
 #define RISCV_OPI_SLLI 0x1
 #define RISCV_OPI_SRI 0x5
 
-#define RISCV_OPI_SRI_SRAI 0x0
-#define RISCV_OPI_SRI_SRLI 0x20
+#define RISCV_OPI_SRI_SRAI 0x20
+#define RISCV_OPI_SRI_SRLI 0x0
 
 #define RISCV_OP_ADD 0x0
 #define RISCV_OP_SLL 0x1

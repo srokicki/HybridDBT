@@ -10,8 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define TEMP_PROCEDURE_STORAGE_SIZE 20
-#define TEMP_BLOCK_STORAGE_SIZE 300
+#define TEMP_PROCEDURE_STORAGE_SIZE 50
+#define TEMP_BLOCK_STORAGE_SIZE 900
 
 
 int buildBasicControlFlow(DBTPlateform dbtPlateform, int startAddress, int endAddress, IRProcedure** result){

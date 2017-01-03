@@ -28,6 +28,7 @@ class RiscvSimulator {
 	ac_int<16, true> ldh(int addr);
 	ac_int<8, true> ldb(int addr);
 
+	void doStep();
 };
 
 

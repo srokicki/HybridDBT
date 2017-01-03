@@ -375,6 +375,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					binaries =  assembleRInstruction(functBindingMULT[funct3], rd, rs1, rs2);
 					stage = 2;
 
+					nextInstructionNop = 1;
 					//TODO: should certainly insert a nop
 
 				}
@@ -581,7 +582,9 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					ac_int<7, false> vexOpcode = (funct3==RISCV_OPI_SLLI) ? VEX_SLLi :
 							(funct7==RISCV_OPI_SRI_SRAI) ? VEX_SRAi : VEX_SRLi;
 
-					binaries = assembleRiInstruction(vexOpcode, rd, rs1, rs2);
+					binaries = assembleRiInstruction(vexOpcode, rd, rs1, oneInstruction.slc<5>(20));
+					//Note: we do not use rs2 var because this oen may have been modified to 63 if its value was 1
+					//Of course in the context of imm value this has no sense
 
 				}
 				else {

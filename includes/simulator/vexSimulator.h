@@ -65,6 +65,7 @@ class VexSimulator {
 	void doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem);
 	void doExMem(struct DCtoEx dctoEx, struct ExtoMem *extoMem);
 	void doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
+	void doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
 	void doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
 
 	void doStep();

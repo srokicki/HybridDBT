@@ -12,7 +12,7 @@
 #include <sstream>
 
 const char* riscvNamesOP[8] = {"ADD","SLL", "CMPLT", "CMPLTU", "XOR", "", "OR", "AND"};
-const char* riscvNamesOPI[8] = {"ADDi", "CMPLTi", "CMPLTUi", "XORi", "ORi", "ANDi", "SLLi", ""};
+const char* riscvNamesOPI[8] = {"ADDi", "SLLi", "SLTi", "CMPLTUi", "XORi", "SRLi", "ORi", "ANDi"};
 const char* riscvNamesLD[8] = {"LDB", "LDH", "LDW", "", "LDBU", "LDHU"};
 const char* riscvNamesST[8] = {"STB", "STH", "STW"};
 const char* riscvNamesBR[8] = {"CMPEQ", "CMPNE", "", "", "CMPLT", "CMPGE", "CMPLTU", "CMPGEU"};

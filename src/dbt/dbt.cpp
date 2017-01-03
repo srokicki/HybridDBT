@@ -136,11 +136,13 @@ int main(int argc, char *argv[])
 	simulator->initializeCodeMemory(dbtPlateform.vliwBinaries, sizeBinaries, 0);
 	for (unsigned int sectionCounter = 0; sectionCounter<elfFile.sectionTable->size(); sectionCounter++){
 		ElfSection *section = elfFile.sectionTable->at(sectionCounter);
-		//if (!section->getName().compare(".data")){
+
+		if (section->address != 0){
+
 			unsigned char* data = section->getSectionCode();
 			simulator->initializeDataMemory(data, section->size, section->address);
 			free(data);
-		//}
+		}
 	}
 
 
@@ -153,6 +155,7 @@ int main(int argc, char *argv[])
 	//if (simulator->debugLevel == 1)
 		for (int oneInsertion = 1; oneInsertion<=dbtPlateform.insertions[0]; oneInsertion++)
 			fprintf(stderr, "insert;%d\n",(int) dbtPlateform.insertions[oneInsertion]);
+		fprintf(stderr, "insert;%d\n",placeCode);
 
 	simulator->run(0);
 	delete simulator;
