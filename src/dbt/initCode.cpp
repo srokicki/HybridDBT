@@ -179,7 +179,7 @@ unsigned int getInitCode(ac_int<128, false> *binaries, int start, unsigned int s
 	cycle++;
 
 	writeInt(binaries, instrWithPlaceCode*16+4, assembleRiInstruction(VEX_ADDi, 33, 33, 0));
-	writeInt(binaries, start*16+0, assembleIInstruction(VEX_CALL, cycle, 0));
+	writeInt(binaries, start*16+0, assembleIInstruction(VEX_CALL, cycle, 63));
 
 
 	return cycle;

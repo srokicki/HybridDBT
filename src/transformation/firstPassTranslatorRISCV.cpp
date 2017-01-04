@@ -432,19 +432,49 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 				//TODO RISCV immediates are on 20 bits whereas we only handle 19-bit immediates...
 
+				ac_int<1, false> keepHigher = 0;
+				ac_int<1, false> keepBoth = 0;
+
+				if (imm31_12[31] != imm31_12[30]){
+					keepHigher = 1;
+					if (imm31_12[12])
+						keepBoth = 1;
+				}
+
+
+				ac_int<19, false> immediateValue = keepHigher ? imm31_12.slc<19>(13): imm31_12.slc<19>(12);
+				ac_int<5, false> shiftValue = keepHigher ? 13 : 12;
+
+				ac_int<32, false> instr1 = assembleIInstruction(VEX_MOVI, immediateValue, 33);
+				ac_int<32, false> instr2 = assembleRiInstruction(VEX_SLLi, rd, 33, shiftValue);
+				ac_int<32, false> instr3 = assembleRiInstruction(VEX_ADDi, rd, rd, 0x1000);
+
+
 				if (blocksBoundaries[indexInSourceBinaries]){
-					binaries = assembleIInstruction(VEX_MOVI, imm31_12.slc<19>(12), rd);
-					nextInstruction = assembleRiInstruction(VEX_SLLi, rd, rd, 12);
+					binaries = instr1;
+					nextInstruction = instr2;
 
 					//Mark the insertion
 					nextInstruction_stage = 0;
 					enableNextInstruction = 1;
+
+					if (keepBoth){
+						secondNextInstruction = instr3;
+						enableSecondNextInstruction = 1;
+						secondNextInstruction_stage = 0;
+					}
+
 				}
 				else{
-					previousBinaries.set_slc(0, assembleIInstruction(VEX_MOVI, imm31_12.slc<19>(12), 33));
-					binaries = assembleRiInstruction(VEX_SLLi, rd, 33, 12);
-				}
+					previousBinaries.set_slc(0, instr1);
+					binaries = instr2;
 
+					if (keepBoth){
+						nextInstruction = instr3;
+						enableNextInstruction = 1;
+						nextInstruction_stage = 0;
+					}
+				}
 
 			}
 			else if (opcode == RISCV_LD){
@@ -480,7 +510,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				}
 
 
-				binaries= assembleIInstruction(isSimpleJ ? VEX_GOTO : VEX_CALL, 0, 0);
+				binaries= assembleIInstruction(isSimpleJ ? VEX_GOTO : VEX_CALL, 0, rd);
 
 				//In order to deal with the fact that RISCV do not execute the isntruction following a branch,
 				//we have to insert nop
@@ -502,9 +532,9 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				}
 				else{
 					//FIXME should be able to add two instr at the same cycle... This would remove an insertion
-					binaries = assembleRInstruction(VEX_ADD, 33, rs1, 0);
+					binaries = assembleRiInstruction(VEX_ADDi, 33, rs1, imm12_I_signed);
 
-					nextInstruction = assembleIInstruction((rd == 63) ? VEX_CALL : VEX_GOTO, 4, 0);
+					nextInstruction = assembleIInstruction((rd == 63) ? VEX_CALL : VEX_GOTO, 4, rd);
 					enableNextInstruction = 1;
 				}
 

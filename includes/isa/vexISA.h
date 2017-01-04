@@ -19,8 +19,9 @@
 #define VEX_MPYL 0x7
 #define VEX_MPYLU 0x8
 #define VEX_MPYH 0x9
-#define VEX_MPYHU 0xa
-#define VEX_MPYHS 0xb
+
+#define VEX_MPYHISU 0xa
+#define VEX_MPYHIU 0xb
 #define VEX_MPYLO 0xc
 #define VEX_MPYHI 0xd
 #define VEX_DIVLO 0xe

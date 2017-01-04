@@ -17,7 +17,7 @@
  *
  ********************************************************************/
 
-#define MEMORY_SIZE 4096
+#define MEMORY_SIZE 65536
 
 #ifndef __NOT_USE_AC
 #include <lib/ac_int.h>

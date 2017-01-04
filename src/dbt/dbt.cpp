@@ -104,13 +104,7 @@ int main(int argc, char *argv[])
 //	debugFirstPassResult(dbtPlateform, previousPlaceCode+1, placeCode, addressStart);
 
 	IRProcedure *controlFlow;
-	int nbProc = buildBasicControlFlow(dbtPlateform, previousPlaceCode, placeCode, &controlFlow);
-
-	for (int oneProcedure = 0; oneProcedure<nbProc; oneProcedure++){
-		printf("Procedure %d going from %d to %d\n Procedure has %d blocks :\n",oneProcedure, controlFlow[oneProcedure].vliwStartAddress,controlFlow[oneProcedure].vliwEndAddress, controlFlow[oneProcedure].nbBlock);
-		for (int oneBlock = 0; oneBlock<controlFlow[oneProcedure].nbBlock; oneBlock++)
-			printf("\tBlock from %d to %d\n", controlFlow[oneProcedure].blocks[oneBlock].vliwStartAddress, controlFlow[oneProcedure].blocks[oneBlock].vliwEndAddress);
-	}
+	int nbProc = 0;//buildBasicControlFlow(dbtPlateform, previousPlaceCode, placeCode, &controlFlow);
 
 
 	//We write back the result if needed

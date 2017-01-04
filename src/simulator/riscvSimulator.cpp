@@ -308,7 +308,7 @@ int RiscvSimulator::doSimulation(int start){
 					break;
 					case RISCV_OP_SR:
 						if (funct7 == RISCV_OP_SR_SRL)
-							reg[rd] = (reg[rs1] >> (reg[rs2] & 0x1f)) & shiftMask[reg[rs2]];
+							reg[rd] = (reg[rs1] >> (reg[rs2] & 0x1f)) & shiftMask[reg[rs2] & 0x1f];
 						else //SRA
 							reg[rd] = reg[rs1] >> (reg[rs2] & 0x1f);
 					break;
@@ -348,8 +348,10 @@ int RiscvSimulator::doSimulation(int start){
 }
 
 void RiscvSimulator::stb(int addr, ac_int<8, true> value){
-	if (addr == 0x10009000)
+	if (addr == 0x10009000){
 		printf("%c",(char) value&0xff);
+
+	}
 	else
 		this->memory[addr] = value & 0xff;
 

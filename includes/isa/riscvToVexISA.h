@@ -13,7 +13,7 @@ ac_int<7, false> functBindingOPI[8] = {VEX_ADDi,VEX_SLLi, VEX_CMPLTi, VEX_CMPLTU
 ac_int<7, false> functBindingLD[8] = {VEX_LDB, VEX_LDH, VEX_LDW, 0, VEX_LDBU, VEX_LDHU};
 ac_int<7, false> functBindingST[8] = {VEX_STB, VEX_STH, VEX_STW};
 ac_int<7, false> functBindingBR[8] = {VEX_CMPEQ, VEX_CMPNE, 0,0, VEX_CMPLT, VEX_CMPGE, VEX_CMPLTU, VEX_CMPGEU};
-ac_int<7, false> functBindingMULT[8] = {VEX_MPYLO,VEX_MPYHI, VEX_MPYHI, VEX_MPYHI, VEX_DIVHI, VEX_DIVHI, VEX_DIVLO, VEX_DIVLO};
+ac_int<7, false> functBindingMULT[8] = {VEX_MPYLO,VEX_MPYHI, VEX_MPYHIU, VEX_MPYHISU, VEX_DIVHI, VEX_DIVHI, VEX_DIVLO, VEX_DIVLO};
 
 //FIXME: unsigned mult operations are not handled correctly
 
