@@ -221,9 +221,9 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 			ac_int<8, true> signed8Value;
 
 			ac_int<16, false> unsignedHalf = 0;
-			ac_int<16, false> signedHalf = 0;
+			ac_int<16, true> signedHalf = 0;
 			ac_int<16, false> unsignedByte = 0;
-			ac_int<16, false> signedByte = 0;
+			ac_int<16, true> signedByte = 0;
 			char offset = (address << 3).slc<5>(0);
 
 			switch(extoMem.opCode){
