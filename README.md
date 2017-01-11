@@ -16,9 +16,50 @@ This repository contains sources of the Hybrid-DBT project. Hybrid-DBT is a hard
 
 ## <a name="build"></a> Building the project
 
-TODO
+This part describe how to download the project sources and how to compile them. Build needs to have cmake and make installed on your computer.
+
+First thing to do is downloading sources from the git repository:
+
+	$git clone https://github.com/srokicki/HybridDBT.git
+	
+Then create a build folder and use CMAKE to generate makefiles:
+	
+	$cd HybridDBT
+	$mkdir build
+	$cd build
+	$cmake ../
+	
+Compile all files:
+	
+	$make all
+
+Generated binaries will be places in the folder HybridDBT/build/bin.
 
 ## <a name="sofware"></a> First use of the software version
+
+This part will describe how to use the DBT framework in software. By "software", we mean all transformations run natively (eg. in x86) by the host computer. The execution on VLIW will be done by an instruction set simulator and return precise number of cycles needed for the execution.
+This software execution can be used to measure the impact of a transformation on performance of the VLIW generated code but we cannot measure how expensive the transformation will be.
+
+On the following, we will first see how to run the framework on existing RISC-V code (for example the elf files given in the benchmark folder). Generating a new elf file is more complex because it requires a working toolchain for RISC-V and a few modification on Newlib to work correctly on the simulator. This will be treated in details on the subpart [Generating Compatible RISC-V binaries](#riscv_compiler).
+
+### Running the DBT framework on existing RISC-V binaries
+
+If you want to execute the DBT framework on a given elf file (for example benchmarks/simple/dct/dct), run the following command:
+
+	$./build/bin/dbt benchmarks/simple/dct/dct
+	
+Debug messages from the DBT framework are printed on the standard error while application print from the executed code are printed on the standard output.
+
+###<a name="riscv_compiler"></a> Generating Compatible RISC-V binaries
+
+In order to compile an application and generated RISC-V binaries compatible with the DBT framework, we have to follow the instruction found on the RISC-V web page:
+
+	$ git clone https://github.com/riscv/riscv-tools.git
+	$ cd riscv-tools
+	$ git submodule update --init --recursive
+	$ export RISCV=/path/to/install/riscv/toolchain
+	
+Here, instead of running the build.sh script as it is presented on the official web page, we will run another script that generate 32-bit binaries without support for hardware floating point.
 
 TODO
 
