@@ -59,25 +59,52 @@ In order to compile an application and generated RISC-V binaries compatible with
 	$ git submodule update --init --recursive
 	$ export RISCV=/path/to/install/riscv/toolchain
 	
-Here, instead of running the build.sh script as it is presented on the official web page, we will run another script that generate 32-bit binaries without support for hardware floating point.
+Here, instead of running the build.sh script as it is presented on the official web page, we will run another script that generate 32-bit binaries.
 
-TODO
+	$ ./build-rv32ima.sh
+	
+Once the compiler is done, you can at the folder $RISCV/bin to the path so that the compiler is easily used. To generate code with soft-float, just run the following command:
 
+	$ riscv32-unknown-elf-gcc -std=c99 -msoft-float -march=RV32IM -O3 helloworld.c -o helloworld
+	
 ## <a name="hardware"></a> How to use the hardware version
 
 TODO
 
 ## <a name="sources"></a> A quick tour of available sources
 
-TODO
+In this section we will quickly present how sources of the project are organized and where you'll find most interesting parts.
 
 ### <a name="sources_sim"></a> ISA simulators
 
-TODO
+An important part of the framework is the code for instruction set simulators. We currently implemented simulators for three ISA: **RISC-V**, **MIPS** and **VEX**. Those simulator are built upon the same principle: you fill instruction into main memory and start the execution at a given PC. The simulator will decode and execute each instruction maintaining an array which represent the register file.
+
+The simulator for VEX processor is a bit special because it aims at being compiled by an HLS tool (for us Catapult) in order to generate VHDL. The VLIW we use in the hardware platform is derived from this code.
+
+Declaration of ISA instructions can be found in includes/ISA. Definition of simulators are in includes/simulator.
+Finally folder src/simulator contains sources for different simulators.
+
+**Note:** Simulator can also be used in standalone mode from a dedicated executable. See subpart on other tools for more details. 
 
 ### <a name="sources_transf"></a> Available code transformations
 
-TODO
+Transformations implemented in the framework are store in the folder src/transformation. We can separate them into two categories: 
+ - Transformations done by a hardware accelerator
+ - Transformations done in software
+ 
+ The first category contains currently three transformations: the **firstPassTranslation**, the **IRBuilder** and the IRScheduler. Their role is to efficiently handle the first steps of the DBT process. 
+ 
+ **FirstPassTranslator** will generate a naive translation of source binaries into VLIW binaries. In order to reduce its overhead, it will not try to exploit ILP and will never schedule more than one instruction per cycle. Currently two implementation of the firstPassTranslator exists: one for MIPS ISA and one for RISC-V ISA. The second one is the most recent one and is the one tested after updates. The other one is currently deprecated.
+ 
+ **IRBuilder** will read a piece of VLIW binaries and analyze dependencies to build a more precise reprensentation of the code. In this IR, all data and control dependencies are directly encoded which make the further optimizations on code easier to perform.
+ 
+ **IRScheduler** will read the above generated IR and schedule instruction on different execution units of the VLIW. This accelerator is designed to be reconfigurable and can handle VLIW configuration going from 2 to 8 issues and having 8 to 64 registers in its register file.
+ 
+ As we said before, these three transformation are performed by hardware accelerators in order to reduce the cost of first steps of the DBT process. The code contained in the repository is the C code used to generate the accelerators, through High Level Synthesis. It has been designed to generate efficient hardware.
+ 
+ 
+ Other transformations are upper level transformations for further code optimizations.
+ 
 
 ### <a name="sources_dbt"></a> Global DBT framework
 
