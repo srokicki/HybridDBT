@@ -49,7 +49,6 @@ class VexSimulator {
 	void initializeCodeMemory(ac_int<128, false>* content, unsigned int size, unsigned int start);
 	int run(int mainPc);
 
-	private:
 	void stb(unsigned int addr, ac_int<8, false> value);
 	void sth(unsigned int addr, ac_int<16, false> value);
 	void stw(unsigned int addr, ac_int<32, false> value);
@@ -57,6 +56,8 @@ class VexSimulator {
 	ac_int<8, false> ldb(unsigned int addr);
 	ac_int<16, false> ldh(unsigned int addr);
 	ac_int<32, false> ldw(unsigned int addr);
+
+	private:
 
 	void doWB(struct MemtoWB memtoWB);
 	void doMemNoMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB);

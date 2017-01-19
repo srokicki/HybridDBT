@@ -21,6 +21,7 @@ int firstPassTranslator(uint32 *code,
 
 int firstPassTranslator_RISCV(uint32 *code,
 		uint32 *size,
+		uint32 codeSectionStart,
 		uint32 addressStart,
 		uint128 *destinationBinaries,
 		uint32 *placeCode,

@@ -28,8 +28,6 @@ public:
 	ac_int<128, false> vliwBinaries[MEMORY_SIZE];
 	ac_int<32, false> mipsBinaries[MEMORY_SIZE];
 	ac_int<32, false> insertions[MEMORY_SIZE];
-	ac_int<8, false> insertions_type[MEMORY_SIZE];
-	ac_int<32, false> insertions_src[MEMORY_SIZE];
 	ac_int<16, true> blockBoundaries[MEMORY_SIZE];
 	ac_int<16, true> procedureBoundaries[MEMORY_SIZE];
 	ac_int<128, false> bytecode[256];

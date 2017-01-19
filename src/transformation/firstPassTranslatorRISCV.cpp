@@ -19,9 +19,9 @@
 #include <isa/riscvToVexISA.h>
 #include <types.h>
 
-//Values for unresolved jumps
-#define UNRESOLVED_JUMP_RELATIVE 1
-#define UNRESOLVED_JUMP_ABSOLUTE 0
+#include <dbt/insertions.h>
+
+
 
 const unsigned int debugLevel = 0;
 
@@ -37,7 +37,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		int16 proceduresBoundaries[65536],
 		unsigned int unresolvedJumps_src[512],
 		unsigned char unresolvedJumps_type[512],
-		unsigned int unresolvedJumps[512]);
+		int unresolvedJumps[512]);
 
 /**************************************************************
  *  Function firstPassTranslator will translate a piece of MIPS binaries from the memory 'code' and
@@ -48,6 +48,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
  **************************************************************/
 int firstPassTranslator_RISCV(uint32 *riscvBinaries,
 		uint32 *size,
+		uint32 codeSectionStart,
 		uint32 addressStart,
 		uint128 *vliwBinaries,
 		uint32 *placeCode,
@@ -59,7 +60,7 @@ int firstPassTranslator_RISCV(uint32 *riscvBinaries,
 
 	unsigned int localUnresolvedJumps_src[65536];
 	unsigned char localUnresolvedJumps_type[65536];
-	unsigned int localUnresolvedJumps[65536];
+	int localUnresolvedJumps[65536];
 
 	insertions[0] = 0;
 
@@ -80,6 +81,10 @@ int firstPassTranslator_RISCV(uint32 *riscvBinaries,
 	unsigned int destinationIndex = returnedValue & 0x3ffff;
 	unsigned int numberUnresolvedJumps = returnedValue >> 18;
 
+	//We copy insertions
+
+	addInsertions((addressStart-codeSectionStart)>>2, *placeCode, insertions, insertions[0]);
+
 	/************************************************************
 	* Resolution of unresolved jumps
 	*************************************************************
@@ -98,6 +103,7 @@ int firstPassTranslator_RISCV(uint32 *riscvBinaries,
 	*
 	* Note: Insertions from memory 'insertions' contains addresses with the offset placeCode already applied
 	************************************************************/
+
 	for (int oneUnresolvedJump = 0; oneUnresolvedJump<numberUnresolvedJumps; oneUnresolvedJump++){
 
 		unsigned int source = localUnresolvedJumps_src[oneUnresolvedJump];
@@ -107,22 +113,25 @@ int firstPassTranslator_RISCV(uint32 *riscvBinaries,
 		unsigned int oldJump = readInt(vliwBinaries, 16*(source));
 		unsigned int indexOfDestination = 0;
 
-		if (type == UNRESOLVED_JUMP_ABSOLUTE){
+
+		unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(initialDestination + ((addressStart-codeSectionStart)>>2));
+		if (destinationInVLIWFromNewMethod == -1){
+
+			//In this case, the jump cannot be resolved because the destination block is not translated yet.
+			//We store information concerning the destination and it will be resolved later
+
+			int numberUnresolvedJumps = unresolvedJumpsArray[0];
+			unresolvedJumpsArray[1+numberUnresolvedJumps] = initialDestination + ((addressStart-codeSectionStart)>>2);
+			unresolvedJumpsTypeArray[1+numberUnresolvedJumps] = type;
+			unresolvedJumpsSourceArray[1+numberUnresolvedJumps] = source;
+
+			unresolvedJumpsArray[0] = numberUnresolvedJumps+1;
+		}
+		else if (type == UNRESOLVED_JUMP_ABSOLUTE){
 			//In here we solve an absolute jump
 
-			initialDestination += *placeCode;
-			for (int oneInsertion = 1; oneInsertion <= insertions[0]; oneInsertion++){
-				if (insertions[oneInsertion] < 0 && -insertions[oneInsertion] <= initialDestination){
-					initialDestination--;
-				}
-				else if (insertions[oneInsertion] <= initialDestination){
-					initialDestination++;
-				}
-			}
-
-			//We modify the jump instruction to make it jump at the correct place
-			indexOfDestination = initialDestination;
-			initialDestination = initialDestination;
+			indexOfDestination = destinationInVLIWFromNewMethod;
+			initialDestination = destinationInVLIWFromNewMethod;
 
 			writeInt(vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
 
@@ -130,19 +139,8 @@ int firstPassTranslator_RISCV(uint32 *riscvBinaries,
 		else{
 			//In here we solve a relative jump
 
-			initialDestination += *placeCode;
-			for (int oneInsertion = 1; oneInsertion <= insertions[0]; oneInsertion++){
-
-				int savedInitialDestination = initialDestination;
-				if (insertions[oneInsertion] < 0 && -insertions[oneInsertion] <= initialDestination){
-					initialDestination--;
-				}
-				else if (insertions[oneInsertion] <= initialDestination ){
-					initialDestination++;
-				}
-			}
-			indexOfDestination = initialDestination;
-
+			indexOfDestination = destinationInVLIWFromNewMethod;
+			initialDestination = destinationInVLIWFromNewMethod;
 			initialDestination = initialDestination  - (source) ;
 
 
@@ -185,7 +183,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		int16 proceduresBoundaries[65536],
 		unsigned int unresolvedJumps_src[512],
 		unsigned char unresolvedJumps_type[512],
-		unsigned int unresolvedJumps[512]){
+		int unresolvedJumps[512]){
 
 
 	/**
@@ -665,7 +663,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 			blocksBoundaries[boundary1] = 1;
 		}
 
-		if (setUnresolvedJump && boundary1 >= 0){
+		if (setUnresolvedJump){
 			//We add the instruction to the list of unresolved destinations
 			unresolvedJumps_src[numberUnresolvedJumps] = unresolved_jump_src;
 			unresolvedJumps_type[numberUnresolvedJumps] = unresolved_jump_type;

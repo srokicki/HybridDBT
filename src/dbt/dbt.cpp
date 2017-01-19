@@ -1,4 +1,6 @@
 #include <dbt/dbtPlateform.h>
+#include <dbt/insertions.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -12,6 +14,8 @@
 #include <transformation/buildControlFlow.h>
 
 #include <lib/debugFunctions.h>
+
+#include <isa/vexISA.h>
 
 
 #ifndef __NO_LINUX_API
@@ -34,6 +38,34 @@ void printStats(unsigned int size, short* blockBoundaries){
 
 }
 
+
+int translateOneSection(DBTPlateform &dbtPlateform, ac_int<32, false> placeCode, int sectionStart, int startAddressSource, int endAddressSource){
+	int previousPlaceCode = placeCode;
+	ac_int<32, false> size = (endAddressSource - startAddressSource)>>2;
+	int addressStart = startAddressSource;
+	firstPassTranslator_RISCV(dbtPlateform.mipsBinaries,
+			&size,
+			sectionStart,
+			addressStart,
+			dbtPlateform.vliwBinaries,
+			&placeCode,
+			dbtPlateform.insertions,
+			dbtPlateform.blockBoundaries,
+			dbtPlateform.procedureBoundaries);
+
+
+	//	debugFirstPassResult(dbtPlateform, previousPlaceCode+1, placeCode, addressStart);
+
+		IRProcedure *controlFlow;
+		int nbProc = 0;//buildBasicControlFlow(dbtPlateform, previousPlaceCode, placeCode, &controlFlow);
+
+
+		//We write back the result if needed
+		void* destinationBinariesFile = openWriteFile((void*) "./binaries");
+		unsigned int sizeBinaries = (placeCode<<4);
+
+		return placeCode;
+}
 
 
 int main(int argc, char *argv[])
@@ -79,6 +111,12 @@ int main(int argc, char *argv[])
 
 	//We add initialization code to the vliw binaries
 	placeCode = getInitCode(dbtPlateform.vliwBinaries, placeCode, addressStart);
+	placeCode = insertCodeForInsertions(dbtPlateform.vliwBinaries, placeCode, addressStart);
+
+	//We modify the initialization call
+	writeInt(dbtPlateform.vliwBinaries, 0*16, assembleIInstruction(VEX_CALL, placeCode, 63));
+
+	initializeInsertionsMemory(size*4);
 
 	/********************************************************
 	 * First part of DBT: generating the first pass translation of binaries
@@ -89,16 +127,70 @@ int main(int argc, char *argv[])
 	 ********************************************************/
 
 //We launch the actual generation
+	for (int i=0; i<(size>>10)+1; i++){
 
-	int previousPlaceCode = placeCode;
-	firstPassTranslator_RISCV(dbtPlateform.mipsBinaries,
-			&size,
-			addressStart,
-			dbtPlateform.vliwBinaries,
-			&placeCode,
-			dbtPlateform.insertions,
-			dbtPlateform.blockBoundaries,
-			dbtPlateform.procedureBoundaries);
+		int startAddressSource = addressStart + i*1024*4;
+		int endAddressSource = startAddressSource + 1024*4;
+		if (endAddressSource > addressStart + size*4)
+			endAddressSource = addressStart + (size<<2);
+
+
+		int effectiveSize = (endAddressSource - startAddressSource)>>2;
+		for (int j = 0; j<effectiveSize; j++){
+			dbtPlateform.mipsBinaries[j] = ((unsigned int*) code)[j+i*1024];
+		}
+
+		placeCode =  translateOneSection(dbtPlateform, placeCode, addressStart, startAddressSource,endAddressSource);
+
+
+	}
+	for (int oneUnresolvedJump = 0; oneUnresolvedJump<unresolvedJumpsArray[0]; oneUnresolvedJump++){
+		unsigned int source = unresolvedJumpsSourceArray[oneUnresolvedJump+1];
+		unsigned int initialDestination = unresolvedJumpsArray[oneUnresolvedJump+1];
+		unsigned char type = unresolvedJumpsTypeArray[oneUnresolvedJump+1];
+
+		unsigned int oldJump = readInt(dbtPlateform.vliwBinaries, 16*(source));
+		unsigned int indexOfDestination = 0;
+
+		unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(initialDestination);
+		if (destinationInVLIWFromNewMethod == -1){
+			printf("A jump from %d to %x is still unresolved... (%d insertions)\n", source, initialDestination, insertionsArray[(initialDestination>>10)<<11]);
+		}
+		else if (type == UNRESOLVED_JUMP_ABSOLUTE){
+			//In here we solve an absolute jump
+			indexOfDestination = destinationInVLIWFromNewMethod;
+			initialDestination = destinationInVLIWFromNewMethod;
+			writeInt(dbtPlateform.vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
+
+		}
+		else{
+			//In here we solve a relative jump
+
+			indexOfDestination = destinationInVLIWFromNewMethod;
+			initialDestination = destinationInVLIWFromNewMethod;
+
+			initialDestination = initialDestination  - (source) ;
+
+			//We modify the jump instruction to make it jump at the correct place
+			writeInt(dbtPlateform.vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
+
+		}
+
+		unsigned int instructionBeforePreviousDestination = readInt(dbtPlateform.vliwBinaries, 16*(indexOfDestination-1)+12);
+		if (instructionBeforePreviousDestination != 0)
+					writeInt(dbtPlateform.vliwBinaries, 16*(source+1)+12, instructionBeforePreviousDestination);
+	}
+
+
+//	int previousPlaceCode = placeCode;
+//	firstPassTranslator_RISCV(dbtPlateform.mipsBinaries,
+//			&size,
+//			addressStart,
+//			dbtPlateform.vliwBinaries,
+//			&placeCode,
+//			dbtPlateform.insertions,
+//			dbtPlateform.blockBoundaries,
+//			dbtPlateform.procedureBoundaries);
 
 
 //	debugFirstPassResult(dbtPlateform, previousPlaceCode+1, placeCode, addressStart);
@@ -120,7 +212,7 @@ int main(int argc, char *argv[])
 //	}
 
 //	optimizeBasicBlock(273, 355, &dbtPlateform);
-//	optimizeBasicBlock(355, 462, &dbtPlateform);
+//	optimizeBasicBlock(163, 286, &dbtPlateform);
 
 
 	//We initialize the VLIW processor with binaries and data from elf file
@@ -142,14 +234,16 @@ int main(int argc, char *argv[])
 
 
 	//We also add information on insertions
-	int insertionSize = dbtPlateform.insertions[0];
-	simulator->initializeDataMemory(dbtPlateform.insertions, (1+insertionSize)*4, 0x7000000);
+	int insertionSize = 65536;
+	int areaCodeStart=1;
+	int areaStartAddress = 0;
 
+	simulator->initializeDataMemory((unsigned char*) insertionsArray, 65536*4, 0x7000000); //TODO
 
 	//if (simulator->debugLevel == 1)
-		for (int oneInsertion = 1; oneInsertion<=dbtPlateform.insertions[0]; oneInsertion++)
-			fprintf(stderr, "insert;%d\n",(int) dbtPlateform.insertions[oneInsertion]);
-		fprintf(stderr, "insert;%d\n",placeCode);
+//		for (int oneInsertion = 1; oneInsertion<=dbtPlateform.insertions[0]; oneInsertion++)
+//			fprintf(stderr, "insert;%d\n",(int) dbtPlateform.insertions[oneInsertion]);
+		fprintf(stderr, "insert;%d\n", (int) placeCode);
 
 	simulator->run(0);
 	delete simulator;

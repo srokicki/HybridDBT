@@ -49,7 +49,7 @@ std::string printDecodedInstr(ac_int<32, false> instruction){
 	ac_int<6, false> RA = instruction.slc<6>(26);
 	ac_int<6, false> RB = instruction.slc<6>(20);
 	ac_int<6, false> RC = instruction.slc<6>(14);
-	ac_int<19, false> IMM19 = instruction.slc<19>(7);
+	ac_int<19, true> IMM19 = instruction.slc<19>(7);
 	ac_int<13, false> IMM13 = instruction.slc<13>(7);
 	ac_int<13, true> IMM13_signed = instruction.slc<13>(7);
 
