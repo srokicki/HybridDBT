@@ -20,18 +20,18 @@ This part describe how to download the project sources and how to compile them. 
 
 First thing to do is downloading sources from the git repository:
 
-	$git clone https://github.com/srokicki/HybridDBT.git
+	$ git clone https://github.com/srokicki/HybridDBT.git
 	
 Then create a build folder and use CMAKE to generate makefiles:
 	
-	$cd HybridDBT
-	$mkdir build
-	$cd build
-	$cmake ../
+	$ cd HybridDBT
+	$ mkdir build
+	$ cd build
+	$ cmake ../
 	
 Compile all files:
 	
-	$make all
+	$ make all
 
 Generated binaries will be places in the folder HybridDBT/build/bin.
 
@@ -46,7 +46,7 @@ On the following, we will first see how to run the framework on existing RISC-V 
 
 If you want to execute the DBT framework on a given elf file (for example benchmarks/simple/dct/dct), run the following command:
 
-	$./build/bin/dbt benchmarks/simple/dct/dct
+	$ ./build/bin/dbt benchmarks/simple/dct/dct
 	
 Debug messages from the DBT framework are printed on the standard error while application print from the executed code are printed on the standard output.
 
