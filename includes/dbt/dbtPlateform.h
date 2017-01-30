@@ -19,6 +19,9 @@
 
 #define MEMORY_SIZE 65536
 
+
+#include <simulator/vexSimulator.h>
+
 #ifndef __NOT_USE_AC
 #include <lib/ac_int.h>
 class DBTPlateform
@@ -32,6 +35,8 @@ public:
 	ac_int<16, true> procedureBoundaries[MEMORY_SIZE];
 	ac_int<128, false> bytecode[256];
 	ac_int<32, false> globalVariables[64];
+
+	VexSimulator* vexSimulator;
 };
 #endif
 
