@@ -44,9 +44,9 @@ void optimizeBasicBlock(unsigned int basicBlockStart, unsigned int basicBlockEnd
 
 	blockSize = irGenerator_hw(platform->vliwBinaries,basicBlockStart, blockSize, platform->bytecode, globalVariables, local_registersUsage, globalVariableCounter);
 
-	printf("*************************************************************************\n");
-	printf("Optimizing a block of size %d : \n", blockSize);
-	printf("\n*****************\n");
+	fprintf(stderr, "*************************************************************************\n");
+	fprintf(stderr, "Optimizing a block of size %d : \n", blockSize);
+	fprintf(stderr, "\n*****************\n");
 	for (int i=0; i<blockSize; i++){
 		printBytecodeInstruction(i,platform->bytecode[i]);
 	}
@@ -70,7 +70,7 @@ void optimizeBasicBlock(unsigned int basicBlockStart, unsigned int basicBlockEnd
 	}
 
 
-	printf("Block is scheduled in %d cycles\n", binaSize);
+	fprintf(stderr, "Block is scheduled in %d cycles\n", binaSize);
 
 
 	//If the jump is relative we need to correct it because its place changed...
@@ -87,9 +87,9 @@ void optimizeBasicBlock(unsigned int basicBlockStart, unsigned int basicBlockEnd
 		//We compute the new offset, considering the new destination
 		int newOffset = destination - (basicBlockStart + binaSize + 1);
 
-		printf("Correction of jump at the end of the block. Original offset was %d\n From it derivated destination %d and new offset %d\n", offset, destination, newOffset);
+		fprintf(stderr, "Correction of jump at the end of the block. Original offset was %d\n From it derivated destination %d and new offset %d\n", offset, destination, newOffset);
 		uint32 newInstruction = jumpInstruction & 0xfc00007f | ((newOffset & 0x7ffff) << 7);
-		printf("Old jump instr was %x. New is %x\n", jumpInstruction, newInstruction);
+		fprintf(stderr, "Old jump instr was %x. New is %x\n", jumpInstruction, newInstruction);
 		writeInt(platform->vliwBinaries, (basicBlockStart+binaSize)*16 + 0, newInstruction);
 	}
 
@@ -104,17 +104,20 @@ void optimizeBasicBlock(unsigned int basicBlockStart, unsigned int basicBlockEnd
 
 
 
-	printf("*************************************************************************\n");
+	fprintf(stderr, "*************************************************************************\n");
 	for (int i=basicBlockStart;i<basicBlockEnd;i++){
-		printf("0x%xl, 0x%xl, 0x%xl, 0x%xl,\n", (int) platform->vliwBinaries[i].slc<32>(0),
+		fprintf(stderr, "0x%xl, 0x%xl, 0x%xl, 0x%xl,\n", (int) platform->vliwBinaries[i].slc<32>(0),
 				(int) platform->vliwBinaries[i].slc<32>(32),
 				(int) platform->vliwBinaries[i].slc<32>(64),
 				(int) platform->vliwBinaries[i].slc<32>(96));
 	}
+	for (int i=basicBlockStart;i<basicBlockEnd;i++){
+		fprintf(stderr, "schedule;%d;%d\n",i);
+	}
 
-	printf("*************************************************************************\n");
+	fprintf(stderr, "*************************************************************************\n");
 
-	printf("*************************************************************************\n");
+	fprintf(stderr, "*************************************************************************\n");
 
 }
 
