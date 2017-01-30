@@ -1176,6 +1176,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 		ac_int<8, false> jumpID = 0;
 		ac_int<8, false> indexInSourceBinaries = 0;
 		ac_int<128, false> previousVLIWSyllabus = 0;
+		ac_int<2, false> instructionTranslatedFromPreviousSyllabus = 0;
 
 		do {
 
@@ -1191,26 +1192,81 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			ac_int<9, true> insertMove_src;
 
 
+			/* Note: How the instruction to translate is selected:
+			 * We have possibly 7 sources for the instruction :
+			 *
+			 * -------------------------------------------------
+			 * |instr3		|instr2	 |instr1   | instr0        |	cycle - 1
+			 * -------------------------------------------------
+			 * |instr3		|instr2	 |instr1   | instr0        |	cycle
+			 * -------------------------------------------------
+			 *
+			 * The program will compute in order c-1/instr0, c-1/instr1, ..., c/instr0, ..., c/instr3
+			 *
+			 * We first compute the following bits:
+			 *
+			 * takeCm1_instr1 = instr1 != 0 & alreadyTranslated < 1
+			 *
+			 * each of these condition will be tested in order:
+			 *
+			 * c-1/instr3 is taken if takeCm1_instr3 && !takeCm1_instr2 && !takeCm2_instr1
+			 *
+			 */
+
 			ac_int<128, false> oneVLIWSyllabus = srcBinaries[indexInSourceBinaries+addressInBinaries];
 			ac_int<32, false> oneInstruction = 0;
-			if (previousVLIWSyllabus.slc<32>(0) != 0){
-				//We fetch the instruction from the previous syllabus
-				oneInstruction = previousVLIWSyllabus.slc<32>(0);
-				previousVLIWSyllabus = 0;
-			}
-			else{
-				//Otherwise we use the new syllabus and fetch the non-null instruction from the three first words
-				ac_int<32, false> opcode1 = oneVLIWSyllabus.slc<7>(32);
-				ac_int<32, false> opcode2 = oneVLIWSyllabus.slc<7>(64);
 
-				oneInstruction = (opcode1 != 0) ? oneVLIWSyllabus.slc<32>(32) :
-								(opcode2 != 0) ? oneVLIWSyllabus.slc<32>(64) :
-								oneVLIWSyllabus.slc<32>(96);
+			ac_int<1, false> takeCm1_instr1 = (previousVLIWSyllabus.slc<32>(64) != 0) & (instructionTranslatedFromPreviousSyllabus < 1);
+			ac_int<1, false> takeCm1_instr2 = (previousVLIWSyllabus.slc<32>(32) != 0) & (instructionTranslatedFromPreviousSyllabus < 2);
+			ac_int<1, false> takeCm1_instr3 = (previousVLIWSyllabus.slc<32>(0) != 0) & (instructionTranslatedFromPreviousSyllabus < 3);
+			ac_int<1, false> takeC_instr0 = (oneVLIWSyllabus.slc<32>(96) != 0);
+			ac_int<1, false> takeC_instr1 = (oneVLIWSyllabus.slc<32>(64) != 0);
+			ac_int<1, false> takeC_instr2 = (oneVLIWSyllabus.slc<32>(32) != 0);
+			ac_int<1, false> takeC_instr3 = (oneVLIWSyllabus.slc<32>(0) != 0);
 
-				//We then store the new syllabus to use it if necessary at next cycle, and increment the index
-				previousVLIWSyllabus = oneVLIWSyllabus;
-				indexInSourceBinaries++;
-			}
+
+			oneInstruction = takeCm1_instr1 ? previousVLIWSyllabus.slc<32>(64) :
+					takeCm1_instr2 ? previousVLIWSyllabus.slc<32>(32) :
+					takeCm1_instr3 ? previousVLIWSyllabus.slc<32>(0) :
+					takeC_instr0 ? oneVLIWSyllabus.slc<32>(96) :
+					takeC_instr1 ? oneVLIWSyllabus.slc<32>(64) :
+					takeC_instr2 ? oneVLIWSyllabus.slc<32>(32) :
+					oneVLIWSyllabus.slc<32>(0);
+
+			instructionTranslatedFromPreviousSyllabus = takeCm1_instr1 ? 1 :
+					takeCm1_instr2 ? 2 :
+					takeCm1_instr3 ? 3 :
+					takeC_instr0 ? 0 :
+					takeC_instr1 ? 1 :
+					takeC_instr2 ? 2 :
+					3;
+
+			previousVLIWSyllabus = (takeCm1_instr1 || takeCm1_instr2 || takeCm1_instr3) ? previousVLIWSyllabus : oneVLIWSyllabus;
+			ac_int<8, false> tempIndex = indexInSourceBinaries + 1;
+			indexInSourceBinaries = (takeCm1_instr1 || takeCm1_instr2 || takeCm1_instr3) ? indexInSourceBinaries : tempIndex;
+
+
+//			if (previousVLIWSyllabus.slc<32>(0) != 0){
+//				//We fetch the instruction from the previous syllabus
+//				oneInstruction = previousVLIWSyllabus.slc<32>(0);
+//				previousVLIWSyllabus = 0;
+//			}
+//			else{
+//				//Otherwise we use the new syllabus and fetch the non-null instruction from the three first words
+//				ac_int<32, false> opcode1 = oneVLIWSyllabus.slc<7>(32);
+//				ac_int<32, false> opcode2 = oneVLIWSyllabus.slc<7>(64);
+//
+//				oneInstruction = (opcode1 != 0) ? oneVLIWSyllabus.slc<32>(32) :
+//								(opcode2 != 0) ? oneVLIWSyllabus.slc<32>(64) :
+//								oneVLIWSyllabus.slc<32>(96);
+//
+//				//We then store the new syllabus to use it if necessary at next cycle, and increment the index
+//				previousVLIWSyllabus = oneVLIWSyllabus;
+//				indexInSourceBinaries++;
+//			}
+
+
+
 
 			/********************************************************************
 			 * Second step is to identify correct operand according to opcode
@@ -1263,6 +1319,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			//Solving accessed register 2
 			if (isStoreType || isArith2 || isMultType)
 				pred2_ena = 1;
+
 
 			//Solving written register
 			if (isArithImm || isArith1 || isLoadType){
@@ -1417,7 +1474,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 
 				//To gather succ information on different path
 				pred2_global = (temp_pred2 < 0);
-
 				if (pred2_global){ //If value comes from global register
 					if (pred2_global_access < 0){
 						temp_pred2 = globalVariableCounter;
@@ -1451,8 +1507,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 						if (lastReaderOnGlobalPlaceToWrite_access_pred2 == 3)
 							lastReaderOnGlobalPlaceToWrite_access_pred2 = 0;
 
-						lastReaderOnGlobalCounter_access_pred2 = lastReaderOnGlobalCounter_access_pred2;
-						lastReaderOnGlobalPlaceToWrite_access_pred2 = lastReaderOnGlobalPlaceToWrite_access_pred2;
 					}
 				}
 				else{
@@ -1541,7 +1595,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				else{
 
 
-
 					alloc = 0;
 					temp_destination = dest_global_access;
 					lastWriterOnGlobal_access_dest = indexInCurrentBlock;
@@ -1597,22 +1650,28 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 
 
 			//We write back values in corresponding memories for pred1
-			lastReaderOnGlobal[pred1_reg][lastReaderOnGlobalPlaceToWrite_access_pred1_old] = lastReaderOnGlobal_value_pred1;
-			lastReaderOnGlobalCounter[pred1_reg] = lastReaderOnGlobalCounter_access_pred1;
-			lastReaderOnGlobalPlaceToWrite[pred1_reg] = lastReaderOnGlobalPlaceToWrite_access_pred1;
-			globalVariables[pred1_reg] = pred1_global_access;
+			if (pred1_ena){
+				lastReaderOnGlobal[pred1_reg][lastReaderOnGlobalPlaceToWrite_access_pred1_old] = lastReaderOnGlobal_value_pred1;
+				lastReaderOnGlobalCounter[pred1_reg] = lastReaderOnGlobalCounter_access_pred1;
+				lastReaderOnGlobalPlaceToWrite[pred1_reg] = lastReaderOnGlobalPlaceToWrite_access_pred1;
+				globalVariables[pred1_reg] = pred1_global_access;
+			}
 
 			//We write back values in corresponding memories for pred2
-			lastReaderOnGlobal[pred2_reg][lastReaderOnGlobalPlaceToWrite_access_pred2_old] = lastReaderOnGlobal_value_pred2;
-			lastReaderOnGlobalCounter[pred2_reg] = lastReaderOnGlobalCounter_access_pred2;
-			lastReaderOnGlobalPlaceToWrite[pred2_reg] = lastReaderOnGlobalPlaceToWrite_access_pred2;
-			globalVariables[pred2_reg] = pred2_global_access;
+			if (pred2_ena){
+				lastReaderOnGlobal[pred2_reg][lastReaderOnGlobalPlaceToWrite_access_pred2_old] = lastReaderOnGlobal_value_pred2;
+				lastReaderOnGlobalCounter[pred2_reg] = lastReaderOnGlobalCounter_access_pred2;
+				lastReaderOnGlobalPlaceToWrite[pred2_reg] = lastReaderOnGlobalPlaceToWrite_access_pred2;
+				globalVariables[pred2_reg] = pred2_global_access;
+			}
+
 
 			//We write back values in corresponding memories for dest
-			lastWriterOnGlobal[dest_reg] = lastWriterOnGlobal_access_dest;
-			lastReaderOnGlobalCounter[dest_reg] = lastReaderOnGlobalCounter_access_dest;
-			lastReaderOnGlobalPlaceToWrite[dest_reg] = lastReaderOnGlobalPlaceToWrite_access_dest;
-
+			if (dest_ena){
+				lastWriterOnGlobal[dest_reg] = lastWriterOnGlobal_access_dest;
+				lastReaderOnGlobalCounter[dest_reg] = lastReaderOnGlobalCounter_access_dest;
+				lastReaderOnGlobalPlaceToWrite[dest_reg] = lastReaderOnGlobalPlaceToWrite_access_dest;
+			}
 
 			//We add dependencies
 			if (pred1_succ_ena){
@@ -1719,7 +1778,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				oneBytecode = assembleRiBytecodeInstruction(0, alloc, opcode, pred1, imm13, destination, numberDependencies);
 			}
 			else if (isArith2){
-				oneBytecode = assembleRBytecodeInstruction(2, alloc, opcode, pred1, pred2, destination, numberDependencies);
+				oneBytecode = assembleRBytecodeInstruction(2, alloc, opcode, pred2, pred1, destination, numberDependencies);
 			}
 			else {
 				printf("This case should never happen...\n");
