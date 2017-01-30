@@ -24,5 +24,7 @@ void addInsertions(uint32 blockStartAddressInSources, uint32 blockStartAddressIn
 unsigned int solveUnresolvedJump(unsigned int initialDestination);
 unsigned int insertCodeForInsertions(ac_int<128, false> *binaries, int start, unsigned int startAddress);
 void initializeInsertionsMemory(int sizeSourceCode);
+int getInsertionList(int mipsStartAddress, int** result);
+
 
 #endif /* INCLUDES_DBT_INSERTIONS_H_ */

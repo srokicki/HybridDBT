@@ -140,7 +140,6 @@ unsigned int insertCodeForInsertions(ac_int<128, false> *binaries, int start, un
 	/* This procedure will solve the same problem than the previous one but it aims at being done by the VLIW processor.
 	 * In here we define directly in binary the code to run.
 	 *
-	 *	TODO:could optimize first cycles
 	 *
 	 * Here is the code we will execute:
 	 *
@@ -314,5 +313,23 @@ unsigned int insertCodeForInsertions(ac_int<128, false> *binaries, int start, un
 
 	cycle++;
 	return cycle;
+}
+
+int getInsertionList(int mipsStartAddress, int** result){
+	//Note: the mips start address taken is already divided by 4 (address of the instruction, not the byte)
+
+	int destination = 0;
+
+	int section = mipsStartAddress >> 10;
+	int offset = section << 11; // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
+
+	//Currently offset point to the struct corresponding to the code section.
+	int nbInsertion = loadWordFromInsertionMemory(offset);
+
+	//todo : this should use load and store functions...
+	*result = &(insertionsArray[offset + 2]);
+
+	return nbInsertion;
+
 }
 
