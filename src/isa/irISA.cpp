@@ -114,15 +114,15 @@ void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instr
 	ac_int<3, false> nbDSucc = instructionPart2.slc<3>(3);
 	ac_int<3, false> nbSucc = instructionPart2.slc<3>(0);
 
-	printf("%d : ", index);
+	fprintf(stderr, "%d : ", index);
 
 	if (typeCode == 0){
 		//R type
-		printf("%s r%d = r%d, ", opcodeNames[opCode], (int) virtualRDest, (int) virtualRIn2);
+		fprintf(stderr, "%s r%d = r%d, ", opcodeNames[opCode], (int) virtualRDest, (int) virtualRIn2);
 		if (isImm)
-			printf("%d ", (int) imm11);
+			fprintf(stderr, "%d ", (int) imm11);
 		else
-			printf("r%d ", (int) virtualRIn1_imm9);
+			fprintf(stderr, "r%d ", (int) virtualRIn1_imm9);
 
 
 	}
@@ -131,12 +131,12 @@ void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instr
 	}
 	else {
 		//I type
-		printf("%s r%d %d, ", opcodeNames[opCode], (int) virtualRDest, (int) imm19);
+		fprintf(stderr, "%s r%d %d, ", opcodeNames[opCode], (int) virtualRDest, (int) imm19);
 
 	}
 
-	printf("nbDep=%d, nbDSucc = %d, nbSucc = %d, ", (int) nbDep, (int) nbDSucc, (int) nbSucc);
-	printf("alloc=%d  successors:", (int) alloc);
+	fprintf(stderr, "nbDep=%d, nbDSucc = %d, nbSucc = %d, ", (int) nbDep, (int) nbDSucc, (int) nbSucc);
+	fprintf(stderr, "alloc=%d  successors:", (int) alloc);
 
 	for (int oneSucc = 0; oneSucc < nbSucc; oneSucc++){
 		int succ = 0;
@@ -146,9 +146,9 @@ void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instr
 			succ = (instructionPart4 >> (8*(oneSucc))) & 0xff;
 
 
-		printf(" %d", succ);
+		fprintf(stderr, " %d", succ);
 	}
-	printf("\n");
+	fprintf(stderr, "\n");
 
 }
 
