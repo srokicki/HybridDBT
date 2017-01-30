@@ -26,7 +26,7 @@
  *
  *******************************************************************/
 
-int buildBasicControlFlow(DBTPlateform dbtPlateform, int startAddress, int endAddress, IRProcedure** result);
+int buildBasicControlFlow(DBTPlateform dbtPlateform, int mipsStartAddress, int startAddress, int endAddress, IRBlock** result);
 
 
 
