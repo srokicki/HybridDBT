@@ -1,5 +1,7 @@
 #include <dbt/dbtPlateform.h>
 #include <dbt/insertions.h>
+#include <dbt/profiling.h>
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,9 +58,6 @@ int translateOneSection(DBTPlateform &dbtPlateform, ac_int<32, false> placeCode,
 
 	//	debugFirstPassResult(dbtPlateform, previousPlaceCode+1, placeCode, addressStart);
 
-		IRProcedure *controlFlow;
-		int nbProc = 0;//buildBasicControlFlow(dbtPlateform, previousPlaceCode, placeCode, &controlFlow);
-
 
 		//We write back the result if needed
 		void* destinationBinariesFile = openWriteFile((void*) "./binaries");
@@ -101,6 +100,7 @@ int main(int argc, char *argv[])
 	}
 
 	DBTPlateform dbtPlateform;
+	dbtPlateform.vexSimulator = new VexSimulator();
 
 	//we copy the binaries in the corresponding memory
 	for (int oneInstruction = 0; oneInstruction<size; oneInstruction++)
@@ -127,6 +127,10 @@ int main(int argc, char *argv[])
 	 ********************************************************/
 
 //We launch the actual generation
+	int numberOfSections = size/1024;
+	IRBlock** blocks = (IRBlock**) malloc(sizeof(IRBlock*) * numberOfSections);
+	int* numbersBlock = (int*) malloc(sizeof(int) * numberOfSections);
+
 	for (int i=0; i<(size>>10)+1; i++){
 
 		int startAddressSource = addressStart + i*1024*4;
@@ -139,11 +143,20 @@ int main(int argc, char *argv[])
 		for (int j = 0; j<effectiveSize; j++){
 			dbtPlateform.mipsBinaries[j] = ((unsigned int*) code)[j+i*1024];
 		}
+		int oldPlaceCode = placeCode;
 
 		placeCode =  translateOneSection(dbtPlateform, placeCode, addressStart, startAddressSource,endAddressSource);
 
-
+		numbersBlock[i] = buildBasicControlFlow(dbtPlateform, startAddressSource, oldPlaceCode, placeCode, &blocks[i]);
+		for (int oneBlock = 0; oneBlock<numbersBlock[i]; oneBlock++){
+			IRBlock block = blocks[i][oneBlock];
+			if (block.vliwEndAddress - block.vliwStartAddress>16){
+				printf("Profiling block from %d to %d\n", block.vliwStartAddress, block.vliwEndAddress);
+				profileBlock(&blocks[i][oneBlock], dbtPlateform);
+			}
+		}
 	}
+
 	for (int oneUnresolvedJump = 0; oneUnresolvedJump<unresolvedJumpsArray[0]; oneUnresolvedJump++){
 		unsigned int source = unresolvedJumpsSourceArray[oneUnresolvedJump+1];
 		unsigned int initialDestination = unresolvedJumpsArray[oneUnresolvedJump+1];
@@ -181,23 +194,17 @@ int main(int argc, char *argv[])
 					writeInt(dbtPlateform.vliwBinaries, 16*(source+1)+12, instructionBeforePreviousDestination);
 	}
 
-
-//	int previousPlaceCode = placeCode;
-//	firstPassTranslator_RISCV(dbtPlateform.mipsBinaries,
-//			&size,
-//			addressStart,
-//			dbtPlateform.vliwBinaries,
-//			&placeCode,
-//			dbtPlateform.insertions,
-//			dbtPlateform.blockBoundaries,
-//			dbtPlateform.procedureBoundaries);
-
-
-//	debugFirstPassResult(dbtPlateform, previousPlaceCode+1, placeCode, addressStart);
-
-	IRProcedure *controlFlow;
-	int nbProc = 0;//buildBasicControlFlow(dbtPlateform, previousPlaceCode, placeCode, &controlFlow);
-
+	int totalNumberOfBlocks = 0;
+	for (int oneCodeSection = 0; oneCodeSection<numberOfSections; oneCodeSection++){
+		totalNumberOfBlocks += numbersBlock[oneCodeSection];
+		for (int oneBlock = 0; oneBlock<numbersBlock[oneCodeSection]; oneBlock++){
+			if (blocks[oneCodeSection][oneBlock].vliwEndAddress - blocks[oneCodeSection][oneBlock].vliwStartAddress >= 16){
+				printf("Block from %d to %d\n", blocks[oneCodeSection][oneBlock].vliwStartAddress, blocks[oneCodeSection][oneBlock].vliwEndAddress);
+				//optimizeBasicBlock(blocks[oneCodeSection][oneBlock].vliwStartAddress, blocks[oneCodeSection][oneBlock].vliwEndAddress, &dbtPlateform);
+			}
+		}
+	}
+	printf("There is %d blocks in the code\n", totalNumberOfBlocks);
 
 	//We write back the result if needed
 	void* destinationBinariesFile = openWriteFile((void*) "./binaries");
@@ -211,22 +218,24 @@ int main(int argc, char *argv[])
 //				(int) dbtPlateform.vliwBinaries[i].slc<32>(96));
 //	}
 
-//	optimizeBasicBlock(273, 355, &dbtPlateform);
-//	optimizeBasicBlock(163, 286, &dbtPlateform);
+//	optimizeBasicBlock(1074, 1095, &dbtPlateform);
+//	optimizeBasicBlock(solveUnresolvedJump(0x164>>2), solveUnresolvedJump(0x304>>2), &dbtPlateform);
 
 
 	//We initialize the VLIW processor with binaries and data from elf file
-	VexSimulator *simulator = new VexSimulator();
-	simulator->debugLevel = 2;
+	dbtPlateform.vexSimulator->debugLevel = 2;
 
-	simulator->initializeCodeMemory(dbtPlateform.vliwBinaries, sizeBinaries, 0);
+	dbtPlateform.vexSimulator->initializeCodeMemory(dbtPlateform.vliwBinaries, sizeBinaries, 0);
+
+	dbtPlateform.vexSimulator->debugLevel = 0;
+
 	for (unsigned int sectionCounter = 0; sectionCounter<elfFile.sectionTable->size(); sectionCounter++){
 		ElfSection *section = elfFile.sectionTable->at(sectionCounter);
 
 		if (section->address != 0){
 
 			unsigned char* data = section->getSectionCode();
-			simulator->initializeDataMemory(data, section->size, section->address);
+			dbtPlateform.vexSimulator->initializeDataMemory(data, section->size, section->address);
 			free(data);
 		}
 	}
@@ -238,15 +247,19 @@ int main(int argc, char *argv[])
 	int areaCodeStart=1;
 	int areaStartAddress = 0;
 
-	simulator->initializeDataMemory((unsigned char*) insertionsArray, 65536*4, 0x7000000); //TODO
+	dbtPlateform.vexSimulator->initializeDataMemory((unsigned char*) insertionsArray, 65536*4, 0x7000000); //TODO
 
 	//if (simulator->debugLevel == 1)
 //		for (int oneInsertion = 1; oneInsertion<=dbtPlateform.insertions[0]; oneInsertion++)
 //			fprintf(stderr, "insert;%d\n",(int) dbtPlateform.insertions[oneInsertion]);
 		fprintf(stderr, "insert;%d\n", (int) placeCode);
 
-	simulator->run(0);
-	delete simulator;
+		dbtPlateform.vexSimulator->run(0);
+
+
+		//We print profiling result
+		returnProfilingInformation(dbtPlateform);
+	delete dbtPlateform.vexSimulator;
 
 
 	/********************************************************/
