@@ -839,12 +839,12 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 			}
 }
 
-
 #ifdef __CATAPULT
 int run(int mainPc, ac_int<8, false> memory0[65536], ac_int<8, false> memory1[65536], ac_int<8,false> memory2[65536], ac_int<8, false> memory3[65536], ac_int<128, false> RI[65536]){
 #else
 int VexSimulator::run(int mainPc){
 #endif
+
 	// Initialise program counter
 	PC = mainPc;
 	REG[2] = 0x70000;
@@ -1010,6 +1010,7 @@ int VexSimulator::run(int mainPc){
 		// Retrieving new instruction
 		ac_int<SIZE_INSTRUCTION, false> vliw = RI[PC];
 
+
 		// Redirect instructions to thier own ways
 		ftoDC1.instruction = vliw.slc<32>(96);
 		ftoDC2.instruction = vliw.slc<32>(64);
@@ -1041,14 +1042,10 @@ int VexSimulator::run(int mainPc){
 
 		}
 
-		if (debugLevel >= 1){
-			for (int i = 0; i<34; i++)
-				fprintf(stderr, ";%x", (int) REG[i]);
 
-			fprintf(stderr, "\n");
-		}
 #endif
 	}
+
 
 	return PC;
 }
