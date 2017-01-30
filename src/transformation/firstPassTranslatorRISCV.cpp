@@ -251,7 +251,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 	ac_int<32, false> localNumberInsertions = 0;
 
-	while (indexInSourceBinaries < size){
+	while (indexInSourceBinaries < size || nextInstructionNop){
 
 		ac_int<1, false> setBoundaries1 = 0, setBoundaries2 = 0, setUnresolvedJump = 0;
 		ac_int<32, true> boundary1, boundary2, unresolved_jump_src, unresolved_jump_type;
@@ -365,6 +365,16 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 			/*  We assemble the instruction  							   */
 			/***************************************************************/
 
+
+			//We compute a bit saying if previous instruction is at BB boundary
+			ac_int<1, false> previousIsBoundary = 0;
+
+			ac_int<32, false> previousAddress = (indexInSourceBinaries + (addressStart>>2));
+			ac_int<13, false> offset = previousAddress.slc<13>(3);
+			ac_int<3, false> bitOffset = previousAddress.slc<3>(0);
+			previousIsBoundary = blocksBoundaries[offset][bitOffset] || (indexInSourceBinaries == 0);
+
+
 			if (opcode == RISCV_OP){
 				//Instrucion io OP type: it needs two registers operand (except for rol/sll/sr)
 
@@ -397,7 +407,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 				ac_int<32, false> value = addressStart + (indexInSourceBinaries<<2) + imm31_12_signed;
 
-				if (blocksBoundaries[indexInSourceBinaries]){
+				if (previousIsBoundary){
 
 					binaries = assembleIInstruction(VEX_MOVI, value.slc<19>(12), rd);
 					nextInstruction = assembleRiInstruction(VEX_SLLi, rd, rd, 12);
@@ -448,7 +458,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				ac_int<32, false> instr3 = assembleRiInstruction(VEX_ADDi, rd, rd, 0x1000);
 
 
-				if (blocksBoundaries[indexInSourceBinaries]){
+				if (previousIsBoundary){
 					binaries = instr1;
 					nextInstruction = instr2;
 
@@ -659,8 +669,13 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 			insertions[1+localNumberInsertions++] = -indexInDestinationBinaries;
 
 
-		if (setBoundaries1 && boundary1 >= 0){
-			blocksBoundaries[boundary1] = 1;
+		if (setBoundaries1){
+			ac_int<1, false> const1 = 1;
+			ac_int<32, false> boundaryAddress = (boundary1 + (addressStart>>2));
+
+			ac_int<13, false> offset = boundaryAddress.slc<13>(3);
+			ac_int<3, false> bitOffset = boundaryAddress.slc<3>(0);
+			blocksBoundaries[offset].set_slc(bitOffset, const1);
 		}
 
 		if (setUnresolvedJump){
@@ -671,7 +686,12 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		}
 
 		if (setBoundaries2){
-			blocksBoundaries[boundary2] = 1;
+			ac_int<1, false> const1 = 1;
+			ac_int<32, false> boundaryAddress = (boundary2 + (addressStart>>2));
+
+			ac_int<13, false> offset = boundaryAddress.slc<13>(3);
+			ac_int<3, false> bitOffset = boundaryAddress.slc<3>(0);
+			blocksBoundaries[offset].set_slc(bitOffset, const1);
 
 		}
 
