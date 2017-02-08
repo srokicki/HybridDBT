@@ -46,6 +46,8 @@
 #define VEX_RETURN 0x27
 #define VEX_MOVI 0x28
 #define VEX_AUIPC 0x29
+#define VEX_RECONFFS 0x2a
+#define VEX_RECONFEXECUNIT 0x2b
 
 #define VEX_STOP 0x2f
 #define VEX_SLCTF 0x30
@@ -115,6 +117,9 @@
 #define VEX_CMPGTUi 0x7d
 #define VEX_CMPLEi 0x7e
 #define VEX_CMPLEUi 0x7f
+
+
+
 
 
 ac_int<32, false> assembleIInstruction(ac_int<7, false> opcode, ac_int<19, true> imm19, ac_int<6, false> regA);

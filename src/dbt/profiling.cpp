@@ -11,20 +11,20 @@
 #include <isa/irISA.h>
 #include <dbt/dbtPlateform.h>
 
-int destinationCallProfiling;
-int numberProfiledBlocks = 0;
-IRBlock* profiledBlocks[1024];
+#include <dbt/profiling.h>
 
-unsigned int insertCodeForProfiling(ac_int<128, false> *binaries, int start, unsigned int startAddress){
+
+unsigned int Profiler::insertProfilingProcedure(int start, unsigned int startAddress){
 
 	//This procedure will add code necessary for profiling through function call.
 	//Using this way of profiling, we only need to insert a movi and a add in the BB in
 	//to make profiling effective.
 	//This method has a cost: it will take 6 cycles which can be expensive if in critical loop
 
+	ac_int<128, false> *binaries = this->platform->vliwBinaries;
 
 	int cycle = start;
-	destinationCallProfiling = start;
+	this->destinationCallProfiling = start;
 	//		| r35 = 0x800	 | 					| 				|
 	writeInt(binaries, cycle*16+0, assembleIInstruction(VEX_MOVI, 0x800, 35));
 	writeInt(binaries, cycle*16+4, 0);
@@ -64,21 +64,21 @@ unsigned int insertCodeForProfiling(ac_int<128, false> *binaries, int start, uns
 	return cycle;
 }
 
-void profileBlock(IRBlock *oneBlock, DBTPlateform &platform){
+void Profiler::profileBlock(IRBlock *oneBlock){
 	int start = oneBlock->vliwStartAddress;
 
 
 	int placeMOVI=-1, placeSLLI=-1, placeLD=-1, placeINCR=-1, placeSTW=-1, offMOVI, offSLLI, offINCR;
 
 	for (int oneInstruction = start; oneInstruction<oneBlock->vliwEndAddress; oneInstruction++){
-		ac_int<128, false> oneVLIWInstruction = platform.vliwBinaries[oneInstruction];
+		ac_int<128, false> oneVLIWInstruction = this->platform->vliwBinaries[oneInstruction];
 		if (placeINCR != -1){
 			//We now place STW
 			if (oneVLIWInstruction.slc<32>(64) == 0){
 				//We found a place
 				ac_int<32, false> instr = assembleRiInstruction(VEX_STW, 35, 34, numberProfiledBlocks<<2);
 				oneVLIWInstruction.set_slc(64, instr);
-				platform.vliwBinaries[oneInstruction] = oneVLIWInstruction;
+				this->platform->vliwBinaries[oneInstruction] = oneVLIWInstruction;
 				placeSTW = oneInstruction;
 				break;
 			}
@@ -90,14 +90,14 @@ void profileBlock(IRBlock *oneBlock, DBTPlateform &platform){
 				//We found a place
 				ac_int<32, false> instr = assembleRiInstruction(VEX_ADDi, 35, 35, 1);
 				oneVLIWInstruction.set_slc(96, instr);
-				platform.vliwBinaries[oneInstruction] = oneVLIWInstruction;
+				this->platform->vliwBinaries[oneInstruction] = oneVLIWInstruction;
 				placeINCR = oneInstruction;
 			}
 			else {
 				//We found a place
 				ac_int<32, false> instr = assembleRiInstruction(VEX_ADDi, 35, 35, 1);
 				oneVLIWInstruction.set_slc(64, instr);
-				platform.vliwBinaries[oneInstruction] = oneVLIWInstruction;
+				this->platform->vliwBinaries[oneInstruction] = oneVLIWInstruction;
 				placeINCR = oneInstruction;
 			}
 		}
@@ -107,7 +107,7 @@ void profileBlock(IRBlock *oneBlock, DBTPlateform &platform){
 				//We found a place
 				ac_int<32, false> instr = assembleRiInstruction(VEX_LDW, 35, 34, numberProfiledBlocks<<2);
 				oneVLIWInstruction.set_slc(64, instr);
-				platform.vliwBinaries[oneInstruction] = oneVLIWInstruction;
+				this->platform->vliwBinaries[oneInstruction] = oneVLIWInstruction;
 				placeLD = oneInstruction;
 			}
 		}
@@ -117,14 +117,14 @@ void profileBlock(IRBlock *oneBlock, DBTPlateform &platform){
 				//We found a place
 				ac_int<32, false> instr = assembleRiInstruction(VEX_SLLi, 34, 34, 16);
 				oneVLIWInstruction.set_slc(96, instr);
-				platform.vliwBinaries[oneInstruction] = oneVLIWInstruction;
+				this->platform->vliwBinaries[oneInstruction] = oneVLIWInstruction;
 				placeSLLI = oneInstruction;
 			}
 			else {
 				//We found a place
 				ac_int<32, false> instr = assembleRiInstruction(VEX_SLLi, 34, 34, 16);
 				oneVLIWInstruction.set_slc(64, instr);
-				platform.vliwBinaries[oneInstruction] = oneVLIWInstruction;
+				this->platform->vliwBinaries[oneInstruction] = oneVLIWInstruction;
 				placeSLLI = oneInstruction;
 			}
 		}
@@ -134,14 +134,14 @@ void profileBlock(IRBlock *oneBlock, DBTPlateform &platform){
 				//We found a place
 				ac_int<32, false> instr = assembleIInstruction(VEX_MOVI, 0x800, 34);
 				oneVLIWInstruction.set_slc(96, instr);
-				platform.vliwBinaries[oneInstruction] = oneVLIWInstruction;
+				this->platform->vliwBinaries[oneInstruction] = oneVLIWInstruction;
 				placeMOVI = oneInstruction;
 			}
 			else {
 				//We found a place
 				ac_int<32, false> instr = assembleIInstruction(VEX_MOVI, 0x800, 34);
 				oneVLIWInstruction.set_slc(64, instr);
-				platform.vliwBinaries[oneInstruction] = oneVLIWInstruction;
+				this->platform->vliwBinaries[oneInstruction] = oneVLIWInstruction;
 				placeMOVI = oneInstruction;
 			}
 		}
@@ -157,11 +157,25 @@ void profileBlock(IRBlock *oneBlock, DBTPlateform &platform){
 
 	}
 
+	//We mark the block as being profiled
+	oneBlock->blockState = IRBLOCK_STATE_PROFILED;
+
 }
 
-void returnProfilingInformation(DBTPlateform &platform){
-	for (int oneBlock = 0; oneBlock<numberProfiledBlocks; oneBlock++){
-		IRBlock *block = profiledBlocks[oneBlock];
-		printf("Block profiled %d from %d to %d has been called %d times\n",oneBlock, block->vliwStartAddress, block->vliwEndAddress, (int) platform.vexSimulator->ldw(0x8000000 + oneBlock*4));
-	}
+int Profiler::getNumberProfiledBlocks(){
+	return numberProfiledBlocks;
 }
+
+int Profiler::getProfilingInformation(int ID){
+	return this->platform->vexSimulator->ldw(0x8000000 + ID*4);
+}
+
+IRBlock* Profiler::getBlock(int ID){
+	return profiledBlocks[ID];
+}
+
+Profiler::Profiler(DBTPlateform *platform){
+	this->platform = platform;
+	this->numberProfiledBlocks = 0;
+}
+

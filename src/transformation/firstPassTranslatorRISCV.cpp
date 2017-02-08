@@ -132,6 +132,7 @@ int firstPassTranslator_RISCV(uint32 *riscvBinaries,
 
 			indexOfDestination = destinationInVLIWFromNewMethod;
 			initialDestination = destinationInVLIWFromNewMethod;
+			initialDestination = initialDestination << 2; //This is compute the destination according to the #of instruction and not the number of 4-instr bundle
 
 			writeInt(vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
 
@@ -142,6 +143,7 @@ int firstPassTranslator_RISCV(uint32 *riscvBinaries,
 			indexOfDestination = destinationInVLIWFromNewMethod;
 			initialDestination = destinationInVLIWFromNewMethod;
 			initialDestination = initialDestination  - (source) ;
+			initialDestination = initialDestination << 2; //This is compute the destination according to the #of instruction and not the number of 4-instr bundle
 
 
 			//We modify the jump instruction to make it jump at the correct place
@@ -542,7 +544,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					//FIXME should be able to add two instr at the same cycle... This would remove an insertion
 					binaries = assembleRiInstruction(VEX_ADDi, 33, rs1, imm12_I_signed);
 
-					nextInstruction = assembleIInstruction((rd == 63) ? VEX_CALL : VEX_GOTO, 4, rd);
+					nextInstruction = assembleIInstruction((rd == 63) ? VEX_CALL : VEX_GOTO, 16, rd);
 					enableNextInstruction = 1;
 				}
 

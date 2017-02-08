@@ -99,8 +99,14 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	//Definition of objects used for DBT process
 	DBTPlateform dbtPlateform;
 	dbtPlateform.vexSimulator = new VexSimulator();
+	Profiler profiler = Profiler(&dbtPlateform);
+
+
+
+
 
 	//we copy the binaries in the corresponding memory
 	for (int oneInstruction = 0; oneInstruction<size; oneInstruction++)
@@ -114,7 +120,7 @@ int main(int argc, char *argv[])
 	placeCode = insertCodeForInsertions(dbtPlateform.vliwBinaries, placeCode, addressStart);
 
 	//We modify the initialization call
-	writeInt(dbtPlateform.vliwBinaries, 0*16, assembleIInstruction(VEX_CALL, placeCode, 63));
+	writeInt(dbtPlateform.vliwBinaries, 0*16, assembleIInstruction(VEX_CALL, placeCode<<2, 63));
 
 	initializeInsertionsMemory(size*4);
 
@@ -127,7 +133,7 @@ int main(int argc, char *argv[])
 	 ********************************************************/
 
 //We launch the actual generation
-	int numberOfSections = size/1024;
+	int numberOfSections = 1 + (size/1024);
 	IRBlock** blocks = (IRBlock**) malloc(sizeof(IRBlock*) * numberOfSections);
 	int* numbersBlock = (int*) malloc(sizeof(int) * numberOfSections);
 
@@ -148,12 +154,16 @@ int main(int argc, char *argv[])
 		placeCode =  translateOneSection(dbtPlateform, placeCode, addressStart, startAddressSource,endAddressSource);
 
 		numbersBlock[i] = buildBasicControlFlow(dbtPlateform, startAddressSource, oldPlaceCode, placeCode, &blocks[i]);
+
+		//We select blocks for profiling:
+		//If a block has more than 16 instructions, it is eligible for profiling.
+		//TODO use a DEFINE instead of a fixed number of threshold
 		for (int oneBlock = 0; oneBlock<numbersBlock[i]; oneBlock++){
 			IRBlock block = blocks[i][oneBlock];
 			if (block.vliwEndAddress - block.vliwStartAddress>16){
-				printf("Profiling block from %d to %d\n", block.vliwStartAddress, block.vliwEndAddress);
-				profileBlock(&blocks[i][oneBlock], dbtPlateform);
+				profiler.profileBlock(&blocks[i][oneBlock]);
 			}
+
 		}
 	}
 
@@ -173,6 +183,7 @@ int main(int argc, char *argv[])
 			//In here we solve an absolute jump
 			indexOfDestination = destinationInVLIWFromNewMethod;
 			initialDestination = destinationInVLIWFromNewMethod;
+			initialDestination = initialDestination << 2; //This is compute the destination according to the #of instruction and not the number of 4-instr bundle
 			writeInt(dbtPlateform.vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
 
 		}
@@ -183,6 +194,7 @@ int main(int argc, char *argv[])
 			initialDestination = destinationInVLIWFromNewMethod;
 
 			initialDestination = initialDestination  - (source) ;
+			initialDestination = initialDestination << 2; //This is compute the destination according to the #of instruction and not the number of 4-instr bundle
 
 			//We modify the jump instruction to make it jump at the correct place
 			writeInt(dbtPlateform.vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
@@ -211,17 +223,6 @@ int main(int argc, char *argv[])
 	unsigned int sizeBinaries = (placeCode<<4);
 
 
-//	for (int i=0;i<sizeBinaries>>4;i++){
-//		printf("0x%xl, 0x%xl, 0x%xl, 0x%xl,\n", (int) dbtPlateform.vliwBinaries[i].slc<32>(0),
-//				(int) dbtPlateform.vliwBinaries[i].slc<32>(32),
-//				(int) dbtPlateform.vliwBinaries[i].slc<32>(64),
-//				(int) dbtPlateform.vliwBinaries[i].slc<32>(96));
-//	}
-
-//	optimizeBasicBlock(1074, 1095, &dbtPlateform);
-//	optimizeBasicBlock(solveUnresolvedJump(0x164>>2), solveUnresolvedJump(0x304>>2), &dbtPlateform);
-
-
 	//We initialize the VLIW processor with binaries and data from elf file
 	dbtPlateform.vexSimulator->debugLevel = 2;
 
@@ -247,18 +248,46 @@ int main(int argc, char *argv[])
 	int areaCodeStart=1;
 	int areaStartAddress = 0;
 
-	dbtPlateform.vexSimulator->initializeDataMemory((unsigned char*) insertionsArray, 65536*4, 0x7000000); //TODO
+	dbtPlateform.vexSimulator->initializeDataMemory((unsigned char*) insertionsArray, 65536*4, 0x7000000);
 
 	//if (simulator->debugLevel == 1)
 //		for (int oneInsertion = 1; oneInsertion<=dbtPlateform.insertions[0]; oneInsertion++)
 //			fprintf(stderr, "insert;%d\n",(int) dbtPlateform.insertions[oneInsertion]);
 		fprintf(stderr, "insert;%d\n", (int) placeCode);
 
-		dbtPlateform.vexSimulator->run(0);
+		dbtPlateform.vexSimulator->initializeRun(0);
+
+		int runStatus=0;
+		while (runStatus == 0){
+			runStatus = dbtPlateform.vexSimulator->doStep(1000);
+
+			//If a profiled block is executed more than 10 times we optimize it and mark it as optimized
+			for (int oneBlock = 0; oneBlock<profiler.getNumberProfiledBlocks(); oneBlock++){
+				int profileResult = profiler.getProfilingInformation(oneBlock);
+				IRBlock* block = profiler.getBlock(oneBlock);
+				char isCurrentlyInBlock = (dbtPlateform.vexSimulator->PC < block->vliwEndAddress) && (dbtPlateform.vexSimulator->PC >= block->vliwStartAddress);
+
+				if (profileResult > 10)
+					fprintf(stderr, "Bloc from %d to %d is eligible to opti (%d exec)\n", block->vliwStartAddress, block->vliwEndAddress, profileResult);
+
+				if (profileResult > 10 && block->blockState < IRBLOCK_STATE_SCHEDULED && !isCurrentlyInBlock){
+					optimizeBasicBlock(block, &dbtPlateform);
+					dbtPlateform.vexSimulator->initializeCodeMemory(dbtPlateform.vliwBinaries, sizeBinaries, 0);
+				}
+
+
+				if (profileResult > 20 && block->blockState < IRBLOCK_STATE_RECONF){
+					fprintf(stderr, "Bloc from %d to %d is eligible advanced control flow building\n", block->vliwStartAddress, block->vliwEndAddress);
+
+					IRProcedure *oneProc = buildAdvancedControlFlow(&dbtPlateform, block, blocks, numbersBlock, numberOfSections);
+				}
+			}
+
+		}
+
 
 
 		//We print profiling result
-		returnProfilingInformation(dbtPlateform);
 	delete dbtPlateform.vexSimulator;
 
 

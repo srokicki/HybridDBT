@@ -14,7 +14,34 @@
 #include <lib/ac_int.h>
 #include <isa/vexISA.h>
 
+struct FtoDC {
+	ac_int<32, false> instruction; //Instruction to execute
+};
 
+struct DCtoEx {
+	ac_int<32, true> dataa; //First data from register file
+	ac_int<32, true> datab; //Second data, from register file or immediate value
+	ac_int<32, true> datac; //Third data used only for store instruction and corresponding to rb
+	ac_int<6, false> dest;  //Register to be written
+	ac_int<7, false> opCode;//OpCode of the instruction
+	ac_int<32, true> memValue; //Second data, from register file or immediate value
+
+};
+
+struct ExtoMem {
+	ac_int<32, true> result;	//Result of the EX stage
+	ac_int<32, true> datac;		//Data to be stored in memory (if needed)
+	ac_int<6, false> dest;		//Register to be written at WB stage
+	ac_int<1, false> WBena;		//Is a WB is needed ?
+	ac_int<7, false> opCode;	//OpCode of the operation
+	ac_int<32, true> memValue; //Second data, from register file or immediate value
+};
+
+struct MemtoWB {
+	ac_int<32, true> result;	//Result to be written back
+	ac_int<6, false> dest;		//Register to be written at WB stage
+	ac_int<1, false> WBena;		//Is a WB is needed ?
+};
 
 
 
@@ -26,7 +53,8 @@ class VexSimulator {
 
 	std::map<unsigned int, ac_int<8, false>> memory;
 	int cycle = 0;
-	int PC, NEXT_PC;
+	int PC, NEXT_PC, stop, issueWidth;
+	ac_int<1, false> unitActivation[8];
 	ac_int<32, false> REG[64];
 
 	VexSimulator(void): memory(){
@@ -35,6 +63,16 @@ class VexSimulator {
 			REG[oneReg] = 0;
 		}
 		REG[29] = 0;
+		issueWidth = 4;
+		unitActivation[0] = 1;
+		unitActivation[1] = 1;
+		unitActivation[2] = 1;
+		unitActivation[3] = 1;
+		unitActivation[4] = 0;
+		unitActivation[5] = 0;
+		unitActivation[6] = 0;
+		unitActivation[7] = 0;
+
 	};
 
 	~VexSimulator(void) {
@@ -47,7 +85,12 @@ class VexSimulator {
 
 	void initializeCodeMemory(unsigned char* content, unsigned int size, unsigned int start);
 	void initializeCodeMemory(ac_int<128, false>* content, unsigned int size, unsigned int start);
-	int run(int mainPc);
+
+	int initializeRun(int mainPc);
+	int doStep();
+	int doStep(int nbStep);
+
+
 
 	void stb(unsigned int addr, ac_int<8, false> value);
 	void sth(unsigned int addr, ac_int<16, false> value);
@@ -56,6 +99,8 @@ class VexSimulator {
 	ac_int<8, false> ldb(unsigned int addr);
 	ac_int<16, false> ldh(unsigned int addr);
 	ac_int<32, false> ldw(unsigned int addr);
+
+
 
 	private:
 
@@ -69,7 +114,12 @@ class VexSimulator {
 	void doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
 	void doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
 
-	void doStep();
+
+	struct MemtoWB memtoWB1;	struct MemtoWB memtoWB2;	struct MemtoWB memtoWB3;	struct MemtoWB memtoWB4;	struct MemtoWB memtoWB5; 	struct MemtoWB memtoWB6;	struct MemtoWB memtoWB7;	struct MemtoWB memtoWB8;
+	struct ExtoMem extoMem1;	struct ExtoMem extoMem2;	struct ExtoMem extoMem3;	struct ExtoMem extoMem4;	struct ExtoMem extoMem5;	struct ExtoMem extoMem6;	struct ExtoMem extoMem7;	struct ExtoMem extoMem8;
+	struct DCtoEx dctoEx1; struct DCtoEx dctoEx2;	struct DCtoEx dctoEx3;	struct DCtoEx dctoEx4;	struct DCtoEx dctoEx5;	struct DCtoEx dctoEx6;	struct DCtoEx dctoEx7;	struct DCtoEx dctoEx8;
+	struct FtoDC ftoDC1;	struct FtoDC ftoDC2;	struct FtoDC ftoDC3;	struct FtoDC ftoDC4;	struct FtoDC ftoDC5;	struct FtoDC ftoDC6;	struct FtoDC ftoDC7;	struct FtoDC ftoDC8;
+
 
 };
 

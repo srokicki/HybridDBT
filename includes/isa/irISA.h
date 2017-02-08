@@ -32,14 +32,13 @@ class IRBlock;
 class IRProcedure
 {
 public:
-	unsigned int vliwStartAddress;	//Address of the first instruction in the procedure
-	unsigned int vliwEndAddress;   	//End address is the address of the first instruction not in the procedure
-	IRBlock *blocks;				//A pointer to an array of blocks
+	IRBlock *entryBlock;			//pointer to the entry block of the procedure
+	IRBlock **blocks;				//A pointer to an array of blocks
 	int nbBlock;
 
 	unsigned int procedureState;	//A value to store its state (optimized/translated or other things like that)
 
-	IRProcedure(int startAddress, int endAddress, IRBlock* blocks, int nbBlock);
+	IRProcedure(IRBlock *entryBlock, int nbBlock);
 
 };
 
@@ -53,12 +52,25 @@ public:
 	uint128 *instructions;			//A pointer to an array of uint128 describint the instructions
 
 	unsigned int blockState;		//A value to store its state (optimized/translated or other things like that)
-	unsigned short successor1;
-	unsigned short successor2;
+	char nbSucc;
+	IRBlock* successor1;
+	IRBlock* successor2;
 
 	IRBlock(int startAddress, int endAddress);
 
 };
+
+/* Definition of different states possible for the IRBlock:
+ * IRBLOCK_STATE_FIRSTPASS the block is simply translated
+ * IRBLOCK_STATE_PROFILED the block has been translated and additional code is added to profile it
+ * IRBLOCK_STATE_SCHEDULED the block has been elected to be scheduled. As a consequence, instructions* hold the IR instructions
+ */
+
+#define IRBLOCK_STATE_FIRSTPASS 0
+#define IRBLOCK_STATE_PROFILED 1
+#define IRBLOCK_STATE_SCHEDULED 2
+#define IRBLOCK_STATE_RECONF 3
+
 
 /********************************************************************
  * Declaration functions to assemble uint128 instruction for IR
@@ -66,8 +78,6 @@ public:
  *
  * To represent blocks, the IR uses a set of uint128 instruction which describe the data-flow graph inside the block.
  * Above are defined a set of procedure which encode instruction following our encoding.
- *
- * TODO: also define instruction to decode them...
  *
  *******************************************************************/
 

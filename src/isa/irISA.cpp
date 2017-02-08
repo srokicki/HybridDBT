@@ -156,10 +156,8 @@ void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instr
  * Declaration of a data structure to represent the control flow of the binaries analyzed.
  * ******************************************************************/
 
-IRProcedure::IRProcedure(int startAddress, int endAddress, IRBlock* blocks, int nbBlock){
-	this->blocks = blocks;
-	this->vliwStartAddress = startAddress;
-	this->vliwEndAddress = endAddress;
+IRProcedure::IRProcedure(IRBlock *entryBlock, int nbBlock){
+	this->entryBlock = entryBlock;
 	this->nbBlock = nbBlock;
 }
 
@@ -167,4 +165,6 @@ IRProcedure::IRProcedure(int startAddress, int endAddress, IRBlock* blocks, int 
 IRBlock::IRBlock(int startAddress, int endAddress){
 	this->vliwEndAddress = endAddress;
 	this->vliwStartAddress = startAddress;
+	this->blockState = IRBLOCK_STATE_FIRSTPASS;
+	this->nbSucc = -1;
 }

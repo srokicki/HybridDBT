@@ -8,7 +8,8 @@
 #ifndef INCLUDES_TRANSFORMATION_OPTIMIZEBASICBLOCK_H_
 #define INCLUDES_TRANSFORMATION_OPTIMIZEBASICBLOCK_H_
 
-void optimizeBasicBlock(unsigned int basicBlockStart, unsigned int basicBlockEnds, DBTPlateform *platform);
+#include <isa/irISA.h>
+void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform);
 
 
 

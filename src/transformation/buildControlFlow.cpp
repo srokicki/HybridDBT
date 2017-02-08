@@ -12,6 +12,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <types.h>
+#include <lib/endianness.h>
+
 #define TEMP_PROCEDURE_STORAGE_SIZE 50
 #define TEMP_BLOCK_STORAGE_SIZE 900
 
@@ -99,3 +102,177 @@ int buildBasicControlFlow(DBTPlateform dbtPlateform, int mipsStartAddress, int s
 
 }
 
+IRProcedure* buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRBlock** blocksInSections, int* numbersBlockInSections, int numberSections){
+
+	IRBlock *blocksToStudy[20];
+	int numberBlockToStudy = 1;
+	blocksToStudy[0] = startBlock;
+	IRBlock *entryBlock = startBlock;
+
+	IRBlock *blockInProcedure[TEMP_PROCEDURE_STORAGE_SIZE];
+	int numberBlockInProcedure = 0;
+
+
+
+	while (numberBlockToStudy != 0){
+
+		IRBlock *currentBlock = blocksToStudy[numberBlockToStudy-1];
+		numberBlockToStudy--;
+
+		unsigned int endAddress = currentBlock->vliwEndAddress;
+		unsigned int jumpInstruction = readInt(platform->vliwBinaries, (endAddress-2)*16);
+
+		fprintf(stderr, "Working on block from %d to %d. (nbsucc %d) (jumpInstr = %x)\n",currentBlock->vliwStartAddress, currentBlock->vliwEndAddress, currentBlock->nbSucc, jumpInstruction);
+
+
+		if (currentBlock->nbSucc != -1)
+			continue;
+
+		if (numberBlockInProcedure>TEMP_PROCEDURE_STORAGE_SIZE){
+			fprintf(stderr, "Error while building advanced control flow: temporary storage size for blocks is too small and nothing has been implemented to handle this...\n");
+			exit(0);
+		}
+
+		blockInProcedure[numberBlockInProcedure] = currentBlock;
+		numberBlockInProcedure++;
+
+		//We only consider successors if they are after a branch or a goto instruction.
+		//If we meet a CALL or a GOTOR (return) instruction we consider it to be the end of the 'procedure'
+		// and thus we end the analysis.
+
+		if (((jumpInstruction & 0x3f) == VEX_BR) || ((jumpInstruction & 0x3f) == VEX_BRF)){
+			//In this case we have to find one block with its start address, the other one is the next block
+
+			//We compute the destination(s)
+			int offset = (jumpInstruction >> 7) & 0x7ffff;
+			if ((offset & 0x40000) != 0)
+				offset = offset - 0x80000;
+			int successor1Start = endAddress-2 + (offset>>2);
+			int successor2Start = endAddress;
+
+			//We find the corresponding blocks
+			for (int oneSection = 0; oneSection<numberSections; oneSection++){
+				for (int oneBlock = 0; oneBlock < numbersBlockInSections[oneSection]; oneBlock++){
+					IRBlock block = blocksInSections[oneSection][oneBlock];
+
+					if (blocksInSections[oneSection][oneBlock].vliwStartAddress == successor1Start)
+						currentBlock->successor1 = &blocksInSections[oneSection][oneBlock];
+					else if (blocksInSections[oneSection][oneBlock].vliwStartAddress == successor2Start)
+						currentBlock->successor2 = &blocksInSections[oneSection][oneBlock];
+				}
+			}
+			fprintf(stderr, "FOund block  as a succ 2 (%d)\n ",currentBlock->successor2->vliwStartAddress);
+
+			//We store the result
+			currentBlock->nbSucc = 2;
+			blocksToStudy[numberBlockToStudy] = currentBlock->successor1;
+			blocksToStudy[numberBlockToStudy+1] = currentBlock->successor2;
+			numberBlockToStudy += 2;
+
+
+			//We actualize if needed the entryBlock
+			if (entryBlock == currentBlock->successor1 || entryBlock == currentBlock->successor2)
+				entryBlock = currentBlock;
+
+
+		}
+		else if ((jumpInstruction & 0x3f) == VEX_GOTO){
+			//In this case there is only one successor which is the destination of the GOTO
+
+			//We compute the destination(s)
+			int destination = (jumpInstruction >> 7) & 0x7ffff;
+			if ((destination & 0x40000) != 0)
+				destination = destination - 0x80000;
+			int successor1Start = destination>>2;
+
+			//We find the corresponding block
+			for (int oneSection = 0; oneSection<numberSections; oneSection++){
+				for (int oneBlock = 0; oneBlock < numbersBlockInSections[oneSection]; oneBlock++){
+					IRBlock block = blocksInSections[oneSection][oneBlock];
+
+					if (block.vliwStartAddress == successor1Start){
+						currentBlock->successor1 = &blocksInSections[oneSection][oneBlock];
+						break;
+					}
+				}
+			}
+
+			//We store the result
+			currentBlock->nbSucc = 1;
+			blocksToStudy[numberBlockToStudy] = currentBlock->successor1;
+			numberBlockToStudy++;
+
+			fprintf(stderr, "found 1 successor %d\n", currentBlock->successor1->vliwStartAddress);
+
+
+			//We actualize if needed the entryBlock
+			if (entryBlock == currentBlock->successor1)
+				entryBlock = currentBlock;
+
+		}
+		else if (((jumpInstruction & 0x3f) != VEX_CALL) && ((jumpInstruction & 0x3f) != VEX_CALLR) && ((jumpInstruction & 0x3f) != VEX_GOTOR) && ((jumpInstruction & 0x3f) != VEX_STOP)){
+			//If there is no jump instruction at the end of the block then the successor is the next block
+
+			//We compute the destination(s)
+			int successor1Start = endAddress;
+
+			//We find the corresponding block
+			for (int oneSection = 0; oneSection<numberSections; oneSection++){
+				for (int oneBlock = 0; oneBlock < numbersBlockInSections[oneSection]; oneBlock++){
+					IRBlock block = blocksInSections[oneSection][oneBlock];
+
+					if (block.vliwStartAddress == successor1Start){
+						currentBlock->successor1 = &blocksInSections[oneSection][oneBlock];
+						break;
+					}
+				}
+			}
+
+			//We store the result
+			currentBlock->nbSucc = 1;
+			blocksToStudy[numberBlockToStudy] = currentBlock->successor1;
+			numberBlockToStudy++;
+
+			fprintf(stderr, "found 1 successor %d\n", currentBlock->successor1->vliwStartAddress);
+
+
+			//We actualize if needed the entryBlock
+			if (entryBlock == currentBlock->successor1)
+				entryBlock = currentBlock;
+
+		}
+		else
+			currentBlock->nbSucc = 0;
+
+	}
+
+	//We instanciate the procedure
+	IRProcedure *procedure = new IRProcedure(entryBlock, numberBlockInProcedure);
+	procedure->blocks = (IRBlock**) malloc(numberBlockInProcedure * sizeof(IRBlock*));
+
+	memcpy(procedure->blocks, blockInProcedure, numberBlockInProcedure * sizeof(IRBlock*));
+
+	/* Debugging : we print the dot graph of the procedure we created
+	 *
+	 * This will be commented in the final version to prevent having too much printing
+	 */
+
+	fprintf(stderr, "digraph{\n");
+	for (int oneBlockInProcedure = 0; oneBlockInProcedure < procedure->nbBlock; oneBlockInProcedure++){
+		fprintf(stderr, "node_%d;\n", procedure->blocks[oneBlockInProcedure]->vliwStartAddress);
+	}
+	for (int oneBlockInProcedure = 0; oneBlockInProcedure < procedure->nbBlock; oneBlockInProcedure++){
+
+		if (blockInProcedure[oneBlockInProcedure]->nbSucc >= 1)
+			fprintf(stderr, "node_%d -> node_%d;\n", procedure->blocks[oneBlockInProcedure]->vliwStartAddress, procedure->blocks[oneBlockInProcedure]->successor1->vliwStartAddress);
+		if (blockInProcedure[oneBlockInProcedure]->nbSucc >= 2)
+			fprintf(stderr, "node_%d -> node_%d;\n", procedure->blocks[oneBlockInProcedure]->vliwStartAddress, procedure->blocks[oneBlockInProcedure]->successor2->vliwStartAddress);
+
+	}
+	fprintf(stderr, "}\n");
+
+
+
+	fprintf(stderr, "Analysis done ! \n");
+
+}

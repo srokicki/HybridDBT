@@ -162,7 +162,7 @@ unsigned int insertCodeForInsertions(ac_int<128, false> *binaries, int start, un
 	 *		|					 | ldw v1 4(offset)		|					|
 	 *		|					 | ldw r4 -4(sp)		| 					|r8 = init + v1
 	 *		|					 | ldw r5 -8(sp)		|					|r8++
-	 *		|					 | ldw r6 -12(sp)		|					|
+	 *		|					 | ldw r6 -12(sp)		|					|r8 = r8<<2
 	 *		| gotor r8			 | ldw r7 -16(sp)		|					|
 	 *		|					 | ldw r8 -20(sp)		|					|
 
@@ -250,7 +250,7 @@ unsigned int insertCodeForInsertions(ac_int<128, false> *binaries, int start, un
 
 	// 		| br t1 bcl			 | start += v1			| init = init + v1	| v1 = offset + size<<2
 	cycle++;
-	writeInt(binaries, cycle*16+0, assembleIInstruction(VEX_BR, bcl-cycle, 9));
+	writeInt(binaries, cycle*16+0, assembleIInstruction(VEX_BR, (bcl-cycle)<<2, 9));
 	writeInt(binaries, cycle*16+4, assembleRInstruction(VEX_ADD, 7, 7, 6));
 	writeInt(binaries, cycle*16+8, assembleRInstruction(VEX_ADD, 4, 4, 6));
 	writeInt(binaries, cycle*16+12, assembleRInstruction(VEX_SH2ADD, 6, 8, 5));
@@ -290,12 +290,12 @@ unsigned int insertCodeForInsertions(ac_int<128, false> *binaries, int start, un
 	writeInt(binaries, cycle*16+8, 0);
 	writeInt(binaries, cycle*16+12, 0);
 
-	//		| 					| ldw r7 -16(sp)		|					|
+	//		| 					| ldw r7 -16(sp)		|					| r8 = r8<<2
 	cycle++;
 	writeInt(binaries, cycle*16+0, 0);
 	writeInt(binaries, cycle*16+4, assembleRiInstruction(VEX_LDW, 7, 2, -16));
 	writeInt(binaries, cycle*16+8, 0);
-	writeInt(binaries, cycle*16+12, 0);
+	writeInt(binaries, cycle*16+12, assembleRiInstruction(VEX_SLLi, 8, 8, 2));
 
 	//		| gotor r8			 | ldw r8 -20(sp)		|					|
 	cycle++;

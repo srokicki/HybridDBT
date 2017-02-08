@@ -14,7 +14,7 @@
 #include <transformation/irGenerator.h>
 #include <types.h>
 
-void optimizeBasicBlock(unsigned int basicBlockStart, unsigned int basicBlockEnd, DBTPlateform *platform){
+void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform){
 
 	/*********************************************************************************
 	 * Function optimizeBasicBlock
@@ -25,6 +25,10 @@ void optimizeBasicBlock(unsigned int basicBlockStart, unsigned int basicBlockEnd
 	 * vliw binaries.
 	 *
 	 *********************************************************************************/
+
+	int basicBlockStart = block->vliwStartAddress;
+	int basicBlockEnd = block->vliwEndAddress;
+
 
 	//We store old jump instruction. Its places is known from the basicBlockEnd value
 	uint32 jumpInstruction = readInt(platform->vliwBinaries, (basicBlockEnd-2)*16 + 0);
@@ -78,29 +82,31 @@ void optimizeBasicBlock(unsigned int basicBlockStart, unsigned int basicBlockEnd
 
 		//We read the offset and correct its sign if needed
 		int offset = (jumpInstruction >> 7) & 0x7ffff;
-		if (offset & 0x40000 != 0)
+		if ((offset & 0x40000) != 0)
 			offset = offset - 0x80000;
 
 		//We compute the original destination
-		int destination = basicBlockEnd - 1 + offset;
+		int destination = basicBlockEnd - 1 + (offset>>2);
 
 		//We compute the new offset, considering the new destination
 		int newOffset = destination - (basicBlockStart + binaSize + 1);
+		newOffset = newOffset << 2;
 
 		fprintf(stderr, "Correction of jump at the end of the block. Original offset was %d\n From it derivated destination %d and new offset %d\n", offset, destination, newOffset);
 		uint32 newInstruction = jumpInstruction & 0xfc00007f | ((newOffset & 0x7ffff) << 7);
 		fprintf(stderr, "Old jump instr was %x. New is %x\n", jumpInstruction, newInstruction);
 		writeInt(platform->vliwBinaries, (basicBlockStart+binaSize)*16 + 0, newInstruction);
 	}
-
-	if (basicBlockStart+binaSize < basicBlockEnd){
+	printf("%d + %d <> %d\n", basicBlockStart, binaSize, basicBlockEnd);
+	if (basicBlockStart+binaSize+2 < basicBlockEnd){
 		//We need to add a jump to correct the shortening of the block.
 
-		uint32 insertedJump = VEX_GOTO + (basicBlockEnd<<7);
+		uint32 insertedJump = VEX_GOTO + (basicBlockEnd<<9); // Note added the *4 to handle the new PC encoding
 		writeInt(platform->vliwBinaries, (basicBlockStart+binaSize+2)*16, insertedJump);
 
 
 	}
+
 
 
 
@@ -118,6 +124,10 @@ void optimizeBasicBlock(unsigned int basicBlockStart, unsigned int basicBlockEnd
 	fprintf(stderr, "*************************************************************************\n");
 
 	fprintf(stderr, "*************************************************************************\n");
+
+	//We modify the stored information concerning the block
+	block->vliwEndAddress = basicBlockStart + binaSize + 2;
+	block->blockState = IRBLOCK_STATE_SCHEDULED;
 
 }
 
