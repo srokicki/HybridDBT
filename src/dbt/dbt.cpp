@@ -98,13 +98,14 @@ int main(int argc, char *argv[])
 
 		}
 	}
+	int numberOfSections = 1 + (size>>10);
+
 
 	//Definition of objects used for DBT process
 	DBTPlateform dbtPlateform;
 	dbtPlateform.vexSimulator = new VexSimulator();
+	IRApplication application = IRApplication(numberOfSections);
 	Profiler profiler = Profiler(&dbtPlateform);
-
-
 
 
 
@@ -132,14 +133,10 @@ int main(int argc, char *argv[])
 	 *
 	 ********************************************************/
 
-//We launch the actual generation
-	int numberOfSections = 1 + (size/1024);
-	IRBlock** blocks = (IRBlock**) malloc(sizeof(IRBlock*) * numberOfSections);
-	int* numbersBlock = (int*) malloc(sizeof(int) * numberOfSections);
 
-	for (int i=0; i<(size>>10)+1; i++){
+	for (int oneSection=0; oneSection<(size>>10)+1; oneSection++){
 
-		int startAddressSource = addressStart + i*1024*4;
+		int startAddressSource = addressStart + oneSection*1024*4;
 		int endAddressSource = startAddressSource + 1024*4;
 		if (endAddressSource > addressStart + size*4)
 			endAddressSource = addressStart + (size<<2);
@@ -147,21 +144,25 @@ int main(int argc, char *argv[])
 
 		int effectiveSize = (endAddressSource - startAddressSource)>>2;
 		for (int j = 0; j<effectiveSize; j++){
-			dbtPlateform.mipsBinaries[j] = ((unsigned int*) code)[j+i*1024];
+			dbtPlateform.mipsBinaries[j] = ((unsigned int*) code)[j+oneSection*1024];
 		}
 		int oldPlaceCode = placeCode;
 
 		placeCode =  translateOneSection(dbtPlateform, placeCode, addressStart, startAddressSource,endAddressSource);
 
-		numbersBlock[i] = buildBasicControlFlow(dbtPlateform, startAddressSource, oldPlaceCode, placeCode, &blocks[i]);
+		buildBasicControlFlow(dbtPlateform, oneSection, startAddressSource, oldPlaceCode, placeCode, &application);
 
+
+		fprintf(stderr,"Test %x\n", (long int) &application.blocksInSections[0][0]);
 		//We select blocks for profiling:
 		//If a block has more than 16 instructions, it is eligible for profiling.
 		//TODO use a DEFINE instead of a fixed number of threshold
-		for (int oneBlock = 0; oneBlock<numbersBlock[i]; oneBlock++){
-			IRBlock block = blocks[i][oneBlock];
-			if (block.vliwEndAddress - block.vliwStartAddress>16){
-				profiler.profileBlock(&blocks[i][oneBlock]);
+		for (int oneBlock = 0; oneBlock<application.numbersBlockInSections[oneSection]; oneBlock++){
+			IRBlock *block = application.blocksInSections[oneSection][oneBlock];
+			if (block->vliwEndAddress - block->vliwStartAddress>16){
+				fprintf(stderr, "working on block %x\n", (long int) &(application.blocksInSections[oneSection][oneBlock]));
+
+				profiler.profileBlock(application.blocksInSections[oneSection][oneBlock]);
 			}
 
 		}
@@ -206,17 +207,6 @@ int main(int argc, char *argv[])
 					writeInt(dbtPlateform.vliwBinaries, 16*(source+1)+12, instructionBeforePreviousDestination);
 	}
 
-	int totalNumberOfBlocks = 0;
-	for (int oneCodeSection = 0; oneCodeSection<numberOfSections; oneCodeSection++){
-		totalNumberOfBlocks += numbersBlock[oneCodeSection];
-		for (int oneBlock = 0; oneBlock<numbersBlock[oneCodeSection]; oneBlock++){
-			if (blocks[oneCodeSection][oneBlock].vliwEndAddress - blocks[oneCodeSection][oneBlock].vliwStartAddress >= 16){
-				printf("Block from %d to %d\n", blocks[oneCodeSection][oneBlock].vliwStartAddress, blocks[oneCodeSection][oneBlock].vliwEndAddress);
-				//optimizeBasicBlock(blocks[oneCodeSection][oneBlock].vliwStartAddress, blocks[oneCodeSection][oneBlock].vliwEndAddress, &dbtPlateform);
-			}
-		}
-	}
-	printf("There is %d blocks in the code\n", totalNumberOfBlocks);
 
 	//We write back the result if needed
 	void* destinationBinariesFile = openWriteFile((void*) "./binaries");
@@ -258,6 +248,9 @@ int main(int argc, char *argv[])
 		dbtPlateform.vexSimulator->initializeRun(0);
 
 		int runStatus=0;
+
+		fprintf(stderr,"Test %x\n", (long int) &application.blocksInSections[0][0]);
+
 		while (runStatus == 0){
 			runStatus = dbtPlateform.vexSimulator->doStep(1000);
 
@@ -265,21 +258,24 @@ int main(int argc, char *argv[])
 			for (int oneBlock = 0; oneBlock<profiler.getNumberProfiledBlocks(); oneBlock++){
 				int profileResult = profiler.getProfilingInformation(oneBlock);
 				IRBlock* block = profiler.getBlock(oneBlock);
+				fprintf(stderr, "working on block %x\n", (long int) block);
 				char isCurrentlyInBlock = (dbtPlateform.vexSimulator->PC < block->vliwEndAddress) && (dbtPlateform.vexSimulator->PC >= block->vliwStartAddress);
 
 				if (profileResult > 10)
 					fprintf(stderr, "Bloc from %d to %d is eligible to opti (%d exec)\n", block->vliwStartAddress, block->vliwEndAddress, profileResult);
 
 				if (profileResult > 10 && block->blockState < IRBLOCK_STATE_SCHEDULED && !isCurrentlyInBlock){
-					optimizeBasicBlock(block, &dbtPlateform);
+					optimizeBasicBlock(block, &dbtPlateform, &application);
 					dbtPlateform.vexSimulator->initializeCodeMemory(dbtPlateform.vliwBinaries, sizeBinaries, 0);
 				}
 
 
-				if (profileResult > 20 && block->blockState < IRBLOCK_STATE_RECONF){
-					fprintf(stderr, "Bloc from %d to %d is eligible advanced control flow building\n", block->vliwStartAddress, block->vliwEndAddress);
+				if (profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
+					fprintf(stderr,"Test %x\n", (long int) &application.blocksInSections[0][0]);
 
-					IRProcedure *oneProc = buildAdvancedControlFlow(&dbtPlateform, block, blocks, numbersBlock, numberOfSections);
+					fprintf(stderr, "Bloc from %d to %d is eligible advanced control flow building\n", block->vliwStartAddress, block->vliwEndAddress);
+					buildAdvancedControlFlow(&dbtPlateform, block, &application);
+					block->blockState = IRBLOCK_STATE_RECONF;
 				}
 			}
 

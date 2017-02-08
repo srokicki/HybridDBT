@@ -153,6 +153,7 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 	else{
 		profiledBlocks[numberProfiledBlocks] = oneBlock;
 		numberProfiledBlocks++;
+		fprintf(stderr, "profiling block %x\n", (long int) oneBlock);
 
 
 	}

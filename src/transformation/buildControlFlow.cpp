@@ -19,7 +19,7 @@
 #define TEMP_BLOCK_STORAGE_SIZE 900
 
 
-int buildBasicControlFlow(DBTPlateform dbtPlateform, int mipsStartAddress, int startAddress, int endAddress, IRBlock** result){
+void buildBasicControlFlow(DBTPlateform dbtPlateform, int section, int mipsStartAddress, int startAddress, int endAddress, IRApplication *application){
 
 	int sizeNewlyTranslated = endAddress-startAddress;
 	mipsStartAddress = mipsStartAddress>>2;
@@ -41,11 +41,9 @@ int buildBasicControlFlow(DBTPlateform dbtPlateform, int mipsStartAddress, int s
 	}
 	free(insertions);
 
-
-	//TODO : adapt following code to new encoding of boundaries
-
 	//We declare a temporary storage for storing procedures.
-	IRBlock* tempBlocks = (IRBlock*) malloc(TEMP_BLOCK_STORAGE_SIZE * sizeof(IRBlock));
+	application->blocksInSections[section] = (IRBlock**) malloc(TEMP_BLOCK_STORAGE_SIZE * sizeof(IRBlock**));
+	application->numbersAllocatedBlockInSections[section] = TEMP_BLOCK_STORAGE_SIZE;
 
 	int blockCounter = 0;
 
@@ -60,7 +58,9 @@ int buildBasicControlFlow(DBTPlateform dbtPlateform, int mipsStartAddress, int s
 		if (blockBoundary && !insertionMap[oneInstruction]){
 
 			//We reach the end of a block: we create the block and mark this place as a new start
-			tempBlocks[blockCounter] = IRBlock(previousBlockStart+startAddress, indexInVLIWBinaries+startAddress);
+			IRBlock *newBlock = new IRBlock(previousBlockStart+startAddress, indexInVLIWBinaries+startAddress, section);
+			application->addBlock(newBlock, section);
+
 			blockCounter++;
 			if (blockCounter > TEMP_BLOCK_STORAGE_SIZE){
 				fprintf(stderr, "Error while building basic control flow: temporary storage size for blocks is too small and nothing has been implemented to handle this...\n");
@@ -79,7 +79,8 @@ int buildBasicControlFlow(DBTPlateform dbtPlateform, int mipsStartAddress, int s
 	}
 
 	//We reach the end of a block: we create the block and mark this place as a new start
-	tempBlocks[blockCounter] = IRBlock(previousBlockStart+startAddress, indexInVLIWBinaries+startAddress);
+	IRBlock *newBlock = new IRBlock(previousBlockStart+startAddress, indexInVLIWBinaries+startAddress, section);
+	application->addBlock(newBlock, section);
 	previousBlockStart = indexInVLIWBinaries;
 
 	blockCounter++;
@@ -88,21 +89,13 @@ int buildBasicControlFlow(DBTPlateform dbtPlateform, int mipsStartAddress, int s
 		exit(0);
 	}
 
-
-
-	//We finally copy the procedures in a new memory
-	*result = (IRBlock*) malloc(blockCounter*sizeof(IRBlock));
-	memcpy(*result, tempBlocks, blockCounter*sizeof(IRBlock));
-
 	//We free temporary used data
 	free(insertionMap);
-	free(tempBlocks);
 
-	return blockCounter;
 
 }
 
-IRProcedure* buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRBlock** blocksInSections, int* numbersBlockInSections, int numberSections){
+void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApplication *application){
 
 	IRBlock *blocksToStudy[20];
 	int numberBlockToStudy = 1;
@@ -122,7 +115,7 @@ IRProcedure* buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBloc
 		unsigned int endAddress = currentBlock->vliwEndAddress;
 		unsigned int jumpInstruction = readInt(platform->vliwBinaries, (endAddress-2)*16);
 
-		fprintf(stderr, "Working on block from %d to %d. (nbsucc %d) (jumpInstr = %x)\n",currentBlock->vliwStartAddress, currentBlock->vliwEndAddress, currentBlock->nbSucc, jumpInstruction);
+		fprintf(stderr, "Working on block %x from %d to %d. (nbsucc %d) (jumpInstr = %x)\n", (long int) currentBlock, currentBlock->vliwStartAddress, currentBlock->vliwEndAddress, currentBlock->nbSucc, jumpInstruction);
 
 
 		if (currentBlock->nbSucc != -1)
@@ -151,17 +144,15 @@ IRProcedure* buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBloc
 			int successor2Start = endAddress;
 
 			//We find the corresponding blocks
-			for (int oneSection = 0; oneSection<numberSections; oneSection++){
-				for (int oneBlock = 0; oneBlock < numbersBlockInSections[oneSection]; oneBlock++){
-					IRBlock block = blocksInSections[oneSection][oneBlock];
-
-					if (blocksInSections[oneSection][oneBlock].vliwStartAddress == successor1Start)
-						currentBlock->successor1 = &blocksInSections[oneSection][oneBlock];
-					else if (blocksInSections[oneSection][oneBlock].vliwStartAddress == successor2Start)
-						currentBlock->successor2 = &blocksInSections[oneSection][oneBlock];
+			for (int oneSection = 0; oneSection<application->numberOfSections; oneSection++){
+				for (int oneBlock = 0; oneBlock < application->numbersBlockInSections[oneSection]; oneBlock++){
+					if (application->blocksInSections[oneSection][oneBlock]->vliwStartAddress == successor1Start)
+						currentBlock->successor1 = application->blocksInSections[oneSection][oneBlock];
+					else if (application->blocksInSections[oneSection][oneBlock]->vliwStartAddress == successor2Start)
+						currentBlock->successor2 = application->blocksInSections[oneSection][oneBlock];
 				}
 			}
-			fprintf(stderr, "FOund block  as a succ 2 (%d)\n ",currentBlock->successor2->vliwStartAddress);
+			fprintf(stderr, "FOund block  as a succ 2 (%d and %d)\n ",currentBlock->successor1->vliwStartAddress, currentBlock->successor2->vliwStartAddress);
 
 			//We store the result
 			currentBlock->nbSucc = 2;
@@ -186,12 +177,12 @@ IRProcedure* buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBloc
 			int successor1Start = destination>>2;
 
 			//We find the corresponding block
-			for (int oneSection = 0; oneSection<numberSections; oneSection++){
-				for (int oneBlock = 0; oneBlock < numbersBlockInSections[oneSection]; oneBlock++){
-					IRBlock block = blocksInSections[oneSection][oneBlock];
+			for (int oneSection = 0; oneSection<application->numberOfSections; oneSection++){
+				for (int oneBlock = 0; oneBlock < application->numbersBlockInSections[oneSection]; oneBlock++){
+					IRBlock *block = application->blocksInSections[oneSection][oneBlock];
 
-					if (block.vliwStartAddress == successor1Start){
-						currentBlock->successor1 = &blocksInSections[oneSection][oneBlock];
+					if (block->vliwStartAddress == successor1Start){
+						currentBlock->successor1 = block;
 						break;
 					}
 				}
@@ -217,12 +208,12 @@ IRProcedure* buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBloc
 			int successor1Start = endAddress;
 
 			//We find the corresponding block
-			for (int oneSection = 0; oneSection<numberSections; oneSection++){
-				for (int oneBlock = 0; oneBlock < numbersBlockInSections[oneSection]; oneBlock++){
-					IRBlock block = blocksInSections[oneSection][oneBlock];
+			for (int oneSection = 0; oneSection<application->numberOfSections; oneSection++){
+				for (int oneBlock = 0; oneBlock < application->numbersBlockInSections[oneSection]; oneBlock++){
+					IRBlock *block = application->blocksInSections[oneSection][oneBlock];
 
-					if (block.vliwStartAddress == successor1Start){
-						currentBlock->successor1 = &blocksInSections[oneSection][oneBlock];
+					if (block->vliwStartAddress == successor1Start){
+						currentBlock->successor1 = block;
 						break;
 					}
 				}
@@ -241,9 +232,11 @@ IRProcedure* buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBloc
 				entryBlock = currentBlock;
 
 		}
-		else
+		else{
 			currentBlock->nbSucc = 0;
+			fprintf(stderr, "There is no successor (jump instr was%x)\n");
 
+		}
 	}
 
 	//We instanciate the procedure
@@ -251,6 +244,8 @@ IRProcedure* buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBloc
 	procedure->blocks = (IRBlock**) malloc(numberBlockInProcedure * sizeof(IRBlock*));
 
 	memcpy(procedure->blocks, blockInProcedure, numberBlockInProcedure * sizeof(IRBlock*));
+
+	application->addProcedure(procedure);
 
 	/* Debugging : we print the dot graph of the procedure we created
 	 *

@@ -50,13 +50,13 @@ public:
 	unsigned int vliwStartAddress;	//Address of the first instruction in the block
 	unsigned int vliwEndAddress;   	//End address is the address of the first instruction not in the block
 	uint128 *instructions;			//A pointer to an array of uint128 describint the instructions
-
+	int section;
 	unsigned int blockState;		//A value to store its state (optimized/translated or other things like that)
 	char nbSucc;
 	IRBlock* successor1;
 	IRBlock* successor2;
 
-	IRBlock(int startAddress, int endAddress);
+	IRBlock(int startAddress, int endAddress, int section);
 
 };
 
@@ -70,6 +70,26 @@ public:
 #define IRBLOCK_STATE_PROFILED 1
 #define IRBLOCK_STATE_SCHEDULED 2
 #define IRBLOCK_STATE_RECONF 3
+
+class IRApplication{
+public:
+	int numberOfSections;
+	IRBlock*** blocksInSections;
+	int *numbersBlockInSections;
+
+	IRProcedure** procedures;
+	int numberProcedures;
+
+	void addBlock(IRBlock *block, int sectionNumber);
+	void addProcedure(IRProcedure *procedure);
+
+	IRApplication(int numberSections);
+
+	int numberAllocatedProcedures;
+	int *numbersAllocatedBlockInSections;
+
+
+};
 
 
 /********************************************************************

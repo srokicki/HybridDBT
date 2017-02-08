@@ -162,9 +162,52 @@ IRProcedure::IRProcedure(IRBlock *entryBlock, int nbBlock){
 }
 
 
-IRBlock::IRBlock(int startAddress, int endAddress){
+IRBlock::IRBlock(int startAddress, int endAddress, int section){
 	this->vliwEndAddress = endAddress;
 	this->vliwStartAddress = startAddress;
 	this->blockState = IRBLOCK_STATE_FIRSTPASS;
 	this->nbSucc = -1;
+	this->section = section;
+}
+
+IRApplication::IRApplication(int numberSections){
+	this->numberOfSections = numberSections;
+	this->blocksInSections = (IRBlock***) malloc(sizeof(IRBlock**) * numberOfSections);
+	this->numbersBlockInSections= (int*) malloc(sizeof(int) * numberOfSections);
+
+	this->numbersAllocatedBlockInSections = (int*) malloc(sizeof(int) * numberOfSections);
+	this->numberAllocatedProcedures = 0;
+}
+
+void IRApplication::addBlock(IRBlock* block, int sectionNumber){
+	if (this->numbersAllocatedBlockInSections[sectionNumber] == this->numbersBlockInSections[sectionNumber]){
+		//We allocate new blocks
+		int numberBlocks = this->numbersBlockInSections[sectionNumber];
+		int newAllocation = numberBlocks + 5;
+		IRBlock** oldList = this->blocksInSections[sectionNumber];
+		this->blocksInSections[sectionNumber] = (IRBlock**) malloc(newAllocation * sizeof(IRBlock*));
+		memcpy(this->blocksInSections[sectionNumber], oldList, numberBlocks*sizeof(IRBlock*));
+		this->numbersAllocatedBlockInSections[sectionNumber] = newAllocation;
+	}
+
+
+	this->blocksInSections[sectionNumber][this->numbersBlockInSections[sectionNumber]] = block;
+	this->numbersBlockInSections[sectionNumber]++;
+}
+
+void IRApplication::addProcedure(IRProcedure *procedure){
+
+	if (this->numberAllocatedProcedures == this->numberProcedures){
+		//We allocate new procedures
+		int numberProc = this->numberProcedures;
+		int newAllocation = numberProc + 5;
+		IRProcedure** oldList = this->procedures;
+		this->procedures = (IRProcedure**) malloc(newAllocation * sizeof(IRProcedure*));
+		memcpy(this->procedures, oldList, numberProc*sizeof(IRProcedure*));
+		this->numberAllocatedProcedures = newAllocation;
+	}
+
+
+	this->procedures[this->numberProcedures] = procedure;
+	this->numberProcedures++;
 }

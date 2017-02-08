@@ -14,7 +14,7 @@
 #include <transformation/irGenerator.h>
 #include <types.h>
 
-void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform){
+void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *application){
 
 	/*********************************************************************************
 	 * Function optimizeBasicBlock
@@ -104,7 +104,10 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform){
 		uint32 insertedJump = VEX_GOTO + (basicBlockEnd<<9); // Note added the *4 to handle the new PC encoding
 		writeInt(platform->vliwBinaries, (basicBlockStart+binaSize+2)*16, insertedJump);
 
-
+		//In this case, we also added a block in the design
+		//We need to insert it in the set of blocks
+		IRBlock newBlock = IRBlock(basicBlockStart + binaSize + 2, basicBlockStart + binaSize + 4, block->section);
+		application->addBlock(&newBlock, block->section);
 	}
 
 

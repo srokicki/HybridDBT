@@ -26,8 +26,7 @@
  *
  *******************************************************************/
 
-int buildBasicControlFlow(DBTPlateform dbtPlateform, int mipsStartAddress, int startAddress, int endAddress, IRBlock** result);
-IRProcedure* buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRBlock** blocksInSections, int* numbersBlockInSections, int numberSections);
-
+void buildBasicControlFlow(DBTPlateform dbtPlateform, int section, int mipsStartAddress, int startAddress, int endAddress, IRApplication *application);
+void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApplication *application);
 
 #endif /* INCLUDES_TRANSFORMATION_BUILDCONTROLFLOW_H_ */
