@@ -106,8 +106,9 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 		//In this case, we also added a block in the design
 		//We need to insert it in the set of blocks
-		IRBlock newBlock = IRBlock(basicBlockStart + binaSize + 2, basicBlockStart + binaSize + 4, block->section);
-		application->addBlock(&newBlock, block->section);
+		IRBlock* newBlock = new IRBlock(basicBlockStart + binaSize + 2, basicBlockStart + binaSize + 4, block->section);
+		application->addBlock(newBlock, block->section);
+		fprintf(stderr, "adding a block from %d tp %d\n", basicBlockStart + binaSize + 2, basicBlockStart + binaSize + 4);
 	}
 
 

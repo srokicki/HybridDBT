@@ -188,6 +188,7 @@ void IRApplication::addBlock(IRBlock* block, int sectionNumber){
 		this->blocksInSections[sectionNumber] = (IRBlock**) malloc(newAllocation * sizeof(IRBlock*));
 		memcpy(this->blocksInSections[sectionNumber], oldList, numberBlocks*sizeof(IRBlock*));
 		this->numbersAllocatedBlockInSections[sectionNumber] = newAllocation;
+		free(oldList);
 	}
 
 
@@ -205,6 +206,7 @@ void IRApplication::addProcedure(IRProcedure *procedure){
 		this->procedures = (IRProcedure**) malloc(newAllocation * sizeof(IRProcedure*));
 		memcpy(this->procedures, oldList, numberProc*sizeof(IRProcedure*));
 		this->numberAllocatedProcedures = newAllocation;
+		free(oldList);
 	}
 
 

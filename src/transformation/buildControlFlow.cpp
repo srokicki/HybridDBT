@@ -115,7 +115,6 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 		unsigned int endAddress = currentBlock->vliwEndAddress;
 		unsigned int jumpInstruction = readInt(platform->vliwBinaries, (endAddress-2)*16);
 
-		fprintf(stderr, "Working on block %x from %d to %d. (nbsucc %d) (jumpInstr = %x)\n", (long int) currentBlock, currentBlock->vliwStartAddress, currentBlock->vliwEndAddress, currentBlock->nbSucc, jumpInstruction);
 
 
 		if (currentBlock->nbSucc != -1)
@@ -128,12 +127,12 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 
 		blockInProcedure[numberBlockInProcedure] = currentBlock;
 		numberBlockInProcedure++;
-
 		//We only consider successors if they are after a branch or a goto instruction.
+
 		//If we meet a CALL or a GOTOR (return) instruction we consider it to be the end of the 'procedure'
 		// and thus we end the analysis.
 
-		if (((jumpInstruction & 0x3f) == VEX_BR) || ((jumpInstruction & 0x3f) == VEX_BRF)){
+		if (((jumpInstruction & 0x7f) == VEX_BR) || ((jumpInstruction & 0x7f) == VEX_BRF)){
 			//In this case we have to find one block with its start address, the other one is the next block
 
 			//We compute the destination(s)
@@ -145,14 +144,15 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 
 			//We find the corresponding blocks
 			for (int oneSection = 0; oneSection<application->numberOfSections; oneSection++){
+//				fprintf(stderr, "xtest sc\n");
 				for (int oneBlock = 0; oneBlock < application->numbersBlockInSections[oneSection]; oneBlock++){
-					if (application->blocksInSections[oneSection][oneBlock]->vliwStartAddress == successor1Start)
-						currentBlock->successor1 = application->blocksInSections[oneSection][oneBlock];
-					else if (application->blocksInSections[oneSection][oneBlock]->vliwStartAddress == successor2Start)
-						currentBlock->successor2 = application->blocksInSections[oneSection][oneBlock];
+					IRBlock *block = application->blocksInSections[oneSection][oneBlock];
+					if (block->vliwStartAddress == successor1Start)
+						currentBlock->successor1 = block;
+					else if (block->vliwStartAddress == successor2Start)
+						currentBlock->successor2 = block;
 				}
 			}
-			fprintf(stderr, "FOund block  as a succ 2 (%d and %d)\n ",currentBlock->successor1->vliwStartAddress, currentBlock->successor2->vliwStartAddress);
 
 			//We store the result
 			currentBlock->nbSucc = 2;
@@ -167,7 +167,7 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 
 
 		}
-		else if ((jumpInstruction & 0x3f) == VEX_GOTO){
+		else if ((jumpInstruction & 0x7f) == VEX_GOTO){
 			//In this case there is only one successor which is the destination of the GOTO
 
 			//We compute the destination(s)
@@ -193,15 +193,13 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 			blocksToStudy[numberBlockToStudy] = currentBlock->successor1;
 			numberBlockToStudy++;
 
-			fprintf(stderr, "found 1 successor %d\n", currentBlock->successor1->vliwStartAddress);
-
 
 			//We actualize if needed the entryBlock
 			if (entryBlock == currentBlock->successor1)
 				entryBlock = currentBlock;
 
 		}
-		else if (((jumpInstruction & 0x3f) != VEX_CALL) && ((jumpInstruction & 0x3f) != VEX_CALLR) && ((jumpInstruction & 0x3f) != VEX_GOTOR) && ((jumpInstruction & 0x3f) != VEX_STOP)){
+		else if (((jumpInstruction & 0x7f) != VEX_CALL) && ((jumpInstruction & 0x7f) != VEX_CALLR) && ((jumpInstruction & 0x7f) != VEX_GOTOR) && ((jumpInstruction & 0x7f) != VEX_STOP)){
 			//If there is no jump instruction at the end of the block then the successor is the next block
 
 			//We compute the destination(s)
@@ -211,7 +209,6 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 			for (int oneSection = 0; oneSection<application->numberOfSections; oneSection++){
 				for (int oneBlock = 0; oneBlock < application->numbersBlockInSections[oneSection]; oneBlock++){
 					IRBlock *block = application->blocksInSections[oneSection][oneBlock];
-
 					if (block->vliwStartAddress == successor1Start){
 						currentBlock->successor1 = block;
 						break;
@@ -224,8 +221,6 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 			blocksToStudy[numberBlockToStudy] = currentBlock->successor1;
 			numberBlockToStudy++;
 
-			fprintf(stderr, "found 1 successor %d\n", currentBlock->successor1->vliwStartAddress);
-
 
 			//We actualize if needed the entryBlock
 			if (entryBlock == currentBlock->successor1)
@@ -234,8 +229,6 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 		}
 		else{
 			currentBlock->nbSucc = 0;
-			fprintf(stderr, "There is no successor (jump instr was%x)\n");
-
 		}
 	}
 
