@@ -17,8 +17,8 @@
 #define VEX_MPYHH 0x5
 #define VEX_MPYHHU 0x6
 #define VEX_MPYL 0x7
-#define VEX_MPYLU 0x8
-#define VEX_MPYH 0x9
+#define VEX_DIVW 0x8
+#define VEX_MPYW 0x9
 
 #define VEX_MPYHISU 0xa
 #define VEX_MPYHIU 0xb
@@ -27,14 +27,18 @@
 #define VEX_DIVLO 0xe
 #define VEX_DIVHI 0xf
 
+#define VEX_LDD 0x10
 #define VEX_LDW 0x11
 #define VEX_LDH 0x12
 #define VEX_LDHU 0x13
 #define VEX_LDB 0x14
 #define VEX_LDBU 0x15
-#define VEX_STW 0x16
-#define VEX_STH 0x17
+#define VEX_LDWU 0x16
+
 #define VEX_STB 0x18
+#define VEX_STH 0x19
+#define VEX_STW 0x1A
+#define VEX_STD 0x1b
 
 
 #define VEX_GOTO 0x21
@@ -73,11 +77,11 @@
 #define VEX_SRA 0x51
 #define VEX_SUB 0x52
 #define VEX_XOR 0x53
-#define VEX_SXTH 0x54
-#define VEX_ZXTB 0x55
-#define VEX_ZXTH 0x56
-#define VEX_SXTB 0x57
-#define VEX_SH3bADD 0x58
+#define VEX_ADDW 0x54
+#define VEX_SUBW 0x55
+#define VEX_SLLW 0x56
+#define VEX_SRLW 0x57
+#define VEX_SRAW 0x58
 #define VEX_CMPEQ 0x59
 #define VEX_CMPGE 0x5a
 #define VEX_CMPGEU 0x5b
@@ -105,11 +109,11 @@
 #define VEX_SRAi 0x71
 #define VEX_SUBi 0x72
 #define VEX_XORi 0x73
-#define VEX_SXTHi 0x74
-#define VEX_ZXTBi 0x75
-#define VEX_ZXTHi 0x76
-#define VEX_SXTBi 0x77
-#define VEX_SH3bADDi 0x78
+#define VEX_ADDWi 0x74
+
+#define VEX_SLLWi 0x76
+#define VEX_SRLWi 0x77
+#define VEX_SRAWi 0x78
 #define VEX_CMPEQi 0x79
 #define VEX_CMPGEi 0x7a
 #define VEX_CMPGEUi 0x7b

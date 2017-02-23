@@ -15,18 +15,20 @@
 
 class RiscvSimulator {
 	public:
-	std::map<int, ac_int<8, true>> memory;
+	std::map<ac_int<64, false>, ac_int<8, true>> memory;
 
 	RiscvSimulator(void): memory(){};
 
 	int doSimulation(int start);
-	void stw(int addr, ac_int<32, true> value);
-	void sth(int addr, ac_int<16, true> value);
-	void stb(int addr, ac_int<8, true> value);
+	void std(ac_int<64, false> addr, ac_int<64, true> value);
+	void stw(ac_int<64, false> addr, ac_int<32, true> value);
+	void sth(ac_int<64, false> addr, ac_int<16, true> value);
+	void stb(ac_int<64, false> addr, ac_int<8, true> value);
 
-	ac_int<32, false> ldw(int addr);
-	ac_int<16, true> ldh(int addr);
-	ac_int<8, true> ldb(int addr);
+	ac_int<64, false> ldd(ac_int<64, false> addr);
+	ac_int<32, false> ldw(ac_int<64, false> addr);
+	ac_int<16, true> ldh(ac_int<64, false> addr);
+	ac_int<8, true> ldb(ac_int<64, false> addr);
 
 	void doStep();
 };

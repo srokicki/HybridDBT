@@ -15,30 +15,30 @@
 #include <isa/vexISA.h>
 
 struct FtoDC {
-	ac_int<32, false> instruction; //Instruction to execute
+	ac_int<64, false> instruction; //Instruction to execute
 };
 
 struct DCtoEx {
-	ac_int<32, true> dataa; //First data from register file
-	ac_int<32, true> datab; //Second data, from register file or immediate value
-	ac_int<32, true> datac; //Third data used only for store instruction and corresponding to rb
+	ac_int<64, true> dataa; //First data from register file
+	ac_int<64, true> datab; //Second data, from register file or immediate value
+	ac_int<64, true> datac; //Third data used only for store instruction and corresponding to rb
 	ac_int<6, false> dest;  //Register to be written
 	ac_int<7, false> opCode;//OpCode of the instruction
-	ac_int<32, true> memValue; //Second data, from register file or immediate value
+	ac_int<64, true> memValue; //Second data, from register file or immediate value
 
 };
 
 struct ExtoMem {
-	ac_int<32, true> result;	//Result of the EX stage
-	ac_int<32, true> datac;		//Data to be stored in memory (if needed)
+	ac_int<64, true> result;	//Result of the EX stage
+	ac_int<64, true> datac;		//Data to be stored in memory (if needed)
 	ac_int<6, false> dest;		//Register to be written at WB stage
 	ac_int<1, false> WBena;		//Is a WB is needed ?
 	ac_int<7, false> opCode;	//OpCode of the operation
-	ac_int<32, true> memValue; //Second data, from register file or immediate value
+	ac_int<64, true> memValue; //Second data, from register file or immediate value
 };
 
 struct MemtoWB {
-	ac_int<32, true> result;	//Result to be written back
+	ac_int<64, true> result;	//Result to be written back
 	ac_int<6, false> dest;		//Register to be written at WB stage
 	ac_int<1, false> WBena;		//Is a WB is needed ?
 };
@@ -52,12 +52,16 @@ class VexSimulator {
 
 
 	std::map<unsigned int, ac_int<8, false>> memory;
-	int cycle = 0;
-	int PC, NEXT_PC, stop, issueWidth;
-	ac_int<1, false> unitActivation[8];
-	ac_int<32, false> REG[64];
+	ac_int<128, false> *RI;
 
-	VexSimulator(void): memory(){
+	int cycle = 0;
+	ac_int<64, false> PC, NEXT_PC;
+	ac_int<1, false> stop;
+	ac_int<4, false> issueWidth;
+	ac_int<1, false> unitActivation[8];
+	ac_int<64, false> REG[64];
+
+	VexSimulator(ac_int<128, false> *instructionMemory): memory(){
 		cycle=0;
 		for (int oneReg = 0; oneReg < 64; oneReg++){
 			REG[oneReg] = 0;
@@ -73,6 +77,8 @@ class VexSimulator {
 		unitActivation[6] = 0;
 		unitActivation[7] = 0;
 
+		this->RI = instructionMemory;
+
 	};
 
 	~VexSimulator(void) {
@@ -80,11 +86,8 @@ class VexSimulator {
 	}
 
 	void initializeDataMemory(unsigned char* content, unsigned int size, unsigned int start);
-	void initializeDataMemory(ac_int<32, false>* content, unsigned int size, unsigned int start);
+	void initializeDataMemory(ac_int<64, false>* content, unsigned int size, unsigned int start);
 
-
-	void initializeCodeMemory(unsigned char* content, unsigned int size, unsigned int start);
-	void initializeCodeMemory(ac_int<128, false>* content, unsigned int size, unsigned int start);
 
 	int initializeRun(int mainPc);
 	int doStep();
@@ -92,13 +95,13 @@ class VexSimulator {
 
 
 
-	void stb(unsigned int addr, ac_int<8, false> value);
-	void sth(unsigned int addr, ac_int<16, false> value);
-	void stw(unsigned int addr, ac_int<32, false> value);
+	void stb(ac_int<64, false> addr, ac_int<8, false> value);
+	void sth(ac_int<64, false> addr, ac_int<16, false> value);
+	void stw(ac_int<64, false> addr, ac_int<32, false> value);
 
-	ac_int<8, false> ldb(unsigned int addr);
-	ac_int<16, false> ldh(unsigned int addr);
-	ac_int<32, false> ldw(unsigned int addr);
+	ac_int<8, false> ldb(ac_int<64, false> addr);
+	ac_int<16, false> ldh(ac_int<64, false> addr);
+	ac_int<32, false> ldw(ac_int<64, false> addr);
 
 
 

@@ -51,9 +51,9 @@ void buildBasicControlFlow(DBTPlateform dbtPlateform, int section, int mipsStart
 	int indexInVLIWBinaries = 0;
 	int previousBlockStart = 0;
 	for (int oneInstruction = 0; oneInstruction < sizeNewlyTranslated; oneInstruction++){
-		int offset = (indexInMipsBinaries + mipsStartAddress) >> 3;
-		int bitOffset = (indexInMipsBinaries + mipsStartAddress) & 0x7;
-		char blockBoundary = (dbtPlateform.blockBoundaries[offset] >> bitOffset) & 0x1;
+		int offset = (indexInMipsBinaries + mipsStartAddress);
+//		int bitOffset = (indexInMipsBinaries + mipsStartAddress) & 0x7;
+		char blockBoundary = (dbtPlateform.blockBoundaries[offset]);
 
 		if (blockBoundary && !insertionMap[oneInstruction]){
 

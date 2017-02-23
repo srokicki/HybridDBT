@@ -9,7 +9,7 @@
 #include <lib/endianness.h>
 #include <isa/vexISA.h>
 #include <isa/irISA.h>
-
+#include <simulator/vexSimulator.h>
 #include <transformation/irScheduler.h>
 #include <transformation/irGenerator.h>
 #include <types.h>
@@ -29,6 +29,18 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	int basicBlockStart = block->vliwStartAddress;
 	int basicBlockEnd = block->vliwEndAddress;
 
+	char isCurrentlyInBlock = (platform->vexSimulator->PC >= basicBlockStart*4) &&
+			(platform->vexSimulator->PC < basicBlockEnd*4);
+
+	if (isCurrentlyInBlock){
+		fprintf(stderr, "Currently inside block, inserting stop...\n");
+		writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0x2f);
+
+		platform->vexSimulator->doStep(1000);
+		writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0);
+
+
+	}
 
 	//We store old jump instruction. Its places is known from the basicBlockEnd value
 	uint32 jumpInstruction = readInt(platform->vliwBinaries, (basicBlockEnd-2)*16 + 0);
@@ -48,12 +60,19 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 	blockSize = irGenerator_hw(platform->vliwBinaries,basicBlockStart, blockSize, platform->bytecode, globalVariables, local_registersUsage, globalVariableCounter);
 
+	//We store the result in an array cause it can be used later
+	block->instructions = (uint128*) malloc(blockSize*sizeof(uint128));
+	memcpy(block->instructions, platform->bytecode, blockSize*sizeof(uint128));
+	block->nbInstr = blockSize;
+
 	fprintf(stderr, "*************************************************************************\n");
 	fprintf(stderr, "Optimizing a block of size %d : \n", blockSize);
 	fprintf(stderr, "\n*****************\n");
 	for (int i=0; i<blockSize; i++){
 		printBytecodeInstruction(i,platform->bytecode[i]);
 	}
+
+
 
 
 
@@ -115,11 +134,13 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 
 	fprintf(stderr, "*************************************************************************\n");
-	for (int i=basicBlockStart;i<basicBlockEnd;i++){
-		fprintf(stderr, "0x%xl, 0x%xl, 0x%xl, 0x%xl,\n", (int) platform->vliwBinaries[i].slc<32>(0),
-				(int) platform->vliwBinaries[i].slc<32>(32),
-				(int) platform->vliwBinaries[i].slc<32>(64),
-				(int) platform->vliwBinaries[i].slc<32>(96));
+	for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
+		fprintf(stderr, "%d ", i);
+		std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
+		std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(32)); fprintf(stderr, " ");
+		std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(64)); fprintf(stderr, " ");
+		std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)); fprintf(stderr, "\n");
+
 	}
 	for (int i=basicBlockStart;i<basicBlockEnd;i++){
 		fprintf(stderr, "schedule;%d;%d\n",i);

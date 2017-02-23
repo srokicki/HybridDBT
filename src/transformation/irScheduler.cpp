@@ -322,7 +322,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
         //We declare array for used registers and used successors
         ac_int<3, false> stageForSuccessors = 0;
 
-        ac_int<128, false> binariesWord = 0;
+        ac_int<256, false> binariesWord = 0;
 
         //For each functional unit, we assign the most prior instruction
         for (ac_int<6, false> stage = 0; stage < issue_width; stage++){
@@ -495,16 +495,25 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
         }
 
         //after all stages has been filled, we commit the word
-		binaries[writeInBinaries] = binariesWord;
+		binaries[writeInBinaries] = binariesWord.slc<128>(0);
+		binaries[writeInBinaries + 1] = binariesWord.slc<128>(128);
         writeInBinaries++;
+
+        if (issue_width > 4){
+        	writeInBinaries++;
+        }
 
         if (scheduledInstructions >= basicBlockSize)
         	break;
 
+        cycleNumber++;
 
+        if (issue_width > 4){
+            cycleNumber++;
+        }
 
         //Next cycle
-        cycleNumber = cycleNumber+1;
+     //   cycleNumber = cycleNumber+1;
 //        lineNumber = (lineNumber + 1) & 0x1;
 //        if (lineNumber == 3)
 //        	lineNumber = 0;*
@@ -527,7 +536,6 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 				ac_int<6, false> place = placeOfRegisters[usedRegister[oldLineNumber][i]].slc<6>(0);
 
 				if (numberDep == 0){
-						printf("Register %d is freed\n", place);
 						freeRegisters[writeFreeRegister] = place;
 						writeFreeRegister++;
 						numberFreeRegister++;

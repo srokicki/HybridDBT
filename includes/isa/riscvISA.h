@@ -20,7 +20,8 @@
 #define RISCV_ST 0x23
 #define RISCV_OPI 0x13
 #define RISCV_OP 0x33
-
+#define RISCV_OPIW 0x1b
+#define RISCV_OPW 0x3b
 
 #define RISCV_BR_BEQ 0x0
 #define RISCV_BR_BNE 0x1
@@ -33,12 +34,17 @@
 #define RISCV_LD_LB 0x0
 #define RISCV_LD_LH 0x1
 #define RISCV_LD_LW 0x2
+#define RISCV_LD_LD 0x3
 #define RISCV_LD_LBU 0x4
 #define RISCV_LD_LHU 0x5
+#define RISCV_LD_LWU 0x6
+
 
 #define RISCV_ST_STB 0x0
 #define RISCV_ST_STH 0x1
 #define RISCV_ST_STW 0x2
+#define RISCV_ST_STD 0x3
+
 
 
 #define RISCV_OPI_ADDI 0x0
@@ -69,6 +75,26 @@
 #define RISCV_OP_SR_SRA 0x20
 
 #define RISCV_SYSTEM 0x73
+
+#define RISCV_OPIW_ADDIW 0x0
+#define RISCV_OPIW_SLLIW 0x1
+#define RISCV_OPIW_SRW 0x5
+
+#define RISCV_OPIW_SRW_SRLIW 0x0
+#define RISCV_OPIW_SRW_SRAIW 0x20
+
+
+#define RISCV_OPW_ADDSUBW 0x0
+#define RISCV_OPW_SLLW 0x1
+#define RISCV_OPW_SRW 0x5
+
+#define RISCV_OPW_ADDSUBW_ADDW 0x0
+#define RISCV_OPW_ADDSUBW_SUBW 0x20
+
+#define RISCV_OPW_SRW_SRLW 0x0
+#define RISCV_OPW_SRW_SRAW 0x20
+
+
 
 #define RISCV_SYSTEM_ENV 0x0
 #define RISCV_SYSTEM_ENV_ECALL 0x0
@@ -105,12 +131,21 @@
 #define RISCV_OP_M_REM 0x6
 #define RISCV_OP_M_REMU 0x7
 
+#define RISCV_OPW_M_MULW 0x0
+#define RISCV_OPW_M_DIVW 0x4
+#define RISCV_OPW_M_DIVUW 0x5
+#define RISCV_OPW_M_REMW 0x6
+#define RISCV_OPW_M_REMUW 0x7
+
+
 
 std::string printDecodedInstrRISCV(ac_int<32, false> instruction);
 
 
 extern const char* riscvNamesOP[8];
 extern const char* riscvNamesOPI[8];
+extern const char* riscvNamesOPW[8];
+extern const char* riscvNamesOPIW[8];
 extern const char* riscvNamesLD[8];
 extern const char* riscvNamesST[8];
 extern const char* riscvNamesBR[8];

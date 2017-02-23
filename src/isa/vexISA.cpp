@@ -35,14 +35,14 @@ ac_int<32, false> assembleRiInstruction(ac_int<7, false> opcode, ac_int<6, false
 
 
 const char* opcodeNames[128] = {
-		"NOP", "MPYLL", "MPYLLU", "MPYLH", "MPYLHU", "MPYHH", "MPYHHU", "MPYL", "MPYLU", "MPYH", "MPYHU", "MPYHS", "MPYLO", "MPYHI", "DIVLO", "DIVHI",
-		"?", "LDW", "LDH", "LDHU", "LDB", "LDBU", "STW", "STH", "STB", "?", "?", "?", "?", "?", "?", "?",
+		"NOP", "MPYLL", "MPYLLU", "MPYLH", "MPYLHU", "MPYHH", "MPYHHU", "MPYL", "DIVW", "MPYW", "MPYHU", "MPYHS", "MPYLO", "MPYHI", "DIVLO", "DIVHI",
+		"LDD", "LDW", "LDH", "LDHU", "LDB", "LDBU","LDWU", "?", "STB", "STH", "STW", "STD", "?", "?", "?", "?",
 		"?", "GOTO", "IGOTO", "CALL", "ICALL", "BR", "BRF", "RETURN", "MOVI", "AUIPC", "RECONFFS", "RECONFEXECUNIT", "?", "?", "?", "STOP",
 		"SLCTF", "?", "?", "?", "?", "?", "?", "?", "SLCT", "?", "?", "?", "?", "?", "?", "?",
 		"?", "ADD", "NOR", "AND", "ANDC", "CMPLT", "CMPLTU", "CMPNE", "NOT", "OR", "ORC", "SH1ADD", "SH2ADD", "SH3ADD", "SH4ADD", "SLL",
-		"SRL", "SRA", "SUB", "XOR", "SXTH", "ZXTB", "ZXTH", "SXTB", "?", "CMPEQ", "CMPGE", "CMPGEU", "CMPGT", "CMPGTU", "CMPLE", "CMPLEU",
+		"SRL", "SRA", "SUB", "XOR", "ADDW", "SUBW", "SLLW", "SRLW", "SRAW", "CMPEQ", "CMPGE", "CMPGEU", "CMPGT", "CMPGTU", "CMPLE", "CMPLEU",
 		"?", "ADDi", "NORi", "ANDi", "ANDCi", "CMPLTi", "CMPLTUi", "CMPNEi", "NOTi", "ORi", "ORCi", "SH1ADDi", "SH2ADDi", "SH3ADDi", "SH4ADDi", "SLLi",
-		"SRLi", "SRAi", "SUBi", "XORi", "SXTHi", "ZXTBi", "ZXTHi", "SXTBi", "?", "CMPEQi", "CMPGEi", "CMPGEUi", "CMPGTi", "CMPGTUi", "CMPLEi", "CMPLEUi"};
+		"SRLi", "SRAi", "SUBi", "XORi", "ADDWi", "?", "SLLWi", "SRLWi", "SRAWi", "CMPEQi", "CMPGEi", "CMPGEUi", "CMPGTi", "CMPGTUi", "CMPLEi", "CMPLEUi"};
 
 
 std::string printDecodedInstr(ac_int<32, false> instruction){

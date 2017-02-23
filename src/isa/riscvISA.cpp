@@ -13,8 +13,10 @@
 
 const char* riscvNamesOP[8] = {"ADD","SLL", "CMPLT", "CMPLTU", "XOR", "", "OR", "AND"};
 const char* riscvNamesOPI[8] = {"ADDi", "SLLi", "SLTi", "CMPLTUi", "XORi", "SRLi", "ORi", "ANDi"};
-const char* riscvNamesLD[8] = {"LDB", "LDH", "LDW", "", "LDBU", "LDHU"};
-const char* riscvNamesST[8] = {"STB", "STH", "STW"};
+const char* riscvNamesOPW[8] = {"ADDW","SLLW", "", "", "", "SRW", "", ""};
+const char* riscvNamesOPIW[8] = {"ADDWi", "SLLWi", "", "", "", "SRi", "", ""};
+const char* riscvNamesLD[8] = {"LDB", "LDH", "LDW", "LDD", "LDBU", "LDHU", "LDWU"};
+const char* riscvNamesST[8] = {"STB", "STH", "STW", "STD"};
 const char* riscvNamesBR[8] = {"CMPEQ", "CMPNE", "", "", "CMPLT", "CMPGE", "CMPLTU", "CMPGEU"};
 const char* riscvNamesMUL[8] = {"MPYLO","MPYHI", "MPYHI", "MPYHI", "DIVHI", "DIVHI", "DIVLO", "DIVLO"};
 
@@ -33,6 +35,14 @@ std::string printDecodedInstrRISCV(ac_int<32, false> ins){
 	ac_int<12, true> imm12_I_signed = ins.slc<12>(20);
 	ac_int<12, true> imm12_S_signed = 0;
 	imm12_S_signed.set_slc(0, imm12_S.slc<12>(0));
+
+	ac_int<6, false> shamt = ins.slc<6>(20);
+	if (opcode == RISCV_OPIW) //If we are on opiw, shamt only have 5bits
+		shamt = rs2;
+
+	//In case of immediate shift instr, as shamt needs one more bit the lower bit of funct7 has to be set to 0
+	if (opcode == RISCV_OPI && (funct3 == RISCV_OPI_SLLI || funct3 == RISCV_OPI_SRI))
+		funct7[0] = 0;
 
 
 	ac_int<13, false> imm13 = 0;
@@ -125,6 +135,43 @@ std::string printDecodedInstrRISCV(ac_int<32, false> ins){
 					stream << "SRA r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", r" + std::to_string(rs2);
 			else{
 				stream << riscvNamesOP[funct3];
+				stream <<  " r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", r" + std::to_string(rs2);
+			}
+		}
+	break;
+	case RISCV_OPIW:
+		if (funct3 == RISCV_OPIW_SRW)
+			if (funct7 == RISCV_OPIW_SRW_SRLIW)
+				stream << "SRLWi r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", " + std::to_string(rs2);
+			else //SRAI
+				stream << "SRAWi r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", " + std::to_string(rs2);
+		else if (funct3 == RISCV_OPIW_SLLIW){
+			stream << riscvNamesOPI[funct3];
+			stream << " r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", " + std::to_string(rs2);
+		}
+		else{
+			stream << riscvNamesOPIW[funct3];
+			stream << " r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", " + std::to_string(imm12_I_signed);
+		}
+	break;
+	case RISCV_OPW:
+		if (funct7 == 1){
+			stream << riscvNamesMUL[funct3];
+			stream << "W r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", r" + std::to_string(rs2);
+		}
+		else{
+			if (funct3 == RISCV_OP_ADD)
+				if (funct7 == RISCV_OPW_ADDSUBW_ADDW)
+					stream << "ADDW r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", r" + std::to_string(rs2);
+				else
+					stream << "SUBW r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", r" + std::to_string(rs2);
+			else if (funct3 == RISCV_OPW_SRW)
+				if (funct7 == RISCV_OPW_SRW_SRLW)
+					stream << "SRLW r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", r" + std::to_string(rs2);
+				else //SRAW
+					stream << "SRAW r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", r" + std::to_string(rs2);
+			else{
+				stream << riscvNamesOPW[funct3];
 				stream <<  " r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", r" + std::to_string(rs2);
 			}
 		}

@@ -50,6 +50,7 @@ public:
 	unsigned int vliwStartAddress;	//Address of the first instruction in the block
 	unsigned int vliwEndAddress;   	//End address is the address of the first instruction not in the block
 	uint128 *instructions;			//A pointer to an array of uint128 describint the instructions
+	int nbInstr;
 	int section;
 	unsigned int blockState;		//A value to store its state (optimized/translated or other things like that)
 	char nbSucc;

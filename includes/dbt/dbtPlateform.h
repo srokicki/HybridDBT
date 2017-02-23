@@ -31,7 +31,7 @@ public:
 	ac_int<128, false> vliwBinaries[MEMORY_SIZE];
 	ac_int<32, false> mipsBinaries[MEMORY_SIZE];
 	ac_int<32, false> insertions[MEMORY_SIZE];
-	ac_int<16, true> blockBoundaries[MEMORY_SIZE];
+	ac_int<1, false> blockBoundaries[MEMORY_SIZE];
 	ac_int<16, true> procedureBoundaries[MEMORY_SIZE];
 	ac_int<128, false> bytecode[256];
 	ac_int<32, false> globalVariables[64];

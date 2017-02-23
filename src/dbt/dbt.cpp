@@ -14,6 +14,7 @@
 #include <transformation/irGenerator.h>
 #include <transformation/optimizeBasicBlock.h>
 #include <transformation/buildControlFlow.h>
+#include <transformation/reconfigureVLIW.h>
 
 #include <lib/debugFunctions.h>
 
@@ -103,7 +104,7 @@ int main(int argc, char *argv[])
 
 	//Definition of objects used for DBT process
 	DBTPlateform dbtPlateform;
-	dbtPlateform.vexSimulator = new VexSimulator();
+	dbtPlateform.vexSimulator = new VexSimulator(dbtPlateform.vliwBinaries);
 	IRApplication application = IRApplication(numberOfSections);
 	Profiler profiler = Profiler(&dbtPlateform);
 
@@ -213,9 +214,8 @@ int main(int argc, char *argv[])
 	//We initialize the VLIW processor with binaries and data from elf file
 	dbtPlateform.vexSimulator->debugLevel = 2;
 
-	dbtPlateform.vexSimulator->initializeCodeMemory(dbtPlateform.vliwBinaries, sizeBinaries, 0);
 
-	dbtPlateform.vexSimulator->debugLevel = 0;
+//	dbtPlateform.vexSimulator->debugLevel = 0;
 
 	for (unsigned int sectionCounter = 0; sectionCounter<elfFile.sectionTable->size(); sectionCounter++){
 		ElfSection *section = elfFile.sectionTable->at(sectionCounter);
@@ -237,9 +237,7 @@ int main(int argc, char *argv[])
 
 	dbtPlateform.vexSimulator->initializeDataMemory((unsigned char*) insertionsArray, 65536*4, 0x7000000);
 
-	//if (simulator->debugLevel == 1)
-//		for (int oneInsertion = 1; oneInsertion<=dbtPlateform.insertions[0]; oneInsertion++)
-//			fprintf(stderr, "insert;%d\n",(int) dbtPlateform.insertions[oneInsertion]);
+
 		fprintf(stderr, "insert;%d\n", (int) placeCode);
 
 		dbtPlateform.vexSimulator->initializeRun(0);
@@ -254,23 +252,22 @@ int main(int argc, char *argv[])
 			for (int oneBlock = 0; oneBlock<profiler.getNumberProfiledBlocks(); oneBlock++){
 				int profileResult = profiler.getProfilingInformation(oneBlock);
 				IRBlock* block = profiler.getBlock(oneBlock);
-				char isCurrentlyInBlock = (dbtPlateform.vexSimulator->PC < block->vliwEndAddress) && (dbtPlateform.vexSimulator->PC >= block->vliwStartAddress);
 
-				if (profileResult > 10 && block->blockState < IRBLOCK_STATE_SCHEDULED)
+				if (profileResult > 10 && block->blockState < IRBLOCK_STATE_SCHEDULED){
 					fprintf(stderr, "Block from %d to %d is eligible to opti (%d exec)\n", block->vliwStartAddress, block->vliwEndAddress, profileResult);
-
-				if (profileResult > 10 && block->blockState < IRBLOCK_STATE_SCHEDULED && !isCurrentlyInBlock){
 					optimizeBasicBlock(block, &dbtPlateform, &application);
-					dbtPlateform.vexSimulator->initializeCodeMemory(dbtPlateform.vliwBinaries, sizeBinaries, 0);
 				}
 
 
-				if (profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
-
-					fprintf(stderr, "Block from %d to %d is eligible advanced control flow building\n", block->vliwStartAddress, block->vliwEndAddress);
-					buildAdvancedControlFlow(&dbtPlateform, block, &application);
-					block->blockState = IRBLOCK_STATE_RECONF;
-				}
+//				if (profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
+//
+//					fprintf(stderr, "Block from %d to %d is eligible advanced control flow building\n", block->vliwStartAddress, block->vliwEndAddress);
+//					buildAdvancedControlFlow(&dbtPlateform, block, &application);
+//					block->blockState = IRBLOCK_STATE_RECONF;
+//					reconfigureVLIW(&dbtPlateform, application.procedures[application.numberProcedures-1]);
+//					dbtPlateform.vexSimulator->initializeCodeMemory(dbtPlateform.vliwBinaries, sizeBinaries, 0);
+//
+//				}
 			}
 
 		}

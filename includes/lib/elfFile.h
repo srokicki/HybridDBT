@@ -18,7 +18,11 @@ class ElfSymbol;
 class ElfFile
 {
 public:
-	Elf32_Ehdr fileHeader;
+	Elf32_Ehdr fileHeader32;
+	Elf64_Ehdr fileHeader64;
+
+	int is32Bits;
+
 	std::vector<ElfSection*> *sectionTable;
 	std::vector<std::string> *nameTable;
 	std::vector<ElfSymbol*> *symbols;
@@ -62,6 +66,8 @@ public:
 
 	//Class constructor
 	ElfSection(ElfFile *elfFile, int id, Elf32_Shdr header);
+	ElfSection(ElfFile *elfFile, int id, Elf64_Shdr header);
+
 };
 
 class ElfSymbol
@@ -76,6 +82,8 @@ public:
 
 	//Class constructors
 	ElfSymbol(Elf32_Sym);
+	ElfSymbol(Elf64_Sym);
+
 };
 
 class ElfRelocation
@@ -89,6 +97,8 @@ public:
 	//Class constructors
 	ElfRelocation(Elf32_Rel);
 	ElfRelocation(Elf32_Rela);
+	ElfRelocation(Elf64_Rel);
+	ElfRelocation(Elf64_Rela);
 };
 
 #endif

@@ -40,21 +40,67 @@ ElfFile::ElfFile(char* pathToElfFile){
 		exit(-1);
 	}
 
+	//*************************************************************************************
+	//First step is to read the 16 first bits to determine the type of the elf file to read.
 	unsigned int result;
-	result = fread(&this->fileHeader, sizeof(this->fileHeader), 1, elfFile);
+	char eident[16];
+	result = fread(eident, sizeof(char), 16, elfFile);
+	result = fseek(elfFile, 0, SEEK_SET);
 
-	if (this->fileHeader.e_ident[0] == 0x7f)
-		needToFixEndianness = 0;
-	else
-		needToFixEndianness = 1;
+	if (eident[EI_CLASS] == ELFCLASS32)
+		this->is32Bits = 1;
+	else if (eident[EI_CLASS] == ELFCLASS64)
+		this->is32Bits = 0;
+	else{
+		fprintf(stderr, "Error while reading ELF file header, cannot handle this type of ELF file...\n");
+		exit(-1);
+	}
 
-	if (DEBUG)
-		printf("Program table is at %hu and contains %u entries of %u bytes\n", FIX_INT(fileHeader.e_phoff), FIX_SHORT(fileHeader.e_phnum), FIX_SHORT(fileHeader.e_phentsize));
 
+	//*************************************************************************************
+	// Reading the header of the elf file
+	// With different code if it is 32 or 64 bits
+
+	if (this->is32Bits){
+		result = fread(&this->fileHeader32, sizeof(this->fileHeader32), 1, elfFile);
+
+		if (this->fileHeader32.e_ident[0] == 0x7f)
+			needToFixEndianness = 0;
+		else
+			needToFixEndianness = 1;
+	}
+	else{
+		result = fread(&this->fileHeader64, sizeof(this->fileHeader64), 1, elfFile);
+
+		printf("While reading header 64, magic number is %s\n", this->fileHeader64.e_ident);
+
+		if (this->fileHeader64.e_ident[0] == 0x7f)
+			needToFixEndianness = 0;
+		else
+			needToFixEndianness = 1;
+	}
+
+	if (DEBUG && this->is32Bits)
+		printf("Program table is at %hu and contains %u entries of %u bytes\n", FIX_INT(this->fileHeader32.e_phoff), FIX_SHORT(this->fileHeader32.e_phnum), FIX_SHORT(this->fileHeader32.e_phentsize));
+
+	//*************************************************************************************
 	//Parsing section table
-	unsigned int start = FIX_INT(fileHeader.e_shoff);
-	unsigned int tableSize = FIX_SHORT(fileHeader.e_shnum);
-	unsigned int entrySize = FIX_SHORT(fileHeader.e_shentsize);
+
+	unsigned long start;
+	unsigned long tableSize;
+	unsigned long entrySize;
+
+	if (this->is32Bits){
+		 start = FIX_INT(fileHeader32.e_shoff);
+		 tableSize = FIX_SHORT(fileHeader32.e_shnum);
+		 entrySize = FIX_SHORT(fileHeader32.e_shentsize);
+	}
+	else{
+		start = FIX_INT(fileHeader64.e_shoff);
+		tableSize = FIX_SHORT(fileHeader64.e_shnum);
+		entrySize = FIX_SHORT(fileHeader64.e_shentsize);
+	}
+
 
 	if (DEBUG)
 		printf("Section table is at %hu and contains %u entries of %u bytes\n", start, tableSize, entrySize);
@@ -65,18 +111,37 @@ ElfFile::ElfFile(char* pathToElfFile){
 		printf("Error while moving to the beginning of section table\n");
 
 
-	//****************************************************
+	//*************************************************************************************
 	//We create a simple array and read the section table
-	Elf32_Shdr* localSectionTable = (Elf32_Shdr*) malloc(tableSize*entrySize);
 
-	res = fread(localSectionTable, entrySize,tableSize, elfFile);
-	if (res != tableSize)
-		printf("Error while reading the section table ! (section size is %u while we only read %u entries)\n", tableSize, res);
+	if (this->is32Bits){
+		Elf32_Shdr* localSectionTable = (Elf32_Shdr*) malloc(tableSize*entrySize);
 
-	//We then copy the section table into it
-	this->sectionTable = new std::vector<ElfSection*>();
-	for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++)
-		this->sectionTable->push_back(new ElfSection(this, sectionNumber, localSectionTable[sectionNumber]));
+
+		res = fread(localSectionTable, entrySize,tableSize, elfFile);
+		if (res != tableSize)
+			printf("Error while reading the section table ! (section size is %u while we only read %u entries)\n", tableSize, res);
+
+		//We then copy the section table into it
+		this->sectionTable = new std::vector<ElfSection*>();
+		for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++)
+			this->sectionTable->push_back(new ElfSection(this, sectionNumber, localSectionTable[sectionNumber]));
+
+	}
+	else{
+		Elf64_Shdr* localSectionTable = (Elf64_Shdr*) malloc(tableSize*entrySize);
+
+
+		res = fread(localSectionTable, entrySize,tableSize, elfFile);
+		if (res != tableSize)
+			printf("Error while reading the section table ! (section size is %u while we only read %u entries)\n", tableSize, res);
+
+		//We then copy the section table into it
+		this->sectionTable = new std::vector<ElfSection*>();
+		for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++)
+			this->sectionTable->push_back(new ElfSection(this, sectionNumber, localSectionTable[sectionNumber]));
+
+	}
 
 	if (DEBUG)
 		for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++){
@@ -85,13 +150,18 @@ ElfFile::ElfFile(char* pathToElfFile){
 		}
 
 
-	//****************************************************
+	//*************************************************************************************
 	//Location of the String table containing every name
 
-	unsigned int nameTableIndex = FIX_SHORT(fileHeader.e_shstrndx);
-	ElfSection nameTableSection(this, nameTableIndex,localSectionTable[nameTableIndex]);
+	unsigned long nameTableIndex;
+	if (this->is32Bits)
+		nameTableIndex = FIX_SHORT(fileHeader32.e_shstrndx);
+	else
+		nameTableIndex = FIX_SHORT(fileHeader64.e_shstrndx);
 
-	unsigned char* localNameTable = nameTableSection.getSectionCode();
+	ElfSection *nameTableSection = this->sectionTable->at(nameTableIndex);
+
+	unsigned char* localNameTable = nameTableSection->getSectionCode();
 	this->nameTable = new std::vector<string>(this->sectionTable->size());
 
 	for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++){
@@ -107,16 +177,24 @@ ElfFile::ElfFile(char* pathToElfFile){
 		this->nameTable->push_back(name);
 	}
 
-	//****************************************************
-
+	//*************************************************************************************
+	// Reading the symbol table
 
 	this->symbols = new vector<ElfSymbol*>();
 	for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++){
 		ElfSection *section = this->sectionTable->at(sectionNumber);
 		if (section->type == SHT_SYMTAB){
-			Elf32_Sym* symbols = (Elf32_Sym*) section->getSectionCode();
-			for (unsigned int oneSymbolIndex = 0; oneSymbolIndex < section->size / 16; oneSymbolIndex++)
-				this->symbols->push_back(new ElfSymbol(symbols[oneSymbolIndex]));
+
+			if (this->is32Bits){
+				Elf32_Sym* symbols = (Elf32_Sym*) section->getSectionCode();
+				for (unsigned int oneSymbolIndex = 0; oneSymbolIndex < section->size / sizeof(Elf32_Sym); oneSymbolIndex++)
+					this->symbols->push_back(new ElfSymbol(symbols[oneSymbolIndex]));
+			}
+			else {
+				Elf64_Sym* symbols = (Elf64_Sym*) section->getSectionCode();
+				for (unsigned int oneSymbolIndex = 0; oneSymbolIndex < section->size / sizeof(Elf64_Sym); oneSymbolIndex++)
+					this->symbols->push_back(new ElfSymbol(symbols[oneSymbolIndex]));
+			}
 		}
 	}
 
@@ -156,6 +234,17 @@ ElfFile* ElfFile::copy(char* newDest){
 
 
 ElfSection::ElfSection(ElfFile *elfFile, int id, Elf32_Shdr header){
+	this->containingElfFile = elfFile;
+	this->id = id;
+	this->offset = FIX_INT(header.sh_offset);
+	this->size = FIX_INT(header.sh_size);
+	this->nameIndex = FIX_INT(header.sh_name);
+	this->address = FIX_INT(header.sh_addr);
+	this->type = FIX_INT(header.sh_type);
+	this->info = FIX_INT(header.sh_info);
+}
+
+ElfSection::ElfSection(ElfFile *elfFile, int id, Elf64_Shdr header){
 	this->containingElfFile = elfFile;
 	this->id = id;
 	this->offset = FIX_INT(header.sh_offset);
@@ -241,6 +330,14 @@ ElfSymbol::ElfSymbol(Elf32_Sym sym){
 	this->name = FIX_INT(sym.st_name);
 }
 
+ElfSymbol::ElfSymbol(Elf64_Sym sym){
+	this->offset = FIX_INT(sym.st_value);
+	this->type = (ELF64_ST_TYPE(sym.st_info));
+	this->section = FIX_SHORT(sym.st_shndx);
+	this->size = FIX_INT(sym.st_size);
+	this->name = FIX_INT(sym.st_name);
+}
+
 /*************************************************************************************************************
  ****************************************  Code for class ElfRelocation  *************************************
  *************************************************************************************************************/
@@ -254,12 +351,30 @@ ElfRelocation::ElfRelocation(Elf32_Rel header){
 	this->info = 0;
 }
 
+ElfRelocation::ElfRelocation(Elf64_Rel header){
+	this->offset = FIX_INT(header.r_offset);
+
+	unsigned int tempInfo = FIX_INT(header.r_info);
+	this->symbol = ELF64_R_SYM(tempInfo);
+	this->type = ELF64_R_TYPE(tempInfo);
+	this->info = 0;
+}
+
 ElfRelocation::ElfRelocation(Elf32_Rela header){
 	this->offset = FIX_INT(header.r_offset);
 
 	unsigned int tempInfo = FIX_INT(header.r_info);
 	this->symbol = ELF32_R_SYM(tempInfo);
 	this->type = ELF32_R_TYPE(tempInfo);
+	this->info = 0;
+}
+
+ElfRelocation::ElfRelocation(Elf64_Rela header){
+	this->offset = FIX_INT(header.r_offset);
+
+	unsigned int tempInfo = FIX_INT(header.r_info);
+	this->symbol = ELF64_R_SYM(tempInfo);
+	this->type = ELF64_R_TYPE(tempInfo);
 	this->info = 0;
 }
 #endif

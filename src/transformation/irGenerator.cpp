@@ -13,37 +13,6 @@
 
 
 
-	struct bytecodeHeader {
-		unsigned int functionTableSize;
-		unsigned int functionTablePtr;
-		unsigned int symbolTableSize;
-		unsigned int symbolTablePtr;
-	};
-
-	struct functionHeader {
-		unsigned char nbrGlobalVariable;
-		unsigned char dummy;
-		unsigned short nbrBlock;
-		unsigned int blockTablePtr;
-	};
-
-	struct blockHeader {
-		unsigned char nbrInstr;
-		unsigned char numberSucc;
-		unsigned char numberGR;
-		unsigned char numberGW;
-		unsigned int placeOfSucc;
-		unsigned int placeInstr;
-		unsigned int placeG;
-	};
-
-	struct successor {
-		unsigned char instrNumber;
-		unsigned char state;
-		unsigned short dest;
-		unsigned int callDest;
-	};
-
 //#define __DEBUG
 
 
@@ -1126,7 +1095,7 @@ inline unsigned int writeSuccessor_ac(ac_int<128, false> bytecode[1024], ac_int<
 
 unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries, uint32 blockSize,
 		uint128 bytecode[1024], int32 globalVariables[64],
-		uint64 registersUsage[1], uint32 globalVariableCounter){
+		ac_int<64, false> registersUsage[1], uint32 globalVariableCounter){
 
 	ac_int<1, false> const0 = 0;
 	ac_int<1, false> const1 = 1;
@@ -1189,6 +1158,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			 ********************************************************************/
 			//FIXME handle the mov insertion
 			ac_int<1, false> insertMove_ena = 0;
+			droppedInstruction = 0;
 			ac_int<9, true> insertMove_src;
 
 
@@ -1246,27 +1216,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			indexInSourceBinaries = (takeCm1_instr1 || takeCm1_instr2 || takeCm1_instr3) ? indexInSourceBinaries : tempIndex;
 
 
-//			if (previousVLIWSyllabus.slc<32>(0) != 0){
-//				//We fetch the instruction from the previous syllabus
-//				oneInstruction = previousVLIWSyllabus.slc<32>(0);
-//				previousVLIWSyllabus = 0;
-//			}
-//			else{
-//				//Otherwise we use the new syllabus and fetch the non-null instruction from the three first words
-//				ac_int<32, false> opcode1 = oneVLIWSyllabus.slc<7>(32);
-//				ac_int<32, false> opcode2 = oneVLIWSyllabus.slc<7>(64);
-//
-//				oneInstruction = (opcode1 != 0) ? oneVLIWSyllabus.slc<32>(32) :
-//								(opcode2 != 0) ? oneVLIWSyllabus.slc<32>(64) :
-//								oneVLIWSyllabus.slc<32>(96);
-//
-//				//We then store the new syllabus to use it if necessary at next cycle, and increment the index
-//				previousVLIWSyllabus = oneVLIWSyllabus;
-//				indexInSourceBinaries++;
-//			}
-
-
-
 
 			/********************************************************************
 			 * Second step is to identify correct operand according to opcode
@@ -1295,15 +1244,14 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			ac_int<1, false> isIType = (opcode.slc<3>(4) == 2);
 
 			ac_int<1, false> isLoadType = opcode == VEX_LDB | opcode == VEX_LDBU | opcode == VEX_LDH
-					| opcode == VEX_LDHU | opcode == VEX_LDW;
-			ac_int<1, false> isStoreType = opcode == VEX_STB | opcode == VEX_STH | opcode == VEX_STW;
+					| opcode == VEX_LDHU | opcode == VEX_LDW | opcode == VEX_LDWU | opcode == VEX_LDD;
+			ac_int<1, false> isStoreType = opcode == VEX_STB | opcode == VEX_STH | opcode == VEX_STW | opcode == VEX_STD;
 			ac_int<1, false> isBranchWithNoReg = opcode == VEX_GOTO | opcode == VEX_CALL | opcode == VEX_RETURN
 					| opcode == VEX_STOP;
 			ac_int<1, false> isBranchWithReg = opcode == VEX_GOTOR | opcode == VEX_CALLR | opcode == VEX_BR
 					| opcode == VEX_BRF;
 			ac_int<1, false> isMovi = opcode == VEX_MOVI;
-			ac_int<1, false> isArith1 = opcode == VEX_NOT | opcode == VEX_SXTH | opcode == VEX_SXTB
-					| opcode == VEX_ZXTH | opcode == VEX_ZXTB;
+			ac_int<1, false> isArith1 = opcode == VEX_NOT;
 			ac_int<1, false> isArith2 = (opcode.slc<3>(4) == 4 | opcode.slc<3>(4) == 5) & !isArith1;
 			ac_int<1, false> isArithImm = opcode.slc<3>(4) == 6 | opcode.slc<3>(4) == 7;
 			ac_int<1, false> isMultType = opcode.slc<3>(4) == 0;
@@ -1335,6 +1283,12 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				dest_reg = reg14;
 			}
 
+			if (opcode == VEX_NOP){
+				dest_ena = 0;
+				pred2_ena = 0;
+				pred1_ena = 0;
+				droppedInstruction = 1;
+			}
 
 
 			numbersSuccessor[indexInCurrentBlock] = 0;
@@ -1439,6 +1393,10 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 					if (lastReaderOnGlobalPlaceToWrite_access_pred1 == 3)
 						lastReaderOnGlobalPlaceToWrite_access_pred1 = 0;
 
+
+					//We use the last writer as a source and not the global variable
+					if (lastWriterOnGlobal_access_pred1 != -1)
+						temp_pred1 = lastWriterOnGlobal_access_pred1;
 				}
 				else{
 					//We are facing a simple data dependency
@@ -1508,6 +1466,11 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 							lastReaderOnGlobalPlaceToWrite_access_pred2 = 0;
 
 					}
+
+
+					//We use the last writer as a source and not the global variable
+					if (lastWriterOnGlobal_access_pred2 != -1)
+						temp_pred2 = lastWriterOnGlobal_access_pred2;
 				}
 				else{
 					//We are facing a simple data dependency
@@ -1781,7 +1744,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				oneBytecode = assembleRBytecodeInstruction(2, alloc, opcode, pred2, pred1, destination, numberDependencies);
 			}
 			else {
-				printf("This case should never happen...\n");
+				printf("While generating IR, this case should never happen...\n");
 			}
 
 
@@ -1789,8 +1752,10 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			bytecode[indexInCurrentBlock] = oneBytecode;
 
 
-			if (!insertMove_ena)
+			if (!insertMove_ena & !droppedInstruction)
 				indexInCurrentBlock++;
+
+
 		}
 		while (indexInSourceBinaries<=blockSize && indexInCurrentBlock<255);
 

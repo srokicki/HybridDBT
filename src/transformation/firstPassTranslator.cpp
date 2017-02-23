@@ -490,8 +490,10 @@ int generateInterpretationBinaries_loop(uint32 code[1024],
 					//Immediate value is too high
 					if (blocksBoundaries[indexInSourceBinaries] || !blocksBoundaries[indexInSourceBinaries+1]){
 
-						binaries = assembleRiInstruction(VEX_SH3bADDi, 32, pred1_reg, address.slc<16>(3));
-
+						//binaries = assembleRiInstruction(VEX_SH3bADDi, 32, pred1_reg, address.slc<16>(3));
+						fprintf(stderr, "Error, this translation is deprecated, SH3bADDi is no longer possible.. exiting\n");
+						fprintf(stderr, "This message comes from first pass translation in stores\n");
+						exit(-1);
 						ac_int<13, true> lowerThreeBits = address - (address & 0xfff8);
 
 
@@ -503,7 +505,11 @@ int generateInterpretationBinaries_loop(uint32 code[1024],
 					}
 					else{
 						//We can hide one insertion using previous cycle
-						previousBinaries.set_slc(0, assembleRiInstruction(VEX_SH3bADDi, 32, pred1_reg, address.slc<16>(3)));
+					//	previousBinaries.set_slc(0, assembleRiInstruction(VEX_SH3bADDi, 32, pred1_reg, address.slc<16>(3)));
+
+						fprintf(stderr, "Error, this translation is deprecated, SH3bADDi is no longer possible.. exiting\n");
+						fprintf(stderr, "This message comes from first pass translation in stores\n");
+						exit(-1);
 
 						ac_int<13, true> lowerThreeBits = address - (address & 0xfff8);
 

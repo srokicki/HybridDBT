@@ -33,7 +33,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		uint128 destinationBinaries[1024],
 		uint32 placeCode,
 		uint32 insertions[256],
-		int16 blocksBoundaries[65536],
+		uint1 blocksBoundaries[65536],
 		int16 proceduresBoundaries[65536],
 		unsigned int unresolvedJumps_src[512],
 		unsigned char unresolvedJumps_type[512],
@@ -53,7 +53,7 @@ int firstPassTranslator_RISCV(uint32 *riscvBinaries,
 		uint128 *vliwBinaries,
 		uint32 *placeCode,
 		uint32 *insertions,
-		int16 *blocksBoundaries,
+		uint1 *blocksBoundaries,
 		int16 *proceduresBoundaries){
 
 
@@ -181,7 +181,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		uint128 destinationBinaries[1024],
 		uint32 placeCode,
 		uint32 insertions[256],
-		int16 blocksBoundaries[65536],
+		uint1 blocksBoundaries[65536],
 		int16 proceduresBoundaries[65536],
 		unsigned int unresolvedJumps_src[512],
 		unsigned char unresolvedJumps_type[512],
@@ -244,14 +244,18 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 	acu1 is_imm_mul = 0;
 
 
-	blocksBoundaries[0] |= 1;
+	blocksBoundaries[addressStart>>2] = 1;
 	proceduresBoundaries[0] = 1;
 
 	ac_int<128,false> previousBinaries = 0;
 	uint32 previousIndex = 0;
 	char previousStage = 0;
-
 	ac_int<32, false> localNumberInsertions = 0;
+
+	ac_int<1, false> currentBoundaryJustSet;
+
+	ac_int<1, false> setNextBoundaries = 0;
+	ac_int<32, true> nextBoundaries;
 
 	while (indexInSourceBinaries < size || nextInstructionNop){
 
@@ -297,13 +301,18 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 			wasExternalInstr = 1;
 			nextInstructionNop = 0;
 			isInsertion = 1; //A nop instruction is an insertion...
+			setBoundaries1 = setNextBoundaries;
+			boundary1 = nextBoundaries;
+			setNextBoundaries = 0;
 		}
 		else{
 
 			ac_int<32, false> oneInstruction = code[indexInSourceBinaries];
 
+			#ifndef __CATAPULT
 			if (debugLevel >= 1)
 				printf("Source instr %x\n", (int) oneInstruction);
+			#endif
 
 			/**************************************************************
 			*  Instruction decoding
@@ -351,6 +360,8 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 			ac_int<21, true> imm21_1_signed = 0;
 			imm21_1_signed.set_slc(0, imm21_1);
 
+			ac_int<6, false> shamt = oneInstruction.slc<6>(20);
+
 			acs26 correctedTgtadr = imm21_1 - (addressStart>>2);
 
 
@@ -370,12 +381,14 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 			//We compute a bit saying if previous instruction is at BB boundary
 			ac_int<1, false> previousIsBoundary = 0;
+			ac_int<32, false> currentAddress = (indexInSourceBinaries + (addressStart>>2));
+			ac_int<16, false> offset = currentAddress.slc<16>(0);
+			previousIsBoundary = blocksBoundaries[offset];
+			if (currentBoundaryJustSet)
+				previousIsBoundary = currentBoundaryJustSet;
 
-			ac_int<32, false> previousAddress = (indexInSourceBinaries + (addressStart>>2));
-			ac_int<13, false> offset = previousAddress.slc<13>(3);
-			ac_int<3, false> bitOffset = previousAddress.slc<3>(0);
-			previousIsBoundary = blocksBoundaries[offset][bitOffset] || (indexInSourceBinaries == 0);
-
+			previousIsBoundary = blocksBoundaries[offset] || (indexInSourceBinaries == 0);
+			currentBoundaryJustSet = 0;
 
 			if (opcode == RISCV_OP){
 				//Instrucion io OP type: it needs two registers operand (except for rol/sll/sr)
@@ -622,13 +635,62 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					ac_int<7, false> vexOpcode = (funct3==RISCV_OPI_SLLI) ? VEX_SLLi :
 							(funct7==RISCV_OPI_SRI_SRAI) ? VEX_SRAi : VEX_SRLi;
 
-					binaries = assembleRiInstruction(vexOpcode, rd, rs1, oneInstruction.slc<5>(20));
-					//Note: we do not use rs2 var because this oen may have been modified to 63 if its value was 1
-					//Of course in the context of imm value this has no sense
+					binaries = assembleRiInstruction(vexOpcode, rd, rs1, shamt);
+
 
 				}
 				else {
 					binaries = assembleRiInstruction(functBindingOPI[funct3], rd, rs1, extendedImm);
+				}
+			}
+			else if (opcode == RISCV_OPW){
+
+				if (funct7 == RISCV_OP_M){
+					//We are in the part dedicated to RV64M extension
+					binaries =  assembleRInstruction(functBindingMULTW[funct3], rd, rs1, rs2);
+					stage = 2;
+
+					nextInstructionNop = 1;
+
+				}
+				else if (funct3 == RISCV_OPW_SLLW || funct3 == RISCV_OPW_SRW){
+					//Shift instruction. Careful if we are on SR, we need to use funct7 to determine which instruction we
+					//are working with...
+
+					ac_int<7, false> vexOpcode = (funct3==RISCV_OPW_SLLW) ? VEX_SLLW :
+							(funct7==RISCV_OPW_SRW_SRAW) ? VEX_SRAW : VEX_SRLW;
+
+					binaries = assembleRInstruction(vexOpcode, rd, rs1, rs2);
+
+				}
+				else {
+
+
+					ac_int<7, false> vexOpcode = (funct7==RISCV_OPW_ADDSUBW_SUBW) ? VEX_SUBW : VEX_ADDW;
+					binaries =  assembleRInstruction(vexOpcode, rd, rs1, rs2);
+				}
+			}
+			else if (opcode == RISCV_OPIW){ //For 32-bits instructions (labelled with a W)
+
+				ac_int<13, true> extendedImm = imm12_I_signed;
+				if (funct3 == RISCV_OPI_SLTIU)
+					extendedImm = imm12_I;
+
+
+				if (funct3 == RISCV_OPIW_SLLIW || funct3 == RISCV_OPIW_SRW){
+
+					//Shift instruction. Careful if we are on SR, we need to use funct7 to determine which instruction we
+					//are working with...
+
+					ac_int<7, false> vexOpcode = (funct3==RISCV_OPIW_SLLIW) ? VEX_SLLWi :
+							(funct7==RISCV_OPIW_SRW_SRAIW) ? VEX_SRAWi : VEX_SRLWi;
+
+					binaries = assembleRiInstruction(vexOpcode, rd, rs1, shamt.slc<5>(0));
+
+
+				}
+				else {
+					binaries = assembleRiInstruction(VEX_ADDWi, rd, rs1, extendedImm);
 				}
 			}
 			else if (opcode == RISCV_SYSTEM){
@@ -636,13 +698,18 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					binaries = assembleIInstruction(VEX_STOP, 0,0);
 				}
 				else {
+
+					#ifndef __CATAPULT
 					printf("CSR instr not handled yet...\n", oneInstruction);
 					exit(-1);
+					#endif
 				}
 			}
 			else{
+				#ifndef __CATAPULT
 				printf("Instr %x is not handled yet...\n", oneInstruction);
 				exit(-1);
+				#endif
 			}
 		}
 
@@ -675,9 +742,14 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 			ac_int<1, false> const1 = 1;
 			ac_int<32, false> boundaryAddress = (boundary1 + (addressStart>>2));
 
-			ac_int<13, false> offset = boundaryAddress.slc<13>(3);
-			ac_int<3, false> bitOffset = boundaryAddress.slc<3>(0);
-			blocksBoundaries[offset].set_slc(bitOffset, const1);
+			ac_int<16, false> offset = boundaryAddress.slc<16>(0);
+			//ac_int<3, false> bitOffset = boundaryAddress.slc<3>(0);
+			blocksBoundaries[offset] = 1; //.set_slc(bitOffset, const1);
+
+			if (boundary1 == indexInSourceBinaries)
+				currentBoundaryJustSet=1;
+
+
 		}
 
 		if (setUnresolvedJump){
@@ -687,15 +759,17 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 			unresolvedJumps[numberUnresolvedJumps++] = boundary1;
 		}
 
+
+		//Note: setBoundaries2 => nextInstructionNop
+		//Thus we can solve the second boundary at the next cycle
+
 		if (setBoundaries2){
-			ac_int<1, false> const1 = 1;
-			ac_int<32, false> boundaryAddress = (boundary2 + (addressStart>>2));
+			nextBoundaries = boundary2;
+			setNextBoundaries = 1;
 
-			ac_int<13, false> offset = boundaryAddress.slc<13>(3);
-			ac_int<3, false> bitOffset = boundaryAddress.slc<3>(0);
-			blocksBoundaries[offset].set_slc(bitOffset, const1);
-
+			currentBoundaryJustSet = 1;
 		}
+
 
 		if (!wasExternalInstr)
 			indexInSourceBinaries++;
@@ -703,8 +777,10 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		if (!droppedInstruction)
 			indexInDestinationBinaries++;
 
+		#ifndef __CATAPULT
 		if (debugLevel >= 1)
 			printf("at %d %x\n", (int) indexInDestinationBinaries, (int)binaries);
+		#endif
 
 	}
 

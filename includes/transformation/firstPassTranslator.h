@@ -26,7 +26,7 @@ int firstPassTranslator_RISCV(uint32 *code,
 		uint128 *destinationBinaries,
 		uint32 *placeCode,
 		uint32 *insertions,
-		int16 *blocksBoundaries,
+		uint1 *blocksBoundaries,
 		int16 *proceduresBoundaries);
 
 #endif /* INCLUDES_TRANSFORMATION_FIRSTPASSTRANSLATOR_H_ */

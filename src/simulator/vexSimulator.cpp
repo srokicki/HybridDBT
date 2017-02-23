@@ -77,7 +77,7 @@ typedef ac_int<8, false> acuint8;
 
 
 #ifndef __CATAPULT
-void VexSimulator::stb(unsigned int addr, ac_int<8, false> value){
+void VexSimulator::stb(ac_int<64, false> addr, ac_int<8, false> value){
 	if (addr == 0x10009000){
 		fprintf(stdout,"%c",(char) value & 0xff);
 	}
@@ -88,19 +88,19 @@ void VexSimulator::stb(unsigned int addr, ac_int<8, false> value){
 
 }
 
-void VexSimulator::sth(unsigned int addr, ac_int<16, false> value){
+void VexSimulator::sth(ac_int<64, false> addr, ac_int<16, false> value){
 	this->stb(addr+1, value.slc<8>(8));
 	this->stb(addr+0, value.slc<8>(0));
 }
 
-void VexSimulator::stw(unsigned int addr, ac_int<32, false> value){
+void VexSimulator::stw(ac_int<64, false> addr, ac_int<32, false> value){
 	this->stb(addr+3, value.slc<8>(24));
 	this->stb(addr+2, value.slc<8>(16));
 	this->stb(addr+1, value.slc<8>(8));
 	this->stb(addr+0, value.slc<8>(0));
 }
 
-ac_int<8, false> VexSimulator::ldb(unsigned int addr){
+ac_int<8, false> VexSimulator::ldb(ac_int<64, false> addr){
 	ac_int<8, false>  result = 0;
 	if (addr == 0x10009000){
 		result = getchar();
@@ -112,14 +112,14 @@ ac_int<8, false> VexSimulator::ldb(unsigned int addr){
 	return result;
 }
 
-ac_int<16, false> VexSimulator::ldh(unsigned int addr){
+ac_int<16, false> VexSimulator::ldh(ac_int<64, false> addr){
 	ac_int<16, false> result = 0;
 	result.set_slc(8, ldb(addr+1));
 	result.set_slc(0, ldb(addr));
 	return result;
 }
 
-ac_int<32, false> VexSimulator::ldw(unsigned int addr){
+ac_int<32, false> VexSimulator::ldw(ac_int<64, false> addr){
 	ac_int<32, false> result = 0;
 	result.set_slc(24, ldb(addr+3));
 	result.set_slc(16, ldb(addr+2));
@@ -166,7 +166,7 @@ void doMemNoMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB){
 }
 
 #ifdef __CATAPULT
-void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> memory0[65536], ac_int<8, false> memory1[65536], ac_int<8,false> memory2[65536], ac_int<8, false> memory3[65536]){
+void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> memory0[65536], ac_int<8, false> memory1[65536], ac_int<8,false> memory2[65536], ac_int<8, false> memory3[65536], ac_int<8, false> memory4[65536], ac_int<8, false> memory5[65536], ac_int<8,false> memory6[65536], ac_int<8, false> memory7[65536]){
 #else
 	void VexSimulator::doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB){
 #endif
@@ -180,10 +180,10 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 
 	if (extoMem.opCode.slc<3>(4) == 1){
 		//The instruction is a memory access
-		ac_int<32, false> address = extoMem.result;
+		ac_int<64, false> address = extoMem.result;
 
 
-		if (extoMem.opCode.slc<4>(0) <= 5){
+		if (!extoMem.opCode[3]){
 			//The operation is a load instruction
 
 			ac_int<16, false> const0_16 = 0;
@@ -193,16 +193,29 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 			ac_int<16, true> signed16Value;
 			ac_int<8, true> signed8Value;
 
+			ac_int<32, false> unsignedWord = 0;
+			ac_int<32, true> signedWord = 0;
 			ac_int<16, false> unsignedHalf = 0;
 			ac_int<16, true> signedHalf = 0;
-			ac_int<16, false> unsignedByte = 0;
-			ac_int<16, true> signedByte = 0;
+			ac_int<8, false> unsignedByte = 0;
+			ac_int<8, true> signedByte = 0;
+
+
 			char offset = (address << 3).slc<5>(0);
 
 			switch(extoMem.opCode){
+			case VEX_LDD:
+				memtoWB->result = extoMem.memValue;
+				break;
+			case VEX_LDWU:
+				//ldw
+				unsignedWord.set_slc(0, extoMem.memValue.slc<32>(offset));
+				memtoWB->result = unsignedWord;
+				break;
 			case VEX_LDW:
 				//ldw
-				memtoWB->result = extoMem.memValue;
+				signedWord.set_slc(0, extoMem.memValue.slc<32>(offset));
+				memtoWB->result = signedWord;
 				break;
 			case VEX_LDHU:
 				//ldhu
@@ -236,54 +249,114 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 			memtoWB->WBena = 0; //TODO : this shouldn't be necessary : WB shouldn't be enabled before
 
 			//We are on a store instruction
-			ac_int<1, false> byteEna0=0, byteEna1=0, byteEna2=0, byteEna3=0;
-			ac_int<8, false> byte0, byte1, byte2, byte3;
+			ac_int<1, false> byteEna0=0, byteEna1=0, byteEna2=0, byteEna3=0, byteEna4=0, byteEna5=0, byteEna6=0, byteEna7=0;
+			ac_int<8, false> byte0, byte1, byte2, byte3, byte4, byte5, byte6, byte7;
 
 
 			switch (extoMem.opCode){
-			case 0x16:
-				//STW
+			case VEX_STD:
 				byte0 = extoMem.datac.slc<8>(0);
 				byte1 = extoMem.datac.slc<8>(8);
 				byte2 = extoMem.datac.slc<8>(16);
 				byte3 = extoMem.datac.slc<8>(24);
+				byte4 = extoMem.datac.slc<8>(32);
+				byte5 = extoMem.datac.slc<8>(40);
+				byte6 = extoMem.datac.slc<8>(48);
+				byte7 = extoMem.datac.slc<8>(56);
 
 				byteEna0 = 1;
 				byteEna1 = 1;
 				byteEna2 = 1;
 				byteEna3 = 1;
-			break;
-			case 0x17:
-				//STH
-				if (address.slc<2>(0) == 2){
-					byte2 = extoMem.datac.slc<8>(0);
-					byte3 = extoMem.datac.slc<8>(8);
+				byteEna4 = 1;
+				byteEna5 = 1;
+				byteEna6 = 1;
+				byteEna7 = 1;
+				break;
+			case VEX_STW:
+				//STW
+				if (address[2]){
+					byte4 = extoMem.datac.slc<8>(0);
+					byte5 = extoMem.datac.slc<8>(8);
+					byte6 = extoMem.datac.slc<8>(16);
+					byte7 = extoMem.datac.slc<8>(24);
+
+					byteEna4 = 1;
+					byteEna5 = 1;
+					byteEna6 = 1;
+					byteEna7 = 1;
+				}
+				else{
+					byte0 = extoMem.datac.slc<8>(0);
+					byte1 = extoMem.datac.slc<8>(8);
+					byte2 = extoMem.datac.slc<8>(16);
+					byte3 = extoMem.datac.slc<8>(24);
+
+					byteEna0 = 1;
+					byteEna1 = 1;
 					byteEna2 = 1;
 					byteEna3 = 1;
 				}
-				else {
+			break;
+			case VEX_STH:
+				//STH
+				if (address.slc<3>(0) == 0){
 					byte0 = extoMem.datac.slc<8>(0);
 					byte1 = extoMem.datac.slc<8>(8);
 					byteEna0 = 1;
 					byteEna1 = 1;
 				}
-			case 0x18:
+				else if (address.slc<3>(0) == 2){
+					byte2 = extoMem.datac.slc<8>(0);
+					byte3 = extoMem.datac.slc<8>(8);
+					byteEna2 = 1;
+					byteEna3 = 1;
+				}
+				else if (address.slc<3>(0) == 4){
+					byte4 = extoMem.datac.slc<8>(0);
+					byte5 = extoMem.datac.slc<8>(8);
+					byteEna4 = 1;
+					byteEna5 = 1;
+				}
+				else {
+					byte6 = extoMem.datac.slc<8>(0);
+					byte7 = extoMem.datac.slc<8>(8);
+					byteEna6 = 1;
+					byteEna7 = 1;
+				}
+			case VEX_STB:
 				//STB
-				if (address.slc<2>(0) == 0){
+				if (address.slc<3>(0) == 0){
 					byte0 = extoMem.datac.slc<8>(0);
 					byteEna0 = 1;
 				}
-				else if (address.slc<2>(0) == 1){
+				else if (address.slc<3>(0) == 1){
 					byte1 = extoMem.datac.slc<8>(0);
 					byteEna1 = 1;
 				}
-				else if (address.slc<2>(0) == 2){
+				else if (address.slc<3>(0) == 2){
 					byte2 = extoMem.datac.slc<8>(0);
 					byteEna2 = 1;
 				}
-				else{
+				else if (address.slc<3>(0) == 3){
 					byte3 = extoMem.datac.slc<8>(0);
 					byteEna3 = 1;
+				}
+				else if (address.slc<3>(0) == 4){
+					byte4 = extoMem.datac.slc<8>(0);
+					byteEna4 = 1;
+				}
+				else if (address.slc<3>(0) == 5){
+					byte5 = extoMem.datac.slc<8>(0);
+					byteEna5 = 1;
+				}
+				else if (address.slc<3>(0) == 6){
+					byte6 = extoMem.datac.slc<8>(0);
+					byteEna6 = 1;
+				}
+				else{
+					byte7 = extoMem.datac.slc<8>(0);
+					byteEna7 = 1;
 				}
 				break;
 			default:
@@ -300,16 +373,33 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 				memory2[address>>2] = byte2;
 			if (byteEna3)
 				memory3[address>>2] = byte3;
+			if (byteEna4)
+				memory4[address>>2] = byte4;
+			if (byteEna5)
+				memory5[address>>2] = byte5;
+			if (byteEna6)
+				memory6[address>>2] = byte6;
+			if (byteEna7)
+				memory7[address>>2] = byte7;
 
 			#else
+
 			if (byteEna0)
-				this->stb((address & 0xfffffffc), byte0);
+				this->stb((address & 0xfffffff8), byte0);
 			if (byteEna1)
-				this->stb((address & 0xfffffffc)+1, byte1);
+				this->stb((address & 0xfffffff8)+1, byte1);
 			if (byteEna2)
-				this->stb((address & 0xfffffffc)+2, byte2);
+				this->stb((address & 0xfffffff8)+2, byte2);
 			if (byteEna3)
-				this->stb((address & 0xfffffffc)+3, byte3);
+				this->stb((address & 0xfffffff8)+3, byte3);
+			if (byteEna4)
+				this->stb((address & 0xfffffff8)+4, byte4);
+			if (byteEna5)
+				this->stb((address & 0xfffffff8)+5, byte5);
+			if (byteEna6)
+				this->stb((address & 0xfffffff8)+6, byte6);
+			if (byteEna7)
+				this->stb((address & 0xfffffff8)+7, byte7);
 
 			#endif
 		}
@@ -323,23 +413,22 @@ void doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 #else
 void VexSimulator::doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 #endif
-	ac_int<5, false> shiftAmount = dctoEx.datab.slc<5>(0);
+	ac_int<6, false> shiftAmount = dctoEx.datab.slc<6>(0);
 
-	ac_int<32, true> addDataa = (dctoEx.opCode == VEX_SH1ADD) ? (dctoEx.dataa << 1) :
+	ac_int<64, true> addDataa = (dctoEx.opCode == VEX_SH1ADD) ? (dctoEx.dataa << 1) :
 				(dctoEx.opCode == VEX_SH2ADD) ? (dctoEx.dataa << 2) :
 				(dctoEx.opCode == VEX_SH3ADD) ? (dctoEx.dataa << 3) :
 				(dctoEx.opCode == VEX_SH4ADD) ? (dctoEx.dataa << 4) :
 				dctoEx.dataa ;
 
-	ac_int<32, true> addDatab = (dctoEx.opCode == VEX_SH3bADD || dctoEx.opCode == VEX_SH3bADDi) ? (dctoEx.datab << 3) :
-					dctoEx.datab ;
+	ac_int<64, false> addDatab = dctoEx.datab;
 
 
 	ac_int<1, false> selectAdd = (dctoEx.opCode.slc<3>(4) == 0x1) //Memory instructions
 			| (dctoEx.opCode == VEX_ADD) |  (dctoEx.opCode == VEX_SH1ADD) |  (dctoEx.opCode == VEX_SH2ADD)
 			| (dctoEx.opCode == VEX_SH3ADD) |  (dctoEx.opCode == VEX_SH4ADD)
 			| (dctoEx.opCode == VEX_ADDi) |  (dctoEx.opCode == VEX_SH1ADDi) |  (dctoEx.opCode == VEX_SH2ADDi)
-			| (dctoEx.opCode == VEX_SH3ADDi) |  (dctoEx.opCode == VEX_SH4ADDi) | (dctoEx.opCode == VEX_SH3bADD) |  (dctoEx.opCode == VEX_SH3bADDi) ;
+			| (dctoEx.opCode == VEX_SH3ADDi) |  (dctoEx.opCode == VEX_SH4ADDi);
 
 	ac_int<1, false> selectSub = (dctoEx.opCode == VEX_SUB)| (dctoEx.opCode == VEX_SUBi);
 	ac_int<1, false> selectSll = (dctoEx.opCode == VEX_SLL)| (dctoEx.opCode == VEX_SLLi);
@@ -363,22 +452,22 @@ void VexSimulator::doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 
 
 
-	ac_int<32, false> unsigned_dataa = dctoEx.dataa;
-	ac_int<32, false> unsigned_datab = dctoEx.datab;
+	ac_int<64, false> unsigned_dataa = dctoEx.dataa;
+	ac_int<64, false> unsigned_datab = dctoEx.datab;
 
-	ac_int<32, true> add_result = addDataa + addDatab;
-	ac_int<32, true> sub_result = dctoEx.dataa - dctoEx.datab;
-	ac_int<32, true> sl_result = dctoEx.dataa << shiftAmount;
-	ac_int<32, true> srl_result = unsigned_dataa >> shiftAmount;
-	ac_int<32, true> sra_result = dctoEx.dataa >> shiftAmount;
+	ac_int<64, true> add_result = addDataa + addDatab;
+	ac_int<64, true> sub_result = dctoEx.dataa - dctoEx.datab;
+	ac_int<64, true> sl_result = dctoEx.dataa << shiftAmount;
+	ac_int<64, true> srl_result = unsigned_dataa >> shiftAmount;
+	ac_int<64, true> sra_result = dctoEx.dataa >> shiftAmount;
 
-	ac_int<32, true> and_result = dctoEx.dataa & dctoEx.datab;
-	ac_int<32, true> or_result = dctoEx.dataa | dctoEx.datab;
-	ac_int<32, true> not_result = ~dctoEx.dataa;
-	ac_int<32, true> xor_result = dctoEx.dataa ^ dctoEx.datab;
-	ac_int<32, true> nor_result = ~(dctoEx.dataa | dctoEx.datab);
+	ac_int<64, true> and_result = dctoEx.dataa & dctoEx.datab;
+	ac_int<64, true> or_result = dctoEx.dataa | dctoEx.datab;
+	ac_int<64, true> not_result = ~dctoEx.dataa;
+	ac_int<64, true> xor_result = dctoEx.dataa ^ dctoEx.datab;
+	ac_int<64, true> nor_result = ~(dctoEx.dataa | dctoEx.datab);
 
-	ac_int<32, true> unsigned_sub_result = unsigned_dataa - unsigned_datab;
+	ac_int<64, true> unsigned_sub_result = unsigned_dataa - unsigned_datab;
 
 	ac_int<1, false> cmpResult_1 = ((dctoEx.opCode == VEX_CMPLT) | (dctoEx.opCode == VEX_CMPLTi)) ? sub_result < 0 :
 			((dctoEx.opCode == VEX_CMPLTU)| (dctoEx.opCode == VEX_CMPLTUi)) ? unsigned_dataa < unsigned_datab :
@@ -391,7 +480,34 @@ void VexSimulator::doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 			((dctoEx.opCode == VEX_CMPLE)| (dctoEx.opCode == VEX_CMPLEi)) ? sub_result <= 0 :
 			sub_result <= 0;
 
-	ac_int<32, true> cmpResult = cmpResult_1;
+	ac_int<64, true> cmpResult = cmpResult_1;
+
+
+	ac_int<1, false> selectAdd32 = (dctoEx.opCode == VEX_ADDW)	| (dctoEx.opCode == VEX_ADDWi);
+	ac_int<1, false> selectSub32 = (dctoEx.opCode == VEX_SUBW);
+	ac_int<1, false> selectSll32 = (dctoEx.opCode == VEX_SLLW)| (dctoEx.opCode == VEX_SLLWi);
+	ac_int<1, false> selectSrl32 = (dctoEx.opCode == VEX_SRLW)| (dctoEx.opCode == VEX_SRLWi);
+	ac_int<1, false> selectSra32 = (dctoEx.opCode == VEX_SRAW)| (dctoEx.opCode == VEX_SRAWi);
+	ac_int<1, false> select32 = selectSub32 || selectAdd32 || selectSll32 || selectSrl32 || selectSra32;
+
+	ac_int<32, true> dataa32 = dctoEx.dataa.slc<32>(0);
+	ac_int<32, false> unsigned_dataa32 = dctoEx.dataa.slc<32>(0);
+	ac_int<32, true> datab32 = dctoEx.datab.slc<32>(0);
+
+
+	ac_int<5, false> shiftAmount32 = datab32.slc<5>(0);
+	ac_int<32, true> add_result_32 = dataa32 + datab32;
+	ac_int<32, true> sub_result_32 = dataa32 - datab32;
+	ac_int<32, true> sl_result_32 = dataa32 << shiftAmount32;
+	ac_int<32, true> srl_result_32 = unsigned_dataa32 >> shiftAmount32;
+	ac_int<32, true> sra_result_32 = dataa32 >> shiftAmount32;
+
+	ac_int<64, true> result32 = selectAdd32 ? add_result_32 :
+			selectSub32 ? sub_result_32 :
+			selectSll32 ? sl_result_32 :
+			selectSra32 ? sra_result_32 :
+			srl_result_32;
+
 
 	extoMem->result = selectAdd ? add_result :
 			selectSub ? sub_result :
@@ -404,6 +520,7 @@ void VexSimulator::doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 			selectXor ? xor_result :
 			selectNor ? nor_result :
 			selectCmp ? cmpResult :
+			select32 ? result32 :
 			dctoEx.dataa;
 
 
@@ -419,23 +536,21 @@ void doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 #else
 void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 #endif
-	ac_int<5, false> shiftAmount = dctoEx.datab.slc<5>(0);
+	ac_int<6, false> shiftAmount = dctoEx.datab.slc<6>(0);
 
-	ac_int<32, true> addDataa = (dctoEx.opCode == VEX_SH1ADD) ? (dctoEx.dataa << 1) :
+	ac_int<64, true> addDataa = (dctoEx.opCode == VEX_SH1ADD) ? (dctoEx.dataa << 1) :
 				(dctoEx.opCode == VEX_SH2ADD) ? (dctoEx.dataa << 2) :
 				(dctoEx.opCode == VEX_SH3ADD) ? (dctoEx.dataa << 3) :
 				(dctoEx.opCode == VEX_SH4ADD) ? (dctoEx.dataa << 4) :
 				dctoEx.dataa ;
 
-	ac_int<32, true> addDatab = (dctoEx.opCode == VEX_SH3bADD || dctoEx.opCode == VEX_SH3bADDi) ? (dctoEx.datab << 3) :
-					dctoEx.datab ;
-
+	ac_int<64, false> addDatab = dctoEx.datab;
 
 	ac_int<1, false> selectAdd = (dctoEx.opCode.slc<3>(4) == 0x1) //Memory instructions
 			| (dctoEx.opCode == VEX_ADD) |  (dctoEx.opCode == VEX_SH1ADD) |  (dctoEx.opCode == VEX_SH2ADD)
 			| (dctoEx.opCode == VEX_SH3ADD) |  (dctoEx.opCode == VEX_SH4ADD)
 			| (dctoEx.opCode == VEX_ADDi) |  (dctoEx.opCode == VEX_SH1ADDi) |  (dctoEx.opCode == VEX_SH2ADDi)
-			| (dctoEx.opCode == VEX_SH3ADDi) |  (dctoEx.opCode == VEX_SH4ADDi) | (dctoEx.opCode == VEX_SH3bADD) |  (dctoEx.opCode == VEX_SH3bADDi)
+			| (dctoEx.opCode == VEX_SH3ADDi) |  (dctoEx.opCode == VEX_SH4ADDi)
 			| (dctoEx.opCode == VEX_AUIPC);
 
 	ac_int<1, false> selectSub = (dctoEx.opCode == VEX_SUB)| (dctoEx.opCode == VEX_SUBi);
@@ -460,41 +575,41 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 
 
 
-	ac_int<32, false> unsigned_dataa = dctoEx.dataa;
-	ac_int<32, false> unsigned_datab = dctoEx.datab;
+	ac_int<64, false> unsigned_dataa = dctoEx.dataa;
+	ac_int<64, false> unsigned_datab = dctoEx.datab;
 
-	ac_int<32, true> add_result = addDataa + addDatab;
-	ac_int<32, true> sub_result = dctoEx.dataa - dctoEx.datab;
-	ac_int<32, true> sl_result = dctoEx.dataa << shiftAmount;
-	ac_int<32, true> srl_result = unsigned_dataa >> shiftAmount;
-	ac_int<32, true> sra_result = dctoEx.dataa >> shiftAmount;
+	ac_int<64, true> add_result = addDataa + addDatab;
+	ac_int<64, true> sub_result = dctoEx.dataa - dctoEx.datab;
+	ac_int<64, true> sl_result = dctoEx.dataa << shiftAmount;
+	ac_int<64, true> srl_result = unsigned_dataa >> shiftAmount;
+	ac_int<64, true> sra_result = dctoEx.dataa >> shiftAmount;
 
-	ac_int<32, true> and_result = dctoEx.dataa & dctoEx.datab;
-	ac_int<32, true> or_result = dctoEx.dataa | dctoEx.datab;
-	ac_int<32, true> not_result = ~dctoEx.dataa;
-	ac_int<32, true> xor_result = dctoEx.dataa ^ dctoEx.datab;
-	ac_int<32, true> nor_result = ~(dctoEx.dataa | dctoEx.datab);
+	ac_int<64, true> and_result = dctoEx.dataa & dctoEx.datab;
+	ac_int<64, true> or_result = dctoEx.dataa | dctoEx.datab;
+	ac_int<64, true> not_result = ~dctoEx.dataa;
+	ac_int<64, true> xor_result = dctoEx.dataa ^ dctoEx.datab;
+	ac_int<64, true> nor_result = ~(dctoEx.dataa | dctoEx.datab);
 
-	ac_int<64, true> mul_result = dctoEx.dataa * dctoEx.datab;
-	ac_int<32, true> mullo_result = mul_result.slc<32>(0);
-	ac_int<32, true> mulhi_result = mul_result.slc<32>(32);
+	ac_int<128, true> mul_result = dctoEx.dataa * dctoEx.datab;
+	ac_int<64, true> mullo_result = mul_result.slc<64>(0);
+	ac_int<64, true> mulhi_result = mul_result.slc<64>(64);
 
-	ac_int<64, false> mulu_result = unsigned_dataa * unsigned_datab;
-	ac_int<32, true> mulhiu_result = mulu_result.slc<32>(32);
+	ac_int<128, false> mulu_result = unsigned_dataa * unsigned_datab;
+	ac_int<64, true> mulhiu_result = mulu_result.slc<64>(64);
 
-	ac_int<64, false> mulsu_result = dctoEx.dataa * unsigned_datab;
-	ac_int<32, true> mulhisu_result = mulsu_result.slc<32>(32);
+	ac_int<128, false> mulsu_result = dctoEx.dataa * unsigned_datab;
+	ac_int<64, true> mulhisu_result = mulsu_result.slc<64>(64);
 
-	ac_int<33, true> const0 = 0;
+	ac_int<65, true> const0 = 0;
 
 #ifdef __CATAPULT
-	ac_int<32, true> divlo_result = 0; //Currently catapult version do not do division
-	ac_int<32, true> divhi_result = 0;
+	ac_int<64, true> divlo_result = 0; //Currently catapult version do not do division
+	ac_int<64, true> divhi_result = 0;
 #else
-	ac_int<32, true> divlo_result = !dctoEx.datab ? const0 : dctoEx.dataa / dctoEx.datab;
-	ac_int<32, true> divhi_result = !dctoEx.datab ? dctoEx.datab : dctoEx.dataa % dctoEx.datab;
+	ac_int<64, true> divlo_result = !dctoEx.datab ? const0 : dctoEx.dataa / dctoEx.datab;
+	ac_int<64, true> divhi_result = !dctoEx.datab ? dctoEx.datab : dctoEx.dataa % dctoEx.datab;
 #endif
-	ac_int<32, true> unsigned_sub_result = unsigned_dataa - unsigned_datab;
+	ac_int<64, true> unsigned_sub_result = unsigned_dataa - unsigned_datab;
 
 	ac_int<1, false> cmpResult_1 = ((dctoEx.opCode == VEX_CMPLT) | (dctoEx.opCode == VEX_CMPLTi)) ? sub_result < 0 :
 			((dctoEx.opCode == VEX_CMPLTU)| (dctoEx.opCode == VEX_CMPLTUi)) ? unsigned_sub_result < 0 :
@@ -507,7 +622,39 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 			((dctoEx.opCode == VEX_CMPLE)| (dctoEx.opCode == VEX_CMPLEi)) ? sub_result <= 0 :
 			sub_result <= 0;
 
-	ac_int<32, true> cmpResult = cmpResult_1;
+	ac_int<64, true> cmpResult = cmpResult_1;
+
+	ac_int<1, false> selectAdd32 = (dctoEx.opCode == VEX_ADDW)	| (dctoEx.opCode == VEX_ADDWi);
+	ac_int<1, false> selectSub32 = (dctoEx.opCode == VEX_SUBW);
+	ac_int<1, false> selectSll32 = (dctoEx.opCode == VEX_SLLW)| (dctoEx.opCode == VEX_SLLWi);
+	ac_int<1, false> selectSrl32 = (dctoEx.opCode == VEX_SRLW)| (dctoEx.opCode == VEX_SRLWi);
+	ac_int<1, false> selectSra32 = (dctoEx.opCode == VEX_SRAW)| (dctoEx.opCode == VEX_SRAWi);
+	ac_int<1, false> select32 = selectSub32 || selectAdd32 || selectSll32 || selectSrl32 || selectSra32;
+	ac_int<1, false> selectMult32 = (dctoEx.opCode == VEX_MPYW);
+	ac_int<1, false> selectDiv32 = (dctoEx.opCode == VEX_DIVW);
+
+	ac_int<32, true> dataa32 = dctoEx.dataa.slc<32>(0);
+	ac_int<32, false> unsigned_dataa32 = dctoEx.dataa.slc<32>(0);
+	ac_int<32, true> datab32 = dctoEx.datab.slc<32>(0);
+
+
+	ac_int<5, false> shiftAmount32 = datab32.slc<5>(0);
+	ac_int<32, true> add_result_32 = dataa32 + datab32;
+	ac_int<32, true> sub_result_32 = dataa32 - datab32;
+	ac_int<32, true> sl_result_32 = dataa32 << shiftAmount32;
+	ac_int<32, true> srl_result_32 = unsigned_dataa32 >> shiftAmount32;
+	ac_int<32, true> sra_result_32 = dataa32 >> shiftAmount32;
+	ac_int<32, true> mult_result_32 = dataa32 * datab32;
+	ac_int<32, true> const1 = 1;
+	ac_int<32, true> div_result_32 = dataa32 / (datab32 == 0 ? const1 : datab32);
+
+	ac_int<64, true> result32 = selectAdd32 ? add_result_32 :
+			selectSub32 ? sub_result_32 :
+			selectSll32 ? sl_result_32 :
+			selectSra32 ? sra_result_32 :
+			selectMult32 ? mult_result_32 :
+			selectDiv32 ? div_result_32 :
+			srl_result_32;
 
 	extoMem->result = selectAdd ? add_result :
 			selectSub ? sub_result :
@@ -526,6 +673,7 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 			(dctoEx.opCode == VEX_MPYHIU) ? mulhiu_result :
 			(dctoEx.opCode == VEX_DIVLO) ? divlo_result :
 			(dctoEx.opCode == VEX_DIVHI) ? divhi_result :
+			select32 ? result32 :
 			dctoEx.dataa;
 
 
@@ -553,9 +701,9 @@ void VexSimulator::doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<1, false> isIType = (OP.slc<3>(4) == 2);
 	ac_int<1, false> isImm = OP.slc<3>(4) == 1 || OP.slc<3>(4) == 6 || OP.slc<3>(4) == 7;
 
-	ac_int<1, false> isUnsigned = (OP == VEX_MPYLLU) | (OP == VEX_MPYLHU) | (OP == VEX_MPYHHU) | (OP == VEX_MPYLU)
+	ac_int<1, false> isUnsigned = (OP == VEX_MPYLLU) | (OP == VEX_MPYLHU) | (OP == VEX_MPYHHU)
 			| (OP == VEX_MPYHIU) | (OP == VEX_CMPLTU) | (OP == VEX_CMPLTUi) | (OP == VEX_CMPGEU) | (OP == VEX_CMPGEUi)
-			| (OP == VEX_ZXTB)  | (OP == VEX_ZXTBi) | (OP == VEX_ZXTH) | (OP == VEX_ZXTHi) | (OP == VEX_CMPGTU)
+			| (OP == VEX_CMPGTU)
 			| (OP == VEX_CMPGTUi) | (OP == VEX_CMPLEU) | (OP == VEX_CMPLEUi);
 
 
@@ -631,9 +779,9 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<1, false> isIType = (OP.slc<3>(4) == 2);
 	ac_int<1, false> isImm = OP.slc<3>(4) == 1 || OP.slc<3>(4) == 6 || OP.slc<3>(4) == 7;
 
-	ac_int<1, false> isUnsigned = (OP == VEX_MPYLLU) | (OP == VEX_MPYLHU) | (OP == VEX_MPYHHU) | (OP == VEX_MPYLU)
+	ac_int<1, false> isUnsigned = (OP == VEX_MPYLLU) | (OP == VEX_MPYLHU) | (OP == VEX_MPYHHU)
 			| (OP == VEX_MPYHIU) | (OP == VEX_CMPLTU) | (OP == VEX_CMPLTUi) | (OP == VEX_CMPGEU) | (OP == VEX_CMPGEUi)
-			| (OP == VEX_ZXTB)  | (OP == VEX_ZXTBi) | (OP == VEX_ZXTH) | (OP == VEX_ZXTHi) | (OP == VEX_CMPGTU)
+			| (OP == VEX_CMPGTU)
 			| (OP == VEX_CMPGTUi) | (OP == VEX_CMPLEU) | (OP == VEX_CMPLEUi);
 
 
@@ -690,7 +838,7 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 
 	ac_int<32, false> address = IMM13_signed + regValueA;
 
-	if (OP.slc<4>(4) == 1 && (address != 0x10009000 || OP.slc<4>(0) <= 5)){
+	if (OP.slc<4>(4) == 1 && (address != 0x10009000 || !OP[3])){
 		//If we are in a memory access, the access is initiated here
 		#ifdef __CATAPULT
 		dctoEx->memValue = ldw(address & 0xfffffffc, memory0, memory1, memory2, memory3);
@@ -718,9 +866,9 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<1, false> isIType = (OP.slc<3>(4) == 2);
 	ac_int<1, false> isImm = OP.slc<3>(4) == 1 || OP.slc<3>(4) == 6 || OP.slc<3>(4) == 7;
 
-	ac_int<1, false> isUnsigned = (OP == VEX_MPYLLU) | (OP == VEX_MPYLHU) | (OP == VEX_MPYHHU) | (OP == VEX_MPYLU)
+	ac_int<1, false> isUnsigned = (OP == VEX_MPYLLU) | (OP == VEX_MPYLHU) | (OP == VEX_MPYHHU)
 			| (OP == VEX_MPYHIU) | (OP == VEX_CMPLTU) | (OP == VEX_CMPLTUi) | (OP == VEX_CMPGEU) | (OP == VEX_CMPGEUi)
-			| (OP == VEX_ZXTB)  | (OP == VEX_ZXTBi) | (OP == VEX_ZXTH) | (OP == VEX_ZXTHi) | (OP == VEX_CMPGTU)
+			| (OP == VEX_CMPGTU)
 			| (OP == VEX_CMPGTUi) | (OP == VEX_CMPLEU) | (OP == VEX_CMPLEUi);
 
 
@@ -902,92 +1050,13 @@ void VexSimulator::initializeDataMemory(unsigned char* content, unsigned int siz
 	}
 }
 
-void VexSimulator::initializeDataMemory(ac_int<32, false>* content, unsigned int size, unsigned int start){
+void VexSimulator::initializeDataMemory(ac_int<64, false>* content, unsigned int size, unsigned int start){
 	for (int i = 0; i<size; i+=4){
 		stw(i+start, content[i>>2]);
 	}
 }
 
-void VexSimulator::initializeCodeMemory(unsigned char* content, unsigned int size, unsigned int start){
-	for (int i = 0; i<size/16; i++){
-		ac_int<8, false> instr1a = content[16*i];
-		ac_int<8, false> instr1b = content[16*i+1];
-		ac_int<8, false> instr1c = content[16*i+2];
-		ac_int<8, false> instr1d = content[16*i+3];
 
-		ac_int<32, false> instr1 = 0;
-		instr1.set_slc(24, instr1d);
-		instr1.set_slc(16, instr1c);
-		instr1.set_slc(8, instr1b);
-		instr1.set_slc(0, instr1a);
-
-		//*********** Instr2
-		ac_int<8, false> instr2a = content[16*i+4];
-		ac_int<8, false> instr2b = content[16*i+5];
-		ac_int<8, false> instr2c = content[16*i+6];
-		ac_int<8, false> instr2d = content[16*i+7];
-
-		ac_int<32, false> instr2 = 0;
-		instr2.set_slc(24, instr2d);
-		instr2.set_slc(16, instr2c);
-		instr2.set_slc(8, instr2b);
-		instr2.set_slc(0, instr2a);
-
-		ac_int<8, false> instr3a = content[16*i+8];
-		ac_int<8, false> instr3b = content[16*i+9];
-		ac_int<8, false> instr3c = content[16*i+10];
-		ac_int<8, false> instr3d = content[16*i+11];
-
-		ac_int<32, false> instr3 = 0;
-		instr3.set_slc(24, instr3d);
-		instr3.set_slc(16, instr3c);
-		instr3.set_slc(8, instr3b);
-		instr3.set_slc(0, instr3a);
-
-		ac_int<8, false> instr4a = content[16*i+12];
-		ac_int<8, false> instr4b = content[16*i+13];
-		ac_int<8, false> instr4c = content[16*i+14];
-		ac_int<8, false> instr4d = content[16*i+15];
-
-		ac_int<32, false> instr4 = 0;
-		instr4.set_slc(24, instr4d);
-		instr4.set_slc(16, instr4c);
-		instr4.set_slc(8, instr4b);
-		instr4.set_slc(0, instr4a);
-
-		RI[i+start].set_slc(96, instr1);
-		RI[i+start].set_slc(64, instr2);
-		RI[i+start].set_slc(32, instr3);
-		RI[i+start].set_slc(0, instr4);
-
-		if (this->debugLevel >= 1){
-			fprintf(stderr, "objdump;%d; ", (int) i);
-			printDecodedInstr(instr1); fprintf(stderr, " ");
-			printDecodedInstr(instr2); fprintf(stderr, " ");
-			printDecodedInstr(instr3); fprintf(stderr, " ");
-			printDecodedInstr(instr4); fprintf(stderr, "\n");
-		}
-
-	}
-}
-
-void VexSimulator::initializeCodeMemory(ac_int<128, false>* content, unsigned int size, unsigned int start){
-	for (int i = 0; i<size/16; i++){
-
-		RI[i+start]= content[i];
-
-
-
-		if (this->debugLevel >= 1){
-			fprintf(stderr, "objdump;%d; ", (int) i);
-			std::cerr << printDecodedInstr(RI[i+start].slc<32>(0)); fprintf(stderr, " ");
-			std::cerr << printDecodedInstr(RI[i+start].slc<32>(32)); fprintf(stderr, " ");
-			std::cerr << printDecodedInstr(RI[i+start].slc<32>(64)); fprintf(stderr, " ");
-			std::cerr << printDecodedInstr(RI[i+start].slc<32>(96)); fprintf(stderr, "\n");
-		}
-
-	}
-}
 
 int VexSimulator::doStep(){
 
@@ -1085,7 +1154,7 @@ int VexSimulator::doStep(){
 	// If the operation code is 0x2f then the processor stops
 	if(OP1 == 0x2F){
 		stop = 1;
-
+		NEXT_PC = PC;
 		#ifndef __CATAPULT
 		fprintf(stderr,"Simulation finished in %d cycles \n", cycle);
 		#endif
@@ -1098,8 +1167,10 @@ int VexSimulator::doStep(){
 
 
 	// Retrieving new instruction
+
+	ac_int<64, false> secondLoadAddress = (PC>>2)+1;
 	ac_int<SIZE_INSTRUCTION, false> vliw = RI[PC>>2];
-	ac_int<SIZE_INSTRUCTION, false> vliw2 = RI[(PC>>2) + 4];
+	ac_int<SIZE_INSTRUCTION, false> vliw2 = RI[secondLoadAddress];
 
 	ac_int<32, false> instructions[8];
 	instructions[0] = vliw.slc<32>(96);
@@ -1158,7 +1229,13 @@ int VexSimulator::doStep(){
 		std::cerr << printDecodedInstr(ftoDC3.instruction);
 		std::cerr << " ";
 		std::cerr << printDecodedInstr(ftoDC4.instruction);
-		std::cerr << " \n";
+		std::cerr << " ";
+
+
+		for (int oneRegister = 0; oneRegister<36; oneRegister++){
+			fprintf(stderr, "%lx ", (long) REG[oneRegister]);
+		}
+		fprintf(stderr, "\n");
 
 	}
 
@@ -1170,6 +1247,7 @@ int VexSimulator::doStep(){
 
 
 int VexSimulator::doStep(int numberCycles){
+	this->stop = 0;
 	int initialCycleCounter = cycle;
 	while (cycle < initialCycleCounter + numberCycles){
 		int returnedValue = doStep();
