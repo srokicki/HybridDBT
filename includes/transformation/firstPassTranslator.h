@@ -10,23 +10,16 @@
 #ifndef INCLUDES_TRANSFORMATION_FIRSTPASSTRANSLATOR_H_
 #define INCLUDES_TRANSFORMATION_FIRSTPASSTRANSLATOR_H_
 
-int firstPassTranslator(uint32 *code,
-		uint32 *size,
-		uint32 addressStart,
-		uint128 *destinationBinaries,
-		uint32 *placeCode,
-		uint32 *insertions,
-		int16 *blocksBoundaries,
-		int16 *proceduresBoundaries);
-
-int firstPassTranslator_RISCV(uint32 *code,
-		uint32 *size,
+uint32 firstPassTranslator_MIPS(DBTPlateform *platform,
+		uint32 size,
 		uint32 codeSectionStart,
 		uint32 addressStart,
-		uint128 *destinationBinaries,
-		uint32 *placeCode,
-		uint32 *insertions,
-		uint1 *blocksBoundaries,
-		int16 *proceduresBoundaries);
+		uint32 placeCode);
+
+uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
+		uint32 size,
+		uint32 codeSectionStart,
+		uint32 addressStart,
+		uint32 placeCode);
 
 #endif /* INCLUDES_TRANSFORMATION_FIRSTPASSTRANSLATOR_H_ */

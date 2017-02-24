@@ -56,8 +56,8 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	blockSize = irGenerator(platform, basicBlockStart, blockSize, globalVariableCounter);
 
 	//We store the result in an array cause it can be used later
-	block->instructions = (uint128*) malloc(blockSize*sizeof(uint128));
-	memcpy(block->instructions, platform->bytecode, blockSize*sizeof(uint128));
+	block->instructions = (uint32*) malloc(blockSize*4*sizeof(uint32));
+	memcpy(block->instructions, platform->bytecode, blockSize*sizeof(uint32)); //TODO this is not correct...
 	block->nbInstr = blockSize;
 
 	fprintf(stderr, "*************************************************************************\n");

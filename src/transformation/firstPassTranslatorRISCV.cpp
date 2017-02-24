@@ -27,6 +27,7 @@
 #include <isa/riscvToVexISA.h>
 #include <types.h>
 
+#include <dbt/dbtPlateform.h>
 
 
 
@@ -44,9 +45,9 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		uint32 insertions[256],
 		uint1 blocksBoundaries[65536],
 		int16 proceduresBoundaries[65536],
-		unsigned int unresolvedJumps_src[512],
-		unsigned char unresolvedJumps_type[512],
-		int unresolvedJumps[512]);
+		uint32 unresolvedJumps_src[512],
+		uint8 unresolvedJumps_type[512],
+		int32 unresolvedJumps[512]);
 
 /**************************************************************
  *  Function firstPassTranslator will translate a piece of MIPS binaries from the memory 'code' and
@@ -55,38 +56,30 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
  *  and procedures boundaries.
  *
  **************************************************************/
-int firstPassTranslator_RISCV(uint32 *riscvBinaries,
-		uint32 *size,
+uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
+		uint32 size,
 		uint32 codeSectionStart,
 		uint32 addressStart,
-		uint128 *vliwBinaries,
-		uint32 *placeCode,
-		uint32 *insertions,
-		uint1 *blocksBoundaries,
-		int16 *proceduresBoundaries){
+		uint32 placeCode){
 
 
 
-	unsigned int localUnresolvedJumps_src[65536];
-	unsigned char localUnresolvedJumps_type[65536];
-	int localUnresolvedJumps[65536];
-
-	insertions[0] = 0;
+	platform->insertions[0] = 0;
 
 	//We call the accelerator (or the software counterpart if no accelerator)
 
 	#ifndef __NIOS
-	int returnedValue = firstPassTranslatorRISCV_hw(riscvBinaries,
-			*size,
+	int returnedValue = firstPassTranslatorRISCV_hw(platform->mipsBinaries,
+			size,
 			addressStart,
-			vliwBinaries,
-			*placeCode,
-			insertions,
-			blocksBoundaries,
-			proceduresBoundaries,
-			localUnresolvedJumps_src,
-			localUnresolvedJumps_type,
-			localUnresolvedJumps);
+			platform->vliwBinaries,
+			placeCode,
+			platform->insertions,
+			platform->blockBoundaries,
+			platform->procedureBoundaries,
+			platform->unresolvedJumps_src,
+			platform->unresolvedJumps_type,
+			platform->unresolvedJumps);
 	#else
 		int argA = *size + (*placeCode<<16);
 		int argB = addressStart;
@@ -100,7 +93,7 @@ int firstPassTranslator_RISCV(uint32 *riscvBinaries,
 
 	//We copy insertions
 
-	addInsertions((addressStart-codeSectionStart)>>2, *placeCode, insertions, insertions[0]);
+	addInsertions((addressStart-codeSectionStart)>>2, placeCode, platform->insertions, platform->insertions[0]);
 
 	/************************************************************
 	* Resolution of unresolved jumps
@@ -123,11 +116,11 @@ int firstPassTranslator_RISCV(uint32 *riscvBinaries,
 
 	for (int oneUnresolvedJump = 0; oneUnresolvedJump<numberUnresolvedJumps; oneUnresolvedJump++){
 
-		unsigned int source = localUnresolvedJumps_src[oneUnresolvedJump];
-		unsigned int initialDestination = localUnresolvedJumps[oneUnresolvedJump];
-		unsigned char type = localUnresolvedJumps_type[oneUnresolvedJump];
+		unsigned int source = platform->unresolvedJumps_src[oneUnresolvedJump];
+		unsigned int initialDestination = platform->unresolvedJumps[oneUnresolvedJump];
+		unsigned char type = platform->unresolvedJumps_type[oneUnresolvedJump];
 
-		unsigned int oldJump = readInt(vliwBinaries, 16*(source));
+		unsigned int oldJump = readInt(platform->vliwBinaries, 16*(source));
 		unsigned int indexOfDestination = 0;
 
 
@@ -151,7 +144,7 @@ int firstPassTranslator_RISCV(uint32 *riscvBinaries,
 			initialDestination = destinationInVLIWFromNewMethod;
 			initialDestination = initialDestination << 2; //This is compute the destination according to the #of instruction and not the number of 4-instr bundle
 
-			writeInt(vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
+			writeInt(platform->vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
 
 		}
 		else{
@@ -164,19 +157,18 @@ int firstPassTranslator_RISCV(uint32 *riscvBinaries,
 
 
 			//We modify the jump instruction to make it jump at the correct place
-			writeInt(vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
+			writeInt(platform->vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
 
 		}
 
-		unsigned int instructionBeforePreviousDestination = readInt(vliwBinaries, 16*(indexOfDestination-1)+12);
+		unsigned int instructionBeforePreviousDestination = readInt(platform->vliwBinaries, 16*(indexOfDestination-1)+12);
 		if (instructionBeforePreviousDestination != 0)
-			writeInt(vliwBinaries, 16*(source+1)+12, instructionBeforePreviousDestination);
+			writeInt(platform->vliwBinaries, 16*(source+1)+12, instructionBeforePreviousDestination);
 	}
 
 
 	numberUnresolvedJumps = 0;
-	*placeCode += destinationIndex;
-
+	return placeCode + destinationIndex;
 	/************************************************************/
 	/************************************************************/
 
@@ -193,9 +185,9 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		uint32 insertions[256],
 		uint1 blocksBoundaries[65536],
 		int16 proceduresBoundaries[65536],
-		unsigned int unresolvedJumps_src[512],
-		unsigned char unresolvedJumps_type[512],
-		int unresolvedJumps[512]){
+		uint32 unresolvedJumps_src[512],
+		uint8 unresolvedJumps_type[512],
+		int32 unresolvedJumps[512]){
 
 
 	/**

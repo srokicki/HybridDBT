@@ -46,15 +46,11 @@ int translateOneSection(DBTPlateform &dbtPlateform, uint32 placeCode, int sectio
 	int previousPlaceCode = placeCode;
 	uint32 size = (endAddressSource - startAddressSource)>>2;
 	int addressStart = startAddressSource;
-	firstPassTranslator_RISCV(dbtPlateform.mipsBinaries,
-			&size,
+	placeCode = firstPassTranslator_RISCV(&dbtPlateform,
+			size,
 			sectionStart,
 			addressStart,
-			dbtPlateform.vliwBinaries,
-			&placeCode,
-			dbtPlateform.insertions,
-			dbtPlateform.blockBoundaries,
-			dbtPlateform.procedureBoundaries);
+			placeCode);
 
 
 	//	debugFirstPassResult(dbtPlateform, previousPlaceCode+1, placeCode, addressStart);

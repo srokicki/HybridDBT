@@ -32,7 +32,7 @@ void reconfigureVLIW(DBTPlateform *platform, IRProcedure *procedure){
 
 		if (block->blockState >= IRBLOCK_STATE_SCHEDULED){
 
-			memcpy(platform->bytecode, block->instructions, block->nbInstr*sizeof(uint128));
+			memcpy(platform->bytecode, block->instructions, block->nbInstr*sizeof(uint128)); //TODO this is not correct...
 			blockSize = block->nbInstr;
 
 		}

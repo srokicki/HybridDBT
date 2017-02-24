@@ -19,6 +19,7 @@
 #include <isa/vexISA.h>
 #include <isa/mipsToVexISA.h>
 #include <types.h>
+#include <dbt/dbtPlateform.h>
 
 //Values for unresolved jumps
 #define UNRESOLVED_JUMP_RELATIVE 1
@@ -37,11 +38,11 @@ int generateInterpretationBinaries_loop(uint32 code[1024],
 		uint128 destinationBinaries[1024],
 		uint32 placeCode,
 		uint32 insertions[256],
-		int16 blocksBoundaries[65536],
+		uint1 blocksBoundaries[65536],
 		int16 proceduresBoundaries[65536],
-		unsigned int unresolvedJumps_src[512],
-		unsigned char unresolvedJumps_type[512],
-		unsigned int unresolvedJumps[512]);
+		uint32 unresolvedJumps_src[512],
+		uint8 unresolvedJumps_type[512],
+		int32 unresolvedJumps[512]);
 #endif
 
 
@@ -55,14 +56,11 @@ int generateInterpretationBinaries_loop(uint32 code[1024],
  *  and procedures boundaries.
  *
  **************************************************************/
-int firstPassTranslator(uint32 *mipsBinaries,
-		uint32 *size,
+uint32 firstPassTranslator_MIPS(DBTPlateform *platform,
+		uint32 size,
+		uint32 codeSectionStart,
 		uint32 addressStart,
-		uint128 *vliwBinaries,
-		uint32 *placeCode,
-		uint32 *insertions,
-		int16 *blocksBoundaries,
-		int16 *proceduresBoundaries){
+		uint32 placeCode){
 
 
 
@@ -70,20 +68,20 @@ int firstPassTranslator(uint32 *mipsBinaries,
 	unsigned char localUnresolvedJumps_type[65536];
 	unsigned int localUnresolvedJumps[65536];
 
-	insertions[0] = 0;
+	platform->insertions[0] = 0;
 
 	//We call the accelerator (or the software counterpart if no accelerator)
-	int returnedValue = generateInterpretationBinaries_loop(mipsBinaries,
-			*size,
+	int returnedValue = generateInterpretationBinaries_loop(platform->mipsBinaries,
+			size,
 			addressStart,
-			vliwBinaries,
-			*placeCode,
-			insertions,
-			blocksBoundaries,
-			proceduresBoundaries,
-			localUnresolvedJumps_src,
-			localUnresolvedJumps_type,
-			localUnresolvedJumps);
+			platform->vliwBinaries,
+			placeCode,
+			platform->insertions,
+			platform->blockBoundaries,
+			platform->procedureBoundaries,
+			platform->unresolvedJumps_src,
+			platform->unresolvedJumps_type,
+			platform->unresolvedJumps);
 
 	//We translate the result
 	unsigned int destinationIndex = returnedValue & 0x3ffff;
@@ -113,18 +111,18 @@ int firstPassTranslator(uint32 *mipsBinaries,
 		unsigned int initialDestination = localUnresolvedJumps[oneUnresolvedJump];
 		unsigned char type = localUnresolvedJumps_type[oneUnresolvedJump];
 
-		unsigned int oldJump = readInt(vliwBinaries, 16*(source));
+		unsigned int oldJump = readInt(platform->vliwBinaries, 16*(source));
 		unsigned int indexOfDestination = 0;
 
 		if (type == UNRESOLVED_JUMP_ABSOLUTE){
 			//In here we solve an absolute jump
 
-			initialDestination += *placeCode;
-			for (int oneInsertion = 1; oneInsertion <= insertions[0]; oneInsertion++){
-				if (insertions[oneInsertion] < 0 && -insertions[oneInsertion] <= initialDestination){
+			initialDestination += placeCode;
+			for (int oneInsertion = 1; oneInsertion <= platform->insertions[0]; oneInsertion++){
+				if (platform->insertions[oneInsertion] < 0 && -platform->insertions[oneInsertion] <= initialDestination){
 					initialDestination--;
 				}
-				else if (insertions[oneInsertion] <= initialDestination){
+				else if (platform->insertions[oneInsertion] <= initialDestination){
 					initialDestination++;
 				}
 			}
@@ -133,20 +131,20 @@ int firstPassTranslator(uint32 *mipsBinaries,
 			indexOfDestination = initialDestination + 1;
 			initialDestination = initialDestination + 1;
 
-			writeInt(vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
+			writeInt(platform->vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
 
 		}
 		else{
 			//In here we solve a relative jump
 
-			initialDestination += *placeCode;
-			for (int oneInsertion = 1; oneInsertion <= insertions[0]; oneInsertion++){
+			initialDestination += placeCode;
+			for (int oneInsertion = 1; oneInsertion <= platform->insertions[0]; oneInsertion++){
 
 				int savedInitialDestination = initialDestination;
-				if (insertions[oneInsertion] < 0 && -insertions[oneInsertion] <= initialDestination){
+				if (platform->insertions[oneInsertion] < 0 && -platform->insertions[oneInsertion] <= initialDestination){
 					initialDestination--;
 				}
-				else if (insertions[oneInsertion] <= initialDestination ){
+				else if (platform->insertions[oneInsertion] <= initialDestination ){
 					initialDestination++;
 				}
 			}
@@ -156,20 +154,20 @@ int firstPassTranslator(uint32 *mipsBinaries,
 
 
 			//We modify the jump instruction to make it jump at the correct place
-			writeInt(vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
+			writeInt(platform->vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
 
 		}
 
-		unsigned int instructionBeforePreviousDestination = readInt(vliwBinaries, 16*(indexOfDestination-1)+12);
+		unsigned int instructionBeforePreviousDestination = readInt(platform->vliwBinaries, 16*(indexOfDestination-1)+12);
 		if (instructionBeforePreviousDestination != 0)
-			writeInt(vliwBinaries, 16*(source+1)+12, instructionBeforePreviousDestination);
+			writeInt(platform->vliwBinaries, 16*(source+1)+12, instructionBeforePreviousDestination);
 
 	}
 
 
 	numberUnresolvedJumps = 0;
-	*placeCode += destinationIndex;
 
+	return placeCode + destinationIndex;
 	/************************************************************/
 	/************************************************************/
 
@@ -193,11 +191,11 @@ int generateInterpretationBinaries_loop(uint32 code[1024],
 		uint128 destinationBinaries[1024],
 		uint32 placeCode,
 		uint32 insertions[256],
-		int16 blocksBoundaries[65536],
+		uint1 blocksBoundaries[65536],
 		int16 proceduresBoundaries[65536],
-		unsigned int unresolvedJumps_src[512],
-		unsigned char unresolvedJumps_type[512],
-		unsigned int unresolvedJumps[512]){
+		uint32 unresolvedJumps_src[512],
+		uint8 unresolvedJumps_type[512],
+		int32 unresolvedJumps[512]){
 
 
 	/**
