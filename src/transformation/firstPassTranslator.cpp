@@ -13,7 +13,6 @@
 #include <cstdlib>
 
 #include <frontend.h>
-#include <lib/elfFile.h>
 #include <lib/endianness.h>
 #include <lib/tools.h>
 #include <isa/mipsISA.h>
@@ -179,7 +178,6 @@ int firstPassTranslator(uint32 *mipsBinaries,
 
 #ifdef __USE_AC
 
-#include <lib/ac_int.h>
 typedef ac_int<7,false> acu7;
 
 typedef ac_int<5,false> acu5;

@@ -2,16 +2,14 @@
 #ifndef __CATAPULT
 #include <stdio.h>
 #include <dbt/dbtPlateform.h>
-#include <types.h>
 #endif
 
 #ifdef __CATAPULT
 #define MAX_ISSUE_WIDTH 8
 #endif
 
-#ifdef __USE_AC
-#include <lib/ac_int.h>
-#endif
+
+#include <types.h>
 
 
 /**********************************************************************

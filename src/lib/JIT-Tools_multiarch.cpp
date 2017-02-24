@@ -5,11 +5,7 @@
 #include <stdlib.h>
 
 #include <types.h>
-#include <lib/tools.h>
 
-#ifdef __USE_AC
-#include <lib/ac_int.h>
-#endif
 
 /************************************/
 	//Functions to accede bytecode and binaries

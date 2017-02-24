@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <lib/tools.h>
-#include <lib/ac_int.h>
 #include <types.h>
 
 #define SWAP_2(x) ( (((x) & 0xff) << 8) | ((unsigned short)(x) >> 8) )

@@ -8,7 +8,6 @@
 #ifndef INCLUDES_ISA_IRISA_H_
 #define INCLUDES_ISA_IRISA_H_
 
-#include <lib/ac_int.h>
 #include <types.h>
 
 

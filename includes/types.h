@@ -5,7 +5,12 @@
 #define __TYPES
 
 #ifdef __USE_AC
+
+#ifdef __CATAPULT
+#include <ac_int.h>
+#else
 #include <lib/ac_int.h>
+#endif
 using namespace ac_intN;
 
 typedef ac_int<MAX_ISSUE_WIDTH * 2, false> uintIW;
@@ -14,6 +19,8 @@ typedef ac_int<64, false> uint64;
 
 
 #endif
+
+
 
 
 #ifndef __USE_AC

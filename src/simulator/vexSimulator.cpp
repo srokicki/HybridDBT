@@ -26,20 +26,20 @@
 
 #ifndef __NIOS
 
-#ifdef __CATAPULT
-#include <ac_int.h>
-#else
+#ifndef __CATAPULT
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <simulator/vexSimulator.h>
 
-#include <lib/ac_int.h> // This is a proprietary library (Mentor Graphics - Use term agreements included in the header)
 #include <map>
 
 
 using namespace std;
 #endif
+
+#include <types.h>
 
 #define MAX_NUMBER_OF_INSTRUCTIONS 65536
 #define REG_NUMBER 64
