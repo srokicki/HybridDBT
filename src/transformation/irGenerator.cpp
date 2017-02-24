@@ -1,19 +1,29 @@
+/*
+ * irGenerator.cpp
+ *
+ *  Created on: 3 déc. 2016
+ *      Author: Simon Rokicki
+ *
+ * This file contains the description of the irGenerator
+ * This file is made to work in several platofm (x86, nios, and Catapult).
+ * It use several ifdef:
+ * 	__CATAPULT is set when opened with catapult
+ * 	__NIOS is set when executed on Nios
+ */
+
+#ifndef __CATAPULT
+//Includes not required by catapult
 #include <cstdio>
 #include <cstdlib>
 
-#include <frontend.h>
-#include <transformation/irScheduler.h>
-#include <lib/elfFile.h>
 #include <lib/endianness.h>
 #include <lib/tools.h>
+#include <dbt/dbtPlateform.h>
+#endif
+
+//Includes required by catapult
 #include <isa/vexISA.h>
 #include <isa/irISA.h>
-
-#include <isa/mipsToVexISA.h>
-
-
-
-//#define __DEBUG
 
 
 using namespace std;
@@ -1027,40 +1037,31 @@ int irGenerator(unsigned char* code, unsigned int *size, unsigned int addressSta
 }
 #endif
 
-#ifndef __NOT_USE_AC
-typedef ac_int<5,false> acu5;
-typedef ac_int<32,false> acu32;
-typedef ac_int<64,false> acu64;
-typedef ac_int<6,false> acu6;
-typedef ac_int<9,false> acu9;
-typedef ac_int<16,true> acs16;
-typedef ac_int<16,true> acu16;
+#ifndef __NIOS
 
-typedef ac_int<26,true> acs26;
-typedef ac_int<1,false> acu1;
 
 /* Global values */
-acu1 isOutsideNext = 0;
-acu1 droppedInstruction = 0;
+uint1 isOutsideNext = 0;
+uint1 droppedInstruction = 0;
 
 ac_int<128, false> outsideNext_bytecode;
-acu9 outsideNext_pred1_reg;
-acu9 outsideNext_pred1;
-acu9 outsideNext_pred2_reg;
-ac_int<10, true> outsideNext_dest_reg;
-acs16 outsideNext_imm;
+uint9 outsideNext_pred1_reg;
+uint9 outsideNext_pred1;
+uint9 outsideNext_pred2_reg;
+int10 outsideNext_dest_reg;
+int16 outsideNext_imm;
 
-acu1 outsideNext_isImm;
-acu1 outsideNext_isLongImm;
-acu1 outsideNext_pred1_ena;
-acu1 outsideNext_pred1_solved;
+uint1 outsideNext_isImm;
+uint1 outsideNext_isLongImm;
+uint1 outsideNext_pred1_ena;
+uint1 outsideNext_pred1_solved;
 
-acu1 outsideNext_pred2_ena;
-acu1 outsideNext_dest_ena;
-acu1 outsideNext_dest_alloc;
+uint1 outsideNext_pred2_ena;
+uint1 outsideNext_dest_ena;
+uint1 outsideNext_dest_alloc;
 
 
-ac_int<8, false> writeSucc_lastAddr = 255;
+uint8 writeSucc_lastAddr = 255;
 ac_int<128, false> writeSucc_lastValue;
 
 
@@ -1095,7 +1096,7 @@ inline unsigned int writeSuccessor_ac(ac_int<128, false> bytecode[1024], ac_int<
 
 unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries, uint32 blockSize,
 		uint128 bytecode[1024], int32 globalVariables[64],
-		ac_int<64, false> registersUsage[1], uint32 globalVariableCounter){
+		uint32 globalVariableCounter){
 
 	ac_int<1, false> const0 = 0;
 	ac_int<1, false> const1 = 1;
@@ -1257,8 +1258,8 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			ac_int<1, false> isMultType = opcode.slc<3>(4) == 0;
 
 
-			acu1 pred1_ena = 0, pred2_ena = 0, dest_ena = 0;
-			acu6 pred1_reg = reg26, pred2_reg = reg20, dest_reg;
+			uint1 pred1_ena = 0, pred2_ena = 0, dest_ena = 0;
+			uint6 pred1_reg = reg26, pred2_reg = reg20, dest_reg;
 
 			//Solving accessed register 1
 			if (!isBranchWithNoReg && !isMovi)
@@ -1419,9 +1420,9 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			ac_int<9, false> pred2;
 
 
-			acu1 pred2_succ_ena = 0;
+			uint1 pred2_succ_ena = 0;
 			ac_int<8, false> pred2_succ_src;
-			acu1 pred2_succ_isData = 0;
+			uint1 pred2_succ_isData = 0;
 
 
 
@@ -1492,7 +1493,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				/****************************/
 				/* We update lastReaderOneMemory and add required dependencies to keep memory coherence */
 
-				acu16 succ_src;
+				uint16 succ_src;
 				if (lastReaderOnMemoryCounter < 3){
 					lastReaderOnMemoryCounter++;
 					if (lastWriterOnMemory != -1){
@@ -1521,10 +1522,10 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			//******************************************
 			//We set the destination
 
-			acu1 global_succ_ena_1 = 0;
-			acu1 global_succ_ena_2 = 0;
-			acu1 global_succ_ena_3 = 0;
-			acu1 global_succ_ena_4 = 0;
+			uint1 global_succ_ena_1 = 0;
+			uint1 global_succ_ena_2 = 0;
+			uint1 global_succ_ena_3 = 0;
+			uint1 global_succ_ena_4 = 0;
 
 			ac_int<8, false> global_succ_src_1;
 			ac_int<8, false> global_succ_src_2;
@@ -1537,7 +1538,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 
 
 
-			acu1 alloc = 1;
+			uint1 alloc = 1;
 
 
 
@@ -1686,8 +1687,10 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			if (insertMove_ena){
 				//TODO
 
+				#ifndef __CATAPULT
 				printf("Implementation do not support mov insertion yet...\n Exiting...\n");
 				exit(-1);
+				#endif
 
 				ac_int<4, false> const8 = 0x8;
 
@@ -1744,7 +1747,9 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				oneBytecode = assembleRBytecodeInstruction(2, alloc, opcode, pred2, pred1, destination, numberDependencies);
 			}
 			else {
+				#ifndef __CATAPULT
 				printf("While generating IR, this case should never happen...\n");
+				#endif
 			}
 
 
@@ -1786,136 +1791,41 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 
 }
 
-
-
 #endif
 
-#ifndef __SIMULATION_ACCELERATE
-	unsigned int returnedValuesBytecodeForSim[1024];
-#endif
+/****************************************************************************
+ *  Definition of the procedure irGenerator
+****************************************************************************
+ *
+ *  This procedure is the one that is visible from the dbt framework, the one defined
+ *  in the corresponding header file.
+ *  This procedure will call the hardware accelerator or its cpp implementation.
+ ****************************************************************************/
 
+#ifndef __CATAPULT
 
+unsigned int irGenerator(DBTPlateform *platform,
+		uint16 addressInBinaries,
+		uint32 blockSize,
+		uint32 globalVariableCounter){
 
+	#ifndef __NIOS
 
-#if defined(__USE_AC) || defined(__NIOS)
+	return irGenerator_hw(platform->vliwBinaries,
+			addressInBinaries,
+			blockSize,
+			platform->bytecode,
+			platform->globalVariables,
+			globalVariableCounter);
+	#else
 
-int irGenerator(unsigned char* code, unsigned int *size, unsigned int addressStart,
-		unsigned char* bytecode, unsigned int *placeCode,
-		short* blocksBoundaries, short* proceduresBoundaries, int* insertions){
+	int argA = blockSize + (addressInBinaries << 16);
+	int argB = globalVariableCounter;
+	return ALT_CI_COMPONENT_IRGENERATOR_HW_0(argA, argB);
 
-	int32 globalVariables[64] = {256,257,258,259,260,261,262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278,
-			279,280,281,282,283,284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306,
-			307,308,309,310,311,312,313,314,315,316,317,318,319
-	};
-
-	uint32 globalVariableCounter = 288;
-	uint64 registersUsage[1];
-
-#ifndef __NIOS
-
-	//If we are not running on the hardware platform, we emulate its functionment and create/copy data un ac_int memories
-	ac_int<128, false> localBytecode_code[256];
-	ac_int<128, false> localBinaries[4096];
-
-	int blockSize = 0;
-	int blockStart = 181;
-	int indexInSourceBinaries = 167;
-
-
-	for (int oneBinary = blockStart; oneBinary<432; oneBinary++){
-		ac_int<128, false> syllabus = 0;
-
-		char isInsert = 0;
-		for (int oneInsertion = 1; oneInsertion<=insertions[0]; oneInsertion++)
-			if (insertions[oneInsertion] == oneBinary){
-				isInsert = 1;
-				break;
-			}
-
-		if (!isInsert)
-			indexInSourceBinaries++;
-
-		ac_int<8, false> byte = code[oneBinary*16 + 0];
-		syllabus.set_slc(96, byte);
-		byte = code[oneBinary*16 + 1];
-		syllabus.set_slc(96+8, byte);
-		byte = code[oneBinary*16 + 2];
-		syllabus.set_slc(96+16, byte);
-		byte = code[oneBinary*16 + 3];
-		syllabus.set_slc(96+24, byte);
-
-
-		byte = code[oneBinary*16 + 4];
-		syllabus.set_slc(64, byte);
-		byte = code[oneBinary*16 + 5];
-		syllabus.set_slc(64+8, byte);
-		byte = code[oneBinary*16 + 6];
-		syllabus.set_slc(64+16, byte);
-		byte = code[oneBinary*16 + 7];
-		syllabus.set_slc(64+24, byte);
-		byte = code[oneBinary*16 + 8];
-		syllabus.set_slc(32, byte);
-		byte = code[oneBinary*16 + 9];
-		syllabus.set_slc(40, byte);
-		byte = code[oneBinary*16 + 10];
-		syllabus.set_slc(48, byte);
-		byte = code[oneBinary*16 + 11];
-		syllabus.set_slc(56, byte);
-		byte = code[oneBinary*16 + 12];
-		syllabus.set_slc(0, byte);
-		byte = code[oneBinary*16 + 13];
-		syllabus.set_slc(8, byte);
-		byte = code[oneBinary*16 + 14];
-		syllabus.set_slc(16, byte);
-		byte = code[oneBinary*16 + 15];
-		syllabus.set_slc(24, byte);
-
-		localBinaries[oneBinary - blockStart] = syllabus;
-		blockSize = oneBinary - blockStart;
-	}
-	acu64 local_registersUsage[1];
-
-	blockSize = irGenerator_hw(localBinaries,0, blockSize, localBytecode_code, globalVariables, local_registersUsage, globalVariableCounter);
-	printf("blockSize %d\n", blockSize);
-
-
-
-	ac_int<6, 0> placeOfRegisters[512] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-			0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-			0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-			0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-			0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,
-			40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63};
-	ac_int<6, 0> freeRegisters[64] = {36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63};
-	ac_int<32, false> placeOfInstr[256];
-
-
-	ac_int<32, false> localCode_scheduling[1024];
-
-	int binaSize = scheduling(1,blockSize, localBytecode_code,localBinaries,0, placeOfRegisters, 32, freeRegisters, 4, 0xadb4, placeOfInstr);
-	binaSize = binaSize & 0xffff;
-
-	printf("Block is scheduled in %d cycles\n", binaSize);
-	printf("Modifying binaries from %d to %d\n", blockStart, blockStart+blockSize);
-
-	for (int i = 0; i<=binaSize*4; i++){
-		code[blockStart*16+i*4] = localCode_scheduling[i].slc<8>(0);
-		code[blockStart*16+i*4+1] = localCode_scheduling[i].slc<8>(8);
-		code[blockStart*16+i*4+2] = localCode_scheduling[i].slc<8>(16);
-		code[blockStart*16+i*4+3] = localCode_scheduling[i].slc<8>(24);
-	}
-	for (int i = (binaSize+1)*4; i<blockSize*4; i++){
-		code[blockStart*16+i*4] = 0;
-		code[blockStart*16+i*4+1] = 0;
-		code[blockStart*16+i*4+2] = 0;
-		code[blockStart*16+i*4+3] = 0;
-	}
 	#endif
-
 }
 
-
 #endif
-
 
 

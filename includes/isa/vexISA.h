@@ -130,9 +130,9 @@ ac_int<32, false> assembleIInstruction(ac_int<7, false> opcode, ac_int<19, true>
 ac_int<32, false> assembleRInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<6, false> regB);
 ac_int<32, false> assembleRiInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<13, false> imm13);
 
-
+#ifndef __CATAPULT
 extern const char* opcodeNames[128];
 std::string printDecodedInstr(ac_int<32, false> instruction);
-
+#endif
 
 #endif /* INCLUDES_VEX_H_ */

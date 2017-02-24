@@ -1,7 +1,7 @@
 
 #ifndef __CATAPULT
 #include <stdio.h>
-
+#include <dbt/dbtPlateform.h>
 #include <types.h>
 #endif
 
@@ -12,6 +12,7 @@
 #ifdef __USE_AC
 #include <lib/ac_int.h>
 #endif
+
 
 /**********************************************************************
  * 						Hardware version, using ac_float
@@ -598,6 +599,15 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
     return cycleNumber;
 }
 #endif
+
+int irScheduler(DBTPlateform *platform, uint1 optLevel, uint8 basicBlockSize, uint16 addressInBinaries,
+		int6 numberFreeRegister, uint4 issue_width,
+		uintIW way_specialisation){
+
+	return scheduling(optLevel, basicBlockSize, platform->bytecode, platform->vliwBinaries, addressInBinaries, platform->placeOfRegisters,
+			numberFreeRegister, platform->freeRegisters, issue_width, way_specialisation, platform->placeOfInstr);
+}
+
 
 
 /**************************************************************************************

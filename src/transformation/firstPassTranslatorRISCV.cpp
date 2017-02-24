@@ -5,27 +5,36 @@
  *      Author: Simon Rokicki
  *
  * This file contains the description of the first pass translator targeting RISCV ISA
+ * This file is made to work in several platofm (x86, nios, and Catapult).
+ * It use several ifdef:
+ * 	__CATAPULT is set when opened with catapult
+ * 	__NIOS is set when executed on Nios
  */
 
+#ifndef __CATAPULT
+//Includes that are not used in catapult
 #include <cstdio>
 #include <cstdlib>
 
-#include <frontend.h>
-#include <lib/elfFile.h>
 #include <lib/endianness.h>
 #include <lib/tools.h>
+#include <dbt/insertions.h>
+#endif
+
+//Includes used in Catapult
 #include <isa/riscvISA.h>
 #include <isa/vexISA.h>
 #include <isa/riscvToVexISA.h>
 #include <types.h>
 
-#include <dbt/insertions.h>
 
 
 
 const unsigned int debugLevel = 0;
 
 using namespace std;
+
+#ifndef __CATAPULT
 
 int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		uint32 size,
@@ -65,6 +74,8 @@ int firstPassTranslator_RISCV(uint32 *riscvBinaries,
 	insertions[0] = 0;
 
 	//We call the accelerator (or the software counterpart if no accelerator)
+
+	#ifndef __NIOS
 	int returnedValue = firstPassTranslatorRISCV_hw(riscvBinaries,
 			*size,
 			addressStart,
@@ -76,6 +87,12 @@ int firstPassTranslator_RISCV(uint32 *riscvBinaries,
 			localUnresolvedJumps_src,
 			localUnresolvedJumps_type,
 			localUnresolvedJumps);
+	#else
+		int argA = *size + (*placeCode<<16);
+		int argB = addressStart;
+		int returnedValue = ALT_CI_COMPONENT_FIRSTPASSTRANSLATORRISCV_HW_0(argA, argB);
+	#endif
+
 
 	//We translate the result
 	unsigned int destinationIndex = returnedValue & 0x3ffff;
@@ -164,16 +181,9 @@ int firstPassTranslator_RISCV(uint32 *riscvBinaries,
 	/************************************************************/
 
 }
+#endif
 
-#include <lib/ac_int.h>
-typedef ac_int<7,false> acu7;
-
-typedef ac_int<5,false> acu5;
-typedef ac_int<32,false> acu32;
-typedef ac_int<6,false> acu6;
-typedef ac_int<16,true> acs16;
-typedef ac_int<26,true> acs26;
-typedef ac_int<1,false> acu1;
+#ifndef __NIOS
 
 int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		uint32 size,
@@ -239,9 +249,9 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 	unsigned char nextInstructionNop = 0;
 
 
-	acu5 reg1_mul = 0, reg2_mul = 0;
-	acs16 imm_mul = 0;
-	acu1 is_imm_mul = 0;
+	uint5 reg1_mul = 0, reg2_mul = 0;
+	uint16 imm_mul = 0;
+	uint1 is_imm_mul = 0;
 
 
 	blocksBoundaries[addressStart>>2] = 1;
@@ -362,7 +372,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 			ac_int<6, false> shamt = oneInstruction.slc<6>(20);
 
-			acs26 correctedTgtadr = imm21_1 - (addressStart>>2);
+			uint26 correctedTgtadr = imm21_1 - (addressStart>>2);
 
 
 			if (rs1 == 1)
@@ -790,3 +800,5 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 	insertions[0] = localNumberInsertions;
 	return (indexInDestinationBinaries-placeCode) + (numberUnresolvedJumps<<18);
 }
+
+#endif

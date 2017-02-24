@@ -138,9 +138,8 @@
 #define RISCV_OPW_M_REMUW 0x7
 
 
-
+#ifndef __CATAPULT
 std::string printDecodedInstrRISCV(ac_int<32, false> instruction);
-
 
 extern const char* riscvNamesOP[8];
 extern const char* riscvNamesOPI[8];
@@ -150,6 +149,7 @@ extern const char* riscvNamesLD[8];
 extern const char* riscvNamesST[8];
 extern const char* riscvNamesBR[8];
 extern const char* riscvNames[8];
+#endif
 
 
 #endif /* INCLUDES_ISA_RISCVISA_H_ */

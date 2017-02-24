@@ -14,7 +14,7 @@
 #include <transformation/irScheduler.h>
 
 void reconfigureVLIW(DBTPlateform *platform, IRProcedure *procedure){
-	ac_int<128, false> result[65536];
+	uint128 result[65536];
 	int placeInResult = 0;
 
 	fprintf(stderr, "*************************************************************************\n");
@@ -46,18 +46,13 @@ void reconfigureVLIW(DBTPlateform *platform, IRProcedure *procedure){
 
 
 			int globalVariableCounter = 288;
-			unsigned long long registersUsage[256];
 
-			int32 globalVariables[64] = {256,257,258,259,260,261,262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278,
-					279,280,281,282,283,284,285,286,287,288,289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306,
-					307,308,309,310,311,312,313,314,315,316,317,318,319
-			};
+			for (int oneGlobalVariable = 0; oneGlobalVariable < 64; oneGlobalVariable++)
+				platform->globalVariables[oneGlobalVariable] = 256 + oneGlobalVariable;
 
-			blockSize = basicBlockEnd - basicBlockStart - 1;
+			int blockSize = basicBlockEnd - basicBlockStart - 1;
 
-			uint64 local_registersUsage[1];
-
-			blockSize = irGenerator_hw(platform->vliwBinaries,basicBlockStart, blockSize, platform->bytecode, globalVariables, local_registersUsage, globalVariableCounter);
+			blockSize = irGenerator(platform, basicBlockStart, blockSize, globalVariableCounter);
 
 			fprintf(stderr, "Optimizing a block of size %d : \n", blockSize);
 
@@ -98,16 +93,15 @@ void reconfigureVLIW(DBTPlateform *platform, IRProcedure *procedure){
 		for (int i=0; i<blockSize; i++)
 			printBytecodeInstruction(i,platform->bytecode[i]);
 
-		ac_int<6, 0> placeOfRegisters[512] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-				0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-				0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-				0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-				0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,
-				40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63};
-		ac_int<6, 0> freeRegisters[64] = {36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62};
-		ac_int<32, false> placeOfInstr[256];
+		//Preparation of required memories
+		for (int oneFreeRegister = 36; oneFreeRegister<63; oneFreeRegister++)
+			platform->freeRegisters[oneFreeRegister-36] = oneFreeRegister;
 
-		int binaSize = scheduling(1,blockSize, platform->bytecode, result,placeInResult, placeOfRegisters, 27, freeRegisters, 5, 0x035c, placeOfInstr);
+		for (int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
+			platform->placeOfRegisters[256+onePlaceOfRegister] = onePlaceOfRegister;
+
+
+		int binaSize = irScheduler(platform, 1,blockSize, basicBlockStart, 27, 4, 0x001e);
 		binaSize = binaSize & 0xffff;
 
 		for (int oneCycle = 0; oneCycle<(binaSize/2) + 1; oneCycle++){

@@ -1,5 +1,4 @@
 add_subdirectory(dbt)
-add_subdirectory(frontend)
 add_subdirectory(lib)
 add_subdirectory(simulator)
 add_subdirectory(isa)

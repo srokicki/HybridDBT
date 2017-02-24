@@ -42,9 +42,9 @@ void printStats(unsigned int size, short* blockBoundaries){
 }
 
 
-int translateOneSection(DBTPlateform &dbtPlateform, ac_int<32, false> placeCode, int sectionStart, int startAddressSource, int endAddressSource){
+int translateOneSection(DBTPlateform &dbtPlateform, uint32 placeCode, int sectionStart, int startAddressSource, int endAddressSource){
 	int previousPlaceCode = placeCode;
-	ac_int<32, false> size = (endAddressSource - startAddressSource)>>2;
+	uint32 size = (endAddressSource - startAddressSource)>>2;
 	int addressStart = startAddressSource;
 	firstPassTranslator_RISCV(dbtPlateform.mipsBinaries,
 			&size,
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 
 	unsigned char* code;
 	unsigned int addressStart;
-	ac_int<32, false> size;
+	uint32 size;
 
 	for (unsigned int sectionCounter = 0; sectionCounter<elfFile.sectionTable->size(); sectionCounter++){
 		ElfSection *section = elfFile.sectionTable->at(sectionCounter);
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
 		dbtPlateform.mipsBinaries[oneInstruction] = ((unsigned int*) code)[oneInstruction];
 
 	//We declare the variable in charge of keeping a track of where we are writing
-	ac_int<32, false> placeCode = 0; //As 4 instruction bundle
+	uint32 placeCode = 0; //As 4 instruction bundle
 
 	//We add initialization code to the vliw binaries
 	placeCode = getInitCode(dbtPlateform.vliwBinaries, placeCode, addressStart);

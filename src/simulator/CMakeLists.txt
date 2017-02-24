@@ -2,12 +2,6 @@ set(SOURCE
    ${SOURCE}
    ${CMAKE_CURRENT_SOURCE_DIR}/vexSimulator.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/riscvSimulator.cpp
-   ${CMAKE_CURRENT_SOURCE_DIR}/Simulator.cpp   
-   PARENT_SCOPE
-)
-
-set(EXECUTABLE
-   ${EXECUTABLE}
-   ${CMAKE_CURRENT_SOURCE_DIR}/mipsSimulator.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/mipsSimulator.cpp   
    PARENT_SCOPE
 )
