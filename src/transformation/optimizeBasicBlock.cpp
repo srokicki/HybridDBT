@@ -29,6 +29,9 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	int basicBlockStart = block->vliwStartAddress;
 	int basicBlockEnd = block->vliwEndAddress;
 
+#ifndef __NIOS
+
+	//TODO make it work for nios too
 	char isCurrentlyInBlock = (platform->vexSimulator->PC >= basicBlockStart*4) &&
 			(platform->vexSimulator->PC < basicBlockEnd*4);
 
@@ -41,6 +44,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 
 	}
+#endif
 
 	//We store old jump instruction. Its places is known from the basicBlockEnd value
 	uint32 jumpInstruction = readInt(platform->vliwBinaries, (basicBlockEnd-2)*16 + 0);

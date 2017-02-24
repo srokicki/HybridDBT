@@ -170,6 +170,11 @@ IRApplication::IRApplication(int numberSections){
 	this->numbersBlockInSections= (int*) malloc(sizeof(int) * numberOfSections);
 
 	this->numbersAllocatedBlockInSections = (int*) malloc(sizeof(int) * numberOfSections);
+	for (int oneSection = 0; oneSection<numberSections; oneSection++){
+		this->numbersBlockInSections[oneSection] = 0;
+		this->numbersAllocatedBlockInSections[oneSection] = 0;
+	}
+
 	this->numberAllocatedProcedures = 0;
 }
 

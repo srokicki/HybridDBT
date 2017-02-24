@@ -64,7 +64,7 @@ int translateOneSection(DBTPlateform &dbtPlateform, uint32 placeCode, int sectio
 }
 
 
-void readSourceBinaries(char* path, unsigned char *code, unsigned int &addressStart, uint32 &size, DBTPlateform *platform){
+void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressStart, uint32 &size, DBTPlateform *platform){
 
 #ifndef __NIOS
 	//We open the elf file and search for the section that is of interest for us
@@ -77,7 +77,7 @@ void readSourceBinaries(char* path, unsigned char *code, unsigned int &addressSt
 		//The section we are looking for is called .text
 		if (!section->getName().compare(".text")){
 
-			code = &(section->getSectionCode()[0]); //0x3c
+			code = section->getSectionCode();//0x3c
 			addressStart = section->address + 0;
 			size = section->size/4 - 0;
 
@@ -109,6 +109,12 @@ void readSourceBinaries(char* path, unsigned char *code, unsigned int &addressSt
 	size = size/4;
 #endif
 }
+
+int run(DBTPlateform *platform, int nbCycle){
+	return platform->vexSimulator->doStep(nbCycle);
+}
+
+
 
 
 int main(int argc, char *argv[])
@@ -243,11 +249,10 @@ int main(int argc, char *argv[])
 
 
 	//We initialize the VLIW processor with binaries and data from elf file
+	#ifndef __NIOS
 	dbtPlateform.vexSimulator->debugLevel = 2;
-
-
 //	dbtPlateform.vexSimulator->debugLevel = 0;
-
+	#endif
 
 
 
@@ -256,28 +261,29 @@ int main(int argc, char *argv[])
 	int areaCodeStart=1;
 	int areaStartAddress = 0;
 
+	#ifndef __NIOS
 	dbtPlateform.vexSimulator->initializeDataMemory((unsigned char*) insertionsArray, 65536*4, 0x7000000);
+	#endif
+
+	#ifndef __NIOS
+	dbtPlateform.vexSimulator->initializeRun(0);
+	#endif
+
+	int runStatus=0;
 
 
-		fprintf(stderr, "insert;%d\n", (int) placeCode);
+	while (runStatus == 0){
+		runStatus = run(&dbtPlateform, 1000);
 
-		dbtPlateform.vexSimulator->initializeRun(0);
+		//If a profiled block is executed more than 10 times we optimize it and mark it as optimized
+		for (int oneBlock = 0; oneBlock<profiler.getNumberProfiledBlocks(); oneBlock++){
+			int profileResult = profiler.getProfilingInformation(oneBlock);
+			IRBlock* block = profiler.getBlock(oneBlock);
 
-		int runStatus=0;
-
-
-		while (runStatus == 0){
-			runStatus = dbtPlateform.vexSimulator->doStep(1000);
-
-			//If a profiled block is executed more than 10 times we optimize it and mark it as optimized
-			for (int oneBlock = 0; oneBlock<profiler.getNumberProfiledBlocks(); oneBlock++){
-				int profileResult = profiler.getProfilingInformation(oneBlock);
-				IRBlock* block = profiler.getBlock(oneBlock);
-
-				if (profileResult > 10 && block->blockState < IRBLOCK_STATE_SCHEDULED){
-					fprintf(stderr, "Block from %d to %d is eligible to opti (%d exec)\n", block->vliwStartAddress, block->vliwEndAddress, profileResult);
-					optimizeBasicBlock(block, &dbtPlateform, &application);
-				}
+			if (profileResult > 10 && block->blockState < IRBLOCK_STATE_SCHEDULED){
+				fprintf(stderr, "Block from %d to %d is eligible to opti (%d exec)\n", block->vliwStartAddress, block->vliwEndAddress, profileResult);
+				optimizeBasicBlock(block, &dbtPlateform, &application);
+			}
 
 
 //				if (profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
@@ -289,16 +295,16 @@ int main(int argc, char *argv[])
 //					dbtPlateform.vexSimulator->initializeCodeMemory(dbtPlateform.vliwBinaries, sizeBinaries, 0);
 //
 //				}
-			}
-
 		}
 
-		for (int oneBlock = 0; oneBlock<profiler.getNumberProfiledBlocks(); oneBlock++){
-			IRBlock* block = profiler.getBlock(oneBlock);
-			fprintf(stderr, "Block from %d to %d was executed %d times\n", block->vliwStartAddress, block->vliwEndAddress, profiler.getProfilingInformation(oneBlock));
-		}
+	}
 
-		//We print profiling result
+	for (int oneBlock = 0; oneBlock<profiler.getNumberProfiledBlocks(); oneBlock++){
+		IRBlock* block = profiler.getBlock(oneBlock);
+		fprintf(stderr, "Block from %d to %d was executed %d times\n", block->vliwStartAddress, block->vliwEndAddress, profiler.getProfilingInformation(oneBlock));
+	}
+
+	//We print profiling result
 	delete dbtPlateform.vexSimulator;
 	free(code);
 
