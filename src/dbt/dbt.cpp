@@ -131,7 +131,11 @@ int main(int argc, char *argv[])
 
 	//Definition of objects used for DBT process
 	DBTPlateform dbtPlateform;
+
+	#ifndef __NIOS
 	dbtPlateform.vexSimulator = new VexSimulator(dbtPlateform.vliwBinaries);
+	#endif
+
 	unsigned char* code;
 	unsigned int addressStart;
 	uint32 size;
@@ -305,7 +309,9 @@ int main(int argc, char *argv[])
 	}
 
 	//We print profiling result
+	#ifndef __NIOS
 	delete dbtPlateform.vexSimulator;
+	#endif
 	free(code);
 
 
