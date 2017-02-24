@@ -7,7 +7,7 @@
 
 
 
-#include <elf.h>
+#include <lib/elf.h>
 #include <vector>
 #include <string>
 

@@ -2,7 +2,7 @@
 #include <dbt/insertions.h>
 #include <dbt/profiling.h>
 
-
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -21,9 +21,9 @@
 #include <isa/vexISA.h>
 
 
-#ifndef __NO_LINUX_API
-
+#ifndef __NIOS
 #include <lib/elfFile.h>
+#endif
 
 void printStats(unsigned int size, short* blockBoundaries){
 
@@ -64,24 +64,12 @@ int translateOneSection(DBTPlateform &dbtPlateform, uint32 placeCode, int sectio
 }
 
 
-int main(int argc, char *argv[])
-{
+void readSourceBinaries(char* path, unsigned char *code, unsigned int &addressStart, uint32 &size, DBTPlateform *platform){
 
-	/***********************************
-	 *  Initialization of the DBT platform
-	 ***********************************
-	 * In the linux implementation, this is done by reading an elf file and copying binary instructions
-	 * in the corresponding memory.
-	 * In a real platform, this may require no memory initialization as the binaries would already be stored in the
-	 * system memory.
-	 ************************************/
-
+#ifndef __NIOS
 	//We open the elf file and search for the section that is of interest for us
-	ElfFile elfFile((char *) argv[1]);
+	ElfFile elfFile(path);
 
-	unsigned char* code;
-	unsigned int addressStart;
-	uint32 size;
 
 	for (unsigned int sectionCounter = 0; sectionCounter<elfFile.sectionTable->size(); sectionCounter++){
 		ElfSection *section = elfFile.sectionTable->at(sectionCounter);
@@ -95,14 +83,61 @@ int main(int argc, char *argv[])
 
 		}
 	}
-	int numberOfSections = 1 + (size>>10);
 
+
+	for (unsigned int sectionCounter = 0; sectionCounter<elfFile.sectionTable->size(); sectionCounter++){
+		ElfSection *section = elfFile.sectionTable->at(sectionCounter);
+
+		if (section->address != 0){
+
+			unsigned char* data = section->getSectionCode();
+			platform->vexSimulator->initializeDataMemory(data, section->size, section->address);
+			free(data);
+		}
+	}
+
+
+#else
+	read(0, &addressStart, sizeof(int));
+	read(0, &size, sizeof(int));
+	code = (unsigned char*) malloc(size*sizeof(unsigned char));
+
+	for (int oneByte = 0; oneByte<size; oneByte++){
+		read(0, &code[oneByte], sizeof(char));
+	}
+
+	size = size/4;
+#endif
+}
+
+
+int main(int argc, char *argv[])
+{
+
+	/***********************************
+	 *  Initialization of the DBT platform
+	 ***********************************
+	 * In the linux implementation, this is done by reading an elf file and copying binary instructions
+	 * in the corresponding memory.
+	 * In a real platform, this may require no memory initialization as the binaries would already be stored in the
+	 * system memory.
+	 ************************************/
 
 	//Definition of objects used for DBT process
 	DBTPlateform dbtPlateform;
 	dbtPlateform.vexSimulator = new VexSimulator(dbtPlateform.vliwBinaries);
+	unsigned char* code;
+	unsigned int addressStart;
+	uint32 size;
+
+	//We read the binaries
+	readSourceBinaries(argv[1], code, addressStart, size, &dbtPlateform);
+
+	int numberOfSections = 1 + (size>>10);
 	IRApplication application = IRApplication(numberOfSections);
 	Profiler profiler = Profiler(&dbtPlateform);
+
+
 
 
 
@@ -213,16 +248,6 @@ int main(int argc, char *argv[])
 
 //	dbtPlateform.vexSimulator->debugLevel = 0;
 
-	for (unsigned int sectionCounter = 0; sectionCounter<elfFile.sectionTable->size(); sectionCounter++){
-		ElfSection *section = elfFile.sectionTable->at(sectionCounter);
-
-		if (section->address != 0){
-
-			unsigned char* data = section->getSectionCode();
-			dbtPlateform.vexSimulator->initializeDataMemory(data, section->size, section->address);
-			free(data);
-		}
-	}
 
 
 
@@ -275,204 +300,8 @@ int main(int argc, char *argv[])
 
 		//We print profiling result
 	delete dbtPlateform.vexSimulator;
+	free(code);
 
 
-	/********************************************************/
-	/********************************************************/
-
-
-	/********************************************************/
-	/* Second part, generation of the bytecode w/o regalloc */
-	/********************************************************/
-/*	printf("\n**** Generation & Compilation & Execution of Bytecode v1 \n");
-
-	unsigned char bytecode[16000];
-	unsigned int placeBytecode = 0;
-
-
-	irGenerator(dbtPlateform.vliwBinaries,
-			&size,
-			addressStart,
-			dbtPlateform.bytecode,
-			&placeBytecode,
-			dbtPlateform.blockBoundaries,
-			dbtPlateform.procedureBoundaries,
-			dbtPlateform.insertions);
-
-	//We write back the result if needed
-	void* destinationBytecodeFile = openWriteFile((void*) "./bytecode.bc");
-	unsigned int sizeBytecode = placeBytecode;
-
-//	for (int i=0;i<sizeBinaries>>4;i++){
-//		printf("%d : 0x%xl, 0x%xl, 0x%xl, 0x%xl,\n", i,((unsigned int*) destinationBinaries)[4*i+0],
-//				((unsigned int*) destinationBinaries)[4*i+1],
-//				((unsigned int*) destinationBinaries)[4*i+2],
-//				((unsigned int*) destinationBinaries)[4*i+3]);
-//	}
-
-	writeFile(destinationBytecodeFile, 0, sizeBytecode, 1, bytecode);
-	closeFile(destinationBytecodeFile);
-
-//	JITCompilation((void*) "./bytecode.bc",(void*) "./binaries");
-//
-//	void* binariesFile = openReadFile((void*)"./binaries");
-//	unsigned int* binariesSize = (unsigned int*) readFile(binariesFile, 0, 4, 1);
-//	unsigned char* postSchedulingBinaries = (unsigned char*) readFile(binariesFile, 4, 1, *binariesSize<<2);
-//
-////	for (int i=0;i<*binariesSize>>2;i++){
-////		printf("0x%xl, 0x%xl, 0x%xl, 0x%xl,\n", ((unsigned int*) postSchedulingBinaries)[4*i+0],
-////				((unsigned int*) postSchedulingBinaries)[4*i+1],
-////				((unsigned int*) postSchedulingBinaries)[4*i+2],
-////				((unsigned int*) postSchedulingBinaries)[4*i+3]);
-////	}
-	//We initialize the VLIW processor with binaries and data from elf file
-	VexSimulator *simulator2 = new VexSimulator();
-	simulator2->debugLevel = 0;
-
-	simulator2->initializeCodeMemory(destinationBinaries, sizeBinaries, 0);
-
-
-	for (unsigned int sectionCounter = 0; sectionCounter<elfFile.sectionTable->size(); sectionCounter++){
-		ElfSection *section = elfFile.sectionTable->at(sectionCounter);
-		if (!section->getName().compare(".data")){
-			unsigned char* data = section->getSectionCode();
-			simulator2->initializeDataMemory(data, section->size, section->address);
-			free(data);
-		}
-	}
-
-	simulator2->run(0);
-	delete simulator2;*/
-
-//	/********************************************************/
-//	/********************************************************/
-//
-//	printf("\n**** Generation & Compilation & Execution of Bytecode v2 \n");
-//
-//	unsigned char bytecodeRenamed[16000];
-//	unsigned int placeBytecodeRenamed = 0;
-//
-//
-//
-//
-////	for (unsigned int oneInstruction = 0; oneInstruction<size; oneInstruction++){
-////		printf("At %x : %d    %d\n", oneInstruction*4 +addressStart , blocksBoundaries[oneInstruction], proceduresBoundaries[oneInstruction]);
-////	}
-//	generateRenamedBytecode(code, &size, addressStart,
-//			bytecodeRenamed, &placeBytecodeRenamed,
-//			blocksBoundaries, proceduresBoundaries);
-//
-//
-//
-//	//We write back the result if needed
-//	void* destinationBytecodeRenamedFile = openWriteFile((void*) "./bytecodeRenamed.bc");
-//	unsigned int sizeBytecodeRenamed = placeBytecodeRenamed;
-//
-//
-//
-//	writeFile(destinationBytecodeRenamedFile, 0, sizeBytecodeRenamed, 1, bytecodeRenamed);
-//	closeFile(destinationBytecodeRenamedFile);
-//
-//	JITCompilation((void*) "./bytecodeRenamed.bc",(void*) "./binaries");
-//
-//	void* binariesRenamedFile = openReadFile((void*)"./binaries");
-//	unsigned int* binariesRenamedSize = (unsigned int*) readFile(binariesRenamedFile, 0, 4, 1);
-//	unsigned char* postSchedulingRenamedBinaries = (unsigned char*) readFile(binariesRenamedFile, 4, 1, *binariesRenamedSize<<2);
-//
-////	for (int i=0;i<*binariesSize>>2;i++){
-////		printf("0x%xl, 0x%xl, 0x%xl, 0x%xl,\n", ((unsigned int*) postSchedulingRenamedBinaries)[4*i+0],
-////				((unsigned int*) postSchedulingRenamedBinaries)[4*i+1],
-////				((unsigned int*) postSchedulingRenamedBinaries)[4*i+2],
-////				((unsigned int*) postSchedulingRenamedBinaries)[4*i+3]);
-////	}
-//	//We initialize the VLIW processor with binaries and data from elf file
-//	VexSimulator *simulator3 = new VexSimulator();
-//	simulator3->initializeCodeMemory(postSchedulingRenamedBinaries, *binariesRenamedSize<<2, 0);
-//
-//	for (unsigned int sectionCounter = 0; sectionCounter<elfFile.sectionTable->size(); sectionCounter++){
-//		ElfSection *section = elfFile.sectionTable->at(sectionCounter);
-//		if (!section->getName().compare(".data"))
-//			simulator3->initializeDataMemory(section->getSectionCode(), section->size, section->address);
-//
-//	}
-//
-////	simulator3->run(0);
-//	delete simulator3;
-//
-//
-//  return 0;
 }
 
-#endif
-
-#ifdef __NO_LINUX_API
-#include <binaries_content.h>
-
-int main(int argc, char *argv[])
-{
-
-	unsigned char destination[65536];
-
-	unsigned char destinationBinaries[65536];
-	unsigned int placeCode = 2; //As 4 instruction bundle
-	/********************************************************/
-	/* First part, generation of inefficient code           */
-	/********************************************************/
-	startPerformances(0);
-
-
-	//We define data structures to find block/procedure boundaries. This will be used on next stage
-	short *blocksBoundaries = (short*) malloc(size * sizeof(short));
-	short *proceduresBoundaries = (short*) malloc(size * sizeof(short));
-
-	for (int i = 0; i<size; i++){
-		blocksBoundaries[i] = 0;
-		proceduresBoundaries[i] =0;
-	}
-
-	unsigned int numberInsertions = 0;
-	int insertions[512];
-
-	//We launch the actual generation
-	generateInterpretationBinaries(code, &size, addressStart, destinationBinaries, &placeCode, numberInsertions, insertions, blocksBoundaries, proceduresBoundaries);
-
-
-
-	//We write back the result if needed
-	unsigned int sizeBinaries = (placeCode>>2);
-
-
-	/********************************************************/
-	/********************************************************/
-
-
-	/********************************************************/
-	/* Second part, generation of the bytecode w/o regalloc */
-	/********************************************************/
-
-	unsigned char bytecode[16000];
-	for (int i = 0; i<16000; i++)
-		bytecode[i] = 0;
-	unsigned int placeBytecode = 0;
-
-	DBTFrontend(code, &size, addressStart,
-			bytecode, &placeBytecode,
-			blocksBoundaries, proceduresBoundaries);
-
-	//We write back the result if needed
-	void* destinationBytecodeFile = openWriteFile((void*) "./bytecode.bc");
-	unsigned int sizeBytecode = placeBytecode;
-
-
-
-	writeFile(destination, 0, sizeBinaries<<4, 1, bytecode);
-
-	stopPerformances(0);
-
-	printf("Time taken for generation %d after step1 and %d after step 2 cycles\n", sizeBinaries, getPerformances(0));
-
-
-  return 0;
-}
-
-#endif
