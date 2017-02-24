@@ -59,39 +59,39 @@ void reconfigureVLIW(DBTPlateform *platform, IRProcedure *procedure){
 
 		}
 		//First try to reduce the false dependencies
-		int registerUsing[64];
-		for (int oneReg = 0; oneReg<64; oneReg++){
-			registerUsing[oneReg] = -1;
-		}
-		for (int oneIRInstruction = 0; oneIRInstruction<blockSize; oneIRInstruction++){
-			uint128 instruction = platform->bytecode[oneIRInstruction];
-			short registerWritten = instruction.slc<9>(64+14) - 256;
-			unsigned char opcode = instruction.slc<7>(96+19);
-			fprintf(stderr, "opcode %x dest %d\n", opcode, registerWritten);
-
-			if (opcode != VEX_STB && opcode != VEX_STH && opcode != VEX_STW && registerWritten != 0){
-				if (registerUsing[registerWritten] != -1){
-					fprintf(stderr, "changed alloc on %d\n", oneIRInstruction);
-
-					platform->bytecode[oneIRInstruction][96+27] = 1;
-
-				}
-				registerUsing[registerWritten] = oneIRInstruction;
-
-			}
-		}
-
-		//We restore last write on each register
-		for (int oneReg = 0; oneReg<64; oneReg++){
-			if (registerUsing[oneReg] != -1){
-				fprintf(stderr, "restored alloc on %d\n", registerUsing[oneReg]);
-				platform->bytecode[registerUsing[oneReg]][96+27] = 0;
-			}
-		}
+//		int registerUsing[64];
+//		for (int oneReg = 0; oneReg<64; oneReg++){
+//			registerUsing[oneReg] = -1;
+//		}
+//		for (int oneIRInstruction = 0; oneIRInstruction<blockSize; oneIRInstruction++){
+//			uint128 instruction = platform->bytecode[oneIRInstruction];
+//			short registerWritten = instruction.slc<9>(64+14) - 256;
+//			unsigned char opcode = instruction.slc<7>(96+19);
+//			fprintf(stderr, "opcode %x dest %d\n", opcode, registerWritten);
+//
+//			if (opcode != VEX_STB && opcode != VEX_STH && opcode != VEX_STW && registerWritten != 0){
+//				if (registerUsing[registerWritten] != -1){
+//					fprintf(stderr, "changed alloc on %d\n", oneIRInstruction);
+//
+//					platform->bytecode[oneIRInstruction][96+27] = 1;
+//
+//				}
+//				registerUsing[registerWritten] = oneIRInstruction;
+//
+//			}
+//		}
+//
+//		//We restore last write on each register
+//		for (int oneReg = 0; oneReg<64; oneReg++){
+//			if (registerUsing[oneReg] != -1){
+//				fprintf(stderr, "restored alloc on %d\n", registerUsing[oneReg]);
+//				platform->bytecode[registerUsing[oneReg]][96+27] = 0;
+//			}
+//		}
 
 
 		for (int i=0; i<blockSize; i++)
-			printBytecodeInstruction(i,platform->bytecode[i]);
+			printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
 
 		//Preparation of required memories
 		for (int oneFreeRegister = 36; oneFreeRegister<63; oneFreeRegister++)

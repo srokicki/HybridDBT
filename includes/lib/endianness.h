@@ -10,17 +10,34 @@
 
 #include <types.h>
 
-#ifdef __USE_AC
-#include <lib/ac_int.h>
+/***********************************************************************
+ * These three procedure are used to write an int inside a memory.
+ * The addressing is made on byte.
+ *
+ * The input memory can be uint8*, uint32* or uint128*
+ ***********************************************************************/
+
+void writeInt(uint8* bytecode, int place, unsigned int value);
+void writeInt(uint32* bytecode, int place, unsigned int value);
+
+#ifndef __NIOS
+void writeInt(uint128* bytecode, int place, unsigned int value);
 #endif
 
-void writeInt(unsigned char* bytecode, int place, unsigned int value);
-void writeInt(ac_int<128, false>* bytecode, int place, unsigned int value);
 
+/***********************************************************************
+ * These three procedure are used to read an int inside a memory.
+ * The addressing is made on byte.
+ *
+ * The input memory can be uint8*, uint32* or uint128*
+ ***********************************************************************/
 
-unsigned int readInt(unsigned char* bytecode, int place);
+uint32 readInt(uint8* bytecode, int place);
+uint32 readInt(uint32* bytecode, int place);
+
+#ifndef __NIOS
 uint32 readInt(uint128* bytecode, int place);
-
+#endif
 
 
 #endif

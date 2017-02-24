@@ -139,7 +139,8 @@
 
 
 #ifndef __CATAPULT
-std::string printDecodedInstrRISCV(ac_int<32, false> instruction);
+#ifndef __NIOS
+std::string printDecodedInstrRISCV(uint32 instruction);
 
 extern const char* riscvNamesOP[8];
 extern const char* riscvNamesOPI[8];
@@ -150,6 +151,6 @@ extern const char* riscvNamesST[8];
 extern const char* riscvNamesBR[8];
 extern const char* riscvNames[8];
 #endif
-
+#endif
 
 #endif /* INCLUDES_ISA_RISCVISA_H_ */

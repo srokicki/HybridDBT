@@ -77,12 +77,7 @@ public:
 
 #endif
 
-#ifdef __NIOS
-unsigned int getInitCode(unsigned int *binaries, int start, unsigned int startAddress);
-#endif
+unsigned int getInitCode(DBTPlateform *platform, int start, unsigned int startAddress);
 
-#ifdef __USE_AC
-unsigned int getInitCode(ac_int<128, false> *binaries, int start, unsigned int startAddress);
-#endif
 
 #endif

@@ -1,13 +1,14 @@
-#include <lib/endianness.h>
-#include <lib/ac_int.h>
 #include <types.h>
 
 
-/*
- * Two procedures to write inside memory in correct endianness
- * Note: address given is based on byte
- */
-void writeInt(unsigned char* bytecode, int place, unsigned int value){
+/***********************************************************************
+ * These three procedure are used to write an int inside a memory.
+ * The addressing is made on byte.
+ *
+ * The input memory can be uint8*, uint32* or uint128*
+ ***********************************************************************/
+
+void writeInt(uint8* bytecode, int place, unsigned int value){
 	unsigned int *bytecodeAsInt = (unsigned int *) bytecode;
 	//bytecodeAsInt[place>>2] = value;
 
@@ -19,13 +20,27 @@ void writeInt(unsigned char* bytecode, int place, unsigned int value){
 
 }
 
-void writeInt(ac_int<128,false>* bytecode, int place, unsigned int value){
+void writeInt(uint32* bytecode, int place, unsigned int value){
+	bytecode[place>>2] = value;
+}
+
+#ifndef __NIOS
+void writeInt(uint128* bytecode, int place, unsigned int value){
 
 	ac_int<32, false> valueAsAcInt = value;
 	bytecode[place>>4].set_slc(32*(3-((place>>2) & 0x3)), valueAsAcInt);
 }
+#endif
 
-unsigned int readInt(unsigned char* bytecode, int place){
+
+/***********************************************************************
+ * These three procedure are used to read an int inside a memory.
+ * The addressing is made on byte.
+ *
+ * The input memory can be uint8*, uint32* or uint128*
+ ***********************************************************************/
+
+uint32 readInt(uint8* bytecode, int place){
 
 	unsigned int result = 0;
 	//FIXME endianness
@@ -38,7 +53,14 @@ unsigned int readInt(unsigned char* bytecode, int place){
 
 }
 
+uint32 readInt(uint32* bytecode, int place){
+	return bytecode[place>>2];
+
+}
+
+#ifndef __NIOS
 uint32 readInt(uint128* bytecode, int place){
 	return bytecode[place>>4].slc<32>(32*(3-((place>>2) & 0x3)));
 
 }
+#endif

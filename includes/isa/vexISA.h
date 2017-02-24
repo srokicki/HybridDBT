@@ -4,7 +4,7 @@
  *  Created on: 30 sept. 2016
  *      Author: simon
  */
-#include <lib/ac_int.h>
+#include <types.h>
 #include <string.h>
 #ifndef INCLUDES_VEX_H_
 #define INCLUDES_VEX_H_
@@ -123,12 +123,9 @@
 #define VEX_CMPLEUi 0x7f
 
 
-
-
-
-ac_int<32, false> assembleIInstruction(ac_int<7, false> opcode, ac_int<19, true> imm19, ac_int<6, false> regA);
-ac_int<32, false> assembleRInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<6, false> regB);
-ac_int<32, false> assembleRiInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<13, false> imm13);
+uint32 assembleIInstruction(uint7 opcode, uint19 imm19, uint6 regA);
+uint32 assembleRInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint6 regB);
+uint32 assembleRiInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint13 imm13);
 
 #ifndef __CATAPULT
 extern const char* opcodeNames[128];

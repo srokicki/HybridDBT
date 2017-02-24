@@ -11,6 +11,8 @@
 #include <iomanip>
 #include <sstream>
 
+#ifndef __NIOS
+
 const char* riscvNamesOP[8] = {"ADD","SLL", "CMPLT", "CMPLTU", "XOR", "", "OR", "AND"};
 const char* riscvNamesOPI[8] = {"ADDi", "SLLi", "SLTi", "CMPLTUi", "XORi", "SRLi", "ORi", "ANDi"};
 const char* riscvNamesOPW[8] = {"ADDW","SLLW", "", "", "", "SRW", "", ""};
@@ -20,7 +22,7 @@ const char* riscvNamesST[8] = {"STB", "STH", "STW", "STD"};
 const char* riscvNamesBR[8] = {"CMPEQ", "CMPNE", "", "", "CMPLT", "CMPGE", "CMPLTU", "CMPGEU"};
 const char* riscvNamesMUL[8] = {"MPYLO","MPYHI", "MPYHI", "MPYHI", "DIVHI", "DIVHI", "DIVLO", "DIVLO"};
 
-std::string printDecodedInstrRISCV(ac_int<32, false> ins){
+std::string printDecodedInstrRISCV(uint32 ins){
 	ac_int<7, false> opcode = ins.slc<7>(0);
 	ac_int<5, false> rs1 = ins.slc<5>(15);
 	ac_int<5, false> rs2 = ins.slc<5>(20);
@@ -190,4 +192,4 @@ std::string printDecodedInstrRISCV(ac_int<32, false> ins){
 
 	return result;
 }
-
+#endif

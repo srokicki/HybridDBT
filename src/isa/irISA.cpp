@@ -7,12 +7,11 @@
 
 
 
-#include <lib/ac_int.h>
 #include <types.h>
 #include <isa/vexISA.h>
 #include <isa/irISA.h>
 
-
+#ifndef __NIOS
 /********************************************************************
  * Declaration functions to assemble uint128 instruction for IR
  * ******************************************************************/
@@ -79,40 +78,35 @@ ac_int<128, false> assembleIBytecodeInstruction(ac_int<2, false> stageCode, ac_i
 }
 
 
+
+#endif
+
 /********************************************************************
  * Declaration of debug function
  * ******************************************************************/
-void printBytecodeInstruction(int index, ac_int<128, false> oneInstruction){
-	uint32 instructionPart1 = oneInstruction.slc<32>(96);
-	uint32 instructionPart2 = oneInstruction.slc<32>(64);
-	uint32 instructionPart3 = oneInstruction.slc<32>(32);
-	uint32 instructionPart4 = oneInstruction.slc<32>(0);
 
-	printBytecodeInstruction(index, instructionPart1, instructionPart2, instructionPart3, instructionPart4);
-
-}
 
 void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instructionPart2, uint32 instructionPart3, uint32 instructionPart4){
 
-	ac_int<2, false> stageCode = instructionPart1.slc<2>(30);
-	ac_int<2, false> typeCode = instructionPart1.slc<2>(28);
-	ac_int<1, false> alloc = instructionPart1[27];
-	ac_int<1, false> allocBr = instructionPart1[26];
-	ac_int<7, false> opCode = instructionPart1.slc<7>(19);
-	ac_int<1, false> isImm = instructionPart1[18];
-	ac_int<1, false> isBr = instructionPart1[17];
-	ac_int<9, false> virtualRDest = instructionPart2.slc<9>(14);
-	ac_int<9, false> virtualRIn2 = instructionPart2.slc<9>(23);
-	ac_int<9, false> virtualRIn1_imm9 = instructionPart1.slc<9>(0);
-	ac_int<11, false> imm11 = instructionPart1.slc<11>(0);
-	ac_int<19, false> imm19 = 0;
-	imm19.set_slc(0, instructionPart2.slc<9>(23));
-	imm19.set_slc(9, instructionPart1.slc<10>(0));
-	ac_int<9, false> brCode = instructionPart1.slc<9>(9);
+	uint2 stageCode = ((instructionPart1>>30) & 0x3);
+	uint2 typeCode = ((instructionPart1>>28) & 0x3);
+	uint1 alloc = ((instructionPart1>>27) & 0x1);
+	uint1 allocBr = ((instructionPart1>>26) & 0x1);
+	uint7 opCode = ((instructionPart1>>19) & 0x7f);
+	uint1 isImm = ((instructionPart1>>18) & 0x1);
+	uint1 isBr = ((instructionPart1>>17) & 0x1);
+	uint9 virtualRDest = ((instructionPart2>>14) & 0x1ff);
+	uint9 virtualRIn2 = ((instructionPart2>>23) & 0x1ff);
+	uint9 virtualRIn1_imm9 = ((instructionPart1>>0) & 0x1ff);
+	uint11 imm11 = ((instructionPart1>>23) & 0x7ff);
+	uint19 imm19 = 0;
+	imm19 = ((instructionPart2>>23) & 0x1ff);
+	imm19 += ((instructionPart1>>0) & 0x3ff)<<9;
+	uint9 brCode = ((instructionPart1>>9) & 0x1ff);;
 
-	ac_int<8, false> nbDep = instructionPart2.slc<8>(6);
-	ac_int<3, false> nbDSucc = instructionPart2.slc<3>(3);
-	ac_int<3, false> nbSucc = instructionPart2.slc<3>(0);
+	uint8 nbDep = ((instructionPart2>>6) & 0xff);
+	uint3 nbDSucc = ((instructionPart2>>3) & 7);
+	uint3 nbSucc = ((instructionPart2>>0) & 7);
 
 	fprintf(stderr, "%d : ", index);
 

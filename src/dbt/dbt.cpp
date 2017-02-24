@@ -118,8 +118,8 @@ int main(int argc, char *argv[])
 	uint32 placeCode = 0; //As 4 instruction bundle
 
 	//We add initialization code to the vliw binaries
-	placeCode = getInitCode(dbtPlateform.vliwBinaries, placeCode, addressStart);
-	placeCode = insertCodeForInsertions(dbtPlateform.vliwBinaries, placeCode, addressStart);
+	placeCode = getInitCode(&dbtPlateform, placeCode, addressStart);
+	placeCode = insertCodeForInsertions(&dbtPlateform, placeCode, addressStart);
 
 	//We modify the initialization call
 	writeInt(dbtPlateform.vliwBinaries, 0*16, assembleIInstruction(VEX_CALL, placeCode<<2, 63));

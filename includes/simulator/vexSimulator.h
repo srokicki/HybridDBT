@@ -11,7 +11,7 @@
 #ifndef __VLIW
 
 #include <map>
-#include <lib/ac_int.h>
+#include <types.h>
 #include <isa/vexISA.h>
 
 struct FtoDC {

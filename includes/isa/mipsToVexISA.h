@@ -13,7 +13,7 @@
 
 
 #ifdef __USE_AC
-const ac_int<7, false> opcodeBinding[64] = {
+const uint7 opcodeBinding[64] = {
 		-1,  	//R
 		-1,  	//REGIMM
 		VEX_GOTO,	//J
@@ -81,7 +81,7 @@ const ac_int<7, false> opcodeBinding[64] = {
 		-1
 		};
 
-const ac_int<7, false> functBinding[64] = {
+const uint7 functBinding[64] = {
 		VEX_SLLi,	//SLL
 		-1,
 		VEX_SRLi,	//SRL

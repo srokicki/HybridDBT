@@ -21,43 +21,41 @@ unsigned int Profiler::insertProfilingProcedure(int start, unsigned int startAdd
 	//to make profiling effective.
 	//This method has a cost: it will take 6 cycles which can be expensive if in critical loop
 
-	ac_int<128, false> *binaries = this->platform->vliwBinaries;
-
 	int cycle = start;
 	this->destinationCallProfiling = start;
 	//		| r35 = 0x800	 | 					| 				|
-	writeInt(binaries, cycle*16+0, assembleIInstruction(VEX_MOVI, 0x800, 35));
-	writeInt(binaries, cycle*16+4, 0);
-	writeInt(binaries, cycle*16+8, 0);
-	writeInt(binaries, cycle*16+12, 0);
+	writeInt(platform->vliwBinaries, cycle*16+0, assembleIInstruction(VEX_MOVI, 0x800, 35));
+	writeInt(platform->vliwBinaries, cycle*16+4, 0);
+	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 
 	//		| r35 = r35 << 16	 | r34 = r34 << 2		| 				|
 	cycle++;
-	writeInt(binaries, cycle*16+0, assembleRiInstruction(VEX_SLLi, 35, 35, 16));
-	writeInt(binaries, cycle*16+4, assembleRiInstruction(VEX_SLLi, 34, 34, 2));
-	writeInt(binaries, cycle*16+8, 0);
-	writeInt(binaries, cycle*16+12, 0);
+	writeInt(platform->vliwBinaries, cycle*16+0, assembleRiInstruction(VEX_SLLi, 35, 35, 16));
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_SLLi, 34, 34, 2));
+	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 
 	//		| 				 | r35 = ldw 0(r34) 	| 					|
 	cycle++;
-	writeInt(binaries, cycle*16+0, 0);
-	writeInt(binaries, cycle*16+4, assembleRiInstruction(VEX_LDW, 35, 34, 0));
-	writeInt(binaries, cycle*16+8, 0);
-	writeInt(binaries, cycle*16+12, 0);
+	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDW, 35, 34, 0));
+	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 
 	//		| return	 | r35++		|					|
 	cycle++;
-	writeInt(binaries, cycle*16+0, assembleIInstruction(VEX_GOTOR, 0, 8));
-	writeInt(binaries, cycle*16+4, assembleRiInstruction(VEX_ADDi, 35, 35, 1));
-	writeInt(binaries, cycle*16+8, 0);
-	writeInt(binaries, cycle*16+12, 0);
+	writeInt(platform->vliwBinaries, cycle*16+0, assembleIInstruction(VEX_GOTOR, 0, 8));
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_ADDi, 35, 35, 1));
+	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 
 	//		|				 | r35 = ldw 0(r34) 	|					| offset = offset<<24
 	cycle++;
-	writeInt(binaries, cycle*16+0, 0);
-	writeInt(binaries, cycle*16+4, assembleRiInstruction(VEX_STW, 35, 34, 0));
-	writeInt(binaries, cycle*16+8, 0);
-	writeInt(binaries, cycle*16+12, 0);
+	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STW, 35, 34, 0));
+	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 
 
 	cycle++;
@@ -71,14 +69,15 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 	int placeMOVI=-1, placeSLLI=-1, placeLD=-1, placeINCR=-1, placeSTW=-1, offMOVI, offSLLI, offINCR;
 
 	for (int oneInstruction = start; oneInstruction<oneBlock->vliwEndAddress; oneInstruction++){
-		ac_int<128, false> oneVLIWInstruction = this->platform->vliwBinaries[oneInstruction];
+		uint32 instr64 = readInt(this->platform->vliwBinaries, oneInstruction*16+4);
+		uint32 instr96 = readInt(this->platform->vliwBinaries, oneInstruction*16+0);
+
 		if (placeINCR != -1){
 			//We now place STW
-			if (oneVLIWInstruction.slc<32>(64) == 0){
+			if (instr64 == 0){
 				//We found a place
-				ac_int<32, false> instr = assembleRiInstruction(VEX_STW, 35, 34, numberProfiledBlocks<<2);
-				oneVLIWInstruction.set_slc(64, instr);
-				this->platform->vliwBinaries[oneInstruction] = oneVLIWInstruction;
+				uint32 instr = assembleRiInstruction(VEX_STW, 35, 34, numberProfiledBlocks<<2);
+				writeInt(this->platform->vliwBinaries, oneInstruction*16+4, instr);
 				placeSTW = oneInstruction;
 				break;
 			}
@@ -86,62 +85,55 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 		}
 		else if (placeLD != -1){
 			//We place INCR
-			if (oneVLIWInstruction.slc<32>(96) == 0){
+			if (instr96 == 0){
 				//We found a place
-				ac_int<32, false> instr = assembleRiInstruction(VEX_ADDi, 35, 35, 1);
-				oneVLIWInstruction.set_slc(96, instr);
-				this->platform->vliwBinaries[oneInstruction] = oneVLIWInstruction;
+				uint32 instr = assembleRiInstruction(VEX_ADDi, 35, 35, 1);
+				writeInt(this->platform->vliwBinaries, oneInstruction*16+0, instr);
 				placeINCR = oneInstruction;
 			}
 			else {
 				//We found a place
-				ac_int<32, false> instr = assembleRiInstruction(VEX_ADDi, 35, 35, 1);
-				oneVLIWInstruction.set_slc(64, instr);
-				this->platform->vliwBinaries[oneInstruction] = oneVLIWInstruction;
+				uint32 instr = assembleRiInstruction(VEX_ADDi, 35, 35, 1);
+				writeInt(this->platform->vliwBinaries, oneInstruction*16+4, instr);
 				placeINCR = oneInstruction;
 			}
 		}
 		else if (placeSLLI != -1){
 			//We place LDW
-			if (oneVLIWInstruction.slc<32>(64) == 0){
+			if (instr64 == 0){
 				//We found a place
-				ac_int<32, false> instr = assembleRiInstruction(VEX_LDW, 35, 34, numberProfiledBlocks<<2);
-				oneVLIWInstruction.set_slc(64, instr);
-				this->platform->vliwBinaries[oneInstruction] = oneVLIWInstruction;
+				uint32 instr = assembleRiInstruction(VEX_LDW, 35, 34, numberProfiledBlocks<<2);
+				writeInt(this->platform->vliwBinaries, oneInstruction*16+4, instr);
 				placeLD = oneInstruction;
 			}
 		}
 		else if (placeMOVI != -1){
 			//We now place SLLi
-			if (oneVLIWInstruction.slc<32>(96) == 0){
+			if (instr96 == 0){
 				//We found a place
-				ac_int<32, false> instr = assembleRiInstruction(VEX_SLLi, 34, 34, 16);
-				oneVLIWInstruction.set_slc(96, instr);
-				this->platform->vliwBinaries[oneInstruction] = oneVLIWInstruction;
+				uint32 instr = assembleRiInstruction(VEX_SLLi, 34, 34, 16);
+				writeInt(this->platform->vliwBinaries, oneInstruction*16+0, instr);
 				placeSLLI = oneInstruction;
 			}
 			else {
 				//We found a place
-				ac_int<32, false> instr = assembleRiInstruction(VEX_SLLi, 34, 34, 16);
-				oneVLIWInstruction.set_slc(64, instr);
-				this->platform->vliwBinaries[oneInstruction] = oneVLIWInstruction;
+				uint32 instr = assembleRiInstruction(VEX_SLLi, 34, 34, 16);
+				writeInt(this->platform->vliwBinaries, oneInstruction*16+4, instr);
 				placeSLLI = oneInstruction;
 			}
 		}
 		else{
 			//We now place MOVi
-			if (oneVLIWInstruction.slc<32>(96) == 0){
+			if (instr96 == 0){
 				//We found a place
-				ac_int<32, false> instr = assembleIInstruction(VEX_MOVI, 0x800, 34);
-				oneVLIWInstruction.set_slc(96, instr);
-				this->platform->vliwBinaries[oneInstruction] = oneVLIWInstruction;
+				uint32 instr = assembleIInstruction(VEX_MOVI, 0x800, 34);
+				writeInt(this->platform->vliwBinaries, oneInstruction*16+0, instr);
 				placeMOVI = oneInstruction;
 			}
 			else {
 				//We found a place
-				ac_int<32, false> instr = assembleIInstruction(VEX_MOVI, 0x800, 34);
-				oneVLIWInstruction.set_slc(64, instr);
-				this->platform->vliwBinaries[oneInstruction] = oneVLIWInstruction;
+				uint32 instr = assembleIInstruction(VEX_MOVI, 0x800, 34);
+				writeInt(this->platform->vliwBinaries, oneInstruction*16+4, instr);
 				placeMOVI = oneInstruction;
 			}
 		}

@@ -64,7 +64,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	fprintf(stderr, "Optimizing a block of size %d : \n", blockSize);
 	fprintf(stderr, "\n*****************\n");
 	for (int i=0; i<blockSize; i++){
-		printBytecodeInstruction(i,platform->bytecode[i]);
+		printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
 	}
 
 	//Preparation of required memories
