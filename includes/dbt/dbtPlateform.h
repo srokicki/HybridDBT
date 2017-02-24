@@ -62,8 +62,8 @@ public:
 	int *unresolvedJumps_src = (int*) 0x60000000;
 	char *unresolvedJumps_type = (char*) 0x610000000;
 	int *unresolvedJumps = (int*) 0x620000000;
-	char *placeOfRegisters = (int*) 0x640000000;
-	char *freeRegisters = (int*) 0x650000000;
+	char *placeOfRegisters = (char) 0x640000000;
+	char *freeRegisters = (char*) 0x650000000;
 	int *placeOfInstr = (int*) 0x660000000;
 
 };
