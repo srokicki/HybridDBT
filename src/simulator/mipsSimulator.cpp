@@ -1,3 +1,6 @@
+#ifndef __NIOS
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -891,3 +894,4 @@ unsigned int Simulator::ldw(int addr){
 	return result;
 }
 
+#endif

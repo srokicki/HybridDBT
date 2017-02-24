@@ -8,6 +8,9 @@
 #ifndef INCLUDES_SIMULATOR_RISCVSIMULATOR_H_
 #define INCLUDES_SIMULATOR_RISCVSIMULATOR_H_
 
+#ifndef __NIOS
+
+
 #include <map>
 #include <unordered_map>
 #include <string>
@@ -33,6 +36,6 @@ class RiscvSimulator {
 	void doStep();
 };
 
-
+#endif
 
 #endif /* INCLUDES_SIMULATOR_RISCVSIMULATOR_H_ */

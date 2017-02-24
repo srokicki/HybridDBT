@@ -5,12 +5,17 @@
  *      Author: simon
  */
 
+
+
 #include <map>
 #include <unordered_map>
 #include <string>
 
 #ifndef SIMULATOR_H_
 #define SIMULATOR_H_
+
+#ifndef __NIOS
+
 
 class Simulator {
 	public:
@@ -31,5 +36,6 @@ class Simulator {
 	void dumpJumps();
 };
 
-
+#endif
 #endif /* SIMULATOR_H_ */
+

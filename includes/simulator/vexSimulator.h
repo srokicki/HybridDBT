@@ -8,7 +8,7 @@
 #ifndef __VEXSIMULATOR
 #define __VEXSIMULATOR
 
-#ifndef __VLIW
+#ifndef __NIOS
 
 #include <map>
 #include <types.h>
@@ -128,5 +128,7 @@ class VexSimulator {
 
 
 #endif
+
+
 
 #endif /* INCLUDES_VEXSIMULATOR_H_ */

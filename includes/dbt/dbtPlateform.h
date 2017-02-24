@@ -21,9 +21,9 @@
 
 
 #include <simulator/vexSimulator.h>
+#include <types.h>
 
-#ifndef __NOT_USE_AC
-#include <lib/ac_int.h>
+#ifndef __NIOS
 class DBTPlateform
 {
 

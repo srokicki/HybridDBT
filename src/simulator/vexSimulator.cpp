@@ -24,7 +24,7 @@
 */
 
 
-#ifndef __VLIW
+#ifndef __NIOS
 
 #ifdef __CATAPULT
 #include <ac_int.h>

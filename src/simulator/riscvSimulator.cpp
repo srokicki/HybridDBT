@@ -5,6 +5,7 @@
  *      Author: Simon Rokicki
  */
 
+#ifndef __NIOS
 
 #include <isa/riscvISA.h>
 #include <simulator/riscvSimulator.h>
@@ -575,3 +576,5 @@ ac_int<64, false> RiscvSimulator::ldd(ac_int<64, false> addr){
 void RiscvSimulator::doStep(){
 
 }
+
+#endif
