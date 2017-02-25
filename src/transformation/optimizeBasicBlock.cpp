@@ -5,6 +5,9 @@
  *      Author: Simon Rokicki
  */
 
+#include <stdlib.h>
+#include <stdio.h>
+
 #include <dbt/dbtPlateform.h>
 #include <lib/endianness.h>
 #include <isa/vexISA.h>
@@ -126,7 +129,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 
 
-
+	#ifndef __NIOS
 	fprintf(stderr, "*************************************************************************\n");
 	for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
 		fprintf(stderr, "%d ", i);
@@ -136,6 +139,8 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)); fprintf(stderr, "\n");
 
 	}
+	#endif
+
 	for (int i=basicBlockStart;i<basicBlockEnd;i++){
 		fprintf(stderr, "schedule;%d;%d\n",i);
 	}

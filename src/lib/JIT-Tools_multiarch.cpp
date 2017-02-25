@@ -82,19 +82,19 @@
 	//Functions for performances
 
 	#ifdef __NIOS
-	#include "altera_avalon_performance_counter.h"
-
-
-	#define PERF_BEGIN(p,n) IOWR((p),(((n)*4)+1),0)
-	#define PERF_END(p,n)   IOWR((p),(((n)*4)  ),0)
+//	#include "altera_avalon_performance_counter.h"
+//
+//
+//	#define PERF_BEGIN(p,n) IOWR((p),(((n)*4)+1),0)
+//	#define PERF_END(p,n)   IOWR((p),(((n)*4)  ),0)
 
 
 	void startPerformances(int id){
-		PERF_BEGIN (alt_get_performance_counter_base(), id);
+//		PERF_BEGIN (alt_get_performance_counter_base(), id);
 	}
 
 	void stopPerformances(int id){
-		PERF_END (alt_get_performance_counter_base(), id);
+//		PERF_END (alt_get_performance_counter_base(), id);
 	}
 
 	int getPerformances(int id){

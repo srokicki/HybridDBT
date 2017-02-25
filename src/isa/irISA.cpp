@@ -5,7 +5,8 @@
  *      Author: Simon Rokicki
  */
 
-
+#include <stdlib.h>
+#include <stdio.h>
 
 #include <types.h>
 #include <isa/vexISA.h>
@@ -79,7 +80,6 @@ ac_int<128, false> assembleIBytecodeInstruction(ac_int<2, false> stageCode, ac_i
 
 
 
-#endif
 
 /********************************************************************
  * Declaration of debug function
@@ -145,6 +145,9 @@ void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instr
 	fprintf(stderr, "\n");
 
 }
+
+#endif
+
 
 /********************************************************************
  * Declaration of a data structure to represent the control flow of the binaries analyzed.

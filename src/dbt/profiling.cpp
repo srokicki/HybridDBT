@@ -5,6 +5,8 @@
  *      Author: simon
  */
 
+#include <stdio.h>
+
 #include <lib/endianness.h>
 #include <isa/vexISA.h>
 #include <types.h>
@@ -12,6 +14,7 @@
 #include <dbt/dbtPlateform.h>
 
 #include <dbt/profiling.h>
+
 
 
 unsigned int Profiler::insertProfilingProcedure(int start, unsigned int startAddress){
@@ -160,7 +163,13 @@ int Profiler::getNumberProfiledBlocks(){
 }
 
 int Profiler::getProfilingInformation(int ID){
+	#ifndef __NIOS
 	return this->platform->vexSimulator->ldw(0x8000000 + ID*4);
+	#else
+	return this->platform->vliwDataMemory[0];
+	//TODO change this to place profiling information at a correct place
+	#endif
+
 }
 
 IRBlock* Profiler::getBlock(int ID){

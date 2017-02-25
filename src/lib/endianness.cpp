@@ -40,18 +40,18 @@ void writeInt(uint128* bytecode, int place, unsigned int value){
  * The input memory can be uint8*, uint32* or uint128*
  ***********************************************************************/
 
-uint32 readInt(uint8* bytecode, int place){
-
-	unsigned int result = 0;
-	//FIXME endianness
-	result = (bytecode[place+3] << 24);
-	result += (bytecode[place+2] << 16);
-	result += (bytecode[place+1] << 8);
-	result += (bytecode[place+0] << 0);
-
-	return result;
-
-}
+//uint32 readInt(uint8* bytecode, int place){
+//
+//	unsigned int result = 0;
+//	//FIXME endianness
+//	result = (bytecode[place+3] << 24);
+//	result += (bytecode[place+2] << 16);
+//	result += (bytecode[place+1] << 8);
+//	result += (bytecode[place+0] << 0);
+//
+//	return result;
+//
+//}
 
 uint32 readInt(uint32* bytecode, int place){
 	return bytecode[place>>2];

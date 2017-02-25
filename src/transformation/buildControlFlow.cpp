@@ -5,10 +5,14 @@
  *      Author: Simon Rokicki
  */
 
+#include <stdio.h>
+
 #include <dbt/dbtPlateform.h>
 #include <dbt/insertions.h>
 
 #include <isa/irISA.h>
+#include <isa/vexISA.h>
+
 #include <stdlib.h>
 #include <string.h>
 

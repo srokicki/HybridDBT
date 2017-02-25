@@ -602,8 +602,15 @@ int irScheduler(DBTPlateform *platform, uint1 optLevel, uint8 basicBlockSize, ui
 		int6 numberFreeRegister, uint4 issue_width,
 		uintIW way_specialisation){
 
+	#ifndef __NIOS
 	return scheduling(optLevel, basicBlockSize, platform->bytecode, platform->vliwBinaries, addressInBinaries, platform->placeOfRegisters,
 			numberFreeRegister, platform->freeRegisters, issue_width, way_specialisation, platform->placeOfInstr);
+	#else
+	unsigned int argA = optLevel + (basicBlockSize << 1) + (addressInBinaries << 16);
+	unsigned int argB = issue_width + (way_specialisation << 4);
+	return ALT_CI_COMPONENT_SCHEDULING_0(argA, argB);
+	#endif
+
 }
 
 

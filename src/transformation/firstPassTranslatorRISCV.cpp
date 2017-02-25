@@ -37,6 +37,7 @@ using namespace std;
 
 #ifndef __CATAPULT
 
+#ifndef __NIOS
 int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		uint32 size,
 		uint32 addressStart,
@@ -48,6 +49,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		uint32 unresolvedJumps_src[512],
 		uint8 unresolvedJumps_type[512],
 		int32 unresolvedJumps[512]);
+#endif
 
 /**************************************************************
  *  Function firstPassTranslator will translate a piece of MIPS binaries from the memory 'code' and
@@ -81,7 +83,7 @@ uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
 			platform->unresolvedJumps_type,
 			platform->unresolvedJumps);
 	#else
-		int argA = *size + (*placeCode<<16);
+		int argA = size + (placeCode<<16);
 		int argB = addressStart;
 		int returnedValue = ALT_CI_COMPONENT_FIRSTPASSTRANSLATORRISCV_HW_0(argA, argB);
 	#endif

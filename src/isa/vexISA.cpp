@@ -1,11 +1,14 @@
 #include <types.h>
 #include <isa/vexISA.h>
 #include <string.h>
-#include <strings.h>
 #include <iomanip>
 #include <sstream>
 
 #ifndef __NIOS
+
+#include <strings.h>
+
+
 uint32 assembleIInstruction(uint7 opcode, uint19 imm19, uint6 regA){
 	ac_int<32, false> result = 0;
 	result.set_slc(0, opcode);
@@ -44,8 +47,7 @@ uint32 assembleIInstruction(uint7 opcode, uint19 imm19, uint6 regA){
 }
 
 uint32 assembleRInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint6 regB){
-	ac_int<32, false> result = 0;
-	ac_int<1, false> const0 = 0;
+	uint32 result = 0;
 	result += opcode & 0x7f;
 	result += (regDest & 0x3f) << 14;
 	result += (regB & 0x3f) << 20;
@@ -54,7 +56,7 @@ uint32 assembleRInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint6 regB)
 }
 
 uint32 assembleRiInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint13 imm13){
-	ac_int<32, false> result = 0;
+	uint32 result = 0;
 	result += opcode & 0x7f;
 	result += (imm13 & 0x1fff) << 7;
 	result += (regDest & 0x3f) << 20;
@@ -64,6 +66,8 @@ uint32 assembleRiInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint13 imm
 
 #endif
 
+
+#ifndef __NIOS
 const char* opcodeNames[128] = {
 		"NOP", "MPYLL", "MPYLLU", "MPYLH", "MPYLHU", "MPYHH", "MPYHHU", "MPYL", "DIVW", "MPYW", "MPYHU", "MPYHS", "MPYLO", "MPYHI", "DIVLO", "DIVHI",
 		"LDD", "LDW", "LDH", "LDHU", "LDB", "LDBU","LDWU", "?", "STB", "STH", "STW", "STD", "?", "?", "?", "?",
@@ -96,13 +100,13 @@ std::string printDecodedInstr(ac_int<32, false> instruction){
 	if (OP == 0){
 	}
 	else if (isIType)
-		stream << " r" + std::to_string(RA) + ", " + std::to_string(IMM19);
+		stream << " r" << RA << ", "  << IMM19;
 	else if (isImm){
-		stream << " r" + std::to_string(RB) + "  = " + std::to_string(RA) + " 0x";
+		stream << " r" << RB << "  = " << RA << " 0x";
 		stream << std::hex << IMM13_signed;
 	}
 	else
-		stream << " r" + std::to_string(RC) + "  = " + std::to_string(RA) + " " + std::to_string(RB);
+		stream << " r" << RC << "  = " << RA << " " << RB;
 
 	std::string result(stream.str());
 	for (int addedSpace = result.size(); addedSpace < 20; addedSpace++)
@@ -110,3 +114,4 @@ std::string printDecodedInstr(ac_int<32, false> instruction){
 
 	return result;
 }
+#endif

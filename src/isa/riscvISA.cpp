@@ -7,11 +7,13 @@
 
 #include <isa/riscvISA.h>
 #include <string.h>
-#include <strings.h>
 #include <iomanip>
 #include <sstream>
 
 #ifndef __NIOS
+
+#include <strings.h>
+
 
 const char* riscvNamesOP[8] = {"ADD","SLL", "CMPLT", "CMPLTU", "XOR", "", "OR", "AND"};
 const char* riscvNamesOPI[8] = {"ADDi", "SLLi", "SLTi", "CMPLTUi", "XORi", "SRLi", "ORi", "ANDi"};

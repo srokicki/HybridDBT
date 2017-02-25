@@ -128,8 +128,10 @@ uint32 assembleRInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint6 regB)
 uint32 assembleRiInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint13 imm13);
 
 #ifndef __CATAPULT
+#ifndef __NIOS
 extern const char* opcodeNames[128];
 std::string printDecodedInstr(ac_int<32, false> instruction);
+#endif
 #endif
 
 #endif /* INCLUDES_VEX_H_ */

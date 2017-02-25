@@ -111,7 +111,12 @@ void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressS
 }
 
 int run(DBTPlateform *platform, int nbCycle){
+#ifndef __NIOS
 	return platform->vexSimulator->doStep(nbCycle);
+#else
+	return 0;
+#endif
+
 }
 
 
