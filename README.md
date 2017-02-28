@@ -59,9 +59,9 @@ In order to compile an application and generated RISC-V binaries compatible with
 	$ git submodule update --init --recursive
 	$ export RISCV=/path/to/install/riscv/toolchain
 	
-Here, instead of running the build.sh script as it is presented on the official web page, we will run another script that generate 32-bit binaries.
+Then run the script provided to build the compiler:
 
-	$ ./build-rv32ima.sh
+	$ ./build.sh
 	
 Once the compiler is done, you can at the folder $RISCV/bin to the path so that the compiler is easily used. To generate code with soft-float, just run the following command:
 
@@ -69,7 +69,14 @@ Once the compiler is done, you can at the folder $RISCV/bin to the path so that 
 	
 ## <a name="hardware"></a> How to use the hardware version
 
-TODO
+One of the specificities of Hybrid-DBT framework is to use hardware accelerators to perform critical steps in the DBT process. We identified these steps to be the first-pass translation (eg. the translation of RISC-V instructions when they are first met), the IR-generation (eg. the generation of an higher level intermediate representation of instructions) and the IR-scheduler (eg. the instruction scheduling which transforms the abovementionned IR into VLIW binaries).
+
+These three accelerators are generated using High-Level Synthesis (HLS). The VHDL files are stored in the architecture/vhdl folder.
+
+The platform we used for prototyping us built upon Nios II processor from Altera. Each of the abovementionned accelerators are called ny the Nios II as custom instructions. The tool QSys was used to describe the system. Folder architecture/vhdl also contains VHDL wrapper and TCL files for instantiating accelerators in QSys. If you simply modify the PATH of the QSys tool, you'll be able to add the three accelerators in your system.
+
+Once the platform is defined and compiled using Quartus, use the Nios II tools to build the project for the platform. For this, you'll have to generate a BSP corresponding to your platform and to build the project using the "-D __NIOS" flag.
+
 
 ## <a name="sources"></a> A quick tour of available sources
 
@@ -91,8 +98,9 @@ Finally folder src/simulator contains sources for different simulators.
 Transformations implemented in the framework are store in the folder src/transformation. We can separate them into two categories: 
  - Transformations done by a hardware accelerator
  - Transformations done in software
+
  
- The first category contains currently three transformations: the **firstPassTranslation**, the **IRBuilder** and the IRScheduler. Their role is to efficiently handle the first steps of the DBT process. 
+The first category contains currently three transformations: the **firstPassTranslation**, the **IRBuilder** and the IRScheduler. Their role is to efficiently handle the first steps of the DBT process. 
  
  **FirstPassTranslator** will generate a naive translation of source binaries into VLIW binaries. In order to reduce its overhead, it will not try to exploit ILP and will never schedule more than one instruction per cycle. Currently two implementation of the firstPassTranslator exists: one for MIPS ISA and one for RISC-V ISA. The second one is the most recent one and is the one tested after updates. The other one is currently deprecated.
  

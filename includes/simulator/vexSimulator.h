@@ -10,7 +10,10 @@
 
 #ifndef __NIOS
 
+#ifndef __CATAPULT
 #include <map>
+#endif
+
 #include <types.h>
 #include <isa/vexISA.h>
 
@@ -43,7 +46,7 @@ struct MemtoWB {
 	ac_int<1, false> WBena;		//Is a WB is needed ?
 };
 
-
+#ifndef __CATAPULT
 
 class VexSimulator {
 	public:
@@ -128,7 +131,7 @@ class VexSimulator {
 
 
 #endif
-
+#endif
 
 
 #endif /* INCLUDES_VEXSIMULATOR_H_ */

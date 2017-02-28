@@ -31,14 +31,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <simulator/vexSimulator.h>
+
 
 #include <map>
 
 
 using namespace std;
 #endif
-
+#include <simulator/vexSimulator.h>
+#include <isa/vexISA.h>
 #include <types.h>
 
 #define MAX_NUMBER_OF_INSTRUCTIONS 65536
@@ -54,19 +55,26 @@ using namespace std;
 
 
 
-// 32 bits registers
+// 64 bits registers
 
 
 #ifdef __CATAPULT
-ac_int<32, true> REG[64];
-ac_int<32, false> PC, NEXT_PC, cycle=0;
+ac_int<64, true> REG[64];
+ac_int<64, false> PC, NEXT_PC, cycle=0;
+
+struct MemtoWB memtoWB1;	struct MemtoWB memtoWB2;	struct MemtoWB memtoWB3;	struct MemtoWB memtoWB4;	struct MemtoWB memtoWB5; 	struct MemtoWB memtoWB6;	struct MemtoWB memtoWB7;	struct MemtoWB memtoWB8;
+struct ExtoMem extoMem1;	struct ExtoMem extoMem2;	struct ExtoMem extoMem3;	struct ExtoMem extoMem4;	struct ExtoMem extoMem5;	struct ExtoMem extoMem6;	struct ExtoMem extoMem7;	struct ExtoMem extoMem8;
+struct DCtoEx dctoEx1; struct DCtoEx dctoEx2;	struct DCtoEx dctoEx3;	struct DCtoEx dctoEx4;	struct DCtoEx dctoEx5;	struct DCtoEx dctoEx6;	struct DCtoEx dctoEx7;	struct DCtoEx dctoEx8;
+struct FtoDC ftoDC1;	struct FtoDC ftoDC2;	struct FtoDC ftoDC3;	struct FtoDC ftoDC4;	struct FtoDC ftoDC5;	struct FtoDC ftoDC6;	struct FtoDC ftoDC7;	struct FtoDC ftoDC8;
+ac_int<1, false> stop;
+
 
 #else
 // 1 bit registers
 ac_int<1, false> BREG[BRANCH_UNIT_NUMBER];
 // Link register
 
-std::map<unsigned int, ac_int<32, false>> memory;
+std::map<unsigned int, ac_int<64, false>> memory;
 ac_int<128, false> RI[MAX_NUMBER_OF_INSTRUCTIONS];
 #endif
 
@@ -130,12 +138,16 @@ ac_int<32, false> VexSimulator::ldw(ac_int<64, false> addr){
 #endif
 
 #ifdef __CATAPULT
-	ac_int<32, false> ldw(unsigned int addr, ac_int<8, false> memory0[65536], ac_int<8, false> memory1[65536], ac_int<8,false> memory2[65536], ac_int<8, false> memory3[65536]){
-		ac_int<32, false> result = 0;
+	ac_int<64, false> ldd(unsigned int addr, ac_int<8, false> memory0[65536], ac_int<8, false> memory1[65536], ac_int<8,false> memory2[65536], ac_int<8, false> memory3[65536], ac_int<8, false> memory4[65536], ac_int<8, false> memory5[65536],  ac_int<8,false> memory6[65536], ac_int<8, false> memory7[65536]){
+		ac_int<64, false> result = 0;
 		result.set_slc(0, memory0[addr>>2]);
 		result.set_slc(8, memory1[addr>>2]);
 		result.set_slc(16, memory2[addr>>2]);
 		result.set_slc(24, memory3[addr>>2]);
+		result.set_slc(32, memory4[addr>>2]);
+		result.set_slc(40, memory5[addr>>2]);
+		result.set_slc(48, memory6[addr>>2]);
+		result.set_slc(56, memory7[addr>>2]);
 
 		return result;
 	}
@@ -166,7 +178,8 @@ void doMemNoMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB){
 }
 
 #ifdef __CATAPULT
-void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> memory0[65536], ac_int<8, false> memory1[65536], ac_int<8,false> memory2[65536], ac_int<8, false> memory3[65536], ac_int<8, false> memory4[65536], ac_int<8, false> memory5[65536], ac_int<8,false> memory6[65536], ac_int<8, false> memory7[65536]){
+void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> memory0[65536], ac_int<8, false> memory1[65536], ac_int<8,false> memory2[65536], ac_int<8, false> memory3[65536],
+	 ac_int<8, false> memory4[65536], ac_int<8, false> memory5[65536], ac_int<8,false> memory6[65536], ac_int<8, false> memory7[65536]){
 #else
 	void VexSimulator::doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB){
 #endif
@@ -646,7 +659,11 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 	ac_int<32, true> sra_result_32 = dataa32 >> shiftAmount32;
 	ac_int<32, true> mult_result_32 = dataa32 * datab32;
 	ac_int<32, true> const1 = 1;
+#ifdef __CATAPULT
+	ac_int<32, true> div_result_32 = 0; //Currently catapult version do not do division
+#else
 	ac_int<32, true> div_result_32 = dataa32 / (datab32 == 0 ? const1 : datab32);
+#endif
 
 	ac_int<64, true> result32 = selectAdd32 ? add_result_32 :
 			selectSub32 ? sub_result_32 :
@@ -760,7 +777,8 @@ void VexSimulator::doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 }
 
 #ifdef __CATAPULT
-void doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx, ac_int<8, false> memory0[65536], ac_int<8, false> memory1[65536], ac_int<8,false> memory2[65536], ac_int<8, false> memory3[65536]){
+void doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx, ac_int<8, false> memory0[65536], ac_int<8, false> memory1[65536], ac_int<8,false> memory2[65536], ac_int<8, false> memory3[65536],
+	 ac_int<8, false> memory4[65536], ac_int<8, false> memory5[65536], ac_int<8,false> memory6[65536], ac_int<8, false> memory7[65536]){
 #else
 void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 #endif
@@ -841,7 +859,7 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	if (OP.slc<4>(4) == 1 && (address != 0x10009000 || !OP[3])){
 		//If we are in a memory access, the access is initiated here
 		#ifdef __CATAPULT
-		dctoEx->memValue = ldw(address & 0xfffffffc, memory0, memory1, memory2, memory3);
+		dctoEx->memValue = ldd(address & 0xfffffffc, memory0, memory1, memory2, memory3, memory4, memory5, memory6, memory7);
 		#else
 		dctoEx->memValue = this->ldw(address & 0xfffffffc);
 		#endif
@@ -955,6 +973,8 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 				NEXT_PC = REG[63];
 
 				break; // RETURN
+
+#ifndef __CATAPULT
 			case VEX_RECONFFS:
 				dctoEx->opCode = 0;
 				this->issueWidth = dctoEx->dest;
@@ -981,13 +1001,220 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 //				this->unitActivation[6] = IMM19[6];
 //				this->unitActivation[7] = IMM19[7];
 				break;
+#endif
 			default:
 				break;
 			}
 }
 
+
 #ifdef __CATAPULT
-int run(int mainPc, ac_int<8, false> memory0[65536], ac_int<8, false> memory1[65536], ac_int<8,false> memory2[65536], ac_int<8, false> memory3[65536], ac_int<128, false> RI[65536]){
+int doStep(ac_int<8, false> memory0[65536], ac_int<8, false> memory1[65536], ac_int<8,false> memory2[65536], ac_int<8, false> memory3[65536],
+	 ac_int<8, false> memory4[65536], ac_int<8, false> memory5[65536], ac_int<8,false> memory6[65536], ac_int<8, false> memory7[65536], ac_int<128, false> RI[65536]){
+#else
+int VexSimulator::doStep(){
+#endif
+
+
+	doWB(memtoWB3);
+
+
+	///////////////////////////////////////////////////////
+	//													 //
+	//                         EX                        //
+	//													 //
+	///////////////////////////////////////////////////////
+
+
+	doEx(dctoEx4, &extoMem4);
+	doEx(dctoEx1, &extoMem1);
+	doExMult(dctoEx3, &extoMem3);
+	doEx(dctoEx2, &extoMem2);
+//		doEx(dctoEx5, &extoMem5);
+//		doExMem(dctoEx6, &extoMem6);
+//		doEx(dctoEx7, &extoMem7);
+//		doExMult(dctoEx8, &extoMem8);
+
+
+
+	///////////////////////////////////////////////////////
+	//													 //
+	//                       M                           //
+	//													 //
+	///////////////////////////////////////////////////////
+
+
+
+
+	// If the operation code is 0x2f then the processor stops
+	if(stop == 1){
+		return PC;
+	}
+
+
+	doMemNoMem(extoMem1, &memtoWB1);
+	doMemNoMem(extoMem3, &memtoWB3);
+	doMemNoMem(extoMem4, &memtoWB4);
+//		doMemNoMem(extoMem5, &memtoWB5);
+//		doMemNoMem(extoMem7, &memtoWB7);
+//		doMemNoMem(extoMem8, &memtoWB8);
+
+#ifdef __CATAPULT
+	doMem(extoMem2, &memtoWB2, memory0, memory1, memory2, memory3, memory4, memory5, memory6, memory7);
+#else
+	doMem(extoMem2, &memtoWB2);
+#endif
+
+	//		doMem(extoMem6, &memtoWB6, DATA0, DATA1, DATA2, DATA3);
+
+
+
+	///////////////////////////////////////////////////////
+	//													 //
+	//                       WB                          //
+	//  												 //
+	///////////////////////////////////////////////////////
+
+	doWB(memtoWB1);
+	doWB(memtoWB2);
+	doWB(memtoWB4);
+//		doWB(memtoWB5);
+//		doWB(memtoWB6);
+//		doWB(memtoWB7);
+//		doWB(memtoWB8);
+
+	///////////////////////////////////////////////////////
+	//													 //
+	//                       DC                          //
+	//													 //
+	///////////////////////////////////////////////////////
+
+	NEXT_PC = PC+4;
+	doDCBr(ftoDC1, &dctoEx1);
+
+#ifdef __CATAPULT
+	doDCMem(ftoDC2, &dctoEx2, memory0, memory1, memory2, memory3, memory4, memory5, memory6, memory7);
+#else
+	doDCMem(ftoDC2, &dctoEx2);
+#endif
+	doDC(ftoDC3, &dctoEx3);
+	doDC(ftoDC4, &dctoEx4);
+//		doDC(ftoDC5, &dctoEx5);
+//		doDC(ftoDC6, &dctoEx6);
+//		doDC(ftoDC7, &dctoEx7);
+//		doDC(ftoDC8, &dctoEx8);
+
+	ac_int<7, false> OP1 = ftoDC1.instruction.slc<7>(0);
+
+	// If the operation code is 0x2f then the processor stops
+	if(OP1 == 0x2F){
+		stop = 1;
+		NEXT_PC = PC;
+		#ifndef __CATAPULT
+		fprintf(stderr,"Simulation finished in %d cycles \n", cycle);
+		#endif
+	}
+
+
+	///////////////////////////////////////////////////////
+	//                       F                           //
+	///////////////////////////////////////////////////////
+
+
+	// Retrieving new instruction
+
+	ac_int<64, false> secondLoadAddress = (PC>>2)+1;
+	ac_int<SIZE_INSTRUCTION, false> vliw = RI[PC>>2];
+	ac_int<SIZE_INSTRUCTION, false> vliw2 = RI[secondLoadAddress];
+
+	ac_int<32, false> instructions[8];
+	instructions[0] = vliw.slc<32>(96);
+	instructions[1] = vliw.slc<32>(64);
+	instructions[2] = vliw.slc<32>(32);
+	instructions[3] = vliw.slc<32>(0);
+	instructions[4] = vliw2.slc<32>(96);
+	instructions[5] = vliw2.slc<32>(64);
+	instructions[6] = vliw2.slc<32>(32);
+	instructions[7] = vliw2.slc<32>(0);
+
+	ac_int<32, false> nopInstr = 0;
+
+	// Redirect instructions to thier own ways
+	#ifndef __CATAPULT
+
+	ftoDC1.instruction = instructions[0];
+	ftoDC2.instruction = instructions[1];
+	ftoDC3.instruction = this->unitActivation[2] ? instructions[2] : nopInstr;
+	ftoDC4.instruction = !this->unitActivation[3] ? nopInstr :
+						 this->unitActivation[2] ? instructions[3] : instructions[2];
+
+	ftoDC5.instruction = !this->unitActivation[4] ? nopInstr :
+			 this->unitActivation[2] & this->unitActivation[3] ? instructions[4] :
+			 this->unitActivation[2] | this->unitActivation[3] ? instructions[3] :
+			 instructions[2];
+
+
+	ftoDC6.instruction = !this->unitActivation[5] ? nopInstr :
+			 this->unitActivation[3] & this->unitActivation[4] ? instructions[5] :
+			 this->unitActivation[3] | this->unitActivation[4] ? instructions[4] :
+			 instructions[3];
+
+
+	ftoDC7.instruction = !this->unitActivation[6] ? nopInstr :
+			 this->unitActivation[3] &  this->unitActivation[4] & this->unitActivation[5] ? instructions[6] :
+			 (this->unitActivation[3] |  this->unitActivation[4]) &	(this->unitActivation[3] |  this->unitActivation[5]) & (this->unitActivation[5] |  this->unitActivation[4]) ? instructions[5] :
+			 this->unitActivation[3] |  this->unitActivation[4] | this->unitActivation[5] ? instructions[4] :
+			 instructions[3];
+
+	ftoDC8.instruction = !this->unitActivation[7] ? nopInstr : instructions[7];
+	#else
+	ftoDC1.instruction = instructions[0];
+	ftoDC2.instruction = instructions[1];
+	ftoDC3.instruction = instructions[2];
+	ftoDC4.instruction = instructions[3];
+
+	#endif
+
+
+	int pcValueForDebug = PC;
+	// Next instruction
+	PC = NEXT_PC;
+	cycle++;
+
+	// DISPLAY
+
+#ifndef __CATAPULT
+	if (debugLevel >= 1){
+		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
+		std::cerr << printDecodedInstr(ftoDC1.instruction);
+		std::cerr << " ";
+		std::cerr << printDecodedInstr(ftoDC2.instruction);
+		std::cerr << " ";
+		std::cerr << printDecodedInstr(ftoDC3.instruction);
+		std::cerr << " ";
+		std::cerr << printDecodedInstr(ftoDC4.instruction);
+		std::cerr << " ";
+
+
+		for (int oneRegister = 0; oneRegister<36; oneRegister++){
+			fprintf(stderr, "%lx ", (long) REG[oneRegister]);
+		}
+		fprintf(stderr, "\n");
+
+	}
+
+
+#endif
+
+	return 0;
+}
+
+
+
+
+#ifdef __CATAPULT
+int run(int mainPc, ac_int<8, false> memory0[65536], ac_int<8, false> memory1[65536], ac_int<8,false> memory2[65536], ac_int<8, false> memory3[65536],
+	 ac_int<8, false> memory4[65536], ac_int<8, false> memory5[65536], ac_int<8,false> memory6[65536], ac_int<8, false> memory7[65536], ac_int<128, false> RI[65536]){
 #else
 int VexSimulator::initializeRun(int mainPc){
 #endif
@@ -1037,6 +1264,14 @@ int VexSimulator::initializeRun(int mainPc){
 	 *  Pipeline way 4 : Common only
 	 *
 	 */
+#ifdef __CATAPULT
+	while (1){
+		int returnedValue = doStep(memory0, memory1, memory2, memory3, memory4, memory5, memory6, memory7, RI);
+
+		if (returnedValue != 0)
+			return returnedValue;
+	}
+#endif
 
 	return 0;
 }
@@ -1058,192 +1293,6 @@ void VexSimulator::initializeDataMemory(ac_int<64, false>* content, unsigned int
 
 
 
-int VexSimulator::doStep(){
-
-
-	doWB(memtoWB3);
-
-
-	///////////////////////////////////////////////////////
-	//													 //
-	//                         EX                        //
-	//													 //
-	///////////////////////////////////////////////////////
-
-
-	doEx(dctoEx4, &extoMem4);
-	doEx(dctoEx1, &extoMem1);
-	doExMult(dctoEx3, &extoMem3);
-	doEx(dctoEx2, &extoMem2);
-//		doEx(dctoEx5, &extoMem5);
-//		doExMem(dctoEx6, &extoMem6);
-//		doEx(dctoEx7, &extoMem7);
-//		doExMult(dctoEx8, &extoMem8);
-
-
-
-	///////////////////////////////////////////////////////
-	//													 //
-	//                       M                           //
-	//													 //
-	///////////////////////////////////////////////////////
-
-
-
-
-	// If the operation code is 0x2f then the processor stops
-	if(stop == 1){
-		return PC;
-	}
-
-
-	doMemNoMem(extoMem1, &memtoWB1);
-	doMemNoMem(extoMem3, &memtoWB3);
-	doMemNoMem(extoMem4, &memtoWB4);
-//		doMemNoMem(extoMem5, &memtoWB5);
-//		doMemNoMem(extoMem7, &memtoWB7);
-//		doMemNoMem(extoMem8, &memtoWB8);
-
-#ifdef __CATAPULT
-	doMem(extoMem2, &memtoWB2, memory0, memory1, memory2, memory3);
-#else
-	doMem(extoMem2, &memtoWB2);
-#endif
-
-	//		doMem(extoMem6, &memtoWB6, DATA0, DATA1, DATA2, DATA3);
-
-
-
-	///////////////////////////////////////////////////////
-	//													 //
-	//                       WB                          //
-	//  												 //
-	///////////////////////////////////////////////////////
-
-	doWB(memtoWB1);
-	doWB(memtoWB2);
-	doWB(memtoWB4);
-//		doWB(memtoWB5);
-//		doWB(memtoWB6);
-//		doWB(memtoWB7);
-//		doWB(memtoWB8);
-
-	///////////////////////////////////////////////////////
-	//													 //
-	//                       DC                          //
-	//													 //
-	///////////////////////////////////////////////////////
-
-	NEXT_PC = PC+4;
-	doDCBr(ftoDC1, &dctoEx1);
-
-#ifdef __CATAPULT
-	doDCMem(ftoDC2, &dctoEx2, memory0, memory1, memory2, memory3);
-#else
-	doDCMem(ftoDC2, &dctoEx2);
-#endif
-	doDC(ftoDC3, &dctoEx3);
-	doDC(ftoDC4, &dctoEx4);
-//		doDC(ftoDC5, &dctoEx5);
-//		doDC(ftoDC6, &dctoEx6);
-//		doDC(ftoDC7, &dctoEx7);
-//		doDC(ftoDC8, &dctoEx8);
-
-	ac_int<7, false> OP1 = ftoDC1.instruction.slc<7>(0);
-
-	// If the operation code is 0x2f then the processor stops
-	if(OP1 == 0x2F){
-		stop = 1;
-		NEXT_PC = PC;
-		#ifndef __CATAPULT
-		fprintf(stderr,"Simulation finished in %d cycles \n", cycle);
-		#endif
-	}
-
-
-	///////////////////////////////////////////////////////
-	//                       F                           //
-	///////////////////////////////////////////////////////
-
-
-	// Retrieving new instruction
-
-	ac_int<64, false> secondLoadAddress = (PC>>2)+1;
-	ac_int<SIZE_INSTRUCTION, false> vliw = RI[PC>>2];
-	ac_int<SIZE_INSTRUCTION, false> vliw2 = RI[secondLoadAddress];
-
-	ac_int<32, false> instructions[8];
-	instructions[0] = vliw.slc<32>(96);
-	instructions[1] = vliw.slc<32>(64);
-	instructions[2] = vliw.slc<32>(32);
-	instructions[3] = vliw.slc<32>(0);
-	instructions[4] = vliw2.slc<32>(96);
-	instructions[5] = vliw2.slc<32>(64);
-	instructions[6] = vliw2.slc<32>(32);
-	instructions[7] = vliw2.slc<32>(0);
-
-	ac_int<32, false> nopInstr = 0;
-
-	// Redirect instructions to thier own ways
-	ftoDC1.instruction = instructions[0];
-	ftoDC2.instruction = instructions[1];
-	ftoDC3.instruction = this->unitActivation[2] ? instructions[2] : nopInstr;
-	ftoDC4.instruction = !this->unitActivation[3] ? nopInstr :
-						 this->unitActivation[2] ? instructions[3] : instructions[2];
-
-	ftoDC5.instruction = !this->unitActivation[4] ? nopInstr :
-			 this->unitActivation[2] & this->unitActivation[3] ? instructions[4] :
-			 this->unitActivation[2] | this->unitActivation[3] ? instructions[3] :
-			 instructions[2];
-
-
-	ftoDC6.instruction = !this->unitActivation[5] ? nopInstr :
-			 this->unitActivation[3] & this->unitActivation[4] ? instructions[5] :
-			 this->unitActivation[3] | this->unitActivation[4] ? instructions[4] :
-			 instructions[3];
-
-
-	ftoDC7.instruction = !this->unitActivation[6] ? nopInstr :
-			 this->unitActivation[3] &  this->unitActivation[4] & this->unitActivation[5] ? instructions[6] :
-			 (this->unitActivation[3] |  this->unitActivation[4]) &	(this->unitActivation[3] |  this->unitActivation[5]) & (this->unitActivation[5] |  this->unitActivation[4]) ? instructions[5] :
-			 this->unitActivation[3] |  this->unitActivation[4] | this->unitActivation[5] ? instructions[4] :
-			 instructions[3];
-
-	ftoDC8.instruction = !this->unitActivation[7] ? nopInstr : instructions[7];
-
-
-	int pcValueForDebug = PC;
-	// Next instruction
-	PC = NEXT_PC;
-	cycle++;
-
-	// DISPLAY
-
-#ifndef __CATAPULT
-	if (debugLevel >= 1){
-		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
-		std::cerr << printDecodedInstr(ftoDC1.instruction);
-		std::cerr << " ";
-		std::cerr << printDecodedInstr(ftoDC2.instruction);
-		std::cerr << " ";
-		std::cerr << printDecodedInstr(ftoDC3.instruction);
-		std::cerr << " ";
-		std::cerr << printDecodedInstr(ftoDC4.instruction);
-		std::cerr << " ";
-
-
-		for (int oneRegister = 0; oneRegister<36; oneRegister++){
-			fprintf(stderr, "%lx ", (long) REG[oneRegister]);
-		}
-		fprintf(stderr, "\n");
-
-	}
-
-
-#endif
-
-	return 0;
-}
 
 
 int VexSimulator::doStep(int numberCycles){
