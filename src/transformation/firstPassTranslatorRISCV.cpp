@@ -399,7 +399,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 			if (currentBoundaryJustSet)
 				previousIsBoundary = currentBoundaryJustSet;
 
-			previousIsBoundary = blocksBoundaries[offset] || (indexInSourceBinaries == 0);
+			previousIsBoundary = previousIsBoundary || (indexInSourceBinaries == 0);
 			currentBoundaryJustSet = 0;
 
 			if (opcode == RISCV_OP){
