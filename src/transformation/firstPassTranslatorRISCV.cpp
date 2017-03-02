@@ -70,6 +70,9 @@ uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
 
 	//We call the accelerator (or the software counterpart if no accelerator)
 
+	for (int oneInstruction = 0; oneInstruction<size; oneInstruction++)
+		printf("%x\n",platform->mipsBinaries[oneInstruction]);
+
 	#ifndef __NIOS
 	int returnedValue = firstPassTranslatorRISCV_hw(platform->mipsBinaries,
 			size,
@@ -85,13 +88,18 @@ uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
 	#else
 		int argA = size + (placeCode<<16);
 		int argB = addressStart;
+		printf("Test\n");
 		int returnedValue = ALT_CI_COMPONENT_FIRSTPASSTRANSLATORRISCV_HW_0(argA, argB);
+
+		printf("Passed first pass\n");
 	#endif
 
 
 	//We translate the result
 	unsigned int destinationIndex = returnedValue & 0x3ffff;
 	unsigned int numberUnresolvedJumps = returnedValue >> 18;
+
+
 
 	//We copy insertions
 
@@ -156,7 +164,7 @@ uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
 			initialDestination = destinationInVLIWFromNewMethod;
 			initialDestination = initialDestination  - (source) ;
 			initialDestination = initialDestination << 2; //This is compute the destination according to the #of instruction and not the number of 4-instr bundle
-
+			printf("Solving instr at %d : %x\n", source, oldJump + ((initialDestination & 0x7ffff)<<7));
 
 			//We modify the jump instruction to make it jump at the correct place
 			writeInt(platform->vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));

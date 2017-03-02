@@ -60,19 +60,19 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 	int blockSize = basicBlockEnd - basicBlockStart - 1;
 
-	blockSize = irGenerator(platform, basicBlockStart, blockSize, globalVariableCounter);
+	blockSize = 0;//irGenerator(platform, basicBlockStart, blockSize, globalVariableCounter);
 
 	//We store the result in an array cause it can be used later
 	block->instructions = (uint32*) malloc(blockSize*4*sizeof(uint32));
 	memcpy(block->instructions, platform->bytecode, blockSize*sizeof(uint32)); //TODO this is not correct...
 	block->nbInstr = blockSize;
 
-	fprintf(stderr, "*************************************************************************\n");
-	fprintf(stderr, "Optimizing a block of size %d : \n", blockSize);
-	fprintf(stderr, "\n*****************\n");
-	for (int i=0; i<blockSize; i++){
-		printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
-	}
+//	fprintf(stderr, "*************************************************************************\n");
+//	fprintf(stderr, "Optimizing a block of size %d : \n", blockSize);
+//	fprintf(stderr, "\n*****************\n");
+//	for (int i=0; i<blockSize; i++){
+//		printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
+//	}
 
 	//Preparation of required memories
 	for (int oneFreeRegister = 36; oneFreeRegister<63; oneFreeRegister++)
@@ -109,7 +109,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		newOffset = newOffset << 2;
 
 		fprintf(stderr, "Correction of jump at the end of the block. Original offset was %d\n From it derivated destination %d and new offset %d\n", offset, destination, newOffset);
-		uint32 newInstruction = jumpInstruction & 0xfc00007f | ((newOffset & 0x7ffff) << 7);
+		uint32 newInstruction = (jumpInstruction & 0xfc00007f) | ((newOffset & 0x7ffff) << 7);
 		fprintf(stderr, "Old jump instr was %x. New is %x\n", jumpInstruction, newInstruction);
 		writeInt(platform->vliwBinaries, (basicBlockStart+binaSize)*16 + 0, newInstruction);
 	}

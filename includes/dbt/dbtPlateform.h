@@ -52,20 +52,20 @@ class DBTPlateform
 {
 
 public:
-	unsigned int *vliwBinaries = (unsigned int*) 0x20000000;
-	unsigned int *mipsBinaries = (unsigned int*) 0x10000000;
-	unsigned int *insertions = (unsigned int*) 0x30000000;
-	char *blockBoundaries = (char*) 0x40000000;
-	short *procedureBoundaries = (short*) 0x50000000;
-	unsigned int *bytecode = (unsigned int*) 0x70000000;
-	int *globalVariables = (int*) 0x63000000;
-	int *unresolvedJumps_src = (int*) 0x60000000;
-	char *unresolvedJumps_type = (char*) 0x610000000;
-	int *unresolvedJumps = (int*) 0x620000000;
-	char *placeOfRegisters = (char) 0x640000000;
-	char *freeRegisters = (char*) 0x650000000;
-	int *placeOfInstr = (int*) 0x660000000;
-	int *vliwDataMemory = (int*) 0x10000;
+	unsigned int *vliwBinaries = (unsigned int*) (0x20000000 + 0x80000000);
+	unsigned int *mipsBinaries = (unsigned int*) (0x10000000 + 0x80000000);
+	unsigned int *insertions = (unsigned int*) (0x30000000 + 0x80000000);
+	char *blockBoundaries = (char*)(0x40000000 + 0x80000000);
+	short *procedureBoundaries = (short*) (0x50000000 + 0x80000000);
+	unsigned int *bytecode = (unsigned int*) (0x70000000 + 0x80000000);
+	int *globalVariables = (int*) (0x63000000 + 0x80000000);
+	int *unresolvedJumps_src = (int*) (0x60000000 + 0x80000000);
+	char *unresolvedJumps_type = (char*) (0x61000000 + 0x80000000);
+	int *unresolvedJumps = (int*) (0x62000000 + 0x80000000);
+	char *placeOfRegisters = (char) (0x64000000 + 0x80000000);
+	char *freeRegisters = (char*) (0x65000000 + 0x80000000);
+	int *placeOfInstr = (int*) (0x66000000 + 0x80000000);
+	int *vliwDataMemory = (int*) (0x0000 + 0x80000000);
 
 
 };
