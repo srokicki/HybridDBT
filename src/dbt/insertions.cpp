@@ -43,10 +43,10 @@
 	 * more than 256 because code area will concern 1024 source instructions.
 	 */
 
-int insertionsArray[600];
-int unresolvedJumpsArray[600];
-int unresolvedJumpsTypeArray[600];
-int unresolvedJumpsSourceArray[600];
+int insertionsArray[65536];
+int unresolvedJumpsArray[65536];
+int unresolvedJumpsTypeArray[65536];
+int unresolvedJumpsSourceArray[65536];
 
 int loadWordFromInsertionMemory(int offset){
 

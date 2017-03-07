@@ -146,7 +146,6 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 		printf("Failed at inserting profiling, need alternative method\n");
 	}
 	else{
-		printf("Profiling one more block\n");
 		profiledBlocks[numberProfiledBlocks] = oneBlock;
 		numberProfiledBlocks++;
 		fprintf(stderr, "profiling block %x\n", (long int) oneBlock);

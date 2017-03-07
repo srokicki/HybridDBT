@@ -1186,6 +1186,7 @@ int VexSimulator::doStep(){
 #ifndef __CATAPULT
 	if (debugLevel >= 1){
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
+		fprintf(stderr, "%x %x %x %x ",(int) ftoDC1.instruction,(int)  ftoDC2.instruction, (int) ftoDC3.instruction, (int) ftoDC4.instruction);
 		std::cerr << printDecodedInstr(ftoDC1.instruction);
 		std::cerr << " ";
 		std::cerr << printDecodedInstr(ftoDC2.instruction);

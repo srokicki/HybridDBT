@@ -60,7 +60,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 	int blockSize = basicBlockEnd - basicBlockStart - 1;
 
-	blockSize = 0;//irGenerator(platform, basicBlockStart, blockSize, globalVariableCounter);
+	blockSize = irGenerator(platform, basicBlockStart, blockSize, globalVariableCounter);
 
 	//We store the result in an array cause it can be used later
 	block->instructions = (uint32*) malloc(blockSize*4*sizeof(uint32));

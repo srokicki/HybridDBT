@@ -21,7 +21,7 @@ void writeInt(uint8* bytecode, int place, unsigned int value){
 }
 
 void writeInt(uint32* bytecode, int place, unsigned int value){
-	bytecode[(place>>2)+(3-(place&0x3))] = value;
+	bytecode[(place>>2)/*+(3-(place&0x3))*/] = value;
 }
 
 #ifndef __NIOS
@@ -54,7 +54,7 @@ void writeInt(uint128* bytecode, int place, unsigned int value){
 //}
 
 uint32 readInt(uint32* bytecode, int place){
-	return bytecode[(place>>2)+(3-(place&0x3))];
+	return bytecode[(place>>2)/*+(3-(place&0x3))*/];
 
 }
 
