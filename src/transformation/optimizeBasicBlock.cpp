@@ -67,12 +67,12 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	memcpy(block->instructions, platform->bytecode, blockSize*sizeof(uint128)); //TODO this is not correct... (or maybe not clean)
 	block->nbInstr = blockSize;
 
-//	fprintf(stderr, "*************************************************************************\n");
-//	fprintf(stderr, "Optimizing a block of size %d : \n", blockSize);
-//	fprintf(stderr, "\n*****************\n");
-//	for (int i=0; i<blockSize; i++){
-//		printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
-//	}
+	fprintf(stderr, "*************************************************************************\n");
+	fprintf(stderr, "Optimizing a block of size %d : \n", blockSize);
+	fprintf(stderr, "\n*****************\n");
+	for (int i=0; i<blockSize; i++){
+		printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
+	}
 
 	//Preparation of required memories
 	for (int oneFreeRegister = 36; oneFreeRegister<63; oneFreeRegister++)
@@ -82,7 +82,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		platform->placeOfRegisters[256+onePlaceOfRegister] = onePlaceOfRegister;
 
 
-	int binaSize = irScheduler(platform, 1,blockSize, basicBlockStart, 27, 4, 0x001e);
+	int binaSize = irScheduler(platform, 1,blockSize, basicBlockStart, 29, 4, 0x001e);
 	binaSize = binaSize & 0xffff;
 
 

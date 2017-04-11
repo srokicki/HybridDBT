@@ -1113,7 +1113,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 		int numberSuccessors = 0;
 		ac_int<32, false> successor1, successor2;
 		unsigned char indexInCurrentBlock = 0;
-		ac_int<9, true> registers[64];
+		ac_int<9, true> registers[64] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 
 		/* Datastructures for dag construction*/
 		for (int i=0; i<64; i++)
@@ -1548,7 +1548,8 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			dest_global_access = (dest_global_address == pred1_global_address) ? pred1_global_access : dest_global_access;
 			dest_global_access = (dest_global_address == pred2_global_address) ? pred2_global_access : dest_global_access;
 
-
+			if (dest_reg >=10 & dest_reg <20)
+				dest_global_access = -1;
 
 			if (dest_ena) {
 				if (dest_global_access < 0 || insertMove_ena){
@@ -1787,6 +1788,16 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			jumpBytecodeWord.set_slc(64+6, numberDependencies);
 			bytecode[jumpID] = jumpBytecodeWord;
 		}
+
+		for (uint9 oneRegister=0; oneRegister<36; oneRegister++){
+			uint9 lastWriter = registers[oneRegister];
+			if (!lastWriter[8]){
+				bytecode[lastWriter] = bytecode[lastWriter].set_slc(64+14, oneRegister);
+
+			}
+		}
+
+
 
 	return indexInCurrentBlock;
 

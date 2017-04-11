@@ -269,6 +269,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 		priorities[i] = bytecode[i].slc<8>(24+32);
 		numbersOfRegisterDependencies[i] = bytecode[i].slc<3>(3+64);
 
+
 		if (numbersOfDependencies[i] == 0){
 		    if (fifoNumberElement == 64)
 		          stall = 1;
@@ -282,6 +283,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 	}
 
     while (1){
+
         // The scheduling will be done in three steps : the first one will solve
         // dependencies and find ready instructions. The second one will give an
         // instruction to every free functional unit. The final one will commit
@@ -408,11 +410,11 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 					if (typeCode == 0){
 						usedRegister[lineNumberForStage][numbersUsedRegister[lineNumberForStage]] = virtualRIn2;
 						numbersUsedRegister[lineNumberForStage]++;
-						if (!isImm){
-							usedRegister[lineNumberForStage][numbersUsedRegister[lineNumberForStage]] = virtualRIn1_imm9;
+						if (!isImm || opCode.slc<4>(3) == 3){
+							usedRegister[lineNumberForStage][numbersUsedRegister[lineNumberForStage]] = (opCode.slc<4>(3) == 3) ? virtualRDest : virtualRIn1_imm9;
 							numbersUsedRegister[lineNumberForStage]++;
-						}
 
+						}
 					}
 					else if (typeCode == 1){
 						usedRegister[lineNumberForStage][numbersUsedRegister[lineNumberForStage]] = virtualRIn2;
@@ -521,11 +523,10 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 
 
 
-        ac_int<9, false> previousRegisterName = 512; //this value will never lead to successor reduction
+        ac_int<9, false> previousRegisterName = 511; //this value will never lead to successor reduction
         ac_int<3, false> previousRegNumberOfDep = 0;
 
         for (int i=0; i<numbersUsedRegister[oldLineNumber]; i++){
-
         	if ((usedRegister[oldLineNumber][i][8] != 1)){
 				ac_int<3, false> numberDep = (usedRegister[oldLineNumber][i] == previousRegisterName) ?	previousRegNumberOfDep : numbersOfRegisterDependencies[usedRegister[oldLineNumber][i]];
 
@@ -533,6 +534,8 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 				numbersOfRegisterDependencies[usedRegister[oldLineNumber][i]] = numberDep;
 
 				ac_int<6, false> place = placeOfRegisters[usedRegister[oldLineNumber][i]].slc<6>(0);
+
+
 
 				if (numberDep == 0){
 						freeRegisters[writeFreeRegister] = place;
