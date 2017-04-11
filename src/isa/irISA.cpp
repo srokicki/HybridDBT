@@ -98,6 +98,8 @@ void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instr
 	uint9 virtualRDest = ((instructionPart2>>14) & 0x1ff);
 	uint9 virtualRIn2 = ((instructionPart2>>23) & 0x1ff);
 	uint9 virtualRIn1_imm9 = ((instructionPart1>>0) & 0x1ff);
+	ac_int<13, false> imm13 = ((instructionPart1>>0) & 0x1fff);
+
 	uint11 imm11 = ((instructionPart1>>23) & 0x7ff);
 	uint19 imm19 = 0;
 	imm19 = ((instructionPart2>>23) & 0x1ff);
@@ -114,7 +116,7 @@ void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instr
 		//R type
 		fprintf(stderr, "%s r%d = r%d, ", opcodeNames[opCode], (int) virtualRDest, (int) virtualRIn2);
 		if (isImm)
-			fprintf(stderr, "%d ", (int) imm11);
+			fprintf(stderr, "%d ", (int) imm13);
 		else
 			fprintf(stderr, "r%d ", (int) virtualRIn1_imm9);
 
