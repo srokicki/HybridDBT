@@ -1062,7 +1062,7 @@ uint1 outsideNext_dest_alloc;
 
 
 uint8 writeSucc_lastAddr = 255;
-ac_int<128, false> writeSucc_lastValue;
+ac_int<128, false> writeSucc_lastValue = 0;
 
 
 inline unsigned int writeSuccessor_ac(ac_int<128, false> bytecode[1024], ac_int<8, false> srcInstr, ac_int<8, false> destInstr, ac_int<1,false> isData){
@@ -1133,13 +1133,13 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 		int lastWriterOnGlobal[64] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 		ac_int<2, false> lastReaderOnGlobalCounter[64] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 		ac_int<2, false> lastReaderOnGlobalPlaceToWrite[64] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-		int lastReaderOnGlobal[64][4];
+		int lastReaderOnGlobal[64][4] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 		/* Datastructure for control dependencies on memories */
 		int lastWriterOnMemory = -1;
 		ac_int<2, false> lastReaderOnMemoryCounter = 0;
 		ac_int<2, false> lastReaderOnMemoryPlaceToWrite = 0;
-		int lastReaderOnMemory[4];
+		int lastReaderOnMemory[4] = {0,0,0,0};
 
 		int isCallBlock = 0;
 		ac_int<1, false> haveJump = 0;
@@ -1421,7 +1421,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 
 
 			uint1 pred2_succ_ena = 0;
-			ac_int<8, false> pred2_succ_src;
+			ac_int<8, false> pred2_succ_src = 0;
 			uint1 pred2_succ_isData = 0;
 
 
@@ -1499,15 +1499,17 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 					if (lastWriterOnMemory != -1){
 						succ_src = lastWriterOnMemory;
 						numberDependencies++;
+						pred2_succ_ena = 1;
 					}
 				}
 				else{
 					int readerToEvince = lastReaderOnMemory[lastReaderOnMemoryPlaceToWrite];
 					succ_src = readerToEvince;
 					numberDependencies++;
+					pred2_succ_ena = 1;
+
 				}
 
-				pred2_succ_ena = 1;
 				pred2_succ_isData = 0;
 				pred2_succ_src = succ_src;
 

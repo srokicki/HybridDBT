@@ -18,9 +18,11 @@
 
 class RiscvSimulator {
 	public:
+	int debugLevel;
+
 	std::map<ac_int<64, false>, ac_int<8, true>> memory;
 
-	RiscvSimulator(void): memory(){};
+	RiscvSimulator(void): memory(){debugLevel=0;};
 
 	int doSimulation(int start);
 	void std(ac_int<64, false> addr, ac_int<64, true> value);
@@ -29,7 +31,7 @@ class RiscvSimulator {
 	void stb(ac_int<64, false> addr, ac_int<8, true> value);
 
 	ac_int<64, false> ldd(ac_int<64, false> addr);
-	ac_int<32, false> ldw(ac_int<64, false> addr);
+	ac_int<32, true> ldw(ac_int<64, false> addr);
 	ac_int<16, true> ldh(ac_int<64, false> addr);
 	ac_int<8, true> ldb(ac_int<64, false> addr);
 

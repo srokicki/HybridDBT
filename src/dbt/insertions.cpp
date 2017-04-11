@@ -74,7 +74,6 @@ void addInsertions(uint32 blockStartAddressInSources, uint32 blockStartAddressIn
 	int section = blockStartAddressInSources >> 10;
 
 	int offset = section << 11; // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
-
 	//Currently offset point to the struct corresponding to the code section.
 	storeWordFromInsertionMemory(offset, numberInsertions);
 	storeWordFromInsertionMemory(offset + 1, blockStartAddressInVLIW);
@@ -173,14 +172,14 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	//		| init = startAddress| stw r4 -4(sp)		|					| r33 = r33 >> 2
 	int cycle = start;
 	writeInt(platform->vliwBinaries, cycle*16+0, assembleIInstruction(VEX_MOVI, startAddress & 0x7ffff, 4));
-	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STW, 4, 2, -4));
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 4, 2, -8));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 
 	//		| r33 = r33 - init	 | stw r5 -8(sp)		| 				|
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, assembleRInstruction(VEX_SUB, 33, 33, 4));
-	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STW, 5, 2, -8));
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 5, 2, -16));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 
@@ -194,28 +193,28 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	//		| init -= startAddr	 | stw r6 -12(sp)		|					| offset = 7
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, assembleRiInstruction(VEX_SUBi, 4, 4, startAddress & 0xfff));
-	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STW, 6, 2, -12));
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 6, 2, -24));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleIInstruction(VEX_MOVI, 7, 5));
 
 	//		|init = init>>2		 | stw r7 -16(sp)		|					| offset = offset<<24
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, assembleRiInstruction(VEX_SRLi, 4, 4, 2));
-	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STW, 7, 2, -16));
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 7, 2, -32));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleRiInstruction(VEX_SLLi, 5, 5, 24));
 
 	//		| offset offset + r33<<1| stw r8 -20(sp)		|					| start = 0
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, assembleRInstruction(VEX_SH1ADD, 5, 33, 5));
-	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STW, 8, 2, -20));
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 8, 2, -40));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleRiInstruction(VEX_ADDi, 7, 0, 0));
 
 	//		| v1 = offset + 1024  | stw r9 -24(sp)		|					| size = 256
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, assembleRiInstruction(VEX_ADDi, 6, 5, 1024));
-	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STW, 9, 2, -24));
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 9, 2, -48));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleRiInstruction(VEX_ADDi, 8, 0, 256));
 
@@ -272,42 +271,42 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	//		|					 | ldw r4 -4(sp)		| r8 = init + v1	|
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, 0);
-	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDW, 4, 2, -4));
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDD, 4, 2, -8));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleRInstruction(VEX_ADD, 8, 4, 6));
 
 	//		|					 | ldw r5 -8(sp)		|					| r8 ++
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, 0);
-	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDW, 5, 2, -8));
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDD, 5, 2, -16));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleRiInstruction(VEX_ADDi, 8, 8, 1));
 
 	//		|					 | ldw r6 -12(sp)		|					|
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, 0);
-	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDW, 6, 2, -12));
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDD, 6, 2, -24));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 
 	//		| 					| ldw r7 -16(sp)		|					| r8 = r8<<2
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, 0);
-	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDW, 7, 2, -16));
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDD, 7, 2, -32));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleRiInstruction(VEX_SLLi, 8, 8, 2));
 
 	//		| gotor r8			 | ldw r8 -20(sp)		|					|
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, assembleIInstruction(VEX_GOTOR, 0, 8));
-	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDW, 8, 2, -20));
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDD, 8, 2, -40));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 
 	//		|					 | ldw r9 -24(sp)		|					|
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, 0);
-	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDW, 9, 2, -24));
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDD, 9, 2, -48));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 

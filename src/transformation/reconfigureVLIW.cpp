@@ -9,13 +9,16 @@
 #include <isa/irISA.h>
 #include <dbt/dbtPlateform.h>
 #include <lib/endianness.h>
+#include <types.h>
+
 
 #include <transformation/irGenerator.h>
 #include <transformation/irScheduler.h>
 
-void reconfigureVLIW(DBTPlateform *platform, IRProcedure *procedure){
+uint32 reconfigureVLIW(DBTPlateform *platform, IRProcedure *procedure, uint32 placeCode){
 	uint128 result[65536];
 	int placeInResult = 0;
+	int oldPlaceCode = placeCode;
 
 	fprintf(stderr, "*************************************************************************\n");
 	fprintf(stderr, "Optimizing a procedure : \n");
@@ -31,6 +34,7 @@ void reconfigureVLIW(DBTPlateform *platform, IRProcedure *procedure){
 		int blockSize;
 
 		if (block->blockState >= IRBLOCK_STATE_SCHEDULED){
+
 
 			memcpy(platform->bytecode, block->instructions, block->nbInstr*sizeof(uint128)); //TODO this is not correct...
 			blockSize = block->nbInstr;
@@ -50,7 +54,9 @@ void reconfigureVLIW(DBTPlateform *platform, IRProcedure *procedure){
 			for (int oneGlobalVariable = 0; oneGlobalVariable < 64; oneGlobalVariable++)
 				platform->globalVariables[oneGlobalVariable] = 256 + oneGlobalVariable;
 
-			int blockSize = basicBlockEnd - basicBlockStart - 1;
+			blockSize = basicBlockEnd - basicBlockStart - 1;
+			fprintf(stderr, "Building IR for block from %d to %d size (%d: \n", basicBlockStart, basicBlockEnd, blockSize);
+
 
 			blockSize = irGenerator(platform, basicBlockStart, blockSize, globalVariableCounter);
 
@@ -89,7 +95,6 @@ void reconfigureVLIW(DBTPlateform *platform, IRProcedure *procedure){
 //			}
 //		}
 
-
 		for (int i=0; i<blockSize; i++)
 			printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
 
@@ -101,33 +106,61 @@ void reconfigureVLIW(DBTPlateform *platform, IRProcedure *procedure){
 			platform->placeOfRegisters[256+onePlaceOfRegister] = onePlaceOfRegister;
 
 
-		int binaSize = irScheduler(platform, 1,blockSize, basicBlockStart, 27, 4, 0x001e);
+		int binaSize = irScheduler(platform, 1,blockSize, placeCode, 27, 8, 0x1c1e);
 		binaSize = binaSize & 0xffff;
+		//TODO make it cleaner : we need to ensure binaSize is even...
+		if (binaSize & 0x1)
+			binaSize = binaSize+1;
 
 		for (int oneCycle = 0; oneCycle<(binaSize/2) + 1; oneCycle++){
-			std::cerr << printDecodedInstr(result[placeInResult + 2*oneCycle].slc<32>(0));
+			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + 2*oneCycle].slc<32>(0));
 			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(result[placeInResult + 2*oneCycle].slc<32>(32));
+			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + 2*oneCycle].slc<32>(32));
 			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(result[placeInResult + 2*oneCycle].slc<32>(64));
+			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + 2*oneCycle].slc<32>(64));
 			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(result[placeInResult + 2*oneCycle].slc<32>(96));
+			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + 2*oneCycle].slc<32>(96));
 			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(result[placeInResult + 2*oneCycle+1].slc<32>(0));
+			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + 2*oneCycle+1].slc<32>(0));
 			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(result[placeInResult + 2*oneCycle+1].slc<32>(32));
+			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + 2*oneCycle+1].slc<32>(32));
 			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(result[placeInResult + 2*oneCycle+1].slc<32>(64));
+			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + 2*oneCycle+1].slc<32>(64));
 			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(result[placeInResult + 2*oneCycle+1].slc<32>(96));
+			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + 2*oneCycle+1].slc<32>(96));
 			fprintf(stderr, "\n");
 
 		}
 
 		fprintf(stderr, "Block is scheduled in %d cycles\n", binaSize);
+
+		//We increase placeCode
+		placeCode += (binaSize+4);
+	}
+	fprintf(stderr, "Recap:\n");
+
+
+	for (int oneCycle = 0; oneCycle<placeCode-oldPlaceCode; oneCycle++){
+		std::cerr << printDecodedInstr(platform->vliwBinaries[oldPlaceCode + 2*oneCycle].slc<32>(0));
+		fprintf(stderr, " - ");
+		std::cerr << printDecodedInstr(platform->vliwBinaries[oldPlaceCode + 2*oneCycle].slc<32>(32));
+		fprintf(stderr, " - ");
+		std::cerr << printDecodedInstr(platform->vliwBinaries[oldPlaceCode + 2*oneCycle].slc<32>(64));
+		fprintf(stderr, " - ");
+		std::cerr << printDecodedInstr(platform->vliwBinaries[oldPlaceCode + 2*oneCycle].slc<32>(96));
+		fprintf(stderr, " - ");
+		std::cerr << printDecodedInstr(platform->vliwBinaries[oldPlaceCode + 2*oneCycle+1].slc<32>(0));
+		fprintf(stderr, " - ");
+		std::cerr << printDecodedInstr(platform->vliwBinaries[oldPlaceCode + 2*oneCycle+1].slc<32>(32));
+		fprintf(stderr, " - ");
+		std::cerr << printDecodedInstr(platform->vliwBinaries[oldPlaceCode + 2*oneCycle+1].slc<32>(64));
+		fprintf(stderr, " - ");
+		std::cerr << printDecodedInstr(platform->vliwBinaries[oldPlaceCode + 2*oneCycle+1].slc<32>(96));
+		fprintf(stderr, "\n");
+
 	}
 
-
+	return placeCode;
 
 }
 

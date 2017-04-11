@@ -21,7 +21,7 @@ const char* riscvNamesOPW[8] = {"ADDW","SLLW", "", "", "", "SRW", "", ""};
 const char* riscvNamesOPIW[8] = {"ADDWi", "SLLWi", "", "", "", "SRi", "", ""};
 const char* riscvNamesLD[8] = {"LDB", "LDH", "LDW", "LDD", "LDBU", "LDHU", "LDWU"};
 const char* riscvNamesST[8] = {"STB", "STH", "STW", "STD"};
-const char* riscvNamesBR[8] = {"CMPEQ", "CMPNE", "", "", "CMPLT", "CMPGE", "CMPLTU", "CMPGEU"};
+const char* riscvNamesBR[8] = {"BEQ", "BNE", "", "", "BLT", "BGE", "BLTU", "BGEU"};
 const char* riscvNamesMUL[8] = {"MPYLO","MPYHI", "MPYHI", "MPYHI", "DIVHI", "DIVHI", "DIVLO", "DIVLO"};
 
 std::string printDecodedInstrRISCV(uint32 ins){
@@ -109,12 +109,12 @@ std::string printDecodedInstrRISCV(uint32 ins){
 	case RISCV_OPI:
 		if (funct3 == RISCV_OPI_SRI)
 			if (funct7 == RISCV_OPI_SRI_SRLI)
-				stream << "SRLi r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", " + std::to_string(rs2);
+				stream << "SRLi r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", " + std::to_string(shamt);
 			else //SRAI
-				stream << "SRAi r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", " + std::to_string(rs2);
+				stream << "SRAi r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", " + std::to_string(shamt);
 		else if (funct3 == RISCV_OPI_SLLI){
 			stream << riscvNamesOPI[funct3];
-			stream << " r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", " + std::to_string(rs2);
+			stream << " r" + std::to_string(rd) + " = r" + std::to_string(rs1) + ", " + std::to_string(shamt);
 		}
 		else{
 			stream << riscvNamesOPI[funct3];

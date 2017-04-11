@@ -143,12 +143,11 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 	}
 
 	if (placeSTW == -1){
-		printf("Failed at inserting profiling, need alternative method\n");
+//		fprintf(stderr, "Failed at inserting profiling, need alternative method\n");
 	}
 	else{
 		profiledBlocks[numberProfiledBlocks] = oneBlock;
 		numberProfiledBlocks++;
-		fprintf(stderr, "profiling block %x\n", (long int) oneBlock);
 
 
 	}

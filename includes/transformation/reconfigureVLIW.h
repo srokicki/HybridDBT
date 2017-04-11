@@ -10,8 +10,9 @@
 
 #include <isa/irISA.h>
 #include <dbt/dbtPlateform.h>
+#include <types.h>
 
-void reconfigureVLIW(DBTPlateform *platform, IRProcedure *procedure);
+uint32 reconfigureVLIW(DBTPlateform *platform, IRProcedure *procedure, uint32 placeCode);
 
 
 #endif /* INCLUDES_TRANSFORMATION_RECONFIGUREVLIW_H_ */

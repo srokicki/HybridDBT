@@ -146,10 +146,45 @@ int run(DBTPlateform *platform, int nbCycle){
 
 
 
+
 int main(int argc, char *argv[])
 {
 
-	printf("Entry\n");
+	/*Parsing arguments of the commant
+	 *
+	 */
+
+	int c;
+	int VERBOSE = 0;
+	int OPTLEVEL = 2;
+	int HELP = 0;
+	char* FILE = NULL;
+
+	while ((c = getopt (argc, argv, "vOh:")) != -1)
+	switch (c)
+	  {
+	  case 'v':
+		VERBOSE = 1;
+		break;
+	  case 'h':
+		HELP = 1;
+		break;
+	  case 'O':
+		  OPTLEVEL = atoi(argv[optind]);
+		break;
+	  default:
+		abort ();
+	  }
+
+	for (int index = optind; index < argc; index++)
+		FILE = argv[index];
+
+	if (HELP || FILE == NULL){
+		printf("Usage is %s [-v] [-On] file\n\t-v\tVerbose mode, prints all execution information\n\t-On\t Optimization level from zero to two\n", argv[0]);
+		return 1;
+	}
+
+	// We translate OPTLEVEL
 
 	/***********************************
 	 *  Initialization of the DBT platform
@@ -172,7 +207,7 @@ int main(int argc, char *argv[])
 	uint32 size;
 
 	//We read the binaries
-	readSourceBinaries(argv[1], code, addressStart, size, &dbtPlateform);
+	readSourceBinaries(FILE, code, addressStart, size, &dbtPlateform);
 
 	int numberOfSections = 1 + (size>>10);
 	IRApplication application = IRApplication(numberOfSections);
@@ -198,6 +233,9 @@ int main(int argc, char *argv[])
 	writeInt(dbtPlateform.vliwBinaries, 0*16, assembleIInstruction(VEX_CALL, placeCode<<2, 63));
 
 	initializeInsertionsMemory(size*4);
+
+	for (int oneInsertion=0; oneInsertion<placeCode; oneInsertion++)
+		fprintf(stderr, "insert;%d\n", oneInsertion);
 
 	/********************************************************
 	 * First part of DBT: generating the first pass translation of binaries
@@ -238,6 +276,11 @@ int main(int argc, char *argv[])
 			}
 
 		}
+
+		int** insertions = (int**) malloc(sizeof(int **));
+		int nbIns = getInsertionList(oneSection*1024, insertions);
+		for (int oneInsertion=0; oneInsertion<nbIns; oneInsertion++)
+			fprintf(stderr, "insert;%d\n", (*insertions)[oneInsertion]+(*insertions)[-1]);
 	}
 
 	for (int oneUnresolvedJump = 0; oneUnresolvedJump<unresolvedJumpsArray[0]; oneUnresolvedJump++){
@@ -279,36 +322,13 @@ int main(int argc, char *argv[])
 					writeInt(dbtPlateform.vliwBinaries, 16*(source+1)+12, instructionBeforePreviousDestination);
 	}
 
-	for (int oneInstruction = 0; oneInstruction<placeCode; oneInstruction++){
 
-
-//		uint32 instr0 = dbtPlateform.vliwBinaries[4*oneInstruction];
-//		uint32 instr1 = dbtPlateform.vliwBinaries[4*oneInstruction+1];
-//		uint32 instr2 = dbtPlateform.vliwBinaries[4*oneInstruction+2];
-//		uint32 instr3 = dbtPlateform.vliwBinaries[4*oneInstruction+3];
-//		dbtPlateform.vliwBinaries[4*oneInstruction] = instr3;
-//		dbtPlateform.vliwBinaries[4*oneInstruction+1] = instr2;
-//		dbtPlateform.vliwBinaries[4*oneInstruction+2] = instr1;
-//		dbtPlateform.vliwBinaries[4*oneInstruction+3] = instr0;
-
-		fprintf(stderr, "%d, %x, %x, %x, %x\n",oneInstruction, readInt(dbtPlateform.vliwBinaries, 4*oneInstruction*4),
-				 readInt(dbtPlateform.vliwBinaries, 4*oneInstruction*4+4),
-				 readInt(dbtPlateform.vliwBinaries, 4*oneInstruction*4+8),
-				 readInt(dbtPlateform.vliwBinaries, 4*oneInstruction*4+12));
-
-	}
-
-
-
-	//We write back the result if needed
-	void* destinationBinariesFile = openWriteFile((void*) "./binaries");
-	unsigned int sizeBinaries = (placeCode<<4);
 
 
 	//We initialize the VLIW processor with binaries and data from elf file
 	#ifndef __NIOS
-	dbtPlateform.vexSimulator->debugLevel = 2;
-	dbtPlateform.vexSimulator->debugLevel = 0;
+	if (VERBOSE)
+		dbtPlateform.vexSimulator->debugLevel = 2;
 	#endif
 
 
@@ -326,41 +346,64 @@ int main(int argc, char *argv[])
 	dbtPlateform.vexSimulator->initializeRun(0);
 	#endif
 
-	int runStatus=0;
+//	for (int i=0;i<placeCode;i++){
+//		fprintf(stderr, "%d ", i*4);
+//		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
+//		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(32)); fprintf(stderr, " ");
+//		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(64)); fprintf(stderr, " ");
+//		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(96)); fprintf(stderr, "\n");
+//
+//	}
 
+	int runStatus=0;
+	int abortCounter = 0;
 
 	while (runStatus == 0){
 		runStatus = run(&dbtPlateform, 1000);
+		abortCounter++;
+		if (abortCounter>2000)
+			break;
+
+		fprintf(stderr, "IPC;%f\n", dbtPlateform.vexSimulator->getAverageIPC());
 
 		//If a profiled block is executed more than 10 times we optimize it and mark it as optimized
 		for (int oneBlock = 0; oneBlock<profiler.getNumberProfiledBlocks(); oneBlock++){
 			int profileResult = profiler.getProfilingInformation(oneBlock);
 			IRBlock* block = profiler.getBlock(oneBlock);
 
-//			if (profileResult > 10 && block->blockState < IRBLOCK_STATE_SCHEDULED){
-//				fprintf(stderr, "Block from %d to %d is eligible to opti (%d exec)\n", block->vliwStartAddress, block->vliwEndAddress, profileResult);
-//				optimizeBasicBlock(block, &dbtPlateform, &application);
-//			}
+			if (OPTLEVEL >= 1 && profileResult > 10 && block->blockState < IRBLOCK_STATE_SCHEDULED){
+				fprintf(stderr, "Block from %d to %d is eligible to opti (%d exec)\n", block->vliwStartAddress, block->vliwEndAddress, profileResult);
+				optimizeBasicBlock(block, &dbtPlateform, &application);
+			}
 
 
-//				if (profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
-//
-//					fprintf(stderr, "Block from %d to %d is eligible advanced control flow building\n", block->vliwStartAddress, block->vliwEndAddress);
-//					buildAdvancedControlFlow(&dbtPlateform, block, &application);
-//					block->blockState = IRBLOCK_STATE_RECONF;
-//					reconfigureVLIW(&dbtPlateform, application.procedures[application.numberProcedures-1]);
-//					dbtPlateform.vexSimulator->initializeCodeMemory(dbtPlateform.vliwBinaries, sizeBinaries, 0);
-//
-//				}
+				if (OPTLEVEL >= 2 && profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
+
+					fprintf(stderr, "Block from %d to %d is eligible advanced control flow building\n", block->vliwStartAddress, block->vliwEndAddress);
+					buildAdvancedControlFlow(&dbtPlateform, block, &application);
+					block->blockState = IRBLOCK_STATE_RECONF;
+					placeCode = reconfigureVLIW(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
+
+				}
 		}
 
 	}
 
-
+	//We write back the result if needed
+	void* destinationBinariesFile = openWriteFile((void*) "./binaries");
+	unsigned int sizeBinaries = (placeCode<<4);
+//	for (int i=0;i<placeCode;i++){
+//		fprintf(stderr, "%d ", i*4);
+//		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
+//		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(32)); fprintf(stderr, " ");
+//		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(64)); fprintf(stderr, " ");
+//		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(96)); fprintf(stderr, "\n");
+//
+//	}
 
 	for (int oneBlock = 0; oneBlock<profiler.getNumberProfiledBlocks(); oneBlock++){
 		IRBlock* block = profiler.getBlock(oneBlock);
-		fprintf(stderr, "Block from %d to %d was executed %d times\n", block->vliwStartAddress, block->vliwEndAddress, profiler.getProfilingInformation(oneBlock));
+//		fprintf(stderr, "Block from %d to %d was executed %d times\n", block->vliwStartAddress, block->vliwEndAddress, profiler.getProfilingInformation(oneBlock));
 	}
 
 	//We print profiling result

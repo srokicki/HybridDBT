@@ -54,7 +54,7 @@ class VexSimulator {
 	int debugLevel = 0;
 
 
-	std::map<unsigned int, ac_int<8, false>> memory;
+	std::map<ac_int<64, false>, ac_int<8, false>> memory;
 	ac_int<128, false> *RI;
 
 	int cycle = 0;
@@ -63,6 +63,12 @@ class VexSimulator {
 	ac_int<4, false> issueWidth;
 	ac_int<1, false> unitActivation[8];
 	ac_int<64, false> REG[64];
+
+	//Tools for printing average IPC
+	uint64_t nbInstr;
+	uint64_t lastNbCycle;
+	float getAverageIPC();
+
 
 	VexSimulator(ac_int<128, false> *instructionMemory): memory(){
 		cycle=0;
@@ -105,6 +111,7 @@ class VexSimulator {
 	ac_int<8, false> ldb(ac_int<64, false> addr);
 	ac_int<16, false> ldh(ac_int<64, false> addr);
 	ac_int<32, false> ldw(ac_int<64, false> addr);
+	ac_int<64, false> ldd(ac_int<64, false> addr);
 
 
 

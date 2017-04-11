@@ -12,16 +12,8 @@
 
 #include <types.h>
 
-const unsigned int shiftMask[32] = { 0xffffffff, 0x7fffffff, 0x3fffffff, 0x1fffffff,
-							0xfffffff, 	0x7ffffff, 	0x3ffffff, 	0x1ffffff,
-							0xffffff, 	0x7fffff, 	0x3fffff, 	0x1fffff,
-							0xfffff, 	0x7ffff, 	0x3ffff, 	0x1ffff,
-							0xffff, 	0x7fff, 	0x3fff, 	0x1fff,
-							0xfff, 		0x7ff, 		0x3ff, 		0x1ff,
-							0xff, 		0x7f, 		0x3f, 		0x1f,
-							0xf, 		0x7, 		0x3, 		0x1};
+ac_int<64, false> shiftMask[64];
 
-//Mips simulator
 int RiscvSimulator::doSimulation(int start){
 	long long hilo;
 	ac_int<64, true> reg[32];
@@ -30,6 +22,14 @@ int RiscvSimulator::doSimulation(int start){
 
 
 	ac_int<32, 0> ins, next_instr;
+
+	//We initialize shiftmask
+	ac_int<64, false> value = 0xffffffff;
+	value = (value << 32) + value;
+	for (int i=0; i<64; i++){
+		shiftMask[i] = value;
+		value = value >> 1;
+	}
 
 	while (1){
 		int i;
@@ -51,18 +51,27 @@ int RiscvSimulator::doSimulation(int start){
 
 
 		do{
-			ins = this->ldw(pc);;
-			fprintf(stderr,"%d;%x;%x", (int)n_inst, (int)pc, (int) ins);
-			std::cerr << printDecodedInstrRISCV(ins);
+
+			/*Fetching new instruction */
+			ins = this->ldw(pc);
+
+			if (this->debugLevel>1){
+				fprintf(stderr,"%d;%x;%x", (int)n_inst, (int)pc, (int) ins);
+				std::cerr << printDecodedInstrRISCV(ins);
+			}
 
 			pc = pc + 4;
 
-			//Applying xor to every fields of the function
+
+			//We decode the instruction to execute
 			ac_int<7, false> opcode = ins.slc<7>(0);
 			ac_int<5, false> rs1 = ins.slc<5>(15);
 			ac_int<5, false> rs2 = ins.slc<5>(20);
 			ac_int<5, false> rd = ins.slc<5>(7);
 			ac_int<7, false> funct7 = ins.slc<7>(25);
+			ac_int<7, false> funct7_smaller = 0;
+			funct7_smaller.set_slc(1, ins.slc<6>(26));
+
 			ac_int<3, false> funct3 = ins.slc<3>(12);
 			ac_int<12, false> imm12_I = ins.slc<12>(20);
 			ac_int<12, false> imm12_S = 0;
@@ -111,6 +120,7 @@ int RiscvSimulator::doSimulation(int start){
 			ac_int<32, false> localDataaUnsigned, localDatabUnsigned;
 			ac_int<32, true> localResult;
 
+			//According to opcode/funct3/funct7 we perform the correct operation
 			switch (opcode)
 			{
 			case RISCV_LUI:
@@ -150,15 +160,15 @@ int RiscvSimulator::doSimulation(int start){
 						pc = pc + (imm13_signed) - 4;
 				break;
 				case RISCV_BR_BLTU:
-					unsignedReg1.set_slc(0, reg[rs1].slc<32>(0));
-					unsignedReg2.set_slc(0, reg[rs2].slc<32>(0));
+					unsignedReg1.set_slc(0, reg[rs1].slc<64>(0));
+					unsignedReg2.set_slc(0, reg[rs2].slc<64>(0));
 
 					if (unsignedReg1 < unsignedReg2)
 						pc = pc + (imm13_signed) - 4;
 				break;
 				case RISCV_BR_BGEU:
-					unsignedReg1.set_slc(0, reg[rs1].slc<32>(0));
-					unsignedReg2.set_slc(0, reg[rs2].slc<32>(0));
+					unsignedReg1.set_slc(0, reg[rs1].slc<64>(0));
+					unsignedReg2.set_slc(0, reg[rs2].slc<64>(0));
 
 					if (unsignedReg1 >= unsignedReg2)
 						pc = pc + (imm13_signed) - 4;
@@ -259,8 +269,9 @@ int RiscvSimulator::doSimulation(int start){
 					reg[rd] = reg[rs1] << shamt;
 				break;
 				case RISCV_OPI_SRI:
-					if (funct7 == RISCV_OPI_SRI_SRLI)
+					if (funct7_smaller == RISCV_OPI_SRI_SRLI){
 						reg[rd] = (reg[rs1] >> shamt) & shiftMask[shamt];
+					}
 					else //SRAI
 						reg[rd] = reg[rs1] >> shamt;
 				break;
@@ -287,7 +298,7 @@ int RiscvSimulator::doSimulation(int start){
 				break;
 				case RISCV_OPIW_SRW:
 					if (funct7 == RISCV_OPIW_SRW_SRLIW)
-						localResult = (localDataa >> rs2) & shiftMask[rs2];
+						localResult = (localDataa >> rs2) & shiftMask[32+rs2];
 					else //SRAI
 						localResult = localDataa >> rs2;
 
@@ -394,9 +405,9 @@ int RiscvSimulator::doSimulation(int start){
 			case RISCV_OPW:
 				if (funct7 == 1){
 					localDataa = reg[rs1].slc<32>(0);
-					localDataa = reg[rs2].slc<32>(0);
+					localDatab = reg[rs2].slc<32>(0);
 					localDataaUnsigned = reg[rs1].slc<32>(0);
-					localDataaUnsigned = reg[rs2].slc<32>(0);
+					localDatabUnsigned = reg[rs2].slc<32>(0);
 
 					//Switch case for multiplication operations (in standard extension RV32M)
 					switch (funct3)
@@ -422,7 +433,7 @@ int RiscvSimulator::doSimulation(int start){
 				}
 				else{
 					localDataa = reg[rs1].slc<32>(0);
-					localDataa = reg[rs2].slc<32>(0);
+					localDatab = reg[rs2].slc<32>(0);
 
 					//Switch case for base OP operation
 					switch(funct3)
@@ -443,11 +454,11 @@ int RiscvSimulator::doSimulation(int start){
 					break;
 					case RISCV_OPW_SRW:
 						if (funct7 == RISCV_OPW_SRW_SRLW){
-							localResult = (localDataa >> (localDatab & 0x1f)) & shiftMask[localDatab & 0x1f];
+							localResult = (localDataa >> (localDatab/* & 0x1f*/)) & shiftMask[32+localDatab/* & 0x1f*/];
 							reg[rd] = localResult;
 						}
 						else{ //SRAW
-							localResult = localDataa >> (localDatab & 0x1f);
+							localResult = localDataa >> (localDatab/* & 0x1f*/);
 							reg[rd] = localResult;
 						}
 					break;
@@ -472,13 +483,15 @@ int RiscvSimulator::doSimulation(int start){
 			}
 			reg[0] = 0;
 			n_inst = n_inst + 1;
-			for (int i=0; i<32; i++){
-				fprintf(stderr,";%x", (int) reg[i]);
-			}
-			fprintf(stderr, "\n");
 
+			if (this->debugLevel>1){
+				for (int i=0; i<32; i++){
+					fprintf(stderr,";%lx", (int64_t) reg[i]);
+				}
+				fprintf(stderr, "\n");
+			}
 		}
-		while (pc != 0 && n_inst<100000000); //Apparently, return from main function is always at address 0x4000074
+		while (pc != 0 && n_inst<20000000); //Apparently, return from main function is always at address 0x4000074
 		fprintf(stderr,"Simulation finished in %d cycles\n",n_inst);
 
 		return 0;
@@ -549,9 +562,9 @@ ac_int<16, true> RiscvSimulator::ldh(ac_int<64, false> addr){
 	return result;
 }
 
-ac_int<32, false> RiscvSimulator::ldw(ac_int<64, false> addr){
+ac_int<32, true> RiscvSimulator::ldw(ac_int<64, false> addr){
 
-	ac_int<32, false> result = 0;
+	ac_int<32, true> result = 0;
 	result.set_slc(24, this->ldb(addr+3));
 	result.set_slc(16, this->ldb(addr+2));
 	result.set_slc(8, this->ldb(addr+1));

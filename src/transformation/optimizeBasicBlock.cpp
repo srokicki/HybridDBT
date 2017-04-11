@@ -63,8 +63,8 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	blockSize = irGenerator(platform, basicBlockStart, blockSize, globalVariableCounter);
 
 	//We store the result in an array cause it can be used later
-	block->instructions = (uint32*) malloc(blockSize*4*sizeof(uint32));
-	memcpy(block->instructions, platform->bytecode, blockSize*sizeof(uint32)); //TODO this is not correct...
+	block->instructions = (uint32*) malloc(blockSize*sizeof(uint128));
+	memcpy(block->instructions, platform->bytecode, blockSize*sizeof(uint128)); //TODO this is not correct... (or maybe not clean)
 	block->nbInstr = blockSize;
 
 //	fprintf(stderr, "*************************************************************************\n");
@@ -84,6 +84,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 	int binaSize = irScheduler(platform, 1,blockSize, basicBlockStart, 27, 4, 0x001e);
 	binaSize = binaSize & 0xffff;
+
 
 	for (int i=basicBlockStart+binaSize+1;i<basicBlockEnd;i++){
 		platform->vliwBinaries[i] = 0;
@@ -113,8 +114,8 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		fprintf(stderr, "Old jump instr was %x. New is %x\n", jumpInstruction, newInstruction);
 		writeInt(platform->vliwBinaries, (basicBlockStart+binaSize)*16 + 0, newInstruction);
 	}
-	printf("%d + %d <> %d\n", basicBlockStart, binaSize, basicBlockEnd);
-	if (basicBlockStart+binaSize+2 < basicBlockEnd){
+
+	if (basicBlockStart+binaSize+3 < basicBlockEnd){
 		//We need to add a jump to correct the shortening of the block.
 
 		uint32 insertedJump = VEX_GOTO + (basicBlockEnd<<9); // Note added the *4 to handle the new PC encoding
@@ -142,7 +143,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	#endif
 
 	for (int i=basicBlockStart;i<basicBlockEnd;i++){
-		fprintf(stderr, "schedule;%d;%d\n",i);
+		fprintf(stderr, "schedule;%d\n",i);
 	}
 
 	fprintf(stderr, "*************************************************************************\n");

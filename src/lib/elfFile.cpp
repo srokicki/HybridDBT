@@ -72,8 +72,6 @@ ElfFile::ElfFile(char* pathToElfFile){
 	else{
 		result = fread(&this->fileHeader64, sizeof(this->fileHeader64), 1, elfFile);
 
-		printf("While reading header 64, magic number is %s\n", this->fileHeader64.e_ident);
-
 		if (this->fileHeader64.e_ident[0] == 0x7f)
 			needToFixEndianness = 0;
 		else

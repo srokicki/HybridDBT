@@ -28,7 +28,6 @@ void buildBasicControlFlow(DBTPlateform dbtPlateform, int section, int mipsStart
 	int sizeNewlyTranslated = endAddress-startAddress;
 	mipsStartAddress = mipsStartAddress>>2;
 
-	printf("working from %d to %d\n, equivalent MIPS address is %x\n", startAddress, endAddress, mipsStartAddress);
 
 	//This first step consists of mapping insertions in order to easily say if isntr n is an insertion or not.
 
@@ -37,7 +36,7 @@ void buildBasicControlFlow(DBTPlateform dbtPlateform, int section, int mipsStart
 		insertionMap[oneInstruction] = 0;
 
 	int** insertions = (int**) malloc (sizeof(int**));
-	int numberInsertions = getInsertionList(mipsStartAddress-0x4000, insertions);
+	int numberInsertions = getInsertionList(mipsStartAddress-0x4000, insertions); //TODO
 	for (int oneInsertion = 0; oneInsertion < numberInsertions; oneInsertion++){
 		//We mark the destination as an insertion
 		int index = (*insertions)[oneInsertion];

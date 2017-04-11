@@ -69,10 +69,6 @@ uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
 	platform->insertions[0] = 0;
 
 	//We call the accelerator (or the software counterpart if no accelerator)
-
-	for (int oneInstruction = 0; oneInstruction<size; oneInstruction++)
-		printf("%x\n",platform->mipsBinaries[oneInstruction]);
-
 	#ifndef __NIOS
 	int returnedValue = firstPassTranslatorRISCV_hw(platform->mipsBinaries,
 			size,
@@ -164,7 +160,6 @@ uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
 			initialDestination = destinationInVLIWFromNewMethod;
 			initialDestination = initialDestination  - (source) ;
 			initialDestination = initialDestination << 2; //This is compute the destination according to the #of instruction and not the number of 4-instr bundle
-			printf("Solving instr at %d : %x\n", source, oldJump + ((initialDestination & 0x7ffff)<<7));
 
 			//We modify the jump instruction to make it jump at the correct place
 			writeInt(platform->vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
@@ -245,8 +240,8 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 	ac_int<32, 0> nextInstruction, nextInstruction_stage;
 	ac_int<32, 0> secondNextInstruction, secondNextInstruction_stage;
 
-	unsigned char enableNextInstruction;
-	unsigned char enableSecondNextInstruction;
+	unsigned char enableNextInstruction = 0;
+	unsigned char enableSecondNextInstruction = 0;
 
 	unsigned char nextInstructionNop = 0;
 
@@ -264,7 +259,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 	char previousStage = 0;
 	ac_int<32, false> localNumberInsertions = 0;
 
-	ac_int<1, false> currentBoundaryJustSet;
+	ac_int<1, false> currentBoundaryJustSet = 0;
 
 	ac_int<1, false> setNextBoundaries = 0;
 	ac_int<32, true> nextBoundaries;
@@ -338,6 +333,9 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 			ac_int<6, false> rs2 = oneInstruction.slc<5>(20);
 			ac_int<6, false> rd = oneInstruction.slc<5>(7);
 			ac_int<7, false> funct7 = oneInstruction.slc<7>(25);
+			ac_int<7, false> funct7_smaller = 0;
+			funct7_smaller.set_slc(1, oneInstruction.slc<6>(26));
+
 			ac_int<3, false> funct3 = oneInstruction.slc<3>(12);
 			ac_int<12, false> imm12_I = oneInstruction.slc<12>(20);
 			ac_int<12, false> imm12_S = 0;
@@ -645,7 +643,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					//are working with...
 
 					ac_int<7, false> vexOpcode = (funct3==RISCV_OPI_SLLI) ? VEX_SLLi :
-							(funct7==RISCV_OPI_SRI_SRAI) ? VEX_SRAi : VEX_SRLi;
+							(funct7_smaller==RISCV_OPI_SRI_SRAI) ? VEX_SRAi : VEX_SRLi;
 
 					binaries = assembleRiInstruction(vexOpcode, rd, rs1, shamt);
 
