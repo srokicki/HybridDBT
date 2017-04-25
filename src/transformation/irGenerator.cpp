@@ -1137,6 +1137,11 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 
 		/* Datastructure for control dependencies on memories */
 		int lastWriterOnMemory = -1;
+
+		ac_int<1, false> lastWriterOnMemoryRegUnchanged = 0;
+		ac_int<5, false> lastWriterOnMemoryReg = 0;
+		ac_int<13, false> lastWriterOnMemoryImm = 0;
+
 		ac_int<2, false> lastReaderOnMemoryCounter = 0;
 		ac_int<2, false> lastReaderOnMemoryPlaceToWrite = 0;
 		int lastReaderOnMemory[4] = {0,0,0,0};
@@ -1248,7 +1253,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 					| opcode == VEX_LDHU | opcode == VEX_LDW | opcode == VEX_LDWU | opcode == VEX_LDD;
 			ac_int<1, false> isStoreType = opcode == VEX_STB | opcode == VEX_STH | opcode == VEX_STW | opcode == VEX_STD;
 			ac_int<1, false> isBranchWithNoReg = opcode == VEX_GOTO | opcode == VEX_CALL | opcode == VEX_RETURN
-					| opcode == VEX_STOP;
+					| opcode == VEX_STOP | opcode == VEX_ECALL;
 			ac_int<1, false> isBranchWithReg = opcode == VEX_GOTOR | opcode == VEX_CALLR | opcode == VEX_BR
 					| opcode == VEX_BRF;
 			ac_int<1, false> isMovi = opcode == VEX_MOVI;
@@ -1492,11 +1497,10 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			if (isLoadType){
 				/****************************/
 				/* We update lastReaderOneMemory and add required dependencies to keep memory coherence */
-
 				uint16 succ_src;
 				if (lastReaderOnMemoryCounter < 3){
 					lastReaderOnMemoryCounter++;
-					if (lastWriterOnMemory != -1){
+					if (lastWriterOnMemory != -1 && !(lastWriterOnMemoryRegUnchanged && lastWriterOnMemoryReg == pred1_reg && lastWriterOnMemoryImm != imm13)){
 						succ_src = lastWriterOnMemory;
 						numberDependencies++;
 						pred2_succ_ena = 1;
@@ -1517,8 +1521,8 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				lastReaderOnMemoryPlaceToWrite = (lastReaderOnMemoryPlaceToWrite + 1);
 				if (lastReaderOnMemoryPlaceToWrite == 3)
 					lastReaderOnMemoryPlaceToWrite = 0;
-
 			}
+
 
 
 			//******************************************
@@ -1548,10 +1552,14 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			dest_global_access = (dest_global_address == pred1_global_address) ? pred1_global_access : dest_global_access;
 			dest_global_access = (dest_global_address == pred2_global_address) ? pred2_global_access : dest_global_access;
 
-			if (dest_reg >=10 & dest_reg <20)
-				dest_global_access = -1;
+//			if (dest_reg >=10 & dest_reg <20)
+//				dest_global_access = -1;
 
 			if (dest_ena) {
+
+				if (lastWriterOnMemoryReg == dest_reg)
+					lastWriterOnMemoryRegUnchanged = 0;
+
 				if (dest_global_access < 0 || insertMove_ena){
 
 					registers[dest_reg] = indexInCurrentBlock;
@@ -1612,6 +1620,10 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 
 				lastReaderOnMemoryCounter = 0;
 				lastWriterOnMemory = indexInCurrentBlock;
+
+				lastWriterOnMemoryReg = pred1_reg;
+				lastWriterOnMemoryImm = imm13;
+				lastWriterOnMemoryRegUnchanged = 1;
 
 			}
 

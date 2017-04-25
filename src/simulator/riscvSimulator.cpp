@@ -11,12 +11,189 @@
 #include <simulator/riscvSimulator.h>
 
 #include <types.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
 ac_int<64, false> shiftMask[64];
 
+
+ac_int<64, false> RiscvSimulator::doRead(ac_int<64, false> file, ac_int<64, false> bufferAddr, ac_int<64, false> size){
+	//printf("Doign read on file %x\n", file);
+
+	int localSize = size.slc<32>(0);
+	char* localBuffer = (char*) malloc(localSize*sizeof(char));
+	ac_int<64, false> result;
+
+	if (file == 0){
+		result = fread(localBuffer, 1, size, stdin);
+	}
+	else{
+		FILE* localFile = this->fileMap[file.slc<16>(0)];
+		result = fread(localBuffer, 1, size, localFile);
+	}
+
+	for (int i=0; i<result; i++)
+		this->stb(bufferAddr + i, localBuffer[i]);
+
+
+	return result;
+}
+
+
+ac_int<64, false> RiscvSimulator::doWrite(ac_int<64, false> file, ac_int<64, false> bufferAddr, ac_int<64, false> size){
+	int localSize = size.slc<32>(0);
+	char* localBuffer = (char*) malloc(localSize*sizeof(char));
+	for (int i=0; i<size; i++)
+		localBuffer[i] = this->ldb(bufferAddr + i);
+
+	if (file < 3){
+
+		ac_int<64, false> result = fwrite(localBuffer, 1, size, stdout);
+		return result;
+	}
+	else{
+
+		FILE* localFile = this->fileMap[file.slc<16>(0)];
+
+
+		ac_int<64, false> result = fwrite(localBuffer, 1, size, localFile);
+		return result;
+	}
+}
+
+
+ac_int<64, false> RiscvSimulator::doOpen(ac_int<64, false> path, ac_int<64, false> flags, ac_int<64, false> mode){
+	int oneStringElement = this->ldb(path);
+	int index = 0;
+	while (oneStringElement != 0){
+		index++;
+		oneStringElement = this->ldb(path+index);
+	}
+
+	int pathSize = index+1;
+
+	char* localPath = (char*) malloc(pathSize*sizeof(char));
+	for (int i=0; i<pathSize; i++)
+		localPath[i] = this->ldb(path + i);
+
+	char* localMode;
+	if (flags==0)
+		localMode = "r";
+	else if (flags == 577)
+		localMode = "w";
+	else if (flags == 1089)
+		localMode = "a";
+	else if (flags == O_WRONLY|O_CREAT|O_EXCL)
+		localMode = "wx";
+	else{
+		fprintf(stderr, "Trying to open files with unknown flags... %d\n", flags);
+		exit(-1);
+	}
+
+	FILE* test = fopen(localPath, localMode);
+	uint64_t result = (uint64_t) test;
+	ac_int<64, true> result_ac = result;
+
+	//For some reasons, newlib only store last 16 bits of this pointer, we will then compute a hash and return that.
+	//The real pointer is stored here in a hashmap
+
+	ac_int<64, true> returnedResult = 0;
+	returnedResult.set_slc(0, result_ac.slc<16>(0) ^ result_ac.slc<16>(16));
+
+	this->fileMap[returnedResult.slc<16>(0)] = test;
+	//printf("Doing open on %s, returned %x\n", localPath, returnedResult);
+
+	return returnedResult;
+
+}
+
+ac_int<64, false> RiscvSimulator::doOpenat(ac_int<64, false> dir, ac_int<64, false> path, ac_int<64, false> flags, ac_int<64, false> mode){
+	fprintf(stderr, "Syscall openat not implemented yet...\n");
+	exit(-1);
+}
+
+ac_int<64, false> RiscvSimulator::doClose(ac_int<64, false> file){
+	if (file > 2 ){
+		FILE* localFile = this->fileMap[file.slc<16>(0)];
+		int result = fclose(localFile);
+		return result;
+	}
+	else
+		return 0;
+}
+
+ac_int<64, false> RiscvSimulator::doLseek(ac_int<64, false> file, ac_int<64, false> ptr, ac_int<64, false> dir){
+	FILE* localFile = this->fileMap[file.slc<16>(0)];
+	int result = fseek(localFile, ptr, dir);
+	return result;
+}
+
+ac_int<64, false> RiscvSimulator::doStat(ac_int<64, false> filename, ac_int<64, false> ptr){
+
+	int oneStringElement = this->ldb(filename);
+	int index = 0;
+	while (oneStringElement != 0){
+		index++;
+		oneStringElement = this->ldb(filename+index);
+	}
+
+	int pathSize = index+1;
+
+	char* localPath = (char*) malloc(pathSize*sizeof(char));
+	for (int i=0; i<pathSize; i++)
+		localPath[i] = this->ldb(filename + i);
+
+	struct stat fileStat;
+	int result = stat(localPath, &fileStat);
+
+	//We copy the result in simulator memory
+	for (int oneChar = 0; oneChar<sizeof(struct stat); oneChar++)
+		this->stb(ptr+oneChar, ((char*)(&stat))[oneChar]);
+
+	return result;
+}
+
+
+void RiscvSimulator::initialize(int argc, char** argv){
+
+	//We initialize registers
+	for (int oneReg = 0; oneReg < 32; oneReg++)
+		reg[oneReg] = 0;
+	reg[2] = 0x70000;
+
+	/******************************************************
+	 * Argument passing:
+	 * In this part of the initialization code, we will copy argc and argv into the simulator stack memory.
+	 *
+	 ******************************************************/
+
+	ac_int<64, true> currentPlaceStrings = reg[2] + 8 + 8*argc;
+
+	this->std(reg[2], argc);
+	for (int oneArg = 0; oneArg<argc; oneArg++){
+		this->std(reg[2] + 8*oneArg + 8, currentPlaceStrings);
+
+
+		int oneCharIndex = 0;
+		char oneChar = argv[oneArg][oneCharIndex];
+		while (oneChar != 0){
+			this->stb(currentPlaceStrings + oneCharIndex, oneChar);
+			oneCharIndex++;
+			oneChar = argv[oneArg][oneCharIndex];
+		}
+		this->stb(currentPlaceStrings + oneCharIndex, oneChar);
+		oneCharIndex++;
+		currentPlaceStrings += oneCharIndex;
+
+	}
+
+}
+
 int RiscvSimulator::doSimulation(int start){
 	long long hilo;
-	ac_int<64, true> reg[32];
+
 
 	ac_int<64, true> pc = start;
 
@@ -42,10 +219,7 @@ int RiscvSimulator::doSimulation(int start){
 		//We initialize instruction counter
 		n_inst = 0;
 
-		//We initialize registers
-		for (i = 0; i < 32; i++)
-			reg[i] = 0;
-		reg[2] = 0x70000;
+
 
 
 
@@ -473,8 +647,50 @@ int RiscvSimulator::doSimulation(int start){
 			//******************************************************************************************
 			//Treatment for: SYSTEM INSTRUCTIONS
 			case RISCV_SYSTEM:
-				if (funct3 == 0 && funct7 == 0)
-					pc = 0; //Currently we break on ECALL
+				if (funct3 == 0 && funct7 == 0){
+					//We are on ecall
+					switch (reg[17]){
+					case SYS_exit:
+						pc = 0; //Currently we break on ECALL
+					break;
+					case SYS_read:
+//						fprintf(stderr, "Reading %d char\n", reg[12]);
+						reg[10] = this->doRead(reg[10], reg[11], reg[12]);
+					break;
+					case SYS_write:
+						reg[10] = doWrite(reg[10], reg[11], reg[12]);
+					break;
+					case SYS_brk:
+						//We do nothing
+					break;
+					case SYS_open:
+						reg[10] = this->doOpen(reg[10], reg[11], reg[12]);
+					break;
+					case SYS_openat:
+						reg[10] = this->doOpenat(reg[13], reg[11], reg[12], reg[14]);
+					break;
+					case SYS_lseek:
+
+						reg[10] = this->doLseek(reg[10], reg[11], reg[12]);
+					break;
+					case SYS_close:
+						reg[10] = this->doClose(reg[10]);
+					break;
+					case SYS_fstat:
+						reg[10] = 0;
+					break;
+					case SYS_stat:
+						reg[10] = this->doStat(reg[10], reg[11]);
+					break;
+					default:
+						printf("Unknown syscall with code %d\n", reg[17].slc<32>(0));
+						exit(-1);
+						reg[10] = 0;
+					break;
+					}
+
+
+				}
 			break;
 			default:
 				printf("In default part of switch opcode, instr %x is not handled yet\n", (int) ins);
@@ -491,7 +707,7 @@ int RiscvSimulator::doSimulation(int start){
 				fprintf(stderr, "\n");
 			}
 		}
-		while (pc != 0 && n_inst<20000000); //Apparently, return from main function is always at address 0x4000074
+		while (pc != 0 && n_inst<1000000000); //Apparently, return from main function is always at address 0x4000074
 		fprintf(stderr,"Simulation finished in %d cycles\n",n_inst);
 
 		return 0;

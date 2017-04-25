@@ -305,12 +305,12 @@ int main(int argc, char *argv[])
 		}
 		else{
 			//In here we solve a relative jump
-
 			indexOfDestination = destinationInVLIWFromNewMethod;
 			initialDestination = destinationInVLIWFromNewMethod;
 
 			initialDestination = initialDestination  - (source) ;
 			initialDestination = initialDestination << 2; //This is compute the destination according to the #of instruction and not the number of 4-instr bundle
+			fprintf(stderr, "Solving jump at %d to %x\n", source*4, unresolvedJumpsArray[oneUnresolvedJump+1]);
 
 			//We modify the jump instruction to make it jump at the correct place
 			writeInt(dbtPlateform.vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
@@ -361,7 +361,7 @@ int main(int argc, char *argv[])
 	while (runStatus == 0){
 		runStatus = run(&dbtPlateform, 1000);
 		abortCounter++;
-		if (abortCounter>2000)
+		if (abortCounter>400000)
 			break;
 
 		fprintf(stderr, "IPC;%f\n", dbtPlateform.vexSimulator->getAverageIPC());
@@ -373,7 +373,7 @@ int main(int argc, char *argv[])
 
 			if (OPTLEVEL >= 1 && profileResult > 10 && block->blockState < IRBLOCK_STATE_SCHEDULED){
 				fprintf(stderr, "Block from %d to %d is eligible to opti (%d exec)\n", block->vliwStartAddress, block->vliwEndAddress, profileResult);
-				optimizeBasicBlock(block, &dbtPlateform, &application);
+				optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
 			}
 
 

@@ -76,6 +76,37 @@ ac_int<1, false> BREG[BRANCH_UNIT_NUMBER];
 
 std::map<unsigned int, ac_int<64, false>> memory;
 ac_int<128, false> RI[MAX_NUMBER_OF_INSTRUCTIONS];
+
+ac_int<64, false> VexSimulator::doRead(ac_int<64, false> file, ac_int<64, false> bufferAddr, ac_int<64, false> size){
+	int localSize = size.slc<32>(0);
+	char* localBuffer = (char*) malloc(localSize*sizeof(char));
+	if (file == 0){
+		ac_int<64, false> result = fread(localBuffer, 1, size, stdin);
+		for (int i=0; i<result; i++)
+			this->stb(bufferAddr + i, localBuffer[i]);
+
+
+		return result;
+	}
+	else{
+		return 0;
+	}
+}
+
+ac_int<64, false> VexSimulator::doWrite(ac_int<64, false> file, ac_int<64, false> bufferAddr, ac_int<64, false> size){
+	int localSize = size.slc<32>(0);
+	char* localBuffer = (char*) malloc(localSize*sizeof(char));
+	if (file == 0){
+		for (int i=0; i<size; i++)
+			localBuffer[i] = this->ldb(bufferAddr + i);
+		ac_int<64, false> result = fwrite(localBuffer, 1, size, stdout);
+		return result;
+	}
+	else{
+		return 0;
+	}
+}
+
 #endif
 
 // Cycle counter
@@ -500,7 +531,7 @@ void VexSimulator::doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 			((dctoEx.opCode == VEX_CMPLTU)| (dctoEx.opCode == VEX_CMPLTUi)) ? unsigned_dataa < unsigned_datab :
 			((dctoEx.opCode == VEX_CMPNE)| (dctoEx.opCode == VEX_CMPNEi)) ? sub_result != 0 :
 			((dctoEx.opCode == VEX_CMPEQ)| (dctoEx.opCode == VEX_CMPEQi)) ? sub_result == 0 :
-			((dctoEx.opCode == VEX_CMPGE)| (dctoEx.opCode == VEX_CMPGEi)) ? sub_result >= 0 :
+			((dctoEx.opCode == VEX_CMPGE)| (dctoEx.opCode == VEX_CMPGEi)) ? dctoEx.dataa >= dctoEx.datab :
 			((dctoEx.opCode == VEX_CMPGEU)| (dctoEx.opCode == VEX_CMPGEUi)) ? unsigned_dataa >= unsigned_datab :
 			((dctoEx.opCode == VEX_CMPGT)| (dctoEx.opCode == VEX_CMPGTi)) ? sub_result > 0 :
 			((dctoEx.opCode == VEX_CMPGTU)| (dctoEx.opCode == VEX_CMPGTUi)) ? unsigned_sub_result > 0 :
@@ -639,11 +670,11 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 	ac_int<64, true> unsigned_sub_result = unsigned_dataa - unsigned_datab;
 
 	ac_int<1, false> cmpResult_1 = ((dctoEx.opCode == VEX_CMPLT) | (dctoEx.opCode == VEX_CMPLTi)) ? sub_result < 0 :
-			((dctoEx.opCode == VEX_CMPLTU)| (dctoEx.opCode == VEX_CMPLTUi)) ? unsigned_sub_result < 0 :
+			((dctoEx.opCode == VEX_CMPLTU)| (dctoEx.opCode == VEX_CMPLTUi)) ? unsigned_dataa < unsigned_datab :
 			((dctoEx.opCode == VEX_CMPNE)| (dctoEx.opCode == VEX_CMPNEi)) ? sub_result != 0 :
-			((dctoEx.opCode == VEX_CMPEQ)| (dctoEx.opCode == VEX_CMPEQi)) ? unsigned_sub_result == 0 :
+			((dctoEx.opCode == VEX_CMPEQ)| (dctoEx.opCode == VEX_CMPEQi)) ? sub_result == 0 :
 			((dctoEx.opCode == VEX_CMPGE)| (dctoEx.opCode == VEX_CMPGEi)) ? sub_result >= 0 :
-			((dctoEx.opCode == VEX_CMPGEU)| (dctoEx.opCode == VEX_CMPGEUi)) ? unsigned_sub_result >=0 :
+			((dctoEx.opCode == VEX_CMPGEU)| (dctoEx.opCode == VEX_CMPGEUi)) ? unsigned_dataa >= unsigned_datab :
 			((dctoEx.opCode == VEX_CMPGT)| (dctoEx.opCode == VEX_CMPGTi)) ? sub_result > 0 :
 			((dctoEx.opCode == VEX_CMPGTU)| (dctoEx.opCode == VEX_CMPGTUi)) ? unsigned_sub_result > 0 :
 			((dctoEx.opCode == VEX_CMPLE)| (dctoEx.opCode == VEX_CMPLEi)) ? sub_result <= 0 :
@@ -1020,6 +1051,32 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 //				this->unitActivation[6] = IMM19[6];
 //				this->unitActivation[7] = IMM19[7];
 				break;
+
+			case VEX_ECALL:
+				switch(this->REG[17]){
+				case SYS_exit:
+					stop = 1;
+					NEXT_PC = PC;
+					fprintf(stderr,"Simulation finished in %d cycles \n", cycle);
+				break;
+				case SYS_read:
+					dctoEx->dest = 10;
+					dctoEx->dataa = doRead(this->REG[13], this->REG[11], this->REG[12]);
+					dctoEx->opCode = VEX_MOVI;
+				break;
+				case SYS_write:
+					dctoEx->dest = 10;
+					dctoEx->dataa = doWrite(this->REG[13], this->REG[11], this->REG[12]);
+					dctoEx->opCode = VEX_MOVI;
+				break;
+				default:
+					dctoEx->dest = 10;
+					dctoEx->dataa = 0;
+					dctoEx->opCode = VEX_MOVI;
+				break;
+				}
+
+			break;
 #endif
 			default:
 				break;
@@ -1128,7 +1185,7 @@ int VexSimulator::doStep(){
 	// If the operation code is 0x2f then the processor stops
 	if(OP1 == 0x2F){
 		stop = 1;
-		//NEXT_PC = PC;
+		NEXT_PC = PC;
 		#ifndef __CATAPULT
 		fprintf(stderr,"Simulation finished in %d cycles \n", cycle);
 		#endif
@@ -1350,8 +1407,17 @@ int VexSimulator::doStep(int numberCycles){
 	while (cycle < initialCycleCounter + numberCycles){
 		int returnedValue = doStep();
 
-		if (returnedValue != 0)
+		if (returnedValue != 0){
+			ftoDC1.instruction = 0;
+			ftoDC2.instruction = 0;
+			ftoDC3.instruction = 0;
+			ftoDC4.instruction = 0;
+
+
 			return returnedValue;
+
+
+		}
 
 	}
 	return 0;

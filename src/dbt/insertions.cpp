@@ -130,7 +130,10 @@ unsigned int solveUnresolvedJump(unsigned int initialDestination){
 			start += size;
 	}
 
-	return VLIWBase + start +  (initialDestination % 1024) + 1;
+	if (loadWordFromInsertionMemory(offset + 2 + start + 0) <= init + size + start)
+		start++;
+
+	return VLIWBase + start +  (initialDestination % 1024);
 }
 
 
@@ -327,6 +330,7 @@ int getInsertionList(int mipsStartAddress, int** result){
 
 	//todo : this should use load and store functions...
 	*result = &(insertionsArray[offset + 2]);
+
 
 	return nbInsertion;
 

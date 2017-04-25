@@ -134,6 +134,9 @@ class VexSimulator {
 	struct FtoDC ftoDC1;	struct FtoDC ftoDC2;	struct FtoDC ftoDC3;	struct FtoDC ftoDC4;	struct FtoDC ftoDC5;	struct FtoDC ftoDC6;	struct FtoDC ftoDC7;	struct FtoDC ftoDC8;
 
 
+	ac_int<64, false> doRead(ac_int<64, false> file, ac_int<64, false> bufferAddr, ac_int<64, false> size);
+	ac_int<64, false> doWrite(ac_int<64, false> file, ac_int<64, false> bufferAddr, ac_int<64, false> size);
+
 };
 
 

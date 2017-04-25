@@ -705,7 +705,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 			}
 			else if (opcode == RISCV_SYSTEM){
 				if (funct3 == RISCV_SYSTEM_ENV){
-					binaries = assembleIInstruction(VEX_STOP, 0,0);
+					binaries = assembleIInstruction(VEX_ECALL, 0,0);
 				}
 				else {
 
