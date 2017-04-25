@@ -44,11 +44,17 @@ On the following, we will first see how to run the framework on existing RISC-V 
 
 ### Running the DBT framework on existing RISC-V binaries
 
-If you want to execute the DBT framework on a given elf file (for example benchmarks/simple/dct/dct), run the following command:
+If you want to execute the DBT framework on a given elf file (binaries.riscv), run the following command:
 
-	$ ./build/bin/dbt benchmarks/simple/dct/dct
+	$ ./build/bin/dbt [-O 1|-v] binaries.riscv [-a "arguments"]
 	
-Debug messages from the DBT framework are printed on the standard error while application print from the executed code are printed on the standard output.
+When running on verbose mode (-v flag), debug messages from the DBT framework are printed on the standard error while all application messages are printed on the standard output. Simulator will also have access to all standard system calls through the simulator. It can for example, read/write files in your file system.
+
+We also provided an instruction level simulator for the RISC-V. You can use it with the following command:
+
+	$ ./build/bin/simRISCV [-v] binaries.riscv [-a "arguments"]
+
+This simulator is built to be compatible with all binaries that the DBT framework may accept. Combined with the DBT framework we can make sure that the translation layer is correct by comparing the two simulations.
 
 ###<a name="riscv_compiler"></a> Generating Compatible RISC-V binaries
 
@@ -65,7 +71,7 @@ Then run the script provided to build the compiler:
 	
 Once the compiler is done, you can at the folder $RISCV/bin to the path so that the compiler is easily used. To generate code with soft-float, just run the following command:
 
-	$ riscv32-unknown-elf-gcc -std=c99 -msoft-float -march=RV32IM -O3 helloworld.c -o helloworld
+	$ riscv64-unknown-elf-gcc -std=c99 -msoft-float -march=RV32IM -O3 helloworld.c -o helloworld
 	
 ## <a name="hardware"></a> How to use the hardware version
 
