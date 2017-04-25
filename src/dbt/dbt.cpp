@@ -156,11 +156,12 @@ int main(int argc, char *argv[])
 
 	int c;
 	int VERBOSE = 0;
-	int OPTLEVEL = 2;
+	int OPTLEVEL = 1;
 	int HELP = 0;
 	char* FILE = NULL;
+	char* ARGUMENTS = NULL;
 
-	while ((c = getopt (argc, argv, "vOh:")) != -1)
+	while ((c = getopt (argc, argv, "vOha:")) != -1)
 	switch (c)
 	  {
 	  case 'v':
@@ -169,6 +170,9 @@ int main(int argc, char *argv[])
 	  case 'h':
 		HELP = 1;
 		break;
+	  case 'a':
+		  ARGUMENTS = optarg;
+	  break;
 	  case 'O':
 		  OPTLEVEL = atoi(argv[optind]);
 		break;
@@ -178,6 +182,56 @@ int main(int argc, char *argv[])
 
 	for (int index = optind; index < argc; index++)
 		FILE = argv[index];
+
+	int localArgc;
+	char** localArgv;
+	if (ARGUMENTS == NULL){
+		localArgc = argc - optind;
+		localArgv =  &(argv[optind]);
+	}
+	else{
+		//We find the size of the string representing arguments and replace spaces by 0
+		int index = 0;
+		int count = 1;
+		while (ARGUMENTS[index] != 0){
+			if (ARGUMENTS[index] == ' '){
+				ARGUMENTS[index] = 0;
+				count++;
+				printf("Arg was %s\n", ARGUMENTS);
+			}
+			index++;
+		}
+		index++; //so that index is equal to the size of the char*
+
+
+		//We find size of filename
+		int charFileIndex = 0;
+		while (FILE[charFileIndex] != 0)
+			charFileIndex++;
+
+		charFileIndex++; //So that charFileIndex is equal to the size of the FILE name
+
+		//we build a char* containing all args and the file name
+		char* tempArg = (char*) malloc((index + charFileIndex)*sizeof(char));
+		memcpy(tempArg, FILE, charFileIndex*sizeof(char));
+		memcpy(tempArg+charFileIndex, ARGUMENTS, index * sizeof(char));
+
+		//We build the char** localArgv
+		localArgv = (char**) malloc((count+1)*sizeof(char*));
+		index = 0;
+		for (int oneArg = 0; oneArg<count+1; oneArg++){
+			localArgv[oneArg] = &(tempArg[index]);
+			while (tempArg[index] != 0){
+				index++;
+			}
+			index++;
+
+		}
+
+		//Value of localArgc is number of argument + the one from the file name
+		localArgc = count + 1;
+	}
+
 
 	if (HELP || FILE == NULL){
 		printf("Usage is %s [-v] [-On] file\n\t-v\tVerbose mode, prints all execution information\n\t-On\t Optimization level from zero to two\n", argv[0]);
@@ -343,7 +397,7 @@ int main(int argc, char *argv[])
 	#endif
 
 	#ifndef __NIOS
-	dbtPlateform.vexSimulator->initializeRun(0);
+	dbtPlateform.vexSimulator->initializeRun(0, localArgc, localArgv);
 	#endif
 
 //	for (int i=0;i<placeCode;i++){

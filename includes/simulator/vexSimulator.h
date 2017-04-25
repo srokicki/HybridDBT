@@ -16,6 +16,7 @@
 
 #include <types.h>
 #include <isa/vexISA.h>
+#include <simulator/genericSimulator.h>
 
 struct FtoDC {
 	ac_int<64, false> instruction; //Instruction to execute
@@ -48,21 +49,15 @@ struct MemtoWB {
 
 #ifndef __CATAPULT
 
-class VexSimulator {
+class VexSimulator : public GenericSimulator {
 	public:
 
-	int debugLevel = 0;
-
-
-	std::map<ac_int<64, false>, ac_int<8, false>> memory;
 	ac_int<128, false> *RI;
 
 	int cycle = 0;
 	ac_int<64, false> PC, NEXT_PC;
-	ac_int<1, false> stop;
 	ac_int<4, false> issueWidth;
 	ac_int<1, false> unitActivation[8];
-	ac_int<64, false> REG[64];
 
 	//Tools for printing average IPC
 	uint64_t nbInstr;
@@ -70,12 +65,8 @@ class VexSimulator {
 	float getAverageIPC();
 
 
-	VexSimulator(ac_int<128, false> *instructionMemory): memory(){
+	VexSimulator(ac_int<128, false> *instructionMemory): GenericSimulator() {
 		cycle=0;
-		for (int oneReg = 0; oneReg < 64; oneReg++){
-			REG[oneReg] = 0;
-		}
-		REG[29] = 0;
 		issueWidth = 4;
 		unitActivation[0] = 1;
 		unitActivation[1] = 1;
@@ -98,20 +89,10 @@ class VexSimulator {
 	void initializeDataMemory(ac_int<64, false>* content, unsigned int size, unsigned int start);
 
 
-	int initializeRun(int mainPc);
+	int initializeRun(int mainPc, int argc, char* argv[]);
 	int doStep();
 	int doStep(int nbStep);
 
-
-
-	void stb(ac_int<64, false> addr, ac_int<8, false> value);
-	void sth(ac_int<64, false> addr, ac_int<16, false> value);
-	void stw(ac_int<64, false> addr, ac_int<32, false> value);
-
-	ac_int<8, false> ldb(ac_int<64, false> addr);
-	ac_int<16, false> ldh(ac_int<64, false> addr);
-	ac_int<32, false> ldw(ac_int<64, false> addr);
-	ac_int<64, false> ldd(ac_int<64, false> addr);
 
 
 
@@ -132,10 +113,6 @@ class VexSimulator {
 	struct ExtoMem extoMem1;	struct ExtoMem extoMem2;	struct ExtoMem extoMem3;	struct ExtoMem extoMem4;	struct ExtoMem extoMem5;	struct ExtoMem extoMem6;	struct ExtoMem extoMem7;	struct ExtoMem extoMem8;
 	struct DCtoEx dctoEx1; struct DCtoEx dctoEx2;	struct DCtoEx dctoEx3;	struct DCtoEx dctoEx4;	struct DCtoEx dctoEx5;	struct DCtoEx dctoEx6;	struct DCtoEx dctoEx7;	struct DCtoEx dctoEx8;
 	struct FtoDC ftoDC1;	struct FtoDC ftoDC2;	struct FtoDC ftoDC3;	struct FtoDC ftoDC4;	struct FtoDC ftoDC5;	struct FtoDC ftoDC6;	struct FtoDC ftoDC7;	struct FtoDC ftoDC8;
-
-
-	ac_int<64, false> doRead(ac_int<64, false> file, ac_int<64, false> bufferAddr, ac_int<64, false> size);
-	ac_int<64, false> doWrite(ac_int<64, false> file, ac_int<64, false> bufferAddr, ac_int<64, false> size);
 
 };
 

@@ -68,45 +68,6 @@ struct DCtoEx dctoEx1; struct DCtoEx dctoEx2;	struct DCtoEx dctoEx3;	struct DCto
 struct FtoDC ftoDC1;	struct FtoDC ftoDC2;	struct FtoDC ftoDC3;	struct FtoDC ftoDC4;	struct FtoDC ftoDC5;	struct FtoDC ftoDC6;	struct FtoDC ftoDC7;	struct FtoDC ftoDC8;
 ac_int<1, false> stop;
 
-
-#else
-// 1 bit registers
-ac_int<1, false> BREG[BRANCH_UNIT_NUMBER];
-// Link register
-
-std::map<unsigned int, ac_int<64, false>> memory;
-ac_int<128, false> RI[MAX_NUMBER_OF_INSTRUCTIONS];
-
-ac_int<64, false> VexSimulator::doRead(ac_int<64, false> file, ac_int<64, false> bufferAddr, ac_int<64, false> size){
-	int localSize = size.slc<32>(0);
-	char* localBuffer = (char*) malloc(localSize*sizeof(char));
-	if (file == 0){
-		ac_int<64, false> result = fread(localBuffer, 1, size, stdin);
-		for (int i=0; i<result; i++)
-			this->stb(bufferAddr + i, localBuffer[i]);
-
-
-		return result;
-	}
-	else{
-		return 0;
-	}
-}
-
-ac_int<64, false> VexSimulator::doWrite(ac_int<64, false> file, ac_int<64, false> bufferAddr, ac_int<64, false> size){
-	int localSize = size.slc<32>(0);
-	char* localBuffer = (char*) malloc(localSize*sizeof(char));
-	if (file == 0){
-		for (int i=0; i<size; i++)
-			localBuffer[i] = this->ldb(bufferAddr + i);
-		ac_int<64, false> result = fwrite(localBuffer, 1, size, stdout);
-		return result;
-	}
-	else{
-		return 0;
-	}
-}
-
 #endif
 
 // Cycle counter
@@ -115,72 +76,6 @@ typedef ac_int<32, false> acuint32;
 typedef ac_int<8, false> acuint8;
 
 
-#ifndef __CATAPULT
-void VexSimulator::stb(ac_int<64, false> addr, ac_int<8, false> value){
-	if (addr == 0x10009000){
-		fprintf(stdout,"%c",(char) value & 0xff);
-	}
-	else
-		memory[addr] = value;
-
-
-//	fprintf(stderr, "memwrite %x %x\n", addr, value);
-
-}
-
-void VexSimulator::sth(ac_int<64, false> addr, ac_int<16, false> value){
-	this->stb(addr+1, value.slc<8>(8));
-	this->stb(addr+0, value.slc<8>(0));
-}
-
-void VexSimulator::stw(ac_int<64, false> addr, ac_int<32, false> value){
-	this->stb(addr+3, value.slc<8>(24));
-	this->stb(addr+2, value.slc<8>(16));
-	this->stb(addr+1, value.slc<8>(8));
-	this->stb(addr+0, value.slc<8>(0));
-}
-
-ac_int<8, false> VexSimulator::ldb(ac_int<64, false> addr){
-	ac_int<8, false>  result = 0;
-	if (addr == 0x10009000){
-		result = getchar();
-	}
-	else if (memory.find(addr) != memory.end())
-		result = memory[addr];
-//	fprintf(stderr, "memread %x %x\n", addr, result);
-
-	return result;
-}
-
-ac_int<16, false> VexSimulator::ldh(ac_int<64, false> addr){
-	ac_int<16, false> result = 0;
-	result.set_slc(8, ldb(addr+1));
-	result.set_slc(0, ldb(addr));
-	return result;
-}
-
-ac_int<32, false> VexSimulator::ldw(ac_int<64, false> addr){
-	ac_int<32, false> result = 0;
-	result.set_slc(24, ldb(addr+3));
-	result.set_slc(16, ldb(addr+2));
-	result.set_slc(8, ldb(addr+1));
-	result.set_slc(0, ldb(addr+0));
-	return result;
-}
-
-ac_int<64, false> VexSimulator::ldd(ac_int<64, false> addr){
-	ac_int<64, false> result = 0;
-	result.set_slc(56, ldb(addr+7));
-	result.set_slc(48, ldb(addr+6));
-	result.set_slc(40, ldb(addr+5));
-	result.set_slc(32, ldb(addr+4));
-	result.set_slc(24, ldb(addr+3));
-	result.set_slc(16, ldb(addr+2));
-	result.set_slc(8, ldb(addr+1));
-	result.set_slc(0, ldb(addr+0));
-	return result;
-}
-#endif
 
 #ifdef __CATAPULT
 	ac_int<64, false> ldd(unsigned int addr, ac_int<8, false> memory0[65536], ac_int<8, false> memory1[65536], ac_int<8,false> memory2[65536], ac_int<8, false> memory3[65536], ac_int<8, false> memory4[65536], ac_int<8, false> memory5[65536],  ac_int<8,false> memory6[65536], ac_int<8, false> memory7[65536]){
@@ -1053,28 +948,10 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 				break;
 
 			case VEX_ECALL:
-				switch(this->REG[17]){
-				case SYS_exit:
-					stop = 1;
-					NEXT_PC = PC;
-					fprintf(stderr,"Simulation finished in %d cycles \n", cycle);
-				break;
-				case SYS_read:
-					dctoEx->dest = 10;
-					dctoEx->dataa = doRead(this->REG[13], this->REG[11], this->REG[12]);
-					dctoEx->opCode = VEX_MOVI;
-				break;
-				case SYS_write:
-					dctoEx->dest = 10;
-					dctoEx->dataa = doWrite(this->REG[13], this->REG[11], this->REG[12]);
-					dctoEx->opCode = VEX_MOVI;
-				break;
-				default:
-					dctoEx->dest = 10;
-					dctoEx->dataa = 0;
-					dctoEx->opCode = VEX_MOVI;
-				break;
-				}
+				dctoEx->dataa = this->solveSyscall(REG[17], REG[10], REG[11], REG[12], REG[13]);
+				dctoEx->dest = 10;
+				dctoEx->opCode = VEX_MOVI;
+
 
 			break;
 #endif
@@ -1124,6 +1001,10 @@ int VexSimulator::doStep(){
 
 	// If the operation code is 0x2f then the processor stops
 	if(stop == 1){
+		#ifndef __CATAPULT
+		fprintf(stderr,"Simulation finished in %d cycles \n", cycle);
+		#endif
+
 		return PC;
 	}
 
@@ -1186,9 +1067,6 @@ int VexSimulator::doStep(){
 	if(OP1 == 0x2F){
 		stop = 1;
 		NEXT_PC = PC;
-		#ifndef __CATAPULT
-		fprintf(stderr,"Simulation finished in %d cycles \n", cycle);
-		#endif
 	}
 
 
@@ -1313,7 +1191,7 @@ int VexSimulator::doStep(){
 int run(int mainPc, ac_int<8, false> memory0[65536], ac_int<8, false> memory1[65536], ac_int<8,false> memory2[65536], ac_int<8, false> memory3[65536],
 	 ac_int<8, false> memory4[65536], ac_int<8, false> memory5[65536], ac_int<8,false> memory6[65536], ac_int<8, false> memory7[65536], ac_int<128, false> RI[65536]){
 #else
-int VexSimulator::initializeRun(int mainPc){
+int VexSimulator::initializeRun(int mainPc, int argc, char* argv[]){
 #endif
 
 
@@ -1376,6 +1254,8 @@ int VexSimulator::initializeRun(int mainPc){
 			return returnedValue;
 	}
 #endif
+
+	this->initialize(argc, argv);
 
 	return 0;
 }
