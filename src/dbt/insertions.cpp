@@ -43,10 +43,19 @@
 	 * more than 256 because code area will concern 1024 source instructions.
 	 */
 
-int insertionsArray[65536];
-int unresolvedJumpsArray[65536];
-int unresolvedJumpsTypeArray[65536];
-int unresolvedJumpsSourceArray[65536];
+
+#define MAX_INSERTION_PER_SECTION 2048
+#define SHIFT_FOR_INSERTION_SECTION 13 //Should be equal to log2(MAX_INSERTION_PER_SECTION) + 2
+
+
+
+int insertionsArray[65536*4];
+int unresolvedJumpsArray[65536*4];
+int unresolvedJumpsTypeArray[65536*4];
+int unresolvedJumpsSourceArray[65536*4];
+
+
+
 
 int loadWordFromInsertionMemory(int offset){
 
@@ -62,7 +71,7 @@ void storeWordFromInsertionMemory(int offset, int word){
 void initializeInsertionsMemory(int sizeSourceCode){
 	int nbBlock = 1+( sizeSourceCode>>12);
 	for (int oneBlock = 0; oneBlock<nbBlock; oneBlock++){
-		int offset = oneBlock<<11;
+		int offset = oneBlock<<SHIFT_FOR_INSERTION_SECTION;
 		storeWordFromInsertionMemory(offset, -1);
 	}
 }
@@ -73,7 +82,7 @@ void addInsertions(uint32 blockStartAddressInSources, uint32 blockStartAddressIn
 
 	int section = blockStartAddressInSources >> 10;
 
-	int offset = section << 11; // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
+	int offset = section << SHIFT_FOR_INSERTION_SECTION; // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
 	//Currently offset point to the struct corresponding to the code section.
 	storeWordFromInsertionMemory(offset, numberInsertions);
 	storeWordFromInsertionMemory(offset + 1, blockStartAddressInVLIW);
@@ -84,7 +93,8 @@ void addInsertions(uint32 blockStartAddressInSources, uint32 blockStartAddressIn
 	}
 
 	//We fill the rest with -1
-	for (int oneInsertion = numberInsertions; oneInsertion<512-2; oneInsertion++){
+	for (int oneInsertion = numberInsertions; oneInsertion<MAX_INSERTION_PER_SECTION-2; oneInsertion++){
+		printf("%d is set to minus one\n",offset+oneInsertion+2);
 		storeWordFromInsertionMemory(offset+oneInsertion+2, 0x7fffffff);
 	}
 }
@@ -105,7 +115,7 @@ unsigned int solveUnresolvedJump(unsigned int initialDestination){
 	int destination = 0;
 
 	int section = initialDestination >> 10;
-	int offset = section << 11; // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
+	int offset = section << SHIFT_FOR_INSERTION_SECTION; // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
 
 	//Currently offset point to the struct corresponding to the code section.
 	int nbInsertion = loadWordFromInsertionMemory(offset);
@@ -113,7 +123,7 @@ unsigned int solveUnresolvedJump(unsigned int initialDestination){
 	if (nbInsertion == -1)
 		return -1;
 
-	int size = 512;
+	int size = MAX_INSERTION_PER_SECTION;
 	int VLIWBase = loadWordFromInsertionMemory(offset + 1);
 	unsigned int init = (initialDestination % 1024);
 	int start = 0;
@@ -150,8 +160,8 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	 *							 |						| r33 = r33 & -4096	| init = r33 & 0x1fff		r5 = offset
 	 *		| init -= startAddr	 | stw r6 -12(sp)		|					| offset = 7				r6 = v1
 	 *		| init = init>>2	 | stw r7 -16(sp)		|					| offset = offset<<24	 	r7 = start
-	 *		| offset offset + r33<<1| stw r8 -20(sp)	|					| start = 0					r8 = size
-	 *		| v1 = offset + 1024  | stw r9 -24(sp)		|					| size = 256				r9 = t1
+	 *		| offset offset + r33<<1| stw r8 -20(sp)	|					| start = MAXNB*4					r8 = size
+	 *		| v1 = offset + start  | stw r9 -24(sp)		|	start=0				| size = 256				r9 = t1
 	 *
 	 *
 	 * bcl: | 				     | r33 = ldw 8(v1)     	|					| init = init + size
@@ -168,6 +178,37 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	 *		| gotor r8			 | ldw r7 -16(sp)		|					|
 	 *		|					 | ldw r8 -20(sp)		|					|
 
+
+	 * Same with a different pipeline latency (1 2 2 1)
+	 *		| init = startAddress| stw r4 -4(sp)		|					| 							r4 = init
+	 *		| r33 = r33 - init	 | stw r5 -8(sp)		| 					|
+	 *							 |						| r33 = r33 & -4096	| init = r33 & 0x1fff		r5 = offset
+	 *		| init -= startAddr	 | stw r6 -12(sp)		|					| offset = 7				r6 = v1
+	 *		| init = init>>2	 | stw r7 -16(sp)		|					| offset = offset<<24	 	r7 = start
+	 *		| offset offset + r33<<1| stw r8 -20(sp)	|					| start = 0					r8 = size
+	 *		| v1 = offset + 1024  | stw r9 -24(sp)		|					| size = 256				r9 = t1
+	 *
+	 *
+	 * bcl: | 				     | r33 = ldw 8(v1)     	|					|
+	 *      | 				     |                   	|					| init = init + size
+	 * 		|r33=offset+size<<1  |						|					|
+	 * 		| 					 |init = init - size    | 					| t1 = cmpte r33 init
+	 * 		|r33+= start << 2    |						| 					|
+	 * 		| 					 | size = size >>1		| v1 = t1 * size	|t1 = cmpeqi size 1
+	 * 		| 					 | start += v1			| init = init + v1	|
+	 *      | 				     |                   	|					|
+	 * 		| br t1 bcl			 | 					 	|					|v1=r33+v1<<2
+	 *      | 				     |                   	|					|
+	 *
+	 *		|					 | ldw v1 4(offset)		|					|r8 = init + 1
+	 *		|					 | ldw r4 -4(sp)		| 					|
+	 *		|					 | ldw r5 -8(sp)		|					|
+	 *		|					 | ldw r6 -12(sp)		|					|r8 = r8 + v1
+	 *		| 					 | ldw r7 -16(sp)		|					|
+	 *		|					 | ldw r8 -20(sp)		|					|r8 = r8<<2
+	 *      | 				     |                   	|					|
+	 *      |gotor r8		     |                   	|					|
+	 *      | 				     |                   	|					|
 	 *
 	 *	//TODO handle case where code is not translated
 	 */
@@ -207,21 +248,22 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleRiInstruction(VEX_SLLi, 5, 5, 24));
 
-	//		| offset offset + r33<<1| stw r8 -20(sp)		|					| start = 0
+	//		| offset offset + r33<<1| stw r8 -20(sp)		|					| start = MAXNB*2
 	cycle++;
-	writeInt(platform->vliwBinaries, cycle*16+0, assembleRInstruction(VEX_SH1ADD, 5, 33, 5));
+	char operation = (MAX_INSERTION_PER_SECTION == 2048) ? VEX_SH3ADD : (MAX_INSERTION_PER_SECTION == 1024) ? VEX_SH2ADD : (MAX_INSERTION_PER_SECTION == 512) ? VEX_SH1ADD :  VEX_ADD;
+	writeInt(platform->vliwBinaries, cycle*16+0, assembleRInstruction(operation, 5, 33, 5));
 	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 8, 2, -40));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
-	writeInt(platform->vliwBinaries, cycle*16+12, assembleRiInstruction(VEX_ADDi, 7, 0, 0));
+	writeInt(platform->vliwBinaries, cycle*16+12, assembleIInstruction(VEX_MOVI,2*MAX_INSERTION_PER_SECTION, 7));
 
-	//		| v1 = offset + 1024  | stw r9 -24(sp)		|					| size = 256
+	//		| v1 = offset + start  | stw r9 -24(sp)		|					| size = 256
 	cycle++;
-	writeInt(platform->vliwBinaries, cycle*16+0, assembleRiInstruction(VEX_ADDi, 6, 5, 1024));
+	writeInt(platform->vliwBinaries, cycle*16+0, assembleRInstruction(VEX_ADD, 6, 5, 7));
 	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 9, 2, -48));
-	writeInt(platform->vliwBinaries, cycle*16+8, 0);
-	writeInt(platform->vliwBinaries, cycle*16+12, assembleRiInstruction(VEX_ADDi, 8, 0, 256));
+	writeInt(platform->vliwBinaries, cycle*16+8, assembleIInstruction(VEX_MOVI,0, 7));
+	writeInt(platform->vliwBinaries, cycle*16+12, assembleRiInstruction(VEX_ADDi, 8, 0, MAX_INSERTION_PER_SECTION/2));
 
-	// bcl: | 				     | r33 = ldw 8(v1)     	|					| init = init + size
+	// bcl: | 				     | r33 = ldw 8(v1)     	|	start = 0				| init = init + size
 	cycle++;
 	int bcl = cycle;
 	writeInt(platform->vliwBinaries, cycle*16+0, 0);
@@ -323,7 +365,7 @@ int getInsertionList(int mipsStartAddress, int** result){
 	int destination = 0;
 
 	int section = mipsStartAddress >> 10;
-	int offset = section << 11; // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
+	int offset = section << SHIFT_FOR_INSERTION_SECTION; // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
 
 	//Currently offset point to the struct corresponding to the code section.
 	int nbInsertion = loadWordFromInsertionMemory(offset);
