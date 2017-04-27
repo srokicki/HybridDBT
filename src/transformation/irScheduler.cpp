@@ -83,15 +83,15 @@ ac_int<6, false> fifoNumberElement = 0;
 ac_int<8, false> scheduledInstructions = 0;
 
 //We declare array for used registers and used successors
-ac_int<8*7, false> successors[3][MAX_ISSUE_WIDTH];
-ac_int<8, false> successors_old[3][7*MAX_ISSUE_WIDTH];
-ac_int<3, false> successorNumbers[3][MAX_ISSUE_WIDTH];
-ac_int<3, false> successorStageNumber[3] = {0,0,0};
+ac_int<8*7, false> successors[4][MAX_ISSUE_WIDTH];
+ac_int<8, false> successors_old[4][7*MAX_ISSUE_WIDTH];
+ac_int<3, false> successorNumbers[4][MAX_ISSUE_WIDTH];
+ac_int<3, false> successorStageNumber[4] = {0,0,0};
 
-ac_int<8, false> totalNumberOfSuccessors[3];
+ac_int<8, false> totalNumberOfSuccessors[4];
 
-ac_int<9, false> usedRegister[3][3*MAX_ISSUE_WIDTH];
-ac_int<5, false> numbersUsedRegister[3];
+ac_int<9, false> usedRegister[4][3*MAX_ISSUE_WIDTH];
+ac_int<5, false> numbersUsedRegister[4];
 
 
 
@@ -232,7 +232,7 @@ void getFirstInstruction(int type){
 //The argument optLevel is here to set the difficulty of the scheduling : 0 mean that there is just a binary priority and 1 mean that we'll consider the entire priority value
 ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBlockSize, ac_int<128, false> bytecode[256], ac_int<128, false> binaries[1024],ac_int<16, false> addressInBinaries,  ac_int<6, false> placeOfRegisters[512], ac_int<6, false> numberFreeRegister, ac_int<6, false> freeRegisters[64],ac_int<4, false> issue_width, ac_int<MAX_ISSUE_WIDTH * 2, false> way_specialisation, ac_int<32, false> placeOfInstr[256]){
     ac_int<32, false> cycleNumber = 0; //This is the current cycle
-    ac_int<1, false> lineNumber = 0;
+    ac_int<2, false> lineNumber = 0;
     ac_int<32,false> writeInBinaries =addressInBinaries;
     writeFreeRegister = numberFreeRegister;
 
@@ -336,8 +336,10 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
     		//  -> For normal instructions, this number correspond to current line number ('lineNumber')
     		//  -> For multiplication, this number is the next lineNumber (lineNumber + 1 % 2)
 
-    		ac_int<1, false> nextLineNumber = !lineNumber;
-    		ac_int<1, false> lineNumberForStage = (type == 3) ?  nextLineNumber : lineNumber; //Note : the modulo is useless but here to remind that it is a 1 bit variable
+    		ac_int<2, false> nextLineNumber = lineNumber + 1;
+    		ac_int<2, false> secondNextLineNumber = lineNumber + 2;
+
+    		ac_int<1, false> lineNumberForStage = (type == 3 | type == 2) ?  secondNextLineNumber : nextLineNumber; //Note : the modulo is useless but here to remind that it is a 1 bit variable
 
 
 			ac_int<32, false> generatedInstruction = 0;
@@ -434,9 +436,11 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 					//***************************************
 					//We list all successors
 					ac_int<56, false> successorNames;
-					ac_int<3, false> numberOfSuccessor;
+					ac_int<3, false> numberOfSuccessor, numberOfDataSuccessor;
 
 					numberOfSuccessor = bytecode_word2.slc<3>(0);
+					numberOfDataSuccessor = bytecode_word2.slc<3>(3);
+					printf("There is %d data successor\n", numberOfDataSuccessor);
 					successorNames.set_slc(32, bytecode_word3.slc<24>(0));
 					successorNames.set_slc(0, bytecode_word4);
 
@@ -518,8 +522,8 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 //        lineNumber = (lineNumber + 1) & 0x1;
 //        if (lineNumber == 3)
 //        	lineNumber = 0;*
-        ac_int<1, false> oldLineNumber = lineNumber;
-        lineNumber = !lineNumber; //Note to change this implementation for software version
+        ac_int<2, false> oldLineNumber = lineNumber;
+        lineNumber++; //Note to change this implementation for software version
 
 
 

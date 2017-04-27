@@ -1552,8 +1552,8 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			dest_global_access = (dest_global_address == pred1_global_address) ? pred1_global_access : dest_global_access;
 			dest_global_access = (dest_global_address == pred2_global_address) ? pred2_global_access : dest_global_access;
 
-//			if (dest_reg >=10 & dest_reg <20)
-//				dest_global_access = -1;
+			if (dest_reg >=10 & dest_reg <17)
+				dest_global_access = -1;
 
 			if (dest_ena) {
 

@@ -96,8 +96,8 @@ fprintf(stderr, "***************************************************************
 	}
 
 	//Preparation of required memories
-	for (int oneFreeRegister = 36; oneFreeRegister<63; oneFreeRegister++)
-		platform->freeRegisters[oneFreeRegister-36] = oneFreeRegister;
+	for (int oneFreeRegister = 34; oneFreeRegister<63; oneFreeRegister++)
+		platform->freeRegisters[oneFreeRegister-35] = oneFreeRegister;
 
 	for (int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
 		platform->placeOfRegisters[256+onePlaceOfRegister] = onePlaceOfRegister;
@@ -177,6 +177,10 @@ fprintf(stderr, "***************************************************************
 
 		//We modify the stored information concerning the block
 		block->vliwEndAddress = basicBlockStart + binaSize + 2;
+	}
+	else{
+		fprintf(stderr, "Schedule is dropped (%d cycles)\n", binaSize);
+
 	}
 
 	block->blockState = IRBLOCK_STATE_SCHEDULED;
