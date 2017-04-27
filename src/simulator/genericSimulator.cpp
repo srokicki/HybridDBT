@@ -54,6 +54,8 @@ void GenericSimulator::initialize(int argc, char** argv){
 
 void GenericSimulator::stb(ac_int<64, false> addr, ac_int<8, true> value){
 	this->memory[addr] = value & 0xff;
+	if (addr == 0x130A8)
+		printf("Writing %x\n", value);
 }
 
 
@@ -91,7 +93,8 @@ ac_int<8, true> GenericSimulator::ldb(ac_int<64, false> addr){
 		result= 0;
 
 //	fprintf(stderr, "memread %x %x\n", addr, result);
-
+	if (addr == 0x130A8)
+		printf("reading %x\n", result);
 	return result;
 }
 
@@ -117,7 +120,7 @@ ac_int<32, true> GenericSimulator::ldw(ac_int<64, false> addr){
 
 ac_int<64, true> GenericSimulator::ldd(ac_int<64, false> addr){
 
-	ac_int<64, false> result = 0;
+	ac_int<64, true> result = 0;
 	result.set_slc(56, this->ldb(addr+7));
 	result.set_slc(48, this->ldb(addr+6));
 	result.set_slc(40, this->ldb(addr+5));
@@ -126,6 +129,7 @@ ac_int<64, true> GenericSimulator::ldd(ac_int<64, false> addr){
 	result.set_slc(16, this->ldb(addr+2));
 	result.set_slc(8, this->ldb(addr+1));
 	result.set_slc(0, this->ldb(addr));
+
 	return result;
 }
 
