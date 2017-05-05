@@ -23,6 +23,7 @@ int latencies[4] = {4,4,4,4};   //The latencies of the different pipeline stages
 const int maxLatency = 4;
 unsigned int mask[4] = {0xff000000, 0xff0000, 0xff00, 0xff};
 
+ac_int<6, false> stages[8] = {0,3,1,2,4,5,6,7};
 
 //Memory units of the architecture
 ac_int<32, false> instructions[256];
@@ -83,12 +84,13 @@ ac_int<6, false> fifoNumberElement = 0;
 ac_int<8, false> scheduledInstructions = 0;
 
 //We declare array for used registers and used successors
-ac_int<8*7, false> successors[4][MAX_ISSUE_WIDTH];
-ac_int<8, false> successors_old[4][7*MAX_ISSUE_WIDTH];
-ac_int<3, false> successorNumbers[4][MAX_ISSUE_WIDTH];
-ac_int<3, false> successorStageNumber[4] = {0,0,0};
+ac_int<8*7, false> successors[4][2][MAX_ISSUE_WIDTH];
+ac_int<3, false> successorNumbers[4][2][MAX_ISSUE_WIDTH];
+ac_int<3, false> successorStageNumber[4][2] = {0,0,0,0,0,0,0,0};
 
 ac_int<8, false> totalNumberOfSuccessors[4];
+ac_int<8, false> totalNumberOfDataSuccessors[4];
+
 
 ac_int<9, false> usedRegister[4][3*MAX_ISSUE_WIDTH];
 ac_int<5, false> numbersUsedRegister[4];
@@ -130,15 +132,15 @@ void insertReadyInstruction(ac_int<8, false> instructionNumber){
 				else	if (instructionPriority[7]){
 						// We insert on the top of the list
 						ac_int<16, false> tempNextElement;
-                                                tempNextElement.set_slc(8, first[type]);
-                                                readyListNext[place] = tempNextElement;
+						tempNextElement.set_slc(8, first[type]);
+						readyListNext[place] = tempNextElement;
 						first[type] = place;
 
 					}
 					else {
 						// we insert at the end of the list
-					        ac_int<16, false> tempNextElement;
-                                                tempNextElement.set_slc(8, place);
+						ac_int<16, false> tempNextElement;
+						tempNextElement.set_slc(8, place);
 						readyListNext[last[type]] = tempNextElement;
 						last[type] = place;
 
@@ -262,12 +264,16 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 
     globalOptLevel = optLevel;
 
+    ac_int<32, false> jumpPlace = 0;
+    ac_int<1, false> haveJump = 0;
+
 	for(int i = 0; i<basicBlockSize;i++){
 		instructions[i] = bytecode[i].slc<32>(96);
 		instructionsEnd[i] = bytecode[i].slc<18>(14+64);
 		numbersOfDependencies[i] = bytecode[i].slc<8>(6+64);
 		priorities[i] = bytecode[i].slc<8>(24+32);
-		numbersOfRegisterDependencies[i] = bytecode[i].slc<3>(3+64);
+		ac_int<3, false> const7 = 7;
+		numbersOfRegisterDependencies[i] = (bytecode[i][64+14+8]) ? const7 : bytecode[i].slc<3>(3+64);
 
 
 		if (numbersOfDependencies[i] == 0){
@@ -325,8 +331,11 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 
         ac_int<256, false> binariesWord = 0;
 
+
         //For each functional unit, we assign the most prior instruction
-        for (ac_int<6, false> stage = 0; stage < issue_width; stage++){
+        for (ac_int<6, false> stageIndex = 0; stageIndex < issue_width; stageIndex++){
+
+        	ac_int<6, false> stage = stages[stageIndex];
 
         	//We read functional unit configuration
         	ac_int<2, false> type = way_specialisation.slc<2>(stage<<1);
@@ -338,8 +347,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 
     		ac_int<2, false> nextLineNumber = lineNumber + 1;
     		ac_int<2, false> secondNextLineNumber = lineNumber + 2;
-
-    		ac_int<1, false> lineNumberForStage = (type == 3 | type == 2) ?  secondNextLineNumber : nextLineNumber; //Note : the modulo is useless but here to remind that it is a 1 bit variable
+    		ac_int<2, false> lineNumberForStage = (type == 3 | type == 1) ?  secondNextLineNumber : nextLineNumber; //Note : the modulo is useless but here to remind that it is a 1 bit variable
 
 
 			ac_int<32, false> generatedInstruction = 0;
@@ -407,6 +415,13 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 				if (isSchedulable){
 					scheduledInstructions++;
 
+					if (instruction.slc<2>(48) == 0){
+						//This is a jump
+						fprintf(stderr, "Jump is placed at %d\n", (unsigned int)writeInBinaries);
+						haveJump = 1;
+						jumpPlace = writeInBinaries;
+					}
+
 					//***************************************
 					//We list used registers
 					if (typeCode == 0){
@@ -436,19 +451,39 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 					//***************************************
 					//We list all successors
 					ac_int<56, false> successorNames;
+					ac_int<56, false> dataSuccessorNames;
+
 					ac_int<3, false> numberOfSuccessor, numberOfDataSuccessor;
 
-					numberOfSuccessor = bytecode_word2.slc<3>(0);
+
 					numberOfDataSuccessor = bytecode_word2.slc<3>(3);
-					printf("There is %d data successor\n", numberOfDataSuccessor);
+					numberOfSuccessor = bytecode_word2.slc<3>(0) - numberOfDataSuccessor;
+
+
 					successorNames.set_slc(32, bytecode_word3.slc<24>(0));
 					successorNames.set_slc(0, bytecode_word4);
 
+					dataSuccessorNames.set_slc(0, bytecode_word3.slc<8>(16));
+					dataSuccessorNames.set_slc(8, bytecode_word3.slc<8>(8));
+					dataSuccessorNames.set_slc(16, bytecode_word3.slc<8>(0));
+					dataSuccessorNames.set_slc(24, bytecode_word4.slc<8>(24));
+					dataSuccessorNames.set_slc(32, bytecode_word4.slc<8>(16));
+					dataSuccessorNames.set_slc(40, bytecode_word4.slc<8>(8));
+					dataSuccessorNames.set_slc(48, bytecode_word4.slc<8>(0));
+
+
 					if (numberOfSuccessor != 0){
-						successorNumbers[lineNumberForStage][successorStageNumber[lineNumberForStage]] = numberOfSuccessor;
-						successors[lineNumberForStage][successorStageNumber[lineNumberForStage]] = successorNames;
-						totalNumberOfSuccessors[lineNumberForStage] += numberOfSuccessor;
-						successorStageNumber[lineNumberForStage]++;
+						successorNumbers[lineNumber][0][successorStageNumber[lineNumber][0]] = numberOfSuccessor;
+						successors[lineNumber][0][successorStageNumber[lineNumber][0]] = successorNames;
+						totalNumberOfSuccessors[lineNumber] += numberOfSuccessor;
+						successorStageNumber[lineNumber][0]++;
+					}
+
+					if (numberOfDataSuccessor != 0){
+						successorNumbers[lineNumberForStage][1][successorStageNumber[lineNumberForStage][1]] = numberOfDataSuccessor;
+						successors[lineNumberForStage][1][successorStageNumber[lineNumberForStage][1]] = dataSuccessorNames;
+						totalNumberOfDataSuccessors[lineNumberForStage] += numberOfDataSuccessor;
+						successorStageNumber[lineNumberForStage][1]++;
 					}
 
 
@@ -500,6 +535,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
         }
 
         //after all stages has been filled, we commit the word
+        fprintf(stderr, "test %d\n", writeInBinaries);
 		binaries[writeInBinaries] = binariesWord.slc<128>(0);
 		binaries[writeInBinaries + 1] = binariesWord.slc<128>(128);
         writeInBinaries++;
@@ -561,9 +597,11 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 
         ac_int<3, false> stage = 0;
         ac_int<6, false> successorNumberInStage = 0;
+        ac_int<1, false> type = (totalNumberOfSuccessors[oldLineNumber] == 0) ? 1 : 0;
 
-        for(int i=0; i<totalNumberOfSuccessors[oldLineNumber]; i++){
-            ac_int<8, false> successorName = successors[oldLineNumber][stage].slc<8>(successorNumberInStage<<3);
+
+        for(int i=0; i<totalNumberOfSuccessors[oldLineNumber] + totalNumberOfDataSuccessors[oldLineNumber]; i++){
+            ac_int<8, false> successorName = successors[oldLineNumber][type][stage].slc<8>(successorNumberInStage<<3);
         	ac_int<8, false> numberDep = (successorName == previousSuccessorName) ? previousNumberOfDep : numbersOfDependencies[successorName];
         	numberDep = numberDep - 1;
 
@@ -585,23 +623,54 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 				  fifoInsertReadyInstruction[fifoPlaceToWrite] = successorName;
 				  fifoPlaceToWrite++;
 				  fifoNumberElement++;
+
 			}
 
 			//We update values to find next successor
 			successorNumberInStage++;
-			ac_int<1, false> stageOver = successorNumberInStage == successorNumbers[oldLineNumber][stage];
+			ac_int<1, false> stageOver = successorNumberInStage == successorNumbers[oldLineNumber][type][stage];
 			if (stageOver){
 				stage++;
 				successorNumberInStage = 0;
+				if (i+1 >= totalNumberOfSuccessors[oldLineNumber] && type == 0){
+					type = 1;
+					stage = 0;
+				}
 			}
 
         }
         totalNumberOfSuccessors[oldLineNumber] = 0;
-        successorStageNumber[oldLineNumber] = 0;
+        totalNumberOfDataSuccessors[oldLineNumber] = 0;
+        successorStageNumber[oldLineNumber][0] = 0;
+        successorStageNumber[oldLineNumber][1] = 0;
 
     }
-	cycleNumber[31] = 1;
-    return cycleNumber;
+
+	if (haveJump )
+		if (jumpPlace < writeInBinaries-2){
+			if (binaries[writeInBinaries-2].slc<32>(96) != 0 || binaries[writeInBinaries-1].slc<32>(64) != 0 || binaries[writeInBinaries-1].slc<32>(32) != 0){
+				//binaries[writeInBinaries].set_slc(96, binaries[jumpPlace].slc<32>(96));
+				writeInBinaries++;
+
+				if (issue_width > 4){
+					writeInBinaries++;
+				}
+				fprintf(stderr, "Correcting %d\n", jumpPlace);
+
+			}
+			binaries[writeInBinaries-2].set_slc(96,binaries[jumpPlace].slc<32>(96));
+			ac_int<32, false> const0 = 0;
+			binaries[jumpPlace].set_slc(96, const0);
+		}
+		else{
+			writeInBinaries++;
+
+			if (issue_width > 4){
+				writeInBinaries++;
+			}
+		}
+
+    return writeInBinaries-addressInBinaries;
 }
 #endif
 

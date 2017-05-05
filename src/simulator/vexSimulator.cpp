@@ -970,7 +970,7 @@ int VexSimulator::doStep(){
 
 
 	doWB(memtoWB3);
-
+	doWB(memtoWB2);
 
 	///////////////////////////////////////////////////////
 	//													 //
@@ -1033,7 +1033,7 @@ int VexSimulator::doStep(){
 	///////////////////////////////////////////////////////
 
 	doWB(memtoWB1);
-	doWB(memtoWB2);
+
 	doWB(memtoWB4);
 //		doWB(memtoWB5);
 //		doWB(memtoWB6);
@@ -1174,6 +1174,8 @@ int VexSimulator::doStep(){
 		for (int oneRegister = 0; oneRegister<36; oneRegister++){
 			fprintf(stderr, "%lx;", (long) REG[oneRegister]);
 		}
+		fprintf(stderr, ";;%lx;", (long) REG[63]);
+
 		fprintf(stderr, "\n");
 
 	}

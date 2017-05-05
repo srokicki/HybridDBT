@@ -107,11 +107,11 @@ fprintf(stderr, "***************************************************************
 	int binaSize = irScheduler(platform, 1,blockSize, placeCode, 29, 4, 0x001e);
 	binaSize = binaSize & 0xffff;
 
-	if (binaSize+1 < originalScheduleSize){
+	if (binaSize < originalScheduleSize){
 
 		memcpy(&platform->vliwBinaries[basicBlockStart], &platform->vliwBinaries[placeCode], (binaSize+1)*sizeof(uint128));
 
-		for (int i=basicBlockStart+binaSize+1;i<basicBlockEnd;i++){
+		for (int i=basicBlockStart+binaSize;i<basicBlockEnd;i++){
 			platform->vliwBinaries[i] = 0;
 		}
 
@@ -131,26 +131,26 @@ fprintf(stderr, "***************************************************************
 			int destination = basicBlockEnd - 1 + (offset>>2);
 
 			//We compute the new offset, considering the new destination
-			int newOffset = destination - (basicBlockStart + binaSize + 1);
+			int newOffset = destination - (basicBlockStart + binaSize-1);
 			newOffset = newOffset << 2;
 
 			fprintf(stderr, "Correction of jump at the end of the block. Original offset was %d\n From it derivated destination %d and new offset %d\n", offset, destination, newOffset);
 			uint32 newInstruction = (jumpInstruction & 0xfc00007f) | ((newOffset & 0x7ffff) << 7);
 			fprintf(stderr, "Old jump instr was %x. New is %x\n", jumpInstruction, newInstruction);
-			writeInt(platform->vliwBinaries, (basicBlockStart+binaSize)*16 + 0, newInstruction);
+			writeInt(platform->vliwBinaries, (basicBlockStart+binaSize-2)*16 + 0, newInstruction);
 		}
 
-		if (basicBlockStart+binaSize+3 < basicBlockEnd){
+		if (basicBlockStart+binaSize+1 < basicBlockEnd){
 			//We need to add a jump to correct the shortening of the block.
 
 			uint32 insertedJump = VEX_GOTO + (basicBlockEnd<<9); // Note added the *4 to handle the new PC encoding
-			writeInt(platform->vliwBinaries, (basicBlockStart+binaSize+2)*16, insertedJump);
+			writeInt(platform->vliwBinaries, (basicBlockStart+binaSize)*16, insertedJump);
 
 			//In this case, we also added a block in the design
 			//We need to insert it in the set of blocks
-			IRBlock* newBlock = new IRBlock(basicBlockStart + binaSize + 2, basicBlockStart + binaSize + 4, block->section);
+			IRBlock* newBlock = new IRBlock(basicBlockStart + binaSize, basicBlockStart + binaSize + 2, block->section);
 			application->addBlock(newBlock, block->section);
-			fprintf(stderr, "adding a block from %d tp %d\n", basicBlockStart + binaSize + 2, basicBlockStart + binaSize + 4);
+			fprintf(stderr, "adding a block from %d tp %d\n", basicBlockStart + binaSize, basicBlockStart + binaSize + 2);
 		}
 
 
@@ -176,7 +176,7 @@ fprintf(stderr, "***************************************************************
 		fprintf(stderr, "*************************************************************************\n");
 
 		//We modify the stored information concerning the block
-		block->vliwEndAddress = basicBlockStart + binaSize + 2;
+		block->vliwEndAddress = basicBlockStart + binaSize + 1;
 	}
 	else{
 		fprintf(stderr, "Schedule is dropped (%d cycles)\n", binaSize);

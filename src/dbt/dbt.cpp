@@ -413,12 +413,14 @@ int main(int argc, char *argv[])
 	int abortCounter = 0;
 
 	while (runStatus == 0){
+		fprintf(stderr, "Cycle %d\n", abortCounter);
 		runStatus = run(&dbtPlateform, 1000);
 		abortCounter++;
-		if (abortCounter>400000)
+		if (abortCounter>5000000)
 			break;
 
-		fprintf(stderr, "IPC;%f\n", dbtPlateform.vexSimulator->getAverageIPC());
+		if (VERBOSE)
+			fprintf(stderr, "IPC;%f\n", dbtPlateform.vexSimulator->getAverageIPC());
 
 		//If a profiled block is executed more than 10 times we optimize it and mark it as optimized
 		for (int oneBlock = 0; oneBlock<profiler.getNumberProfiledBlocks(); oneBlock++){

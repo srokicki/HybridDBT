@@ -69,9 +69,10 @@ void storeWordFromInsertionMemory(int offset, int word){
 
 
 void initializeInsertionsMemory(int sizeSourceCode){
+	printf("%x\n", sizeSourceCode);
 	int nbBlock = 1+( sizeSourceCode>>12);
 	for (int oneBlock = 0; oneBlock<nbBlock; oneBlock++){
-		int offset = oneBlock<<SHIFT_FOR_INSERTION_SECTION;
+		int offset = oneBlock<<(SHIFT_FOR_INSERTION_SECTION-2);
 		storeWordFromInsertionMemory(offset, -1);
 	}
 }
@@ -82,7 +83,7 @@ void addInsertions(uint32 blockStartAddressInSources, uint32 blockStartAddressIn
 
 	int section = blockStartAddressInSources >> 10;
 
-	int offset = section << SHIFT_FOR_INSERTION_SECTION; // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
+	int offset = section << (SHIFT_FOR_INSERTION_SECTION-2); // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
 	//Currently offset point to the struct corresponding to the code section.
 	storeWordFromInsertionMemory(offset, numberInsertions);
 	storeWordFromInsertionMemory(offset + 1, blockStartAddressInVLIW);
@@ -94,7 +95,6 @@ void addInsertions(uint32 blockStartAddressInSources, uint32 blockStartAddressIn
 
 	//We fill the rest with -1
 	for (int oneInsertion = numberInsertions; oneInsertion<MAX_INSERTION_PER_SECTION-2; oneInsertion++){
-		printf("%d is set to minus one\n",offset+oneInsertion+2);
 		storeWordFromInsertionMemory(offset+oneInsertion+2, 0x7fffffff);
 	}
 }
@@ -115,7 +115,7 @@ unsigned int solveUnresolvedJump(unsigned int initialDestination){
 	int destination = 0;
 
 	int section = initialDestination >> 10;
-	int offset = section << SHIFT_FOR_INSERTION_SECTION; // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
+	int offset = section << (SHIFT_FOR_INSERTION_SECTION-2); // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
 
 	//Currently offset point to the struct corresponding to the code section.
 	int nbInsertion = loadWordFromInsertionMemory(offset);
@@ -165,18 +165,22 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	 *
 	 *
 	 * bcl: | 				     | r33 = ldw 8(v1)     	|					| init = init + size
+	 * 		|					 |                      |                   |
 	 * 		| 					 |						| 					| t1 = cmpte r33 init
 	 * 		|					 |						| v1 = t1 * size	| init = init - size
-	 * 		| t1 = cmpeqi size 1 | size = size >>1		|				  	|
-	 * 		| br t1 bcl			 | start += v1			| init = init + v1	| v1 = offset + size<<2
+	 * 		| t1 = cmpeqi size 1 | 						|				  	|size = size >>1
+	 * 		|					 | start += v1			| init = init + v1	| v1 = offset + size<<2
+	 * 		|  br t1 bcl		 |                      |                   |
 	 * 		| v1 = start<<2 + v1 | 					 	|					|
 	 *
 	 *		|					 | ldw v1 4(offset)		|					|
+	 *		|					 |						|					|
 	 *		|					 | ldw r4 -4(sp)		| 					|r8 = init + v1
 	 *		|					 | ldw r5 -8(sp)		|					|r8++
 	 *		|					 | ldw r6 -12(sp)		|					|r8 = r8<<2
-	 *		| gotor r8			 | ldw r7 -16(sp)		|					|
-	 *		|					 | ldw r8 -20(sp)		|					|
+	 *		|					 | ldw r7 -16(sp)		|					|
+	 *		| gotor r8			 | ldw r8 -20(sp)		|					|
+	 *		|					 |						|					|
 
 
 	 * Same with a different pipeline latency (1 2 2 1)
@@ -251,7 +255,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	//		| offset offset + r33<<1| stw r8 -20(sp)		|					| start = MAXNB*2
 	cycle++;
 	char operation = (MAX_INSERTION_PER_SECTION == 2048) ? VEX_SH3ADD : (MAX_INSERTION_PER_SECTION == 1024) ? VEX_SH2ADD : (MAX_INSERTION_PER_SECTION == 512) ? VEX_SH1ADD :  VEX_ADD;
-	writeInt(platform->vliwBinaries, cycle*16+0, assembleRInstruction(operation, 5, 33, 5));
+	writeInt(platform->vliwBinaries, cycle*16+0, assembleRInstruction(VEX_SH1ADD, 5, 33, 5));
 	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 8, 2, -40));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleIInstruction(VEX_MOVI,2*MAX_INSERTION_PER_SECTION, 7));
@@ -271,6 +275,12 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleRInstruction(VEX_ADD, 4, 4, 8));
 
+	cycle++;
+	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+	writeInt(platform->vliwBinaries, cycle*16+4, 0);
+	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+	writeInt(platform->vliwBinaries, cycle*16+12, 0);
+
 	// 		| 					 |						| 					| t1 = cmple r33 init
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, 0);
@@ -285,19 +295,26 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	writeInt(platform->vliwBinaries, cycle*16+8, assembleRInstruction(VEX_MPYLO, 6, 9, 8));
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleRInstruction(VEX_SUB, 4, 4, 8));
 
-	// 		| t1 = cmpeqi size 1 |size = size >>1		|					|
+	// 		| t1 = cmpeqi size 1 |						|					| size = size >>1
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, assembleRiInstruction(VEX_CMPNEi, 9, 8, 1));
-	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_SRLi, 8, 8, 1));
+	writeInt(platform->vliwBinaries, cycle*16+4, 0);
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
-	writeInt(platform->vliwBinaries, cycle*16+12, 0);
+	writeInt(platform->vliwBinaries, cycle*16+12,  assembleRiInstruction(VEX_SRLi, 8, 8, 1));
 
-	// 		| br t1 bcl			 | start += v1			| init = init + v1	| v1 = offset + size<<2
+	// 		| 				 | start += v1			| init = init + v1	| v1 = offset + size<<2
 	cycle++;
-	writeInt(platform->vliwBinaries, cycle*16+0, assembleIInstruction(VEX_BR, (bcl-cycle)<<2, 9));
+	writeInt(platform->vliwBinaries, cycle*16+0, 0);
 	writeInt(platform->vliwBinaries, cycle*16+4, assembleRInstruction(VEX_ADD, 7, 7, 6));
 	writeInt(platform->vliwBinaries, cycle*16+8, assembleRInstruction(VEX_ADD, 4, 4, 6));
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleRInstruction(VEX_SH2ADD, 6, 8, 5));
+
+	// 		| br t1	 | 					| 					|
+	cycle++;
+	writeInt(platform->vliwBinaries, cycle*16+0, assembleIInstruction(VEX_BR, (bcl-cycle)<<2, 9));
+	writeInt(platform->vliwBinaries, cycle*16+4, 0);
+	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 
 	// 		| v1 = (start<<2) + v1	 | 					 	|					|
 	cycle++;
@@ -312,6 +329,13 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDW, 6, 5, 4));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, 0);
+
+	cycle++;
+	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+	writeInt(platform->vliwBinaries, cycle*16+4, 0);
+	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+	writeInt(platform->vliwBinaries, cycle*16+12, 0);
+
 
 	//		|					 | ldw r4 -4(sp)		| r8 = init + v1	|
 	cycle++;
@@ -341,17 +365,23 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleRiInstruction(VEX_SLLi, 8, 8, 2));
 
-	//		| gotor r8			 | ldw r8 -20(sp)		|					|
+	//		| gotor r8			 | ldw r9 -24(sp)		|					|
+	cycle++;
+	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDD, 9, 2, -48));
+	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+	writeInt(platform->vliwBinaries, cycle*16+12, 0);
+
+	//		|					 | ldw r8 -20(sp)		|					|
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, assembleIInstruction(VEX_GOTOR, 0, 8));
 	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDD, 8, 2, -40));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 
-	//		|					 | ldw r9 -24(sp)		|					|
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, 0);
-	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDD, 9, 2, -48));
+	writeInt(platform->vliwBinaries, cycle*16+4, 0);
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 
@@ -365,7 +395,7 @@ int getInsertionList(int mipsStartAddress, int** result){
 	int destination = 0;
 
 	int section = mipsStartAddress >> 10;
-	int offset = section << SHIFT_FOR_INSERTION_SECTION; // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
+	int offset = section << (SHIFT_FOR_INSERTION_SECTION-2); // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
 
 	//Currently offset point to the struct corresponding to the code section.
 	int nbInsertion = loadWordFromInsertionMemory(offset);

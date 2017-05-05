@@ -186,6 +186,8 @@ ac_int<64, false> GenericSimulator::doRead(ac_int<64, false> file, ac_int<64, fa
 	else{
 		FILE* localFile = this->fileMap[file.slc<16>(0)];
 		result = fread(localBuffer, 1, size, localFile);
+		if (localFile == 0)
+			return -1;
 	}
 
 	for (int i=0; i<result; i++)
@@ -210,7 +212,8 @@ ac_int<64, false> GenericSimulator::doWrite(ac_int<64, false> file, ac_int<64, f
 	else{
 
 		FILE* localFile = this->fileMap[file.slc<16>(0)];
-
+		if (localFile == 0)
+			return -1;
 
 		ac_int<64, false> result = fwrite(localBuffer, 1, size, localFile);
 		return result;
@@ -254,10 +257,10 @@ ac_int<64, false> GenericSimulator::doOpen(ac_int<64, false> path, ac_int<64, fa
 	//The real pointer is stored here in a hashmap
 
 	ac_int<64, true> returnedResult = 0;
-	returnedResult.set_slc(0, result_ac.slc<16>(0) ^ result_ac.slc<16>(16));
+	returnedResult.set_slc(0, result_ac.slc<15>(0) ^ result_ac.slc<15>(16));
+	returnedResult[15] = 0;
 
 	this->fileMap[returnedResult.slc<16>(0)] = test;
-	//printf("Doing open on %s, returned %x\n", localPath, returnedResult);
 
 	return returnedResult;
 
@@ -278,9 +281,11 @@ ac_int<64, false> GenericSimulator::doClose(ac_int<64, false> file){
 		return 0;
 }
 
-ac_int<64, false> GenericSimulator::doLseek(ac_int<64, false> file, ac_int<64, false> ptr, ac_int<64, false> dir){
+ac_int<64, true> GenericSimulator::doLseek(ac_int<64, false> file, ac_int<64, false> ptr, ac_int<64, false> dir){
 	if (file>2){
 		FILE* localFile = this->fileMap[file.slc<16>(0)];
+		if (localFile == 0)
+			return -1;
 		int result = fseek(localFile, ptr, dir);
 		return result;
 	}

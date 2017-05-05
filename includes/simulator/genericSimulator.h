@@ -106,7 +106,7 @@ ac_int<64, false> doRead(ac_int<64, false> file, ac_int<64, false> bufferAddr, a
 ac_int<64, false> doWrite(ac_int<64, false> file, ac_int<64, false> bufferAddr, ac_int<64, false> size);
 ac_int<64, false> doOpen(ac_int<64, false> name, ac_int<64, false> flags, ac_int<64, false> mode);
 ac_int<64, false> doOpenat(ac_int<64, false> dir, ac_int<64, false> name, ac_int<64, false> flags, ac_int<64, false> mode);
-ac_int<64, false> doLseek(ac_int<64, false> file, ac_int<64, false> ptr, ac_int<64, false> dir);
+ac_int<64, true> doLseek(ac_int<64, false> file, ac_int<64, false> ptr, ac_int<64, false> dir);
 ac_int<64, false> doClose(ac_int<64, false> file);
 ac_int<64, false> doStat(ac_int<64, false> filename, ac_int<64, false> ptr);
 };

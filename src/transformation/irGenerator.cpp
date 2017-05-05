@@ -1039,6 +1039,8 @@ int irGenerator(unsigned char* code, unsigned int *size, unsigned int addressSta
 
 #ifndef __NIOS
 
+#define FIRST_RENAME 10
+#define LAST_RENAME 10
 
 /* Global values */
 uint1 isOutsideNext = 0;
@@ -1071,7 +1073,10 @@ inline unsigned int writeSuccessor_ac(ac_int<128, false> bytecode[1024], ac_int<
 	ac_int<3, false> nbSucc = oneBytecodeInstruction.slc<3>(64);
 	ac_int<3, false> nbDSucc = oneBytecodeInstruction.slc<3>(67);
 
-	ac_int<8, false> offset = nbSucc;
+	ac_int<8, false> offsetIsData = 6-nbDSucc;
+	ac_int<8, false> offsetNotData = nbSucc - nbDSucc;
+
+	ac_int<8, false> offset = isData ? offsetIsData : offsetNotData;
 	offset = offset << 3;
 	oneBytecodeInstruction.set_slc(offset, destInstr);
 
@@ -1382,6 +1387,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 						//** basic block, we add a dependency from the writer node to this instruction.
 						if (lastWriterOnGlobal_access_pred1 >= 0){
 							pred1_succ_ena = 1;
+							pred1_succ_isData = 1;
 							pred1_succ_src = lastWriterOnGlobal_access_pred1;
 							numberDependencies++;
 						}
@@ -1456,6 +1462,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 							lastReaderOnGlobalCounter_access_pred2++;
 							if (lastWriterOnGlobal_access_pred2 >= 0){
 								pred2_succ_ena = 1;
+								pred2_succ_isData = 1;
 								pred2_succ_src = lastWriterOnGlobal_access_pred2;
 								numberDependencies++;
 							}
@@ -1552,7 +1559,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			dest_global_access = (dest_global_address == pred1_global_address) ? pred1_global_access : dest_global_access;
 			dest_global_access = (dest_global_address == pred2_global_address) ? pred2_global_access : dest_global_access;
 
-			if (dest_reg >=10 & dest_reg <17)
+			if (dest_reg >=FIRST_RENAME & dest_reg <LAST_RENAME)
 				dest_global_access = -1;
 
 			if (dest_ena) {
@@ -1756,7 +1763,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				oneBytecode = assembleRBytecodeInstruction(3, alloc, opcode, pred1, pred2, destination, numberDependencies);
 			}
 			else if (isArith1 || isArithImm){
-				oneBytecode = assembleRiBytecodeInstruction(0, alloc, opcode, pred1, imm13, destination, numberDependencies);
+				oneBytecode = assembleRiBytecodeInstruction(2, alloc, opcode, pred1, imm13, destination, numberDependencies);
 			}
 			else if (isArith2){
 				oneBytecode = assembleRBytecodeInstruction(2, alloc, opcode, pred2, pred1, destination, numberDependencies);
@@ -1779,33 +1786,52 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 		}
 		while (indexInSourceBinaries<=blockSize && indexInCurrentBlock<255);
 
-		if (haveJump){
-			ac_int<128, false> jumpBytecodeWord = bytecode[jumpID];
-			ac_int<8, false> numberDependencies = jumpBytecodeWord.slc<8>(64+6);
+//		if (haveJump){
+//			ac_int<128, false> jumpBytecodeWord = bytecode[jumpID];
+//			ac_int<8, false> numberDependencies = jumpBytecodeWord.slc<8>(64+6);
+//
+//			for (int oneInstructionFromBlock = 0; oneInstructionFromBlock < indexInCurrentBlock; oneInstructionFromBlock++){
+//
+//				ac_int<128, false> bytecodeWord = bytecode[oneInstructionFromBlock];
+//				ac_int<3, false> nbSucc = bytecodeWord.slc<3>(64);
+//
+//				if (nbSucc == 0 && oneInstructionFromBlock != jumpID){
+//
+//					bytecodeWord.set_slc(0, jumpID);
+//					nbSucc++;
+//					numberDependencies++;
+//					bytecodeWord.set_slc(64, nbSucc);
+//					bytecode[oneInstructionFromBlock] = bytecodeWord;
+//				}
+//			}
+//			jumpBytecodeWord.set_slc(64+6, numberDependencies);
+//			bytecode[jumpID] = jumpBytecodeWord;
+//		}
 
-			for (int oneInstructionFromBlock = 0; oneInstructionFromBlock < indexInCurrentBlock; oneInstructionFromBlock++){
-
-				ac_int<128, false> bytecodeWord = bytecode[oneInstructionFromBlock];
-				ac_int<3, false> nbSucc = bytecodeWord.slc<3>(64);
-
-				if (nbSucc == 0 && oneInstructionFromBlock != jumpID){
-
-					bytecodeWord.set_slc(0, jumpID);
-					nbSucc++;
-					numberDependencies++;
-					bytecodeWord.set_slc(64, nbSucc);
-					bytecode[oneInstructionFromBlock] = bytecodeWord;
-				}
-			}
-			jumpBytecodeWord.set_slc(64+6, numberDependencies);
-			bytecode[jumpID] = jumpBytecodeWord;
-		}
-
-		for (uint9 oneRegister=0; oneRegister<36; oneRegister++){
+		for (uint9 oneRegister=FIRST_RENAME; oneRegister<LAST_RENAME; oneRegister++){
 			uint9 lastWriter = registers[oneRegister];
 			if (!lastWriter[8]){
-				bytecode[lastWriter] = bytecode[lastWriter].set_slc(64+14, oneRegister);
+				ac_int<9, false> newDestination = oneRegister+256;
+				bytecode[lastWriter].set_slc(64+14, newDestination);
+				bytecode[lastWriter][96+27] = 0;
 
+				int depToAdd = 0;
+				if (lastReaderOnGlobalCounter[oneRegister] >= 1 && lastReaderOnGlobal[oneRegister][0] != indexInCurrentBlock){
+					writeSuccessor_ac(bytecode, lastReaderOnGlobal[oneRegister][0], lastWriter, const0);
+					depToAdd++;
+					fprintf(stderr, "Adding a dep from %d to %d\n",lastReaderOnGlobal[oneRegister][0], lastWriter);
+				}
+
+				if (lastReaderOnGlobalCounter[oneRegister] >= 2 && lastReaderOnGlobal[oneRegister][1] != indexInCurrentBlock){
+					writeSuccessor_ac(bytecode, lastReaderOnGlobal[oneRegister][1], lastWriter, const0);
+					depToAdd++;
+				}
+				if (lastReaderOnGlobalCounter[oneRegister] >= 3 && lastReaderOnGlobal[oneRegister][2] != indexInCurrentBlock){
+					writeSuccessor_ac(bytecode, lastReaderOnGlobal[oneRegister][2], lastWriter, const0);
+					depToAdd++;
+				}
+				ac_int<8, false> newDepNumber = bytecode[lastWriter].slc<8>(64+6);
+				bytecode[lastWriter].set_slc(64+6, newDepNumber);
 			}
 		}
 

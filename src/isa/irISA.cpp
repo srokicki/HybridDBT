@@ -134,7 +134,7 @@ void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instr
 	fprintf(stderr, "nbDep=%d, nbDSucc = %d, nbSucc = %d, ", (int) nbDep, (int) nbDSucc, (int) nbSucc);
 	fprintf(stderr, "alloc=%d  successors:", (int) alloc);
 
-	for (int oneSucc = 0; oneSucc < nbSucc; oneSucc++){
+	for (int oneSucc = 0; oneSucc < 7; oneSucc++){
 		int succ = 0;
 		if (oneSucc >= 4)
 			succ = (instructionPart3 >> (8*(oneSucc-4))) & 0xff;
