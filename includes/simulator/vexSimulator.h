@@ -58,6 +58,7 @@ class VexSimulator : public GenericSimulator {
 	ac_int<64, false> PC, NEXT_PC;
 	ac_int<4, false> issueWidth;
 	ac_int<1, false> unitActivation[8];
+	ac_int<8, false> profileResult[64];
 
 	//Tools for printing average IPC
 	uint64_t nbInstr;
@@ -93,10 +94,6 @@ class VexSimulator : public GenericSimulator {
 	int doStep();
 	int doStep(int nbStep);
 
-
-
-
-	private:
 
 	void doWB(struct MemtoWB memtoWB);
 	void doMemNoMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB);

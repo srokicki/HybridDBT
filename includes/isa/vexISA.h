@@ -24,7 +24,7 @@
 #define VEX_MPYHIU 0xb
 #define VEX_MPYLO 0xc
 #define VEX_MPYHI 0xd
-#define VEX_DIVLO 0xe
+#define VEX_REMU 0xe
 #define VEX_DIVHI 0xf
 
 #define VEX_LDD 0x10
@@ -40,6 +40,7 @@
 #define VEX_STW 0x1A
 #define VEX_STD 0x1b
 
+#define VEX_PROFILE 0x1f
 
 #define VEX_GOTO 0x21
 #define VEX_GOTOR 0x22

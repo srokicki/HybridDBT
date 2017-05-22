@@ -1069,6 +1069,7 @@ ac_int<128, false> writeSucc_lastValue = 0;
 
 inline unsigned int writeSuccessor_ac(ac_int<128, false> bytecode[1024], ac_int<8, false> srcInstr, ac_int<8, false> destInstr, ac_int<1,false> isData){
 
+
 	ac_int<128, false> oneBytecodeInstruction = (writeSucc_lastAddr == srcInstr) ? writeSucc_lastValue : bytecode[srcInstr];
 	ac_int<3, false> nbSucc = oneBytecodeInstruction.slc<3>(64);
 	ac_int<3, false> nbDSucc = oneBytecodeInstruction.slc<3>(67);
@@ -1088,6 +1089,9 @@ inline unsigned int writeSuccessor_ac(ac_int<128, false> bytecode[1024], ac_int<
 
 	oneBytecodeInstruction.set_slc(64, nbSucc);
 	oneBytecodeInstruction.set_slc(67, nbDSucc);
+
+	//fprintf(stderr, "Adding dep from %d to %d word was %lx and become %lx\n", srcInstr, destInstr, (uint64_t) bytecode[srcInstr].slc<64>(0), (uint64_t) oneBytecodeInstruction.slc<64>(0));
+
 
 	if (srcInstr != destInstr){
 		bytecode[srcInstr] = oneBytecodeInstruction;
@@ -1113,6 +1117,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 	// 2 bytes for the number of basic block
 	// 4 bytes pointing to the block table. The block table should start at 16 + procedureNumber*8
 
+		writeSucc_lastAddr = 255;
 
 		/* Basic Block metadata */
 		int numberSuccessors = 0;
@@ -1266,13 +1271,13 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			ac_int<1, false> isArith2 = (opcode.slc<3>(4) == 4 | opcode.slc<3>(4) == 5) & !isArith1;
 			ac_int<1, false> isArithImm = opcode.slc<3>(4) == 6 | opcode.slc<3>(4) == 7;
 			ac_int<1, false> isMultType = opcode.slc<3>(4) == 0;
-
+			ac_int<1, false> isProfile = opcode == VEX_PROFILE;
 
 			uint1 pred1_ena = 0, pred2_ena = 0, dest_ena = 0;
 			uint6 pred1_reg = reg26, pred2_reg = reg20, dest_reg;
 
 			//Solving accessed register 1
-			if (!isBranchWithNoReg && !isMovi)
+			if (!isBranchWithNoReg && !isMovi && !isProfile)
 				pred1_ena = 1;
 
 			//Solving accessed register 2
@@ -1705,7 +1710,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			 ********************************************************************/
 
 			ac_int<128, false> oneBytecode = 0;
-
 			if (insertMove_ena){
 				//TODO
 
@@ -1768,7 +1772,10 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			else if (isArith2){
 				oneBytecode = assembleRBytecodeInstruction(2, alloc, opcode, pred2, pred1, destination, numberDependencies);
 			}
-			else {
+			else if (isProfile){
+				oneBytecode = assembleRiBytecodeInstruction(1, 0, opcode, reg20, 0, 0, numberDependencies);
+			}
+			else{
 				#ifndef __CATAPULT
 				printf("While generating IR, this case should never happen...\n");
 				#endif
@@ -1786,27 +1793,27 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 		}
 		while (indexInSourceBinaries<=blockSize && indexInCurrentBlock<255);
 
-//		if (haveJump){
-//			ac_int<128, false> jumpBytecodeWord = bytecode[jumpID];
-//			ac_int<8, false> numberDependencies = jumpBytecodeWord.slc<8>(64+6);
-//
-//			for (int oneInstructionFromBlock = 0; oneInstructionFromBlock < indexInCurrentBlock; oneInstructionFromBlock++){
-//
-//				ac_int<128, false> bytecodeWord = bytecode[oneInstructionFromBlock];
-//				ac_int<3, false> nbSucc = bytecodeWord.slc<3>(64);
-//
-//				if (nbSucc == 0 && oneInstructionFromBlock != jumpID){
-//
-//					bytecodeWord.set_slc(0, jumpID);
-//					nbSucc++;
-//					numberDependencies++;
-//					bytecodeWord.set_slc(64, nbSucc);
-//					bytecode[oneInstructionFromBlock] = bytecodeWord;
-//				}
-//			}
-//			jumpBytecodeWord.set_slc(64+6, numberDependencies);
-//			bytecode[jumpID] = jumpBytecodeWord;
-//		}
+		if (haveJump &&  bytecode[jumpID].slc<7>(96+19) == VEX_CALL){
+			ac_int<128, false> jumpBytecodeWord = bytecode[jumpID];
+			ac_int<8, false> numberDependencies = jumpBytecodeWord.slc<8>(64+6);
+
+			for (int oneInstructionFromBlock = 0; oneInstructionFromBlock < indexInCurrentBlock; oneInstructionFromBlock++){
+
+				ac_int<128, false> bytecodeWord = bytecode[oneInstructionFromBlock];
+				ac_int<3, false> nbSucc = bytecodeWord.slc<3>(64);
+
+				if (nbSucc == 0 && oneInstructionFromBlock != jumpID){
+
+					bytecodeWord.set_slc(0, jumpID);
+					nbSucc++;
+					numberDependencies++;
+					bytecodeWord.set_slc(64, nbSucc);
+					bytecode[oneInstructionFromBlock] = bytecodeWord;
+				}
+			}
+			jumpBytecodeWord.set_slc(64+6, numberDependencies);
+			bytecode[jumpID] = jumpBytecodeWord;
+		}
 
 		for (uint9 oneRegister=FIRST_RENAME; oneRegister<LAST_RENAME; oneRegister++){
 			uint9 lastWriter = registers[oneRegister];
@@ -1819,7 +1826,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				if (lastReaderOnGlobalCounter[oneRegister] >= 1 && lastReaderOnGlobal[oneRegister][0] != indexInCurrentBlock){
 					writeSuccessor_ac(bytecode, lastReaderOnGlobal[oneRegister][0], lastWriter, const0);
 					depToAdd++;
-					fprintf(stderr, "Adding a dep from %d to %d\n",lastReaderOnGlobal[oneRegister][0], lastWriter);
 				}
 
 				if (lastReaderOnGlobalCounter[oneRegister] >= 2 && lastReaderOnGlobal[oneRegister][1] != indexInCurrentBlock){
