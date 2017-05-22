@@ -47,7 +47,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		uint1 blocksBoundaries[65536],
 		int16 proceduresBoundaries[65536],
 		uint32 unresolvedJumps_src[512],
-		uint8 unresolvedJumps_type[512],
+		uint32 unresolvedJumps_type[512],
 		int32 unresolvedJumps[512]);
 #endif
 
@@ -124,11 +124,11 @@ uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
 
 		unsigned int source = platform->unresolvedJumps_src[oneUnresolvedJump];
 		unsigned int initialDestination = platform->unresolvedJumps[oneUnresolvedJump];
-		unsigned char type = platform->unresolvedJumps_type[oneUnresolvedJump];
+		unsigned int type = platform->unresolvedJumps_type[oneUnresolvedJump];
 
 		unsigned int oldJump = readInt(platform->vliwBinaries, 16*(source));
 		unsigned int indexOfDestination = 0;
-
+		unsigned char isAbsolute = ((type & 0x7f) != VEX_BR) && ((type & 0x7f) != VEX_BRF);
 
 		unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(initialDestination + ((addressStart-codeSectionStart)>>2));
 		if (destinationInVLIWFromNewMethod == -1){
@@ -143,14 +143,14 @@ uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
 
 			unresolvedJumpsArray[0] = numberUnresolvedJumps+1;
 		}
-		else if (type == UNRESOLVED_JUMP_ABSOLUTE){
+		else if (isAbsolute){
 			//In here we solve an absolute jump
 
 			indexOfDestination = destinationInVLIWFromNewMethod;
 			initialDestination = destinationInVLIWFromNewMethod;
 			initialDestination = initialDestination << 2; //This is compute the destination according to the #of instruction and not the number of 4-instr bundle
 
-			writeInt(platform->vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
+			writeInt(platform->vliwBinaries, 16*(source), type + ((initialDestination & 0x7ffff)<<7));
 
 		}
 		else{
@@ -162,7 +162,7 @@ uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
 			initialDestination = initialDestination << 2; //This is compute the destination according to the #of instruction and not the number of 4-instr bundle
 
 			//We modify the jump instruction to make it jump at the correct place
-			writeInt(platform->vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
+			writeInt(platform->vliwBinaries, 16*(source), type + ((initialDestination & 0x7ffff)<<7));
 
 		}
 
@@ -191,7 +191,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		uint1 blocksBoundaries[65536],
 		int16 proceduresBoundaries[65536],
 		uint32 unresolvedJumps_src[512],
-		uint8 unresolvedJumps_type[512],
+		uint32 unresolvedJumps_type[512],
 		int32 unresolvedJumps[512]){
 
 
@@ -274,7 +274,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 
 
-	while (indexInSourceBinaries < size || nextInstructionNop){
+	while (indexInSourceBinaries < size || nextInstructionNop || enableNextInstruction){
 
 		ac_int<1, false> setBoundaries1 = 0, setBoundaries2 = 0, setUnresolvedJump = 0;
 		ac_int<32, true> boundary1, boundary2, unresolved_jump_src, unresolved_jump_type;
@@ -616,6 +616,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 				//If rsd is equal to zero, then we are in a simple J instruction
 				ac_int<1, false> isSimpleJ = (rd==0);
+				binaries= assembleIInstruction(isSimpleJ ? VEX_GOTO : VEX_CALL, 0, rd);
 
 
 				//We fill information on block boundaries
@@ -625,7 +626,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				boundary2 = indexInSourceBinaries + 1; //Only plus one because in riscv next instr is not executed
 
 				unresolved_jump_src = indexInDestinationBinaries;
-				unresolved_jump_type = UNRESOLVED_JUMP_ABSOLUTE;
+				unresolved_jump_type = binaries;
 				setUnresolvedJump = 1;
 
 				//We also fill information on procedure boundaries
@@ -634,7 +635,6 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				}
 
 
-				binaries= assembleIInstruction(isSimpleJ ? VEX_GOTO : VEX_CALL, 0, rd);
 
 				//In order to deal with the fact that RISCV do not execute the isntruction following a branch,
 				//we have to insert nop
@@ -688,11 +688,11 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					setBoundaries2 = 1;
 					boundary2 = indexInSourceBinaries + 1;//Only plus one because in riscv next instr is not executed
 
-					unresolved_jump_src = indexInDestinationBinaries;
-					unresolved_jump_type = UNRESOLVED_JUMP_RELATIVE;
-					setUnresolvedJump = 1;
-
 					binaries = assembleIInstruction((funct3 == RISCV_BR_BEQ) ? VEX_BRF : VEX_BR, rs2, rs1);
+
+					unresolved_jump_src = indexInDestinationBinaries;
+					unresolved_jump_type = binaries;
+					setUnresolvedJump = 1;
 				}
 				else{
 
@@ -703,9 +703,6 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					setBoundaries2 = 1;
 					boundary2 = indexInSourceBinaries + 1;//Only plus one because in riscv next instr is not executed
 
-					unresolved_jump_src = indexInDestinationBinaries+1;
-					unresolved_jump_type = UNRESOLVED_JUMP_RELATIVE;
-					setUnresolvedJump = 1;
 
 					binaries = assembleRInstruction(functBindingBR[funct3], 32, rs1, rs2); //TODO check order
 
@@ -717,6 +714,10 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					nextInstruction_rd = 0;
 					nextInstruction_rs1 = 32;
 					nextInstruction_rs2 = 0;
+
+					unresolved_jump_src = indexInDestinationBinaries+1;
+					unresolved_jump_type = nextInstruction;
+					setUnresolvedJump = 1;
 
 
 				}

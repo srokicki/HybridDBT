@@ -522,7 +522,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 //						}
 //					}
 					else { //The instruction is I Type
-						if (opCode == 0x58)
+						if (opCode == 0x28)
 							generatedInstruction.set_slc(26, dest);
 						else{
 							generatedInstruction.set_slc(26, placeOfRegisters[virtualRDest]);
@@ -646,7 +646,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 
     }
 
-	if (haveJump )
+	if (haveJump){
 		if (jumpPlace < writeInBinaries-2){
 			if (binaries[writeInBinaries-2].slc<32>(96) != 0 || binaries[writeInBinaries-1].slc<32>(64) != 0 || binaries[writeInBinaries-1].slc<32>(32) != 0){
 				//binaries[writeInBinaries].set_slc(96, binaries[jumpPlace].slc<32>(96));
@@ -659,8 +659,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 
 			}
 			binaries[writeInBinaries-2].set_slc(96,binaries[jumpPlace].slc<32>(96));
-			ac_int<32, false> const0 = 0;
-			binaries[jumpPlace].set_slc(96, const0);
+
 		}
 		else{
 			writeInBinaries++;
@@ -669,6 +668,9 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 				writeInBinaries++;
 			}
 		}
+		ac_int<32, false> const0 = 0;
+		binaries[jumpPlace].set_slc(96, const0);
+	}
 
     return writeInBinaries-addressInBinaries;
 }

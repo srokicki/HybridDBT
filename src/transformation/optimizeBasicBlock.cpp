@@ -119,8 +119,23 @@ fprintf(stderr, "***************************************************************
 		fprintf(stderr, "Block is scheduled in %d cycles\n", binaSize);
 
 
-		//If the jump is relative we need to correct it because its place changed...
-		if ((jumpInstruction & 0x7f) == VEX_BR || (jumpInstruction & 0x7f) == VEX_BRF){
+		/*****************************************************************
+		 *	Control Flow Correction
+		 ************
+		 * In this part we make the necessary work to make jumps correct.
+		 * There are three different tasks:
+		 * 	-> If the jump was relative jump then we have to correct the offset
+		 * 	-> We have to write the (corrected) jump instruction because current scheduler just compute the place but do not place the instruction
+		 * 	-> If the jump is a passthrough (eg. if the execution can go in the part after the schedule) we need to add a goto instruction
+		 * 		to prevent the execution of a large area of nop instruction (which would remove the interest of the schedule
+		 *
+		 *****************************************************************/
+
+		char isRelativeJump = (jumpInstruction & 0x7f) == VEX_BR || (jumpInstruction & 0x7f) == VEX_BRF;
+		char isPassthroughJump = isRelativeJump || (jumpInstruction & 0x7f) == VEX_CALL || (jumpInstruction & 0x7f) == VEX_CALLR;
+
+		//Ofset correction
+		if (isRelativeJump){
 
 			//We read the offset and correct its sign if needed
 			int offset = (jumpInstruction >> 7) & 0x7ffff;
@@ -135,12 +150,14 @@ fprintf(stderr, "***************************************************************
 			newOffset = newOffset << 2;
 
 			fprintf(stderr, "Correction of jump at the end of the block. Original offset was %d\n From it derivated destination %d and new offset %d\n", offset, destination, newOffset);
-			uint32 newInstruction = (jumpInstruction & 0xfc00007f) | ((newOffset & 0x7ffff) << 7);
-			fprintf(stderr, "Old jump instr was %x. New is %x\n", jumpInstruction, newInstruction);
-			writeInt(platform->vliwBinaries, (basicBlockStart+binaSize-2)*16 + 0, newInstruction);
+			jumpInstruction = (jumpInstruction & 0xfc00007f) | ((newOffset & 0x7ffff) << 7);
 		}
 
-		if (basicBlockStart+binaSize+1 < basicBlockEnd){
+		//Insertion of jump instruction
+		writeInt(platform->vliwBinaries, (basicBlockStart+binaSize-2)*16 + 0, jumpInstruction);
+
+		//Insertion of the new block with the goto instruction
+		if (isPassthroughJump && basicBlockStart+binaSize+1 < basicBlockEnd){
 			//We need to add a jump to correct the shortening of the block.
 
 			uint32 insertedJump = VEX_GOTO + (basicBlockEnd<<9); // Note added the *4 to handle the new PC encoding
@@ -153,6 +170,7 @@ fprintf(stderr, "***************************************************************
 			fprintf(stderr, "adding a block from %d tp %d\n", basicBlockStart + binaSize, basicBlockStart + binaSize + 2);
 		}
 
+		/*****************************************************************/
 
 
 		#ifndef __NIOS

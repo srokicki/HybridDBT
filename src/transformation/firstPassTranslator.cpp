@@ -41,7 +41,7 @@ int generateInterpretationBinaries_loop(uint32 code[1024],
 		uint1 blocksBoundaries[65536],
 		int16 proceduresBoundaries[65536],
 		uint32 unresolvedJumps_src[512],
-		uint8 unresolvedJumps_type[512],
+		uint32 unresolvedJumps_type[512],
 		int32 unresolvedJumps[512]);
 #endif
 
@@ -194,7 +194,7 @@ int generateInterpretationBinaries_loop(uint32 code[1024],
 		uint1 blocksBoundaries[65536],
 		int16 proceduresBoundaries[65536],
 		uint32 unresolvedJumps_src[512],
-		uint8 unresolvedJumps_type[512],
+		uint32 unresolvedJumps_type[512],
 		int32 unresolvedJumps[512]){
 
 
@@ -417,7 +417,7 @@ int generateInterpretationBinaries_loop(uint32 code[1024],
 
 					if (blocksBoundaries[indexInSourceBinaries+1]){
 
-						previousBinaries.set_slc(32, assembleRInstruction(VEX_DIVLO, 34, pred1_reg, pred2_reg));
+					//	previousBinaries.set_slc(32, assembleRInstruction(VEX_DIVLO, 34, pred1_reg, pred2_reg));
 						stage = 2;
 
 						binaries = assembleRInstruction(VEX_DIVHI, 35, pred1_reg, pred2_reg);
@@ -425,7 +425,7 @@ int generateInterpretationBinaries_loop(uint32 code[1024],
 					}
 					else{
 
-						binaries = assembleRInstruction(VEX_DIVLO, 34, pred1_reg, pred2_reg);
+						//binaries = assembleRInstruction(VEX_DIVLO, 34, pred1_reg, pred2_reg);
 						stage = 2;
 
 						nextInstruction = assembleRInstruction(VEX_DIVHI, 35, pred1_reg, pred2_reg);
