@@ -66,9 +66,39 @@ unsigned int Profiler::insertProfilingProcedure(int start, unsigned int startAdd
 }
 
 void Profiler::profileBlock(IRBlock *oneBlock){
-	int start = oneBlock->vliwStartAddress;
+	if (numberProfiledBlocks < 64){
+		int start = oneBlock->vliwStartAddress;
+		char successfullInsertion = 0;
+
+		for (int oneInstruction = start; oneInstruction<oneBlock->vliwEndAddress; oneInstruction++){
+			uint32 instr64 = readInt(this->platform->vliwBinaries, oneInstruction*16+4);
+
+			//We now place the profile instr
+			if (instr64 == 0){
+				//We found a place
+				uint32 instr = assembleRiInstruction(VEX_PROFILE, numberProfiledBlocks, 0, 0);
+				writeInt(this->platform->vliwBinaries, oneInstruction*16+4, instr);
+				successfullInsertion = 1;
+				break;
+			}
 
 
+		}
+
+		if (!successfullInsertion){
+			fprintf(stderr, "Failed at inserting profiling, need alternative method\n");
+		}
+		else{
+			this->platform->vexSimulator->profileResult[numberProfiledBlocks] = 0;
+			profiledBlocks[numberProfiledBlocks] = oneBlock;
+			numberProfiledBlocks++;
+		}
+
+
+		//We mark the block as being profiled
+		oneBlock->blockState = IRBLOCK_STATE_PROFILED;
+	}
+/*
 	int placeMOVI=-1, placeSLLI=-1, placeLD=-1, placeINCR=-1, placeSTW=-1, offMOVI, offSLLI, offINCR;
 
 	for (int oneInstruction = start; oneInstruction<oneBlock->vliwEndAddress; oneInstruction++){
@@ -152,9 +182,10 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 
 	}
 
+
 	//We mark the block as being profiled
 	oneBlock->blockState = IRBLOCK_STATE_PROFILED;
-
+*/
 }
 
 int Profiler::getNumberProfiledBlocks(){
@@ -163,7 +194,9 @@ int Profiler::getNumberProfiledBlocks(){
 
 int Profiler::getProfilingInformation(int ID){
 	#ifndef __NIOS
-	return this->platform->vexSimulator->ldw(0x8000000 + ID*4);
+
+	return this->platform->vexSimulator->profileResult[ID];
+	//return this->platform->vexSimulator->ldw(0x8000000 + ID*4);
 	#else
 	return this->platform->vliwDataMemory[0];
 	//TODO change this to place profiling information at a correct place
