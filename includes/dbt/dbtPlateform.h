@@ -17,10 +17,11 @@
  *
  ********************************************************************/
 
-#define MEMORY_SIZE 80000
+#define MEMORY_SIZE 70000
 
 
 #include <simulator/vexSimulator.h>
+#include <simulator/riscvSimulator.h>
 #include <types.h>
 
 #ifndef __NIOS
@@ -30,19 +31,21 @@ class DBTPlateform
 public:
 	ac_int<128, false> vliwBinaries[MEMORY_SIZE];
 	ac_int<32, false> mipsBinaries[MEMORY_SIZE];
-	ac_int<32, false> insertions[MEMORY_SIZE];
+	ac_int<32, false> insertions[2048];
 	ac_int<1, false> blockBoundaries[MEMORY_SIZE];
 	ac_int<16, true> procedureBoundaries[MEMORY_SIZE];
 	ac_int<128, false> bytecode[256];
 	ac_int<32, true> globalVariables[64];
 	ac_int<32, false> unresolvedJumps_src[512];
-	ac_int<8, false> unresolvedJumps_type[512];
+	ac_int<32, false> unresolvedJumps_type[512];
 	ac_int<32, true> unresolvedJumps[512];
 	ac_int<6, false> placeOfRegisters[512];
 	ac_int<6, false> freeRegisters[64];
 	ac_int<32, false> placeOfInstr[256];
 
 	VexSimulator* vexSimulator;
+	RiscvSimulator* riscvSimulator;
+
 };
 #endif
 

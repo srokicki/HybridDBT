@@ -9,6 +9,7 @@
 #include <lib/endianness.h>
 #include <lib/tools.h>
 #include <simulator/vexSimulator.h>
+#include <simulator/riscvSimulator.h>
 
 #include <transformation/firstPassTranslator.h>
 #include <transformation/irGenerator.h>
@@ -19,6 +20,7 @@
 #include <lib/debugFunctions.h>
 
 #include <isa/vexISA.h>
+#include <isa/riscvISA.h>
 
 
 #ifndef __NIOS
@@ -115,10 +117,47 @@ void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressS
 	size = size/4;
 #endif
 }
-
+int cnt = 0;
+char align[70000];
 int run(DBTPlateform *platform, int nbCycle){
 #ifndef __NIOS
+
+//	int res;
+//	for (int i=0; i<nbCycle; i++){
+//	fprintf(stderr, "Run %d  (%lx - %lx) ", cnt++,  (uint64_t) platform->vexSimulator->PC/4,(uint64_t) platform->riscvSimulator->pc);
+//	char isIns = align[platform->vexSimulator->PC >> 2];
+//	uint32 instr = platform->riscvSimulator->ldw(platform->riscvSimulator->pc);
+//	if (!isIns)
+//		platform->riscvSimulator->doSimulation(1);
+//	res = platform->vexSimulator->doStep(1);
+//
+//	std::cerr << printDecodedInstr(platform->vexSimulator->ftoDC1.instruction);
+//	std::cerr << ";";
+//	std::cerr << printDecodedInstr(platform->vexSimulator->ftoDC2.instruction);
+//	std::cerr << ";";
+//	std::cerr << printDecodedInstr(platform->vexSimulator->ftoDC3.instruction);
+//	std::cerr << ";";
+//	std::cerr << printDecodedInstr(platform->vexSimulator->ftoDC4.instruction);
+//	std::cerr << ";";
+//	std::cerr << printDecodedInstrRISCV(instr);
+//	std::cerr << ";";
+//
+//	if (!isIns)
+//		for (int oneReg=3; oneReg<31; oneReg++)
+//			if (platform->vexSimulator->REG[oneReg] != platform->riscvSimulator->REG[oneReg])
+//				fprintf(stderr, "r%d:%lx!=%lx",oneReg, (uint64_t) platform->vexSimulator->REG[oneReg], (uint64_t)  platform->riscvSimulator->REG[oneReg]);
+//
+//
+//	fprintf(stderr, "\n");
+//
+//	if (res)
+//		break;
+//	}
+//
+//	return res;
+
 	return platform->vexSimulator->doStep(nbCycle);
+
 #else
 	printf("starting run\n");
 
@@ -288,8 +327,33 @@ int main(int argc, char *argv[])
 
 	initializeInsertionsMemory(size*4);
 
-	for (int oneInsertion=0; oneInsertion<placeCode; oneInsertion++)
-		fprintf(stderr, "insert;%d\n", oneInsertion);
+	for (int oneInsertion=0; oneInsertion<placeCode; oneInsertion++){
+		align[oneInsertion] = 1;
+		if (VERBOSE)
+			fprintf(stderr, "insert;%d\n", oneInsertion);
+	}
+
+
+	//Test debug
+//	ElfFile elfFile(FILE);
+//	dbtPlateform.riscvSimulator = new RiscvSimulator();
+//	dbtPlateform.riscvSimulator->initialize(localArgc, localArgv);
+//	dbtPlateform.riscvSimulator->debugLevel = VERBOSE*2;
+//
+//	for (unsigned int sectionCounter = 0; sectionCounter<elfFile.sectionTable->size(); sectionCounter++){
+//		ElfSection *oneSection = elfFile.sectionTable->at(sectionCounter);
+//
+//		if (oneSection->address != 0){
+//			//If the address is not null we place its content into memory
+//			unsigned char* sectionContent = oneSection->getSectionCode();
+//
+//			for (unsigned int byteNumber = 0; byteNumber<oneSection->size; byteNumber++){
+//				dbtPlateform.riscvSimulator->stb(oneSection->address + byteNumber, sectionContent[byteNumber]);
+//			}
+//		}
+//	}
+//
+//	dbtPlateform.riscvSimulator->pc = 0x10000;
 
 	/********************************************************
 	 * First part of DBT: generating the first pass translation of binaries
@@ -325,7 +389,7 @@ int main(int argc, char *argv[])
 		for (int oneBlock = 0; oneBlock<application.numbersBlockInSections[oneSection]; oneBlock++){
 			IRBlock *block = application.blocksInSections[oneSection][oneBlock];
 
-			if (block->vliwEndAddress - block->vliwStartAddress>16){
+			if (block->vliwEndAddress - block->vliwStartAddress>7){
 				profiler.profileBlock(application.blocksInSections[oneSection][oneBlock]);
 			}
 
@@ -333,28 +397,33 @@ int main(int argc, char *argv[])
 
 		int** insertions = (int**) malloc(sizeof(int **));
 		int nbIns = getInsertionList(oneSection*1024, insertions);
-		for (int oneInsertion=0; oneInsertion<nbIns; oneInsertion++)
-			fprintf(stderr, "insert;%d\n", (*insertions)[oneInsertion]+(*insertions)[-1]);
+		for (int oneInsertion=0; oneInsertion<nbIns; oneInsertion++){
+			if (VERBOSE)
+				fprintf(stderr, "insert;%d\n", (*insertions)[oneInsertion]+(*insertions)[-1]);
+			align[((*insertions)[oneInsertion]+(*insertions)[-1])] = 1;
+
+		}
 	}
 
 	for (int oneUnresolvedJump = 0; oneUnresolvedJump<unresolvedJumpsArray[0]; oneUnresolvedJump++){
 		unsigned int source = unresolvedJumpsSourceArray[oneUnresolvedJump+1];
 		unsigned int initialDestination = unresolvedJumpsArray[oneUnresolvedJump+1];
-		unsigned char type = unresolvedJumpsTypeArray[oneUnresolvedJump+1];
+		unsigned int type = unresolvedJumpsTypeArray[oneUnresolvedJump+1];
 
 		unsigned int oldJump = readInt(dbtPlateform.vliwBinaries, 16*(source));
 		unsigned int indexOfDestination = 0;
+		unsigned char isAbsolute = ((type & 0x7f) != VEX_BR) && ((type & 0x7f) != VEX_BRF);
 
 		unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(initialDestination);
 		if (destinationInVLIWFromNewMethod == -1){
 			printf("A jump from %d to %x is still unresolved... (%d insertions)\n", source, initialDestination, insertionsArray[(initialDestination>>10)<<11]);
 		}
-		else if (type == UNRESOLVED_JUMP_ABSOLUTE){
+		else if (isAbsolute){
 			//In here we solve an absolute jump
 			indexOfDestination = destinationInVLIWFromNewMethod;
 			initialDestination = destinationInVLIWFromNewMethod;
 			initialDestination = initialDestination << 2; //This is compute the destination according to the #of instruction and not the number of 4-instr bundle
-			writeInt(dbtPlateform.vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
+			writeInt(dbtPlateform.vliwBinaries, 16*(source), type + ((initialDestination & 0x7ffff)<<7));
 
 		}
 		else{
@@ -364,10 +433,9 @@ int main(int argc, char *argv[])
 
 			initialDestination = initialDestination  - (source) ;
 			initialDestination = initialDestination << 2; //This is compute the destination according to the #of instruction and not the number of 4-instr bundle
-			fprintf(stderr, "Solving jump at %d to %x\n", source*4, unresolvedJumpsArray[oneUnresolvedJump+1]);
 
 			//We modify the jump instruction to make it jump at the correct place
-			writeInt(dbtPlateform.vliwBinaries, 16*(source), oldJump + ((initialDestination & 0x7ffff)<<7));
+			writeInt(dbtPlateform.vliwBinaries, 16*(source), type + ((initialDestination & 0x7ffff)<<7));
 
 		}
 
@@ -375,7 +443,6 @@ int main(int argc, char *argv[])
 		if (instructionBeforePreviousDestination != 0)
 					writeInt(dbtPlateform.vliwBinaries, 16*(source+1)+12, instructionBeforePreviousDestination);
 	}
-
 
 
 
@@ -411,12 +478,12 @@ int main(int argc, char *argv[])
 
 	int runStatus=0;
 	int abortCounter = 0;
+	int scheduleCounter = 0;
 
 	while (runStatus == 0){
-		fprintf(stderr, "Cycle %d\n", abortCounter);
 		runStatus = run(&dbtPlateform, 1000);
 		abortCounter++;
-		if (abortCounter>5000000)
+		if (abortCounter>8000000)
 			break;
 
 		if (VERBOSE)
@@ -430,6 +497,7 @@ int main(int argc, char *argv[])
 			if (OPTLEVEL >= 1 && profileResult > 10 && block->blockState < IRBLOCK_STATE_SCHEDULED){
 				fprintf(stderr, "Block from %d to %d is eligible to opti (%d exec)\n", block->vliwStartAddress, block->vliwEndAddress, profileResult);
 				optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
+				scheduleCounter++;
 			}
 
 

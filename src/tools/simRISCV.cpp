@@ -124,7 +124,7 @@ int main(int argc, char* argv[]){
 			}
 		}
 	}
-
-	simulator->doSimulation(0x10000);
+	simulator->pc = 0x10000;
+	simulator->doSimulation(2000000000);
 
 }
