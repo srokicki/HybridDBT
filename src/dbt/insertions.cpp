@@ -49,10 +49,10 @@
 
 
 
-int insertionsArray[65536*4];
-int unresolvedJumpsArray[65536*4];
-int unresolvedJumpsTypeArray[65536*4];
-int unresolvedJumpsSourceArray[65536*4];
+int insertionsArray[170*2048];
+int unresolvedJumpsArray[170*2048];
+int unresolvedJumpsTypeArray[170*2048];
+int unresolvedJumpsSourceArray[170*2048];
 
 
 
@@ -140,7 +140,7 @@ unsigned int solveUnresolvedJump(unsigned int initialDestination){
 			start += size;
 	}
 
-	if (loadWordFromInsertionMemory(offset + 2 + start + 0) <= init + size + start)
+	if (loadWordFromInsertionMemory(offset + 2 + start + 0) <= init + 0 + start)
 		start++;
 
 	return VLIWBase + start +  (initialDestination % 1024);
