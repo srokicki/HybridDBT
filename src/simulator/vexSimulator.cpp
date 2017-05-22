@@ -196,7 +196,15 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 
 
 		}
+		else if (extoMem.opCode == VEX_PROFILE){
+			if (this->profileResult[extoMem.dest] != 255)
+				this->profileResult[extoMem.dest]++;
+
+			memtoWB->WBena = 0;
+		}
 		else {
+
+
 
 
 			memtoWB->WBena = 0; //TODO : this shouldn't be necessary : WB shouldn't be enabled before
@@ -556,11 +564,11 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 	ac_int<65, true> const0 = 0;
 
 #ifdef __CATAPULT
-	ac_int<64, true> divlo_result = 0; //Currently catapult version do not do division
-	ac_int<64, true> divhi_result = 0;
+	ac_int<64, true> div_result = 0; //Currently catapult version do not do division
+	ac_int<64, true> remu_result = 0;
 #else
-	ac_int<64, true> divlo_result = !dctoEx.datab ? const0 : dctoEx.dataa / dctoEx.datab;
-	ac_int<64, true> divhi_result = !dctoEx.datab ? dctoEx.datab : dctoEx.dataa % dctoEx.datab;
+	ac_int<64, true> div_result = !dctoEx.datab ? const0 : dctoEx.dataa / dctoEx.datab;
+	ac_int<64, true> remu_result = !dctoEx.datab ? dctoEx.datab : dctoEx.dataa % dctoEx.datab;
 #endif
 	ac_int<64, true> unsigned_sub_result = unsigned_dataa - unsigned_datab;
 
@@ -630,8 +638,8 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 			(dctoEx.opCode == VEX_MPYHI) ? mulhi_result :
 			(dctoEx.opCode == VEX_MPYHISU) ? mulhisu_result :
 			(dctoEx.opCode == VEX_MPYHIU) ? mulhiu_result :
-			(dctoEx.opCode == VEX_DIVLO) ? divlo_result :
-			(dctoEx.opCode == VEX_DIVHI) ? divhi_result :
+			(dctoEx.opCode == VEX_REMU) ? remu_result :
+			(dctoEx.opCode == VEX_DIVHI) ? div_result :
 			select32 ? result32 :
 			dctoEx.dataa;
 
@@ -769,7 +777,7 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 		//The instruction is I type
 		dctoEx->dest = RA;
 
-		dctoEx->dataa.set_slc(0, IMM19_s);
+		dctoEx->dataa = IMM19_s;
 
 
 		if (OP == VEX_AUIPC)
@@ -1033,7 +1041,6 @@ int VexSimulator::doStep(){
 	///////////////////////////////////////////////////////
 
 	doWB(memtoWB1);
-
 	doWB(memtoWB4);
 //		doWB(memtoWB5);
 //		doWB(memtoWB6);

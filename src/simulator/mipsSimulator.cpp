@@ -191,6 +191,7 @@ const unsigned int shiftMask[32] = { 0xffffffff, 0x7fffffff, 0x3fffffff, 0x1ffff
 
 //Mips simulator
 int Simulator::doSimulation(int start){
+
 	long long hilo;
 	int reg[32];
 	float copro1_reg[32];

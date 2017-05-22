@@ -19,8 +19,11 @@
 
 class RiscvSimulator : public GenericSimulator{
 	public:
+	ac_int<64, true> pc;
+	uint64_t n_inst;
+
 	RiscvSimulator(void) : GenericSimulator(){};
-	int doSimulation(int start);
+	int doSimulation(int nbCycles);
 
 	void doStep();
 };
