@@ -233,6 +233,7 @@ void getFirstInstruction(int type){
 
 //The argument optLevel is here to set the difficulty of the scheduling : 0 mean that there is just a binary priority and 1 mean that we'll consider the entire priority value
 ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBlockSize, ac_int<128, false> bytecode[256], ac_int<128, false> binaries[1024],ac_int<16, false> addressInBinaries,  ac_int<6, false> placeOfRegisters[512], ac_int<6, false> numberFreeRegister, ac_int<6, false> freeRegisters[64],ac_int<4, false> issue_width, ac_int<MAX_ISSUE_WIDTH * 2, false> way_specialisation, ac_int<32, false> placeOfInstr[256]){
+#warning "USING AC_INT SCHEDULING"
     ac_int<32, false> cycleNumber = 0; //This is the current cycle
     ac_int<2, false> lineNumber = 0;
     ac_int<32,false> writeInBinaries =addressInBinaries;
@@ -883,9 +884,6 @@ void getFirstInstruction(int type){
     	}
 }
 
-
-
-
 //The argument optLevel is here to set the difficulty of the scheduling : 0 mean that there is just a binary priority and 1 mean that we'll consider the entire priority value
 unsigned int scheduling(unsigned char optLevel, unsigned char basicBlockSize, unsigned int bytecode[1024], unsigned int binaries[1024], unsigned char placeOfRegisters[512], unsigned char numberFreeRegister, unsigned char freeRegisters[64], unsigned char issue_width, uintIW way_specialisation, unsigned int placeOfInstr[256]){
 
@@ -1075,10 +1073,10 @@ unsigned int scheduling(unsigned char optLevel, unsigned char basicBlockSize, un
 
 						if (isImm){
 							generatedInstruction += imm11<<9;
-							generatedInstruction += dest<<20/*placeOfRegisters[virtualRDest]*/;
+							generatedInstruction += dest<<20;//placeOfRegisters[virtualRDest];
 						}
 						else{
-							generatedInstruction += dest<<14/*placeOfRegisters[virtualRDest]*/;
+							generatedInstruction += dest<<14;//placeOfRegisters[virtualRDest];
 							generatedInstruction += placeOfRegisters[virtualRIn1_imm9]<<20;
 						}
 					}
@@ -1089,15 +1087,15 @@ unsigned int scheduling(unsigned char optLevel, unsigned char basicBlockSize, un
 
 						if (isImm){
 							generatedInstruction += virtualRIn1_imm9 << 11;
-							generatedInstruction += dest <<20/*placeOfRegisters[virtualRDest]*/;
+							generatedInstruction += dest <<20;//placeOfRegisters[virtualRDest];
 						}
 						else{
-							generatedInstruction += dest << 14/*placeOfRegisters[virtualRDest]*/;
+							generatedInstruction += dest << 14;//placeOfRegisters[virtualRDest];
 							generatedInstruction += placeOfRegisters[virtualRIn1_imm9] << 20;
 						}
 					}
 					else { //The instruction is I Type
-						generatedInstruction += dest << 26/*placeOfRegisters[virtualRDest]*/;
+						generatedInstruction += dest << 26;placeOfRegisters[virtualRDest];
 						generatedInstruction += imm19 << 7;
 					}
 
