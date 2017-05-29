@@ -7,6 +7,7 @@ set(SOURCE
    ${CMAKE_CURRENT_SOURCE_DIR}/optimizeBasicBlock.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/buildControlFlow.cpp   
    ${CMAKE_CURRENT_SOURCE_DIR}/reconfigureVLIW.cpp   
+   ${CMAKE_CURRENT_SOURCE_DIR}/buildTraces.cpp   
    
      
    PARENT_SCOPE
