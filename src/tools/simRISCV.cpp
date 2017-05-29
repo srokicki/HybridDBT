@@ -17,7 +17,7 @@
 //Main function performing the merging
 int main(int argc, char* argv[]){
 
-	/*Parsing arguments of the commant
+	/*Parsing arguments of the comment
 	 *
 	 */
 
