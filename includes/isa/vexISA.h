@@ -34,13 +34,16 @@
 #define VEX_LDB 0x14
 #define VEX_LDBU 0x15
 #define VEX_LDWU 0x16
+#define VEX_PROFILE 0x17
 
 #define VEX_STB 0x18
 #define VEX_STH 0x19
 #define VEX_STW 0x1A
 #define VEX_STD 0x1b
-
-#define VEX_PROFILE 0x1f
+#define VEX_STBc 0x1c
+#define VEX_STHc 0x1d
+#define VEX_STWc 0x1e
+#define VEX_STDc 0x1f
 
 #define VEX_GOTO 0x21
 #define VEX_GOTOR 0x22
@@ -53,12 +56,12 @@
 #define VEX_AUIPC 0x29
 #define VEX_RECONFFS 0x2a
 #define VEX_RECONFEXECUNIT 0x2b
-
+#define VEX_SETCOND 0x2c
+#define VEX_SETCONDF 0x2d
 #define VEX_ECALL 0x2e
 #define VEX_STOP 0x2f
-#define VEX_SLCTF 0x30
-
-#define VEX_SLCT 0x38
+#define VEX_SETc 0x30
+#define VEX_SETFc 0x31
 
 #define VEX_ADD 0x41
 #define VEX_NOR 0x42
