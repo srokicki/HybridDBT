@@ -102,11 +102,11 @@ std::string printDecodedInstr(ac_int<32, false> instruction){
 	else if (isIType)
 		stream << " r" << RA << ", "  << IMM19;
 	else if (isImm){
-		stream << " r" << RB << "  = " << RA << " 0x";
+		stream << " r" << RB << "  = r" << RA << " 0x";
 		stream << std::hex << IMM13_signed;
 	}
 	else
-		stream << " r" << RC << "  = " << RA << " " << RB;
+		stream << " r" << RC << "  = r" << RA << " r" << RB;
 
 	std::string result(stream.str());
 	for (int addedSpace = result.size(); addedSpace < 20; addedSpace++)

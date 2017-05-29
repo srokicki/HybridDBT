@@ -19,7 +19,7 @@ ac_int<32, true> stageWindow[STAGE_NUMBER][WINDOW_SIZE];
 ac_int<3, false> stageType[STAGE_NUMBER] = { 0, 3, 1, 2 };
 
 ac_int<2, false> getType(ac_int<50, false> instruction) {
-  return instruction.slc<2>(30);
+  return instruction.slc<2>(30+18);
 }
 
 ac_int<32, false> scheduling(
@@ -71,27 +71,28 @@ ac_int<32, false> scheduling(
     ac_int<9, false> brCode = instruction.slc<9>(27);
 
     // Find the earliest place which avoids RAW, WAR, or WAW conflicts
-    ac_int<STAGE_NUMBER_L2+1, true> stageToPlace = -1;
+    ac_int<1, false> stageToPlace = false;
     ac_int<32, false> place = lastRead[virtualRDest];
     
-    /* Depending on the dependency and the pipeline stages,
-     * some offset must be added:
-     *
-     * Pipeline stages : DC RD EX WR
-     *                      DC RD EX WR
-     *                         DC RD EX WR
-     *                            DC RD EX WR
-     */
+    // Depending on the dependency and the pipeline stages,
+    // some offset must be added:
+    //
+    // Pipeline stages : DC RD EX WR
+    //                      DC RD EX WR
+    //                         DC RD EX WR
+    //                            DC RD EX WR
+    //
 
     // WAR
     ac_int<32, false> place = lastRead[virtualRDest];
 
     // RAW
     place = max(place, lastWrite[virtualRIn2]);
-    place = max(place, lastWrite[virtualRIn1_imm9]);
+    if (typeCode == 0 && !isImm)
+      place = max(place, lastWrite[virtualRIn1_imm9]);
 
     // WAW
-    place = mac(place, lastWrite[virtualRDest]-2);
+    place = max(place, lastWrite[virtualRDest]-2);
 
     // Find the earliest place in the current window
     for (ac_int<STAGE_NUMBER_L2, false> stageId = 0; stageId < STAGE_NUMBER; ++stageId) {
@@ -104,22 +105,79 @@ ac_int<32, false> scheduling(
             if (windowPosition >= place - windowOffset) {
               place = windowPosition + windowOffset;
               stageWindow[stageId][windowOffset] = instructionId;
-              stageToPlace = stageId;
+              found = true;
             }
           }
         } // for windowOffset
       }
     } // for stageId
 
-    // Whenever the instruction doesn't fit, shift the window and restart
-    if (stageToPlace == -1) {
-      windowOffset += WINDOW_SIZE;
+    // Whenever the instruction doesn't fit:
+    // - write all instructions in vliw binaries
+    // - shift the window
+    if (!found) {
+      for (ac_int<WINDOW_SIZE_L2, false> windowOffset = 0
+          ; windowOffset < WINDOW_SIZE; ++windowOffset) {
+
+          ac_int<256, false> binariesWord;
+
+          for (ac_int<STAGE_NUMBER_L2, false> stageId = 0
+              ; stageId < STAGE_NUMBER; ++stageId) {
+            //***************************************
+            //We generate the instruction
+            ac_int<32, false> generatedInstruction;
+            generatedInstruction.set_slc(0, opCode);
+            generatedInstruction.set_slc(26, virtualRIn2);
+
+            if (typeCode == 0) { //The instruction is R type
+
+              if (isImm) {
+                generatedInstruction.set_slc(7, imm13);
+                generatedInstruction.set_slc(20, dest);
+              }
+              else{
+                generatedInstruction.set_slc(14, dest);
+                generatedInstruction.set_slc(20, virtualRIn1_imm9);
+              }
+            }
+  //					else if (typeCode == 1){ //The instruction is Rext Type
+  //						generatedInstruction[7] = isImm;
+  //
+  //						generatedInstruction.set_slc(8, placeOfRegisters[brCode].slc<3>(0));
+  //
+  //						if (isImm){
+  //							generatedInstruction.set_slc(11, virtualRIn1_imm9);
+  //							generatedInstruction.set_slc(20, dest);
+  //						}
+  //						else{
+  //							generatedInstruction.set_slc(14, dest);
+  //							generatedInstruction.set_slc(20, placeOfRegisters[virtualRIn1_imm9]);
+  //						}
+  //					}
+            else { //The instruction is I Type
+              if (opCode == 0x28)
+                generatedInstruction.set_slc(26, dest);
+              else{
+                generatedInstruction.set_slc(26, virtualRDest);
+              }
+              generatedInstruction.set_slc(7, imm19);
+            }
+            binariesWord.set_slc(stageId*32, generatedInstruction);
+          } // for stageId
+
+          //after all stages has been filled, we commit the word
+          fprintf(stderr, "test %d\n", writeInBinaries);
+          binaries[(windowPosition + windowOffset)*2]     = binariesWord.slc<128>(0);
+          binaries[(windowPosition + windowOffset)*2 + 1] = binariesWord.slc<128>(128);
+          windowOffset += WINDOW_SIZE;
+        } // for windowOffset
     } else {
-      lastWrite[virtualRDest] = place + RAW[unitType];
-      lastRead [virtualRIn2]   = place + WAR[unitType];
+      lastWrite[virtualRDest]     = place + RAW[unitType];
+      lastRead [virtualRIn2]      = place + WAR[unitType];
+      lastRead [virtualRIn1_imm9] = place + WAR[unitType];
       ++instructionId;
     }
   }
 
-  return basicBlockSize;
+  return windowPosition+windowSize+addressInBinaries;
 }
