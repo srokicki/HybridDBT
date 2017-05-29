@@ -11,6 +11,7 @@
 #include <types.h>
 #include <isa/vexISA.h>
 #include <isa/irISA.h>
+#include <lib/endianness.h>
 
 #ifndef __NIOS
 /********************************************************************
@@ -161,12 +162,34 @@ IRProcedure::IRProcedure(IRBlock *entryBlock, int nbBlock){
 }
 
 
+void IRProcedure::print(){
+	/********************************************************************************************
+	 * This procedure is a debug procedure that will print a CDFG representation of the procedure
+	 *
+	 ********************************************************************************************/
+
+	fprintf(stderr, "digraph{\n");
+	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
+		fprintf(stderr, "node_%d[label=\"size %d\"];\n", this->blocks[oneBlockInProcedure]->vliwStartAddress, this->blocks[oneBlockInProcedure]->nbInstr);
+	}
+	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
+
+		if (this->blocks[oneBlockInProcedure]->nbSucc >= 1)
+			fprintf(stderr, "node_%d -> node_%d;\n", this->blocks[oneBlockInProcedure]->vliwStartAddress, this->blocks[oneBlockInProcedure]->successor1->vliwStartAddress);
+		if (this->blocks[oneBlockInProcedure]->nbSucc >= 2)
+			fprintf(stderr, "node_%d -> node_%d;\n", this->blocks[oneBlockInProcedure]->vliwStartAddress, this->blocks[oneBlockInProcedure]->successor2->vliwStartAddress);
+
+	}
+	fprintf(stderr, "}\n");
+}
+
 IRBlock::IRBlock(int startAddress, int endAddress, int section){
 	this->vliwEndAddress = endAddress;
 	this->vliwStartAddress = startAddress;
 	this->blockState = IRBLOCK_STATE_FIRSTPASS;
 	this->nbSucc = -1;
 	this->section = section;
+	this->nbInstr = 0;
 }
 
 IRApplication::IRApplication(int numberSections){
@@ -216,4 +239,154 @@ void IRApplication::addProcedure(IRProcedure *procedure){
 
 	this->procedures[this->numberProcedures] = procedure;
 	this->numberProcedures++;
+}
+
+char getOpcode(uint32 *bytecode, char index){
+	//This function returns the destination register of a bytecode instruction
+	//If bytecode instruction do not write any register then it returns -1
+
+	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
+	return (bytecodeWord96>>19) & 0x7f;
+}
+
+void setOpcode(uint32 *bytecode, char index, char newOpcode){
+	//This function returns the destination register of a bytecode instruction
+	//If bytecode instruction do not write any register then it returns -1
+
+	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
+	unsigned int longOpcode = newOpcode<<19;
+	bytecodeWord96 = (bytecodeWord96 & 0xfc07ffff) | longOpcode;
+	writeInt(bytecode, index*16+0, bytecodeWord96);
+}
+
+short getDestinationRegister(uint32 *bytecode, char index){
+	//This function returns the destination register of a bytecode instruction
+	//If bytecode instruction do not write any register then it returns -1
+
+	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
+	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
+
+	unsigned char opcode = (bytecodeWord96>>19) & 0x7f;
+	if ((opcode != 0) //not a nop
+			&&((opcode>>4) != 2 || opcode == VEX_MOVI) //if I-type then movi
+			&& ((opcode>>3) != 0x3)) //not a store
+		return (bytecodeWord64>>14) & 0x1ff;
+
+	return -1;
+}
+
+char getOperands(uint32 *bytecode, char index, short result[2]){
+	//This function returns the number of register operand used by the bytecode instruction
+
+	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
+	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
+
+	short virtualRDest = ((bytecodeWord64>>14) & 0x1ff);
+	short virtualRIn2 = ((bytecodeWord64>>23) & 0x1ff);
+	short virtualRIn1 = ((bytecodeWord96>>0) & 0x1ff);
+
+	unsigned char opcode = (bytecodeWord96>>19) & 0x7f;
+	unsigned char shiftedOpcode = opcode>>4;
+
+	char isNop = (opcode == 0);
+	char isArith2 = (shiftedOpcode == 4 || shiftedOpcode == 5 || shiftedOpcode == 0);
+	char isLoad = (opcode>>3) == 0x2;
+	char isStore = (opcode>>3) == 0x3;
+	char isArith1 = (shiftedOpcode == 6 || shiftedOpcode == 7);
+	char isBranchWithReg = (opcode == VEX_BR) || (opcode == VEX_BRF) ||(opcode == VEX_CALLR) ||(opcode == VEX_GOTOR);
+
+	if (isNop)
+		return 0;
+	else if (isArith2){
+		result[0] = virtualRIn1;
+		result[1] = virtualRIn2;
+		return 2;
+	}
+	else if (isStore){
+		result[0] = virtualRIn2;
+		result[1] = virtualRDest;
+		return 2;
+	}
+	else if (isArith1 || isLoad){
+		result[0] = virtualRIn2;
+		return 1;
+	}
+	else if (isBranchWithReg){
+		result[0] = virtualRDest;
+		return 1;
+	}
+	else
+		return 0;
+}
+
+void setDestinationRegister(uint32 *bytecode, char index, short newDestinationRegister){
+	fprintf(stderr, "Not implemented yet\n");
+}
+
+void setAlloc(uint32 *bytecode, char index, char newAlloc){
+	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
+
+	if (newAlloc)
+		bytecodeWord96 |= 0x08000000;
+	else
+		bytecodeWord96 &= 0xf7ffffff;
+
+	writeInt(bytecode, index*16+0, bytecodeWord96);
+}
+
+void addDataDep(uint32 *bytecode, char index, char successor){
+	unsigned int bytecodeWord0 = readInt(bytecode, index*16+12);
+	unsigned int bytecodeWord32 = readInt(bytecode, index*16+8);
+	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
+
+	char nbDSucc = ((bytecodeWord64>>3) & 7);
+	char nbSucc = ((bytecodeWord64>>0) & 7);
+
+	int extendedSuccessor = successor;
+	if (nbSucc<7){
+		bytecodeWord64 += 0x9; //plus one at both fields with no offset and fields with offset of 3
+		if (nbDSucc<3){
+			bytecodeWord32 |= (extendedSuccessor<<((2-nbDSucc)*8));
+			writeInt(bytecode, index*16+8, bytecodeWord32);
+		}
+		else{
+			bytecodeWord0 |= (extendedSuccessor<<((6-(nbDSucc))*8));
+			writeInt(bytecode, index*16+12, bytecodeWord0);
+		}
+		writeInt(bytecode, index*16+4, bytecodeWord64);
+
+	}
+	//We add one to the number of dep
+	unsigned int succBytecodeWord64 = readInt(bytecode, successor*16+4);
+	succBytecodeWord64 += 0x40; //Plus one at the field located at an offset of 6 bits
+	writeInt(bytecode, successor*16+4, succBytecodeWord64);
+}
+
+void addControlDep(uint32 *bytecode, char index, char successor){
+	unsigned int bytecodeWord0 = readInt(bytecode, index*16+12);
+	unsigned int bytecodeWord32 = readInt(bytecode, index*16+8);
+	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
+
+	char nbDSucc = ((bytecodeWord64>>3) & 7);
+	char nbSucc = ((bytecodeWord64>>0) & 7);
+	char nbCSucc = nbSucc - nbDSucc;
+
+	int extendedSuccessor = successor;
+	if (nbSucc<7){
+		bytecodeWord64 += 0x1; //plus one at fields with no offset (eg nbSucc)
+		if (nbCSucc>3){
+			bytecodeWord32 |= (extendedSuccessor<<((nbCSucc-4)*8));
+			writeInt(bytecode, index*16+8, bytecodeWord32);
+		}
+		else{
+			bytecodeWord0 |= (extendedSuccessor<<((nbCSucc)*8));
+			writeInt(bytecode, index*16+12, bytecodeWord0);
+		}
+		writeInt(bytecode, index*16+4, bytecodeWord64);
+
+	}
+	//We add one to the number of dep
+	unsigned int succBytecodeWord64 = readInt(bytecode, successor*16+4);
+	succBytecodeWord64 += 0x40; //Plus one at the field located at an offset of 6 bits
+	writeInt(bytecode, successor*16+4, succBytecodeWord64);
 }
