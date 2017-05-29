@@ -16,6 +16,7 @@
 #include <transformation/optimizeBasicBlock.h>
 #include <transformation/buildControlFlow.h>
 #include <transformation/reconfigureVLIW.h>
+#include <transformation/buildTraces.h>
 
 #include <lib/debugFunctions.h>
 
@@ -495,7 +496,6 @@ int main(int argc, char *argv[])
 			IRBlock* block = profiler.getBlock(oneBlock);
 
 			if (OPTLEVEL >= 1 && profileResult > 10 && block->blockState < IRBLOCK_STATE_SCHEDULED){
-				fprintf(stderr, "Block from %d to %d is eligible to opti (%d exec)\n", block->vliwStartAddress, block->vliwEndAddress, profileResult);
 				optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
 				scheduleCounter++;
 			}
@@ -506,7 +506,8 @@ int main(int argc, char *argv[])
 					fprintf(stderr, "Block from %d to %d is eligible advanced control flow building\n", block->vliwStartAddress, block->vliwEndAddress);
 					buildAdvancedControlFlow(&dbtPlateform, block, &application);
 					block->blockState = IRBLOCK_STATE_RECONF;
-					placeCode = reconfigureVLIW(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
+					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
+					//placeCode = reconfigureVLIW(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
 
 				}
 		}

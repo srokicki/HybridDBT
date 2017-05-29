@@ -20,6 +20,7 @@ file(REMOVE_RECURSE
   "CMakeFiles/dumpBinaryCode.dir/src/transformation/optimizeBasicBlock.cpp.o"
   "CMakeFiles/dumpBinaryCode.dir/src/transformation/buildControlFlow.cpp.o"
   "CMakeFiles/dumpBinaryCode.dir/src/transformation/reconfigureVLIW.cpp.o"
+  "CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o"
   "CMakeFiles/dumpBinaryCode.dir/src/tools/dumpBinaryCode.cpp.o"
   "bin/dumpBinaryCode.pdb"
   "bin/dumpBinaryCode"

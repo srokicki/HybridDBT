@@ -36,6 +36,7 @@ CMakeFiles/dumpBinaryCode.dir/src/dbt/profiling.cpp.o: ../src/dbt/profiling.cpp
 CMakeFiles/dumpBinaryCode.dir/src/isa/irISA.cpp.o: .././includes/isa/irISA.h
 CMakeFiles/dumpBinaryCode.dir/src/isa/irISA.cpp.o: .././includes/isa/vexISA.h
 CMakeFiles/dumpBinaryCode.dir/src/isa/irISA.cpp.o: .././includes/lib/ac_int.h
+CMakeFiles/dumpBinaryCode.dir/src/isa/irISA.cpp.o: .././includes/lib/endianness.h
 CMakeFiles/dumpBinaryCode.dir/src/isa/irISA.cpp.o: .././includes/types.h
 CMakeFiles/dumpBinaryCode.dir/src/isa/irISA.cpp.o: ../src/isa/irISA.cpp
 
@@ -110,8 +111,20 @@ CMakeFiles/dumpBinaryCode.dir/src/transformation/buildControlFlow.cpp.o: .././in
 CMakeFiles/dumpBinaryCode.dir/src/transformation/buildControlFlow.cpp.o: .././includes/simulator/genericSimulator.h
 CMakeFiles/dumpBinaryCode.dir/src/transformation/buildControlFlow.cpp.o: .././includes/simulator/riscvSimulator.h
 CMakeFiles/dumpBinaryCode.dir/src/transformation/buildControlFlow.cpp.o: .././includes/simulator/vexSimulator.h
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildControlFlow.cpp.o: .././includes/transformation/irGenerator.h
 CMakeFiles/dumpBinaryCode.dir/src/transformation/buildControlFlow.cpp.o: .././includes/types.h
 CMakeFiles/dumpBinaryCode.dir/src/transformation/buildControlFlow.cpp.o: ../src/transformation/buildControlFlow.cpp
+
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o: .././includes/dbt/dbtPlateform.h
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o: .././includes/isa/irISA.h
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o: .././includes/isa/vexISA.h
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o: .././includes/lib/ac_int.h
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o: .././includes/lib/endianness.h
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o: .././includes/simulator/genericSimulator.h
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o: .././includes/simulator/riscvSimulator.h
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o: .././includes/simulator/vexSimulator.h
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o: .././includes/types.h
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o: ../src/transformation/buildTraces.cpp
 
 CMakeFiles/dumpBinaryCode.dir/src/transformation/firstPassTranslator.cpp.o: .././includes/dbt/dbtPlateform.h
 CMakeFiles/dumpBinaryCode.dir/src/transformation/firstPassTranslator.cpp.o: .././includes/frontend.h
@@ -154,6 +167,7 @@ CMakeFiles/dumpBinaryCode.dir/src/transformation/irGenerator.cpp.o: .././include
 CMakeFiles/dumpBinaryCode.dir/src/transformation/irGenerator.cpp.o: ../src/transformation/irGenerator.cpp
 
 CMakeFiles/dumpBinaryCode.dir/src/transformation/irScheduler.cpp.o: .././includes/dbt/dbtPlateform.h
+CMakeFiles/dumpBinaryCode.dir/src/transformation/irScheduler.cpp.o: .././includes/isa/irISA.h
 CMakeFiles/dumpBinaryCode.dir/src/transformation/irScheduler.cpp.o: .././includes/isa/vexISA.h
 CMakeFiles/dumpBinaryCode.dir/src/transformation/irScheduler.cpp.o: .././includes/lib/ac_int.h
 CMakeFiles/dumpBinaryCode.dir/src/transformation/irScheduler.cpp.o: .././includes/simulator/genericSimulator.h

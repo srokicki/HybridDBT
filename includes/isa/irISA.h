@@ -12,6 +12,21 @@
 
 
 /********************************************************************
+ * IR condifiguration
+ * ******************************************************************
+ *
+ * We define here preprocessor values which change the IR configuration.
+ * IR_SUCC says that the IR contains forward dependencies: each instruction knows all its successors
+ * 			If not defined, the IR will be backward: each instruction will know all its predecessors
+ *
+ *******************************************************************/
+
+#define IR_SUCC
+
+
+
+
+/********************************************************************
  * Declaration of a data structure to represent the control flow of the binaries analyzed.
  * ******************************************************************
  *
@@ -37,6 +52,7 @@ public:
 
 	unsigned int procedureState;	//A value to store its state (optimized/translated or other things like that)
 
+	void print();
 	IRProcedure(IRBlock *entryBlock, int nbBlock);
 
 };
@@ -126,6 +142,23 @@ ac_int<128, false> assembleIBytecodeInstruction(ac_int<2, false> stageCode, ac_i
 
 void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instructionPart2, uint32 instructionPart3, uint32 instructionPart4);
 
+/********************************************************************
+ * Declaration utilization functions
+ * ******************************************************************
+ *
+ * These functions are used to access to information from the IR
+ *
+ *******************************************************************/
+
+short getDestinationRegister(uint32 *bytecode, char index);
+char getOperands(uint32 *bytecode, char index, short result[2]);
+char getOpcode(uint32 *bytecode, char index);
+void setOpcode(uint32 *bytecode, char index, char newOpcode);
+
+void setDestinationRegister(uint32 *bytecode, char index, short newDestinationRegister);
+void setAlloc(uint32 *bytecode, char index, char newAlloc);
+void addDataDep(uint32 *bytecode, char index, char successor);
+void addControlDep(uint32 *bytecode, char index, char successor);
 
 
 #endif /* INCLUDES_ISA_IRISA_H_ */

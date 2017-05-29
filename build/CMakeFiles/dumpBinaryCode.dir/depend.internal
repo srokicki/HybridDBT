@@ -37,6 +37,7 @@ CMakeFiles/dumpBinaryCode.dir/src/isa/irISA.cpp.o
  .././includes/isa/irISA.h
  .././includes/isa/vexISA.h
  .././includes/lib/ac_int.h
+ .././includes/lib/endianness.h
  .././includes/types.h
  /home/shumush/git/HybridDBT/src/isa/irISA.cpp
 CMakeFiles/dumpBinaryCode.dir/src/isa/riscvISA.cpp.o
@@ -111,8 +112,20 @@ CMakeFiles/dumpBinaryCode.dir/src/transformation/buildControlFlow.cpp.o
  .././includes/simulator/genericSimulator.h
  .././includes/simulator/riscvSimulator.h
  .././includes/simulator/vexSimulator.h
+ .././includes/transformation/irGenerator.h
  .././includes/types.h
  /home/shumush/git/HybridDBT/src/transformation/buildControlFlow.cpp
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o
+ .././includes/dbt/dbtPlateform.h
+ .././includes/isa/irISA.h
+ .././includes/isa/vexISA.h
+ .././includes/lib/ac_int.h
+ .././includes/lib/endianness.h
+ .././includes/simulator/genericSimulator.h
+ .././includes/simulator/riscvSimulator.h
+ .././includes/simulator/vexSimulator.h
+ .././includes/types.h
+ /home/shumush/git/HybridDBT/src/transformation/buildTraces.cpp
 CMakeFiles/dumpBinaryCode.dir/src/transformation/firstPassTranslator.cpp.o
  .././includes/dbt/dbtPlateform.h
  .././includes/frontend.h
@@ -155,6 +168,7 @@ CMakeFiles/dumpBinaryCode.dir/src/transformation/irGenerator.cpp.o
  /home/shumush/git/HybridDBT/src/transformation/irGenerator.cpp
 CMakeFiles/dumpBinaryCode.dir/src/transformation/irScheduler.cpp.o
  .././includes/dbt/dbtPlateform.h
+ .././includes/isa/irISA.h
  .././includes/isa/vexISA.h
  .././includes/lib/ac_int.h
  .././includes/simulator/genericSimulator.h

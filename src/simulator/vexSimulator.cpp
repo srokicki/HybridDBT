@@ -135,8 +135,13 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 		//The instruction is a memory access
 		ac_int<64, false> address = extoMem.result;
 
+		if (extoMem.opCode == VEX_PROFILE){
+			if (this->profileResult[extoMem.dest] != 255)
+				this->profileResult[extoMem.dest]++;
 
-		if (!extoMem.opCode[3]){
+			memtoWB->WBena = 0;
+		}
+		else if (!extoMem.opCode[3]){
 			//The operation is a load instruction
 
 			ac_int<16, false> const0_16 = 0;
@@ -195,12 +200,6 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 			}
 
 
-		}
-		else if (extoMem.opCode == VEX_PROFILE){
-			if (this->profileResult[extoMem.dest] != 255)
-				this->profileResult[extoMem.dest]++;
-
-			memtoWB->WBena = 0;
 		}
 		else {
 

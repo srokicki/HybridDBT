@@ -20,6 +20,7 @@ file(REMOVE_RECURSE
   "CMakeFiles/simMIPS.dir/src/transformation/optimizeBasicBlock.cpp.o"
   "CMakeFiles/simMIPS.dir/src/transformation/buildControlFlow.cpp.o"
   "CMakeFiles/simMIPS.dir/src/transformation/reconfigureVLIW.cpp.o"
+  "CMakeFiles/simMIPS.dir/src/transformation/buildTraces.cpp.o"
   "CMakeFiles/simMIPS.dir/src/tools/simMIPS.cpp.o"
   "bin/simMIPS.pdb"
   "bin/simMIPS"

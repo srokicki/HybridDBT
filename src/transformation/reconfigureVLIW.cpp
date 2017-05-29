@@ -106,28 +106,21 @@ uint32 reconfigureVLIW(DBTPlateform *platform, IRProcedure *procedure, uint32 pl
 			platform->placeOfRegisters[256+onePlaceOfRegister] = onePlaceOfRegister;
 
 
-		int binaSize = irScheduler(platform, 1,blockSize, placeCode, 27, 8, 0x1c1e);
+		int binaSize = irScheduler(platform, 1,blockSize, placeCode, 27, 4, 0x1c1e);
 		binaSize = binaSize & 0xffff;
 		//TODO make it cleaner : we need to ensure binaSize is even...
 		if (binaSize & 0x1)
 			binaSize = binaSize+1;
 
-		for (int oneCycle = 0; oneCycle<(binaSize/2) + 1; oneCycle++){
-			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + 2*oneCycle].slc<32>(0));
+		for (int oneCycle = 0; oneCycle<binaSize + 1; oneCycle++){
+			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + oneCycle].slc<32>(0));
 			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + 2*oneCycle].slc<32>(32));
+			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + oneCycle].slc<32>(32));
 			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + 2*oneCycle].slc<32>(64));
+			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + oneCycle].slc<32>(64));
 			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + 2*oneCycle].slc<32>(96));
+			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + oneCycle].slc<32>(96));
 			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + 2*oneCycle+1].slc<32>(0));
-			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + 2*oneCycle+1].slc<32>(32));
-			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + 2*oneCycle+1].slc<32>(64));
-			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + 2*oneCycle+1].slc<32>(96));
 			fprintf(stderr, "\n");
 
 		}

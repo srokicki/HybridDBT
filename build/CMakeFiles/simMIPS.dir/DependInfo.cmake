@@ -20,6 +20,7 @@ set(CMAKE_DEPENDS_CHECK_CXX
   "/home/shumush/git/HybridDBT/src/simulator/vexSimulator.cpp" "/home/shumush/git/HybridDBT/build/CMakeFiles/simMIPS.dir/src/simulator/vexSimulator.cpp.o"
   "/home/shumush/git/HybridDBT/src/tools/simMIPS.cpp" "/home/shumush/git/HybridDBT/build/CMakeFiles/simMIPS.dir/src/tools/simMIPS.cpp.o"
   "/home/shumush/git/HybridDBT/src/transformation/buildControlFlow.cpp" "/home/shumush/git/HybridDBT/build/CMakeFiles/simMIPS.dir/src/transformation/buildControlFlow.cpp.o"
+  "/home/shumush/git/HybridDBT/src/transformation/buildTraces.cpp" "/home/shumush/git/HybridDBT/build/CMakeFiles/simMIPS.dir/src/transformation/buildTraces.cpp.o"
   "/home/shumush/git/HybridDBT/src/transformation/firstPassTranslator.cpp" "/home/shumush/git/HybridDBT/build/CMakeFiles/simMIPS.dir/src/transformation/firstPassTranslator.cpp.o"
   "/home/shumush/git/HybridDBT/src/transformation/firstPassTranslatorRISCV.cpp" "/home/shumush/git/HybridDBT/build/CMakeFiles/simMIPS.dir/src/transformation/firstPassTranslatorRISCV.cpp.o"
   "/home/shumush/git/HybridDBT/src/transformation/irGenerator.cpp" "/home/shumush/git/HybridDBT/build/CMakeFiles/simMIPS.dir/src/transformation/irGenerator.cpp.o"

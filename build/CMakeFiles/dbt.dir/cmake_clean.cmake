@@ -20,6 +20,7 @@ file(REMOVE_RECURSE
   "CMakeFiles/dbt.dir/src/transformation/optimizeBasicBlock.cpp.o"
   "CMakeFiles/dbt.dir/src/transformation/buildControlFlow.cpp.o"
   "CMakeFiles/dbt.dir/src/transformation/reconfigureVLIW.cpp.o"
+  "CMakeFiles/dbt.dir/src/transformation/buildTraces.cpp.o"
   "CMakeFiles/dbt.dir/src/dbt/dbt.cpp.o"
   "bin/dbt.pdb"
   "bin/dbt"

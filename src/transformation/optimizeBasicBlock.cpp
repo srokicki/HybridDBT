@@ -32,6 +32,9 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	int basicBlockStart = block->vliwStartAddress;
 	int basicBlockEnd = block->vliwEndAddress;
 
+	fprintf(stderr, "Block from %d to %d is eligible for scheduling\n", block->vliwStartAddress, block->vliwEndAddress);
+
+
 #ifndef __NIOS
 
 	//TODO make it work for nios too
@@ -64,12 +67,21 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	int blockSize = irGenerator(platform, basicBlockStart, originalScheduleSize, globalVariableCounter);
 
 	//We store the result in an array cause it can be used later
-	block->instructions = (uint32*) malloc(blockSize*sizeof(uint128));
-	memcpy(block->instructions, platform->bytecode, blockSize*sizeof(uint128)); //TODO this is not correct... (or maybe not clean)
-	block->nbInstr = blockSize;
+	block->instructions = (uint32*) malloc(blockSize*4*sizeof(uint32));
+	for (int oneBytecodeInstr = 0; oneBytecodeInstr<blockSize; oneBytecodeInstr++){
+		block->instructions[4*oneBytecodeInstr + 0] = readInt(platform->bytecode, 16*oneBytecodeInstr + 0);
+		block->instructions[4*oneBytecodeInstr + 1] = readInt(platform->bytecode, 16*oneBytecodeInstr + 4);
+		block->instructions[4*oneBytecodeInstr + 2] = readInt(platform->bytecode, 16*oneBytecodeInstr + 8);
+		block->instructions[4*oneBytecodeInstr + 3] = readInt(platform->bytecode, 16*oneBytecodeInstr + 12);
+	}
 
+	block->nbInstr = blockSize;
 #ifndef __NIOS
 fprintf(stderr, "*************************************************************************\n");
+fprintf(stderr, "Previous version of sources:\n");
+fprintf(stderr, "*****************\n");
+
+
 for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
 	fprintf(stderr, "%d ", i);
 	std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
@@ -84,12 +96,9 @@ for (int i=basicBlockStart;i<basicBlockEnd;i++){
 	fprintf(stderr, "schedule;%d\n",i);
 }
 
-fprintf(stderr, "*************************************************************************\n");
-
-fprintf(stderr, "*************************************************************************\n");
 
 	fprintf(stderr, "*************************************************************************\n");
-	fprintf(stderr, "Optimizing a block of size %d : \n", blockSize);
+	fprintf(stderr, "Bytecode is: \n");
 	fprintf(stderr, "\n*****************\n");
 	for (int i=0; i<blockSize; i++){
 		printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));

@@ -140,6 +140,8 @@ dbt/dbtPlateform.h
 isa/irISA.h
 -
 
+.././includes/transformation/buildTraces.h
+
 .././includes/transformation/firstPassTranslator.h
 types.h
 -
@@ -205,6 +207,8 @@ transformation/buildControlFlow.h
 -
 transformation/reconfigureVLIW.h
 -
+transformation/buildTraces.h
+-
 lib/debugFunctions.h
 -
 isa/vexISA.h
@@ -260,6 +264,8 @@ types.h
 isa/vexISA.h
 -
 isa/irISA.h
+-
+lib/endianness.h
 -
 
 /home/shumush/git/HybridDBT/src/isa/riscvISA.cpp
@@ -407,6 +413,16 @@ types.h
 -
 lib/endianness.h
 -
+transformation/irGenerator.h
+-
+
+/home/shumush/git/HybridDBT/src/transformation/buildTraces.cpp
+isa/irISA.h
+-
+dbt/dbtPlateform.h
+-
+lib/endianness.h
+-
 
 /home/shumush/git/HybridDBT/src/transformation/firstPassTranslator.cpp
 cstdio
@@ -474,6 +490,8 @@ stdio.h
 dbt/dbtPlateform.h
 -
 types.h
+-
+isa/irISA.h
 -
 
 /home/shumush/git/HybridDBT/src/transformation/optimizeBasicBlock.cpp

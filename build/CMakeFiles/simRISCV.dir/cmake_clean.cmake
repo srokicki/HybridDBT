@@ -20,6 +20,7 @@ file(REMOVE_RECURSE
   "CMakeFiles/simRISCV.dir/src/transformation/optimizeBasicBlock.cpp.o"
   "CMakeFiles/simRISCV.dir/src/transformation/buildControlFlow.cpp.o"
   "CMakeFiles/simRISCV.dir/src/transformation/reconfigureVLIW.cpp.o"
+  "CMakeFiles/simRISCV.dir/src/transformation/buildTraces.cpp.o"
   "CMakeFiles/simRISCV.dir/src/tools/simRISCV.cpp.o"
   "bin/simRISCV.pdb"
   "bin/simRISCV"

@@ -17,6 +17,7 @@ CMakeFiles/dbt.dir/src/dbt/dbt.cpp.o: .././includes/simulator/genericSimulator.h
 CMakeFiles/dbt.dir/src/dbt/dbt.cpp.o: .././includes/simulator/riscvSimulator.h
 CMakeFiles/dbt.dir/src/dbt/dbt.cpp.o: .././includes/simulator/vexSimulator.h
 CMakeFiles/dbt.dir/src/dbt/dbt.cpp.o: .././includes/transformation/buildControlFlow.h
+CMakeFiles/dbt.dir/src/dbt/dbt.cpp.o: .././includes/transformation/buildTraces.h
 CMakeFiles/dbt.dir/src/dbt/dbt.cpp.o: .././includes/transformation/firstPassTranslator.h
 CMakeFiles/dbt.dir/src/dbt/dbt.cpp.o: .././includes/transformation/irGenerator.h
 CMakeFiles/dbt.dir/src/dbt/dbt.cpp.o: .././includes/transformation/optimizeBasicBlock.h
@@ -59,6 +60,7 @@ CMakeFiles/dbt.dir/src/dbt/profiling.cpp.o: ../src/dbt/profiling.cpp
 CMakeFiles/dbt.dir/src/isa/irISA.cpp.o: .././includes/isa/irISA.h
 CMakeFiles/dbt.dir/src/isa/irISA.cpp.o: .././includes/isa/vexISA.h
 CMakeFiles/dbt.dir/src/isa/irISA.cpp.o: .././includes/lib/ac_int.h
+CMakeFiles/dbt.dir/src/isa/irISA.cpp.o: .././includes/lib/endianness.h
 CMakeFiles/dbt.dir/src/isa/irISA.cpp.o: .././includes/types.h
 CMakeFiles/dbt.dir/src/isa/irISA.cpp.o: ../src/isa/irISA.cpp
 
@@ -125,8 +127,20 @@ CMakeFiles/dbt.dir/src/transformation/buildControlFlow.cpp.o: .././includes/lib/
 CMakeFiles/dbt.dir/src/transformation/buildControlFlow.cpp.o: .././includes/simulator/genericSimulator.h
 CMakeFiles/dbt.dir/src/transformation/buildControlFlow.cpp.o: .././includes/simulator/riscvSimulator.h
 CMakeFiles/dbt.dir/src/transformation/buildControlFlow.cpp.o: .././includes/simulator/vexSimulator.h
+CMakeFiles/dbt.dir/src/transformation/buildControlFlow.cpp.o: .././includes/transformation/irGenerator.h
 CMakeFiles/dbt.dir/src/transformation/buildControlFlow.cpp.o: .././includes/types.h
 CMakeFiles/dbt.dir/src/transformation/buildControlFlow.cpp.o: ../src/transformation/buildControlFlow.cpp
+
+CMakeFiles/dbt.dir/src/transformation/buildTraces.cpp.o: .././includes/dbt/dbtPlateform.h
+CMakeFiles/dbt.dir/src/transformation/buildTraces.cpp.o: .././includes/isa/irISA.h
+CMakeFiles/dbt.dir/src/transformation/buildTraces.cpp.o: .././includes/isa/vexISA.h
+CMakeFiles/dbt.dir/src/transformation/buildTraces.cpp.o: .././includes/lib/ac_int.h
+CMakeFiles/dbt.dir/src/transformation/buildTraces.cpp.o: .././includes/lib/endianness.h
+CMakeFiles/dbt.dir/src/transformation/buildTraces.cpp.o: .././includes/simulator/genericSimulator.h
+CMakeFiles/dbt.dir/src/transformation/buildTraces.cpp.o: .././includes/simulator/riscvSimulator.h
+CMakeFiles/dbt.dir/src/transformation/buildTraces.cpp.o: .././includes/simulator/vexSimulator.h
+CMakeFiles/dbt.dir/src/transformation/buildTraces.cpp.o: .././includes/types.h
+CMakeFiles/dbt.dir/src/transformation/buildTraces.cpp.o: ../src/transformation/buildTraces.cpp
 
 CMakeFiles/dbt.dir/src/transformation/firstPassTranslator.cpp.o: .././includes/dbt/dbtPlateform.h
 CMakeFiles/dbt.dir/src/transformation/firstPassTranslator.cpp.o: .././includes/frontend.h
@@ -169,6 +183,7 @@ CMakeFiles/dbt.dir/src/transformation/irGenerator.cpp.o: .././includes/types.h
 CMakeFiles/dbt.dir/src/transformation/irGenerator.cpp.o: ../src/transformation/irGenerator.cpp
 
 CMakeFiles/dbt.dir/src/transformation/irScheduler.cpp.o: .././includes/dbt/dbtPlateform.h
+CMakeFiles/dbt.dir/src/transformation/irScheduler.cpp.o: .././includes/isa/irISA.h
 CMakeFiles/dbt.dir/src/transformation/irScheduler.cpp.o: .././includes/isa/vexISA.h
 CMakeFiles/dbt.dir/src/transformation/irScheduler.cpp.o: .././includes/lib/ac_int.h
 CMakeFiles/dbt.dir/src/transformation/irScheduler.cpp.o: .././includes/simulator/genericSimulator.h

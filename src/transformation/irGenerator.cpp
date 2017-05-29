@@ -1067,7 +1067,9 @@ uint8 writeSucc_lastAddr = 255;
 ac_int<128, false> writeSucc_lastValue = 0;
 
 
-inline unsigned int writeSuccessor_ac(ac_int<128, false> bytecode[1024], ac_int<8, false> srcInstr, ac_int<8, false> destInstr, ac_int<1,false> isData){
+
+
+inline unsigned int writeSuccessor_ac(ac_int<128, false> bytecode[1024], ac_int<8, false> srcInstr, ac_int<8, false> destInstr, ac_int<1,false> isData, ac_int<128, false> *currentInstruction){
 
 
 	ac_int<128, false> oneBytecodeInstruction = (writeSucc_lastAddr == srcInstr) ? writeSucc_lastValue : bytecode[srcInstr];
@@ -1090,10 +1092,15 @@ inline unsigned int writeSuccessor_ac(ac_int<128, false> bytecode[1024], ac_int<
 	oneBytecodeInstruction.set_slc(64, nbSucc);
 	oneBytecodeInstruction.set_slc(67, nbDSucc);
 
-	//fprintf(stderr, "Adding dep from %d to %d word was %lx and become %lx\n", srcInstr, destInstr, (uint64_t) bytecode[srcInstr].slc<64>(0), (uint64_t) oneBytecodeInstruction.slc<64>(0));
 
+	//We also increment the number of dependencies in the current instruction
+	ac_int<8, false> nbDep = currentInstruction->slc<8>(64+6) + 1;
 
 	if (srcInstr != destInstr){
+		//fprintf(stderr, "Adding dep from %d to %d word was %lx and become %lx\n", srcInstr, destInstr, (uint64_t) bytecode[srcInstr].slc<64>(0), (uint64_t) oneBytecodeInstruction.slc<64>(0));
+
+		currentInstruction->set_slc(64+6, nbDep);
+
 		bytecode[srcInstr] = oneBytecodeInstruction;
 		writeSucc_lastAddr = srcInstr;
 		writeSucc_lastValue = oneBytecodeInstruction;
@@ -1101,6 +1108,58 @@ inline unsigned int writeSuccessor_ac(ac_int<128, false> bytecode[1024], ac_int<
 	return nbSucc;
 }
 
+inline unsigned int writePredecessor_ac(ac_int<128, false> bytecode[1024], ac_int<8, false> srcInstr, ac_int<8, false> destInstr, ac_int<1,false> isData, ac_int<128, false> *currentInstruction){
+
+	//We load the bytecode word of the predecessor in order to increment the number of successor
+	ac_int<128, false> oneBytecodeInstruction = (writeSucc_lastAddr == srcInstr) ? writeSucc_lastValue : bytecode[srcInstr];
+	ac_int<8, false> nbDep = oneBytecodeInstruction.slc<8>(64+6) + 1;
+	oneBytecodeInstruction.set_slc(64+6, nbDep);
+
+	//Then we get the nbSucc and nbDSucc of the current bytecode word in order to add the new dep
+	//TODO: this should be named differently
+	ac_int<3, false> nbSucc = currentInstruction->slc<3>(64);
+	ac_int<3, false> nbDSucc = currentInstruction->slc<3>(67);
+
+	ac_int<8, false> offsetIsData = 6-nbDSucc;
+	ac_int<8, false> offsetNotData = nbSucc - nbDSucc;
+
+	ac_int<8, false> offset = isData ? offsetIsData : offsetNotData;
+	offset = offset << 3;
+
+
+	nbSucc++;
+	if (isData)
+		nbDSucc++;
+
+	if (srcInstr != destInstr){
+
+		//fprintf(stderr, "Adding dep from %d to %d word was %lx and become %lx\n", srcInstr, destInstr, (uint64_t) bytecode[srcInstr].slc<64>(0), (uint64_t) oneBytecodeInstruction.slc<64>(0));
+
+		currentInstruction->set_slc(offset, srcInstr);
+		currentInstruction->set_slc(64, nbSucc);
+		currentInstruction->set_slc(67, nbDSucc);
+
+		bytecode[srcInstr] = oneBytecodeInstruction;
+		writeSucc_lastAddr = srcInstr;
+		writeSucc_lastValue = oneBytecodeInstruction;
+	}
+	return nbSucc;
+
+}
+
+
+inline unsigned int writeDependency_ac(ac_int<128, false> bytecode[1024], ac_int<8, false> srcInstr, ac_int<8, false> destInstr, ac_int<1,false> isData, ac_int<128, false> *currentInstruction){
+
+	//According to the value of IR_SUCC, the correct function will be called.
+	//Note: the IR_SUCC should be defined in irISA.h
+
+#ifdef IR_SUCC
+	writeSuccessor_ac(bytecode, srcInstr, destInstr, isData, currentInstruction);
+#else
+	writePredecessor_ac(bytecode, srcInstr, destInstr, isData, currentInstruction);
+#endif
+
+}
 
 
 unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries, uint32 blockSize,
@@ -1310,9 +1369,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			numbersSuccessor[indexInCurrentBlock] = 0;
 			numbersPredecessor[indexInCurrentBlock] = 0;
 
-			/* Local value for numberDependencies */
-			ac_int<8, false> numberDependencies = 0;
-
 			/********************************************************************
 			 * Third step is to solve/build dependencies in the current block
 			 *
@@ -1394,7 +1450,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 							pred1_succ_ena = 1;
 							pred1_succ_isData = 1;
 							pred1_succ_src = lastWriterOnGlobal_access_pred1;
-							numberDependencies++;
 						}
 					}
 					else{
@@ -1402,7 +1457,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 						int readerToEvince = lastReaderOnGlobal_value_pred1;
 						pred1_succ_ena = 1;
 						pred1_succ_src = readerToEvince;
-						numberDependencies++;
 					}
 					lastReaderOnGlobal_value_pred1 = indexInCurrentBlock;
 
@@ -1420,7 +1474,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 					pred1_succ_ena = 1;
 					pred1_succ_src = temp_pred1;
 					pred1_succ_isData = 1;
-					numberDependencies++;
 				}
 
 				pred1 = temp_pred1;
@@ -1469,14 +1522,12 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 								pred2_succ_ena = 1;
 								pred2_succ_isData = 1;
 								pred2_succ_src = lastWriterOnGlobal_access_pred2;
-								numberDependencies++;
 							}
 						}
 						else{
 							int readerToEvince = lastReaderOnGlobal_value_pred2;
 							pred2_succ_ena = 1;
 							pred2_succ_src = readerToEvince;
-							numberDependencies++;
 						}
 						lastReaderOnGlobal_value_pred2 = indexInCurrentBlock;
 						lastReaderOnGlobalPlaceToWrite_access_pred2++;
@@ -1495,7 +1546,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 					pred2_succ_ena = 1;
 					pred2_succ_src = temp_pred2;
 					pred2_succ_isData = 1;
-					numberDependencies++;
 				}
 
 				pred2 = temp_pred2;
@@ -1514,14 +1564,12 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 					lastReaderOnMemoryCounter++;
 					if (lastWriterOnMemory != -1 && !(lastWriterOnMemoryRegUnchanged && lastWriterOnMemoryReg == pred1_reg && lastWriterOnMemoryImm != imm13)){
 						succ_src = lastWriterOnMemory;
-						numberDependencies++;
 						pred2_succ_ena = 1;
 					}
 				}
 				else{
 					int readerToEvince = lastReaderOnMemory[lastReaderOnMemoryPlaceToWrite];
 					succ_src = readerToEvince;
-					numberDependencies++;
 					pred2_succ_ena = 1;
 
 				}
@@ -1589,17 +1637,14 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 					if (lastReaderOnGlobalCounter_access_dest >= 1 && lastReaderOnGlobal_value_dest_1 != indexInCurrentBlock){
 						global_succ_ena_1 = 1;
 						global_succ_src_1 = lastReaderOnGlobal_value_dest_1;
-						numberDependencies++;
 					}
 					if (lastReaderOnGlobalCounter_access_dest >= 2 && lastReaderOnGlobal_value_dest_2 != indexInCurrentBlock){
 						global_succ_ena_2 = 1;
 						global_succ_src_2 = lastReaderOnGlobal_value_dest_2;
-						numberDependencies++;
 					}
 					if (lastReaderOnGlobalCounter_access_dest >= 3 && lastReaderOnGlobal_value_dest_3 != indexInCurrentBlock){
 						global_succ_ena_3 = 1;
 						global_succ_src_3 = lastReaderOnGlobal_value_dest_3;
-						numberDependencies++;
 					}
 
 					lastReaderOnGlobalCounter_access_dest = 0;
@@ -1617,17 +1662,14 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				if (lastReaderOnMemoryCounter >= 1){
 					global_succ_ena_1 = 1;
 					global_succ_src_1 = lastReaderOnMemory[0];
-					numberDependencies++;
 				}
 				if (lastReaderOnMemoryCounter >= 2){
 					global_succ_ena_2 = 1;
 					global_succ_src_2 = lastReaderOnMemory[1];
-					numberDependencies++;
 				}
 				if (lastReaderOnMemoryCounter >= 3){
 					global_succ_ena_3 = 1;
 					global_succ_src_3 = lastReaderOnMemory[2];
-					numberDependencies++;
 				}
 
 				lastReaderOnMemoryCounter = 0;
@@ -1664,49 +1706,19 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				lastReaderOnGlobalPlaceToWrite[dest_reg] = lastReaderOnGlobalPlaceToWrite_access_dest;
 			}
 
-			//We add dependencies
-			if (pred1_succ_ena){
-
-				ac_int<3, false> nbSucc_pred1 = writeSuccessor_ac(bytecode, pred1_succ_src, indexInCurrentBlock, pred1_succ_isData);
-				if (pred1_succ_isData & (nbSucc_pred1 == 7)){
-						insertMove_ena = 1;
-						insertMove_src = pred1;
-						alloc = 1;
-						destination = indexInCurrentBlock;
-						dest_ena = 1;
-				}
-			}
-
-			if (pred2_succ_ena){
-				ac_int<3, false> nbSucc_pred2 = writeSuccessor_ac(bytecode, pred2_succ_src, indexInCurrentBlock, pred2_succ_isData);
-				if (pred2_succ_isData & (nbSucc_pred2 == 7)){
-						insertMove_ena = 1;
-						insertMove_src = pred2;
-						alloc = 1;
-						destination = indexInCurrentBlock;
-						dest_ena = 1;
-				}
-			}
-
-
-			if (global_succ_ena_1){
-				writeSuccessor_ac(bytecode, global_succ_src_1, indexInCurrentBlock, const0);
-			}
-
-			if (global_succ_ena_2){
-				writeSuccessor_ac(bytecode, global_succ_src_2, indexInCurrentBlock, const0);
-			}
-
-			if (global_succ_ena_3){
-				writeSuccessor_ac(bytecode, global_succ_src_3, indexInCurrentBlock, const0);
-			}
 
 
 
 			/********************************************************************
-			 * Last step is to generate the bytecode instruction
+			 * Generation of the bytecode instruction
+			 *****************************************
 			 *
-			 * TODO detailled description of the process
+			 * Generating the bytecode instruction is quite simple: we only need to pick the correct encoding
+			 * for the opcode used and to follow the pattern.
+			 * This step rely on the assembleBytecodeInstructions() which allow to easily modify the way an instruction is
+			 * encoded.
+			 *
+			 * The second step of the process is to add dependencies in the IR representation using the dedicated functions.
 			 ********************************************************************/
 
 			ac_int<128, false> oneBytecode = 0;
@@ -1717,18 +1729,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				printf("Implementation do not support mov insertion yet...\n Exiting...\n");
 				exit(-1);
 				#endif
-
-				ac_int<4, false> const8 = 0x8;
-
-				ac_int<7, false> const41 = 0x41;
-				oneBytecode.set_slc(96+28, const8);
-				oneBytecode.set_slc(96+27, alloc);
-				oneBytecode.set_slc(96+19, const41);
-
-				oneBytecode.set_slc(96, insertMove_src);
-
-				oneBytecode.set_slc(64+14, destination);
-				oneBytecode.set_slc(64+6, numberDependencies);
 
 			}
 			else if (isBranchWithNoReg || isBranchWithReg){
@@ -1748,32 +1748,32 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 					successor1 = imm19;
 				}
 
-				oneBytecode = assembleIBytecodeInstruction(0, 0, opcode, pred1, imm19, numberDependencies);
+				oneBytecode = assembleIBytecodeInstruction(0, 0, opcode, pred1, imm19, 0);
 
 				haveJump = 1;
 				jumpID = indexInCurrentBlock;
 
 			}
 			else if (isMovi){
-				oneBytecode = assembleIBytecodeInstruction(2, alloc, opcode, destination, imm19, numberDependencies);
+				oneBytecode = assembleIBytecodeInstruction(2, alloc, opcode, destination, imm19, 0);
 			}
 			else if (isStoreType){
-				oneBytecode = assembleRiBytecodeInstruction(1, 0, opcode, pred1, imm13, pred2, numberDependencies);
+				oneBytecode = assembleRiBytecodeInstruction(1, 0, opcode, pred1, imm13, pred2, 0);
 			}
 			else if (isLoadType){
-				oneBytecode = assembleRiBytecodeInstruction(1, alloc, opcode, pred1, imm13, destination, numberDependencies);
+				oneBytecode = assembleRiBytecodeInstruction(1, alloc, opcode, pred1, imm13, destination, 0);
 			}
 			else if (isMultType){
-				oneBytecode = assembleRBytecodeInstruction(3, alloc, opcode, pred1, pred2, destination, numberDependencies);
+				oneBytecode = assembleRBytecodeInstruction(3, alloc, opcode, pred1, pred2, destination, 0);
 			}
 			else if (isArith1 || isArithImm){
-				oneBytecode = assembleRiBytecodeInstruction(2, alloc, opcode, pred1, imm13, destination, numberDependencies);
+				oneBytecode = assembleRiBytecodeInstruction(2, alloc, opcode, pred1, imm13, destination, 0);
 			}
 			else if (isArith2){
-				oneBytecode = assembleRBytecodeInstruction(2, alloc, opcode, pred2, pred1, destination, numberDependencies);
+				oneBytecode = assembleRBytecodeInstruction(2, alloc, opcode, pred2, pred1, destination, 0);
 			}
 			else if (isProfile){
-				oneBytecode = assembleRiBytecodeInstruction(1, 0, opcode, reg20, 0, 0, numberDependencies);
+				oneBytecode = assembleRiBytecodeInstruction(1, 0, opcode, reg20, 0, 0, 0);
 			}
 			else{
 				#ifndef __CATAPULT
@@ -1781,8 +1781,56 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				#endif
 			}
 
+			//*********************************
+			//We add dependencies
+			//Note: we never have more than 5 dependencies to add for one single instruction
 
-			//We place the instruction in memory
+			if (pred1_succ_ena){
+				ac_int<3, false> nbSucc_pred1 = writeDependency_ac(bytecode, pred1_succ_src, indexInCurrentBlock, pred1_succ_isData, &oneBytecode);
+				if (pred1_succ_isData & (nbSucc_pred1 == 7)){
+						insertMove_ena = 1;
+						insertMove_src = pred1;
+						alloc = 1;
+						destination = indexInCurrentBlock;
+						dest_ena = 1;
+				}
+			}
+
+			if (pred2_succ_ena){
+				ac_int<3, false> nbSucc_pred2 = writeDependency_ac(bytecode, pred2_succ_src, indexInCurrentBlock, pred2_succ_isData,&oneBytecode);
+				if (pred2_succ_isData & (nbSucc_pred2 == 7)){
+						insertMove_ena = 1;
+						insertMove_src = pred2;
+						alloc = 1;
+						destination = indexInCurrentBlock;
+						dest_ena = 1;
+				}
+			}
+
+
+			if (global_succ_ena_1)
+				writeDependency_ac(bytecode, global_succ_src_1, indexInCurrentBlock, const0, &oneBytecode);
+
+
+			if (global_succ_ena_2)
+				writeDependency_ac(bytecode, global_succ_src_2, indexInCurrentBlock, const0, &oneBytecode);
+
+
+			if (global_succ_ena_3)
+				writeDependency_ac(bytecode, global_succ_src_3, indexInCurrentBlock, const0, &oneBytecode);
+
+
+
+
+
+
+			/**************************************************************************
+			 *  We place the instruction in memory
+			 *************************************
+			 *
+			 * Last step is to place the instruction in the bytecode memory.
+			 */
+
 			bytecode[indexInCurrentBlock] = oneBytecode;
 
 
@@ -1793,6 +1841,20 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 		}
 		while (indexInSourceBinaries<=blockSize && indexInCurrentBlock<255);
 
+
+
+		/*******************************************************************************
+		 * Outside the main loop: adjustments on the block
+		 * **********************************
+		 *
+		 * Here are executed some adjustments on the block structure: it can be for exemple the addition of
+		 * dependencies from all nodes without successors to the jump instruction of the modification of all
+		 * last writer to some renamed registers...
+		 *
+		 * At the moment, those two adjustments are some prototype and nothing is clearly defined in the flow...
+		 */
+
+		//Addint dependencies to the jump
 		if (haveJump &&  bytecode[jumpID].slc<7>(96+19) == VEX_CALL){
 			ac_int<128, false> jumpBytecodeWord = bytecode[jumpID];
 			ac_int<8, false> numberDependencies = jumpBytecodeWord.slc<8>(64+6);
@@ -1815,6 +1877,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			bytecode[jumpID] = jumpBytecodeWord;
 		}
 
+		//Modification of last writer on renamed registers
 		for (uint9 oneRegister=FIRST_RENAME; oneRegister<LAST_RENAME; oneRegister++){
 			uint9 lastWriter = registers[oneRegister];
 			if (!lastWriter[8]){
@@ -1824,20 +1887,20 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 
 				int depToAdd = 0;
 				if (lastReaderOnGlobalCounter[oneRegister] >= 1 && lastReaderOnGlobal[oneRegister][0] != indexInCurrentBlock){
-					writeSuccessor_ac(bytecode, lastReaderOnGlobal[oneRegister][0], lastWriter, const0);
+					writeDependency_ac(bytecode, lastReaderOnGlobal[oneRegister][0], lastWriter, const0, &bytecode[lastWriter]);
 					depToAdd++;
 				}
 
 				if (lastReaderOnGlobalCounter[oneRegister] >= 2 && lastReaderOnGlobal[oneRegister][1] != indexInCurrentBlock){
-					writeSuccessor_ac(bytecode, lastReaderOnGlobal[oneRegister][1], lastWriter, const0);
+					writeDependency_ac(bytecode, lastReaderOnGlobal[oneRegister][1], lastWriter, const0, &bytecode[lastWriter]);
 					depToAdd++;
 				}
 				if (lastReaderOnGlobalCounter[oneRegister] >= 3 && lastReaderOnGlobal[oneRegister][2] != indexInCurrentBlock){
-					writeSuccessor_ac(bytecode, lastReaderOnGlobal[oneRegister][2], lastWriter, const0);
+					writeDependency_ac(bytecode, lastReaderOnGlobal[oneRegister][2], lastWriter, const0, &bytecode[lastWriter]);
 					depToAdd++;
 				}
 				ac_int<8, false> newDepNumber = bytecode[lastWriter].slc<8>(64+6);
-				bytecode[lastWriter].set_slc(64+6, newDepNumber);
+			//	bytecode[lastWriter].set_slc(64+6, newDepNumber);
 			}
 		}
 

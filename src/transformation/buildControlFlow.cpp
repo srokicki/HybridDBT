@@ -19,6 +19,8 @@
 #include <types.h>
 #include <lib/endianness.h>
 
+#include <transformation/irGenerator.h>
+
 #define TEMP_PROCEDURE_STORAGE_SIZE 50
 #define TEMP_BLOCK_STORAGE_SIZE 900
 
@@ -243,25 +245,38 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 
 	application->addProcedure(procedure);
 
-	/* Debugging : we print the dot graph of the procedure we created
-	 *
-	 * This will be commented in the final version to prevent having too much printing
-	 */
 
-	fprintf(stderr, "digraph{\n");
-	for (int oneBlockInProcedure = 0; oneBlockInProcedure < procedure->nbBlock; oneBlockInProcedure++){
-		fprintf(stderr, "node_%d;\n", procedure->blocks[oneBlockInProcedure]->vliwStartAddress);
+
+
+	//We create IR for all blocks
+	for (int oneBasicBlock=0; oneBasicBlock<procedure->nbBlock; oneBasicBlock++){
+		IRBlock *block = procedure->blocks[oneBasicBlock];
+		if (block->nbInstr == 0){
+
+			int globalVariableCounter = 288;
+
+			for (int oneGlobalVariable = 0; oneGlobalVariable < 64; oneGlobalVariable++)
+				platform->globalVariables[oneGlobalVariable] = 256 + oneGlobalVariable;
+
+			int originalScheduleSize = block->vliwEndAddress - block->vliwStartAddress- 1;
+
+
+			int blockSize = irGenerator(platform, block->vliwStartAddress, originalScheduleSize, globalVariableCounter);
+
+			fprintf(stderr, "analysis returned a block of %d instr for block from %d to %d (size %d)\n", blockSize, block->vliwStartAddress, block->vliwEndAddress, originalScheduleSize);
+			block->instructions = (uint32*) malloc(blockSize*4*sizeof(uint32));
+			for (int oneBytecodeInstr = 0; oneBytecodeInstr<blockSize; oneBytecodeInstr++){
+				block->instructions[4*oneBytecodeInstr + 0] = readInt(platform->bytecode, 16*oneBytecodeInstr + 0);
+				block->instructions[4*oneBytecodeInstr + 1] = readInt(platform->bytecode, 16*oneBytecodeInstr + 4);
+				block->instructions[4*oneBytecodeInstr + 2] = readInt(platform->bytecode, 16*oneBytecodeInstr + 8);
+				block->instructions[4*oneBytecodeInstr + 3] = readInt(platform->bytecode, 16*oneBytecodeInstr + 12);
+			}
+
+			block->nbInstr = blockSize;
+		}
 	}
-	for (int oneBlockInProcedure = 0; oneBlockInProcedure < procedure->nbBlock; oneBlockInProcedure++){
 
-		if (blockInProcedure[oneBlockInProcedure]->nbSucc >= 1)
-			fprintf(stderr, "node_%d -> node_%d;\n", procedure->blocks[oneBlockInProcedure]->vliwStartAddress, procedure->blocks[oneBlockInProcedure]->successor1->vliwStartAddress);
-		if (blockInProcedure[oneBlockInProcedure]->nbSucc >= 2)
-			fprintf(stderr, "node_%d -> node_%d;\n", procedure->blocks[oneBlockInProcedure]->vliwStartAddress, procedure->blocks[oneBlockInProcedure]->successor2->vliwStartAddress);
-
-	}
-	fprintf(stderr, "}\n");
-
+	procedure->print();
 
 
 	fprintf(stderr, "Analysis done ! \n");

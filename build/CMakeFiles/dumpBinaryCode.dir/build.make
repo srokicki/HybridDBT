@@ -561,9 +561,33 @@ CMakeFiles/dumpBinaryCode.dir/src/transformation/reconfigureVLIW.cpp.o.provides:
 CMakeFiles/dumpBinaryCode.dir/src/transformation/reconfigureVLIW.cpp.o.provides.build: CMakeFiles/dumpBinaryCode.dir/src/transformation/reconfigureVLIW.cpp.o
 
 
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o: CMakeFiles/dumpBinaryCode.dir/flags.make
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o: ../src/transformation/buildTraces.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/shumush/git/HybridDBT/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_22) "Building CXX object CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o -c /home/shumush/git/HybridDBT/src/transformation/buildTraces.cpp
+
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/shumush/git/HybridDBT/src/transformation/buildTraces.cpp > CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.i
+
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/shumush/git/HybridDBT/src/transformation/buildTraces.cpp -o CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.s
+
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o.requires:
+
+.PHONY : CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o.requires
+
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o.provides: CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o.requires
+	$(MAKE) -f CMakeFiles/dumpBinaryCode.dir/build.make CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o.provides.build
+.PHONY : CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o.provides
+
+CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o.provides.build: CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o
+
+
 CMakeFiles/dumpBinaryCode.dir/src/tools/dumpBinaryCode.cpp.o: CMakeFiles/dumpBinaryCode.dir/flags.make
 CMakeFiles/dumpBinaryCode.dir/src/tools/dumpBinaryCode.cpp.o: ../src/tools/dumpBinaryCode.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/shumush/git/HybridDBT/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_22) "Building CXX object CMakeFiles/dumpBinaryCode.dir/src/tools/dumpBinaryCode.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/shumush/git/HybridDBT/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_23) "Building CXX object CMakeFiles/dumpBinaryCode.dir/src/tools/dumpBinaryCode.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/dumpBinaryCode.dir/src/tools/dumpBinaryCode.cpp.o -c /home/shumush/git/HybridDBT/src/tools/dumpBinaryCode.cpp
 
 CMakeFiles/dumpBinaryCode.dir/src/tools/dumpBinaryCode.cpp.i: cmake_force
@@ -608,6 +632,7 @@ dumpBinaryCode_OBJECTS = \
 "CMakeFiles/dumpBinaryCode.dir/src/transformation/optimizeBasicBlock.cpp.o" \
 "CMakeFiles/dumpBinaryCode.dir/src/transformation/buildControlFlow.cpp.o" \
 "CMakeFiles/dumpBinaryCode.dir/src/transformation/reconfigureVLIW.cpp.o" \
+"CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o" \
 "CMakeFiles/dumpBinaryCode.dir/src/tools/dumpBinaryCode.cpp.o"
 
 # External object files for target dumpBinaryCode
@@ -634,10 +659,11 @@ bin/dumpBinaryCode: CMakeFiles/dumpBinaryCode.dir/src/transformation/irScheduler
 bin/dumpBinaryCode: CMakeFiles/dumpBinaryCode.dir/src/transformation/optimizeBasicBlock.cpp.o
 bin/dumpBinaryCode: CMakeFiles/dumpBinaryCode.dir/src/transformation/buildControlFlow.cpp.o
 bin/dumpBinaryCode: CMakeFiles/dumpBinaryCode.dir/src/transformation/reconfigureVLIW.cpp.o
+bin/dumpBinaryCode: CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o
 bin/dumpBinaryCode: CMakeFiles/dumpBinaryCode.dir/src/tools/dumpBinaryCode.cpp.o
 bin/dumpBinaryCode: CMakeFiles/dumpBinaryCode.dir/build.make
 bin/dumpBinaryCode: CMakeFiles/dumpBinaryCode.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/shumush/git/HybridDBT/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_23) "Linking CXX executable bin/dumpBinaryCode"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/shumush/git/HybridDBT/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_24) "Linking CXX executable bin/dumpBinaryCode"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/dumpBinaryCode.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -666,6 +692,7 @@ CMakeFiles/dumpBinaryCode.dir/requires: CMakeFiles/dumpBinaryCode.dir/src/transf
 CMakeFiles/dumpBinaryCode.dir/requires: CMakeFiles/dumpBinaryCode.dir/src/transformation/optimizeBasicBlock.cpp.o.requires
 CMakeFiles/dumpBinaryCode.dir/requires: CMakeFiles/dumpBinaryCode.dir/src/transformation/buildControlFlow.cpp.o.requires
 CMakeFiles/dumpBinaryCode.dir/requires: CMakeFiles/dumpBinaryCode.dir/src/transformation/reconfigureVLIW.cpp.o.requires
+CMakeFiles/dumpBinaryCode.dir/requires: CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o.requires
 CMakeFiles/dumpBinaryCode.dir/requires: CMakeFiles/dumpBinaryCode.dir/src/tools/dumpBinaryCode.cpp.o.requires
 
 .PHONY : CMakeFiles/dumpBinaryCode.dir/requires

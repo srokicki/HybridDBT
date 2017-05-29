@@ -10,10 +10,10 @@
 
 
 #include <types.h>
+#include <isa/irISA.h>
 
 // This define must be commented out to use the List Scheduler
 //#define __SCOREBOARD
-
 
 /**********************************************************************
  * 						Hardware version, using ac_float
@@ -542,7 +542,6 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
         }
 
         //after all stages has been filled, we commit the word
-        fprintf(stderr, "test %d\n", writeInBinaries);
 		binaries[writeInBinaries] = binariesWord.slc<128>(0);
 		binaries[writeInBinaries + 1] = binariesWord.slc<128>(128);
         writeInBinaries++;
@@ -662,7 +661,6 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 				if (issue_width > 4){
 					writeInBinaries++;
 				}
-				fprintf(stderr, "Correcting %d\n", jumpPlace);
 
 			}
 			binaries[writeInBinaries-2].set_slc(96,binaries[jumpPlace].slc<32>(96));
@@ -936,6 +934,13 @@ int irScheduler(DBTPlateform *platform, uint1 optLevel, uint8 basicBlockSize, ui
 		int6 numberFreeRegister, uint4 issue_width,
 		uintIW way_specialisation){
 
+	//TODO clean it
+
+#ifndef IR_SUCC
+	fprintf(stderr, "Error: trying to schedule backward IR: this is not handled yet\nExiting...\n");
+	exit(-1);
+#else
+
 	#ifndef __NIOS
 	return scheduling(optLevel, basicBlockSize, platform->bytecode, platform->vliwBinaries, addressInBinaries, platform->placeOfRegisters,
 			numberFreeRegister, platform->freeRegisters, issue_width, way_specialisation, platform->placeOfInstr);
@@ -944,6 +949,7 @@ int irScheduler(DBTPlateform *platform, uint1 optLevel, uint8 basicBlockSize, ui
 	unsigned int argB = issue_width + (way_specialisation << 4);
 	return ALT_CI_COMPONENT_SCHEDULING_0(argA, argB);
 	#endif
+#endif
 
 }
 

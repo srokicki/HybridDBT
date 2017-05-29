@@ -810,6 +810,42 @@ src/transformation/buildControlFlow.cpp.s:
 	$(MAKE) -f CMakeFiles/simMIPS.dir/build.make CMakeFiles/simMIPS.dir/src/transformation/buildControlFlow.cpp.s
 .PHONY : src/transformation/buildControlFlow.cpp.s
 
+src/transformation/buildTraces.o: src/transformation/buildTraces.cpp.o
+
+.PHONY : src/transformation/buildTraces.o
+
+# target to build an object file
+src/transformation/buildTraces.cpp.o:
+	$(MAKE) -f CMakeFiles/dbt.dir/build.make CMakeFiles/dbt.dir/src/transformation/buildTraces.cpp.o
+	$(MAKE) -f CMakeFiles/dumpBinaryCode.dir/build.make CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.o
+	$(MAKE) -f CMakeFiles/simRISCV.dir/build.make CMakeFiles/simRISCV.dir/src/transformation/buildTraces.cpp.o
+	$(MAKE) -f CMakeFiles/simMIPS.dir/build.make CMakeFiles/simMIPS.dir/src/transformation/buildTraces.cpp.o
+.PHONY : src/transformation/buildTraces.cpp.o
+
+src/transformation/buildTraces.i: src/transformation/buildTraces.cpp.i
+
+.PHONY : src/transformation/buildTraces.i
+
+# target to preprocess a source file
+src/transformation/buildTraces.cpp.i:
+	$(MAKE) -f CMakeFiles/dbt.dir/build.make CMakeFiles/dbt.dir/src/transformation/buildTraces.cpp.i
+	$(MAKE) -f CMakeFiles/dumpBinaryCode.dir/build.make CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.i
+	$(MAKE) -f CMakeFiles/simRISCV.dir/build.make CMakeFiles/simRISCV.dir/src/transformation/buildTraces.cpp.i
+	$(MAKE) -f CMakeFiles/simMIPS.dir/build.make CMakeFiles/simMIPS.dir/src/transformation/buildTraces.cpp.i
+.PHONY : src/transformation/buildTraces.cpp.i
+
+src/transformation/buildTraces.s: src/transformation/buildTraces.cpp.s
+
+.PHONY : src/transformation/buildTraces.s
+
+# target to generate assembly for a file
+src/transformation/buildTraces.cpp.s:
+	$(MAKE) -f CMakeFiles/dbt.dir/build.make CMakeFiles/dbt.dir/src/transformation/buildTraces.cpp.s
+	$(MAKE) -f CMakeFiles/dumpBinaryCode.dir/build.make CMakeFiles/dumpBinaryCode.dir/src/transformation/buildTraces.cpp.s
+	$(MAKE) -f CMakeFiles/simRISCV.dir/build.make CMakeFiles/simRISCV.dir/src/transformation/buildTraces.cpp.s
+	$(MAKE) -f CMakeFiles/simMIPS.dir/build.make CMakeFiles/simMIPS.dir/src/transformation/buildTraces.cpp.s
+.PHONY : src/transformation/buildTraces.cpp.s
+
 src/transformation/firstPassTranslator.o: src/transformation/firstPassTranslator.cpp.o
 
 .PHONY : src/transformation/firstPassTranslator.o
@@ -1095,6 +1131,9 @@ help:
 	@echo "... src/transformation/buildControlFlow.o"
 	@echo "... src/transformation/buildControlFlow.i"
 	@echo "... src/transformation/buildControlFlow.s"
+	@echo "... src/transformation/buildTraces.o"
+	@echo "... src/transformation/buildTraces.i"
+	@echo "... src/transformation/buildTraces.s"
 	@echo "... src/transformation/firstPassTranslator.o"
 	@echo "... src/transformation/firstPassTranslator.i"
 	@echo "... src/transformation/firstPassTranslator.s"
