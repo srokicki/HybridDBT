@@ -10,7 +10,7 @@
 
 
 #include <types.h>
-
+#include <isa/irISA.h>
 
 /**********************************************************************
  * 						Hardware version, using ac_float
