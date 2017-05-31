@@ -24,6 +24,11 @@ void writeInt(uint32* bytecode, int place, unsigned int value){
 	bytecode[(place>>2)/*+(3-(place&0x3))*/] = value;
 }
 
+void writeChar(uint32* bytecode, int place, unsigned char value){
+	uint8 value_ac = value;
+	bytecode[(place>>2)].set_slc(8*(3-(place & 0x3)), value_ac);
+}
+
 #ifndef __NIOS
 void writeInt(uint128* bytecode, int place, unsigned int value){
 
@@ -55,7 +60,11 @@ void writeInt(uint128* bytecode, int place, unsigned int value){
 
 uint32 readInt(uint32* bytecode, int place){
 	return bytecode[(place>>2)/*+(3-(place&0x3))*/];
+}
 
+uint8 readChar(uint32* bytecode, int place){
+	fprintf(stderr, "reading char : %x %d -> %u\n", bytecode[place>>2], 8*(3-(place & 0x3)), bytecode[(place>>2)].slc<8>(8*(3-(place & 0x3))));
+	return bytecode[(place>>2)].slc<8>(8*(3-(place & 0x3)));
 }
 
 #ifndef __NIOS

@@ -19,6 +19,7 @@
 
 void writeInt(uint8* bytecode, int place, unsigned int value);
 void writeInt(uint32* bytecode, int place, unsigned int value);
+void writeChar(uint32* bytecode, int place, unsigned char value);
 
 #ifndef __NIOS
 void writeInt(uint128* bytecode, int place, unsigned int value);
@@ -34,6 +35,7 @@ void writeInt(uint128* bytecode, int place, unsigned int value);
 
 uint32 readInt(uint8* bytecode, int place);
 uint32 readInt(uint32* bytecode, int place);
+uint8 readChar(uint32* bytecode, int place);
 
 #ifndef __NIOS
 uint32 readInt(uint128* bytecode, int place);
