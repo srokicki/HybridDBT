@@ -57,6 +57,7 @@ class VexSimulator : public GenericSimulator {
 	int cycle = 0;
 	ac_int<64, false> PC, NEXT_PC;
 	ac_int<4, false> issueWidth;
+	ac_int<1, false> cond;
 	ac_int<1, false> unitActivation[8];
 	ac_int<8, false> profileResult[64];
 

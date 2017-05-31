@@ -410,7 +410,9 @@ void VexSimulator::doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 			| (dctoEx.opCode == VEX_CMPLE)| (dctoEx.opCode == VEX_CMPLEi)
 			| (dctoEx.opCode == VEX_CMPLEU)| (dctoEx.opCode == VEX_CMPLEUi);
 
-
+	ac_int<1, false> selectCond = (dctoEx.opCode == VEX_STBc)
+					| (dctoEx.opCode == VEX_STHc)| (dctoEx.opCode == VEX_STWc)
+					| (dctoEx.opCode == VEX_STDc)| (dctoEx.opCode == VEX_SETc)| (dctoEx.opCode == VEX_SETFc);
 
 	ac_int<64, false> unsigned_dataa = dctoEx.dataa;
 	ac_int<64, false> unsigned_datab = dctoEx.datab;
@@ -485,6 +487,9 @@ void VexSimulator::doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 
 
 	extoMem->WBena = !(dctoEx.opCode == VEX_NOP); //TODO
+	if ((dctoEx.opCode == VEX_SETc & !dctoEx.datab) || (dctoEx.opCode == VEX_SETFc & dctoEx.datab))
+		extoMem->WBena = 0;
+
 	extoMem->datac = dctoEx.datac;
 	extoMem->dest = dctoEx.dest;
 	extoMem->opCode = dctoEx.opCode;
@@ -533,7 +538,9 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 			| (dctoEx.opCode == VEX_CMPLE)| (dctoEx.opCode == VEX_CMPLEi)
 			| (dctoEx.opCode == VEX_CMPLEU)| (dctoEx.opCode == VEX_CMPLEUi);
 
-
+	ac_int<1, false> selectCond = (dctoEx.opCode == VEX_STBc)
+					| (dctoEx.opCode == VEX_STHc)| (dctoEx.opCode == VEX_STWc)
+					| (dctoEx.opCode == VEX_STDc)| (dctoEx.opCode == VEX_SETc)| (dctoEx.opCode == VEX_SETFc);
 
 	ac_int<64, false> unsigned_dataa = dctoEx.dataa;
 	ac_int<64, false> unsigned_datab = dctoEx.datab;
@@ -644,6 +651,9 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 
 
 	extoMem->WBena = !(dctoEx.opCode == VEX_NOP); //TODO
+	if ((dctoEx.opCode == VEX_SETc & !dctoEx.datab) || (dctoEx.opCode == VEX_SETFc & dctoEx.datab))
+		extoMem->WBena = 0;
+
 	extoMem->datac = dctoEx.datac;
 	extoMem->dest = dctoEx.dest;
 	extoMem->opCode = dctoEx.opCode;
@@ -925,6 +935,18 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 				NEXT_PC = REG[63];
 
 				break; // RETURN
+			case VEX_SETCOND:
+				if(regValueA)
+					cond=1;
+				else
+					cond=0;
+			break;
+			case VEX_SETCONDF:
+				if(!regValueA)
+					cond=1;
+				else
+					cond=0;
+			break;
 
 #ifndef __CATAPULT
 			case VEX_RECONFFS:
@@ -1164,8 +1186,10 @@ int VexSimulator::doStep(){
 
 	// DISPLAY
 
+
+
 #ifndef __CATAPULT
-	if (debugLevel >= 1){
+	if (debugLevel >= 1 || cycle > 53000000){
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
 		std::cerr << printDecodedInstr(ftoDC1.instruction);
 		std::cerr << ";";
