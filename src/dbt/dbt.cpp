@@ -17,6 +17,7 @@
 #include <transformation/buildControlFlow.h>
 #include <transformation/reconfigureVLIW.h>
 #include <transformation/buildTraces.h>
+#include <transformation/rescheduleProcedure.h>
 
 #include <lib/debugFunctions.h>
 
@@ -497,18 +498,19 @@ int main(int argc, char *argv[])
 
 			if (OPTLEVEL >= 1 && profileResult > 10 && block->blockState < IRBLOCK_STATE_SCHEDULED){
 				optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
-				scheduleCounter++;
 			}
 
 
-				if (OPTLEVEL >= 2 && profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
+				if (scheduleCounter < 1 && OPTLEVEL >= 2 && profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
 
-					fprintf(stderr, "Block from %d to %d is eligible advanced control flow building\n", block->vliwStartAddress, block->vliwEndAddress);
+					fprintf(stderr, "[%d] Block from %d to %d is eligible advanced control flow building\n",dbtPlateform.vexSimulator->cycle, block->vliwStartAddress, block->vliwEndAddress);
 					buildAdvancedControlFlow(&dbtPlateform, block, &application);
-					block->blockState = IRBLOCK_STATE_RECONF;
+					block->blockState = IRBLOCK_PROC;
 					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
-					//placeCode = reconfigureVLIW(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
-
+					placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
+//					placeCode = reconfigureVLIW(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
+//					dbtPlateform.vexSimulator->debugLevel = 1;
+					scheduleCounter++;
 				}
 		}
 
