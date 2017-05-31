@@ -190,6 +190,11 @@ IRBlock::IRBlock(int startAddress, int endAddress, int section){
 	this->nbSucc = -1;
 	this->section = section;
 	this->nbInstr = 0;
+	this->jumpID=-1;
+}
+
+IRBlock::~IRBlock(){
+	free(this->instructions);
 }
 
 IRApplication::IRApplication(int numberSections){
@@ -289,7 +294,7 @@ char getOperands(uint32 *bytecode, char index, short result[2]){
 	unsigned char shiftedOpcode = opcode>>4;
 
 	char isNop = (opcode == 0);
-	char isArith2 = (shiftedOpcode == 4 || shiftedOpcode == 5 || shiftedOpcode == 0);
+	char isArith2 = (shiftedOpcode == 4 || shiftedOpcode == 5 || shiftedOpcode == 0 || shiftedOpcode == 3);
 	char isLoad = (opcode>>3) == 0x2;
 	char isStore = (opcode>>3) == 0x3;
 	char isArith1 = (shiftedOpcode == 6 || shiftedOpcode == 7);
@@ -317,6 +322,50 @@ char getOperands(uint32 *bytecode, char index, short result[2]){
 	}
 	else
 		return 0;
+}
+
+void setOperands(uint32 *bytecode, char index, short operands[2]){
+	//This function returns the number of register operand used by the bytecode instruction
+
+	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
+	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
+
+	short virtualRDest = ((bytecodeWord64>>14) & 0x1ff);
+	short virtualRIn2 = ((bytecodeWord64>>23) & 0x1ff);
+	short virtualRIn1 = ((bytecodeWord96>>0) & 0x1ff);
+
+	unsigned char opcode = (bytecodeWord96>>19) & 0x7f;
+	unsigned char shiftedOpcode = opcode>>4;
+
+	char isNop = (opcode == 0);
+	char isArith2 = (shiftedOpcode == 4 || shiftedOpcode == 5 || shiftedOpcode == 0 || shiftedOpcode == 3);
+	char isLoad = (opcode>>3) == 0x2;
+	char isStore = (opcode>>3) == 0x3;
+	char isArith1 = (shiftedOpcode == 6 || shiftedOpcode == 7);
+	char isBranchWithReg = (opcode == VEX_BR) || (opcode == VEX_BRF) ||(opcode == VEX_CALLR) ||(opcode == VEX_GOTOR);
+
+	if (isNop){
+
+	}
+	else if (isArith2){
+		bytecodeWord96 = (bytecodeWord96 & ~0x1ff) | (operands[0] & 0x1ff);//in1
+		bytecodeWord64 = (bytecodeWord64 & ~(0x1ff<<23)) | ((operands[1] & 0x1ff)<<23);//in2
+		writeInt(bytecode, index*16+4, bytecodeWord64);
+		writeInt(bytecode, index*16+0, bytecodeWord96);
+	}
+	else if (isStore){
+		bytecodeWord64 = (bytecodeWord64 & ~(0x1ff<<23)) | ((operands[0] & 0x1ff)<<23);//in2
+		bytecodeWord64 = (bytecodeWord64 & ~(0x1ff<<14)) | ((operands[1] & 0x1ff)<<14); //dest
+		writeInt(bytecode, index*16+4, bytecodeWord64);
+	}
+	else if (isArith1 || isLoad){
+		bytecodeWord64 = (bytecodeWord64 & ~(0x1ff<<23)) | ((operands[0] & 0x1ff)<<23);//in2
+		writeInt(bytecode, index*16+4, bytecodeWord64);
+	}
+	else if (isBranchWithReg){
+		bytecodeWord64 = (bytecodeWord64 & ~(0x1ff<<14)) | ((operands[0] & 0x1ff)<<14); //dest
+		writeInt(bytecode, index*16+4, bytecodeWord64);
+	}
 }
 
 void setDestinationRegister(uint32 *bytecode, char index, short newDestinationRegister){
@@ -390,3 +439,24 @@ void addControlDep(uint32 *bytecode, char index, char successor){
 	succBytecodeWord64 += 0x40; //Plus one at the field located at an offset of 6 bits
 	writeInt(bytecode, successor*16+4, succBytecodeWord64);
 }
+
+void addOffsetToDep(uint32 *bytecode, char index, char offset){
+	unsigned int bytecodeWord0 = readInt(bytecode, index*16+12);
+	unsigned int bytecodeWord32 = readInt(bytecode, index*16+8);
+	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
+
+	char nbDSucc = ((bytecodeWord64>>3) & 7);
+	char nbSucc = ((bytecodeWord64>>0) & 7);
+	char nbCSucc = nbSucc - nbDSucc;
+
+	for (int oneDep = 0; oneDep < nbDSucc; oneDep++){
+		char oldDep = readChar(bytecode, index*16+9+oneDep);
+		writeChar(bytecode, index*16+9+oneDep, oldDep+offset);
+	}
+
+	for (int oneDep = 6; oneDep > 6-nbCSucc; oneDep--){
+		char oldDep = readChar(bytecode, index*16+9+oneDep);
+		writeChar(bytecode, index*16+9+oneDep, oldDep+offset);
+	}
+}
+

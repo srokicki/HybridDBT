@@ -21,7 +21,7 @@
  *
  *******************************************************************/
 
-#define IR_SUCC
+//#define IR_SUCC
 
 
 
@@ -69,11 +69,13 @@ public:
 	int section;
 	unsigned int blockState;		//A value to store its state (optimized/translated or other things like that)
 	char nbSucc;
+	short jumpID;
+	unsigned int jumpPlace;
 	IRBlock* successor1;
 	IRBlock* successor2;
 
 	IRBlock(int startAddress, int endAddress, int section);
-
+	~IRBlock();
 };
 
 /* Definition of different states possible for the IRBlock:
@@ -85,7 +87,9 @@ public:
 #define IRBLOCK_STATE_FIRSTPASS 0
 #define IRBLOCK_STATE_PROFILED 1
 #define IRBLOCK_STATE_SCHEDULED 2
-#define IRBLOCK_STATE_RECONF 3
+#define IRBLOCK_PROC 3
+
+#define IRBLOCK_STATE_RECONF 4
 
 class IRApplication{
 public:
@@ -152,6 +156,8 @@ void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instr
 
 short getDestinationRegister(uint32 *bytecode, char index);
 char getOperands(uint32 *bytecode, char index, short result[2]);
+void setOperands(uint32 *bytecode, char index, short operands[2]);
+
 char getOpcode(uint32 *bytecode, char index);
 void setOpcode(uint32 *bytecode, char index, char newOpcode);
 
@@ -159,6 +165,6 @@ void setDestinationRegister(uint32 *bytecode, char index, short newDestinationRe
 void setAlloc(uint32 *bytecode, char index, char newAlloc);
 void addDataDep(uint32 *bytecode, char index, char successor);
 void addControlDep(uint32 *bytecode, char index, char successor);
-
+void addOffsetToDep(uint32 *bytecode, char index, char offset);
 
 #endif /* INCLUDES_ISA_IRISA_H_ */
