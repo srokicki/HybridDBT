@@ -1040,7 +1040,7 @@ int irGenerator(unsigned char* code, unsigned int *size, unsigned int addressSta
 #ifndef __NIOS
 
 #define FIRST_RENAME 10
-#define LAST_RENAME 10
+#define LAST_RENAME 20
 
 /* Global values */
 uint1 isOutsideNext = 0;
@@ -1112,7 +1112,9 @@ inline unsigned int writePredecessor_ac(ac_int<128, false> bytecode[1024], ac_in
 
 	//We load the bytecode word of the predecessor in order to increment the number of successor
 	ac_int<128, false> oneBytecodeInstruction = (writeSucc_lastAddr == srcInstr) ? writeSucc_lastValue : bytecode[srcInstr];
-	ac_int<8, false> nbDep = oneBytecodeInstruction.slc<8>(64+6) + 1;
+	ac_int<8, false> nbDep = oneBytecodeInstruction.slc<8>(64+6);
+	if (isData)
+		nbDep++;
 	oneBytecodeInstruction.set_slc(64+6, nbDep);
 
 	//Then we get the nbSucc and nbDSucc of the current bytecode word in order to add the new dep
@@ -1855,7 +1857,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 		 */
 
 		//Addint dependencies to the jump
-		if (haveJump &&  bytecode[jumpID].slc<7>(96+19) == VEX_CALL){
+		if (haveJump/* &&  bytecode[jumpID].slc<7>(96+19) == VEX_CALL*/){
 			ac_int<128, false> jumpBytecodeWord = bytecode[jumpID];
 			ac_int<8, false> numberDependencies = jumpBytecodeWord.slc<8>(64+6);
 

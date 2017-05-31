@@ -667,7 +667,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 			}
 		}
 		ac_int<32, false> const0 = 0;
-		binaries[jumpPlace].set_slc(96, const0);
+		//binaries[jumpPlace].set_slc(96, const0);
 	}
 
     return writeInBinaries-addressInBinaries;

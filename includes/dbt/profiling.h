@@ -38,6 +38,7 @@ public:
 	 * to the dedicated procedure, which was inserted by procedure insertProfilingProcedure
 	 */
 	void profileBlock(IRBlock *oneBlock);
+	void unprofileBlock(int ID);
 
 };
 

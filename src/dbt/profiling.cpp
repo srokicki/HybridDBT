@@ -188,6 +188,11 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 */
 }
 
+void Profiler::unprofileBlock(int ID){
+	profiledBlocks[ID] = NULL;
+}
+
+
 int Profiler::getNumberProfiledBlocks(){
 	return numberProfiledBlocks;
 }
@@ -195,7 +200,8 @@ int Profiler::getNumberProfiledBlocks(){
 int Profiler::getProfilingInformation(int ID){
 	#ifndef __NIOS
 
-	return this->platform->vexSimulator->profileResult[ID];
+	if (profiledBlocks[ID] != NULL)
+		return this->platform->vexSimulator->profileResult[ID];
 	//return this->platform->vexSimulator->ldw(0x8000000 + ID*4);
 	#else
 	return this->platform->vliwDataMemory[0];
