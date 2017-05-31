@@ -106,6 +106,7 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 	int numberBlockToStudy = 1;
 	blocksToStudy[0] = startBlock;
 	IRBlock *entryBlock = startBlock;
+	int indexEntryBlock = 0;
 
 	IRBlock *blockInProcedure[TEMP_PROCEDURE_STORAGE_SIZE];
 	int numberBlockInProcedure = 0;
@@ -166,9 +167,11 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 			numberBlockToStudy += 2;
 
 
-			//We actualize if needed the entryBlock
-			if (entryBlock == currentBlock->successor1 || entryBlock == currentBlock->successor2)
+			//We actualize if needed the entryBlock TODO:check this
+			if (entryBlock->vliwStartAddress > currentBlock->vliwStartAddress){
 				entryBlock = currentBlock;
+				indexEntryBlock = numberBlockInProcedure;
+			}
 
 
 		}
@@ -199,9 +202,11 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 			numberBlockToStudy++;
 
 
-			//We actualize if needed the entryBlock
-			if (entryBlock == currentBlock->successor1)
+			//We actualize if needed the entryBlock TODO:check this
+			if (entryBlock->vliwStartAddress > currentBlock->vliwStartAddress){
 				entryBlock = currentBlock;
+				indexEntryBlock = numberBlockInProcedure;
+			}
 
 		}
 		else if (((jumpInstruction & 0x7f) != VEX_CALL) && ((jumpInstruction & 0x7f) != VEX_CALLR) && ((jumpInstruction & 0x7f) != VEX_GOTOR) && ((jumpInstruction & 0x7f) != VEX_STOP)){
@@ -227,22 +232,30 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 			numberBlockToStudy++;
 
 
-			//We actualize if needed the entryBlock
-			if (entryBlock == currentBlock->successor1)
+			//We actualize if needed the entryBlock TODO:check this
+			if (entryBlock->vliwStartAddress > currentBlock->vliwStartAddress){
 				entryBlock = currentBlock;
+				indexEntryBlock = numberBlockInProcedure;
+			}
 
 		}
 		else{
+			//We actualize if needed the entryBlock TODO:check this
+			if (entryBlock->vliwStartAddress > currentBlock->vliwStartAddress){
+				entryBlock = currentBlock;
+				indexEntryBlock = numberBlockInProcedure;
+			}
 			currentBlock->nbSucc = 0;
 		}
 	}
+
 
 	//We instanciate the procedure
 	IRProcedure *procedure = new IRProcedure(entryBlock, numberBlockInProcedure);
 	procedure->blocks = (IRBlock**) malloc(numberBlockInProcedure * sizeof(IRBlock*));
 
 	memcpy(procedure->blocks, blockInProcedure, numberBlockInProcedure * sizeof(IRBlock*));
-
+	procedure->entryBlock = procedure->blocks[indexEntryBlock];
 	application->addProcedure(procedure);
 
 
@@ -263,6 +276,8 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 
 			int blockSize = irGenerator(platform, block->vliwStartAddress, originalScheduleSize, globalVariableCounter);
 
+
+
 			fprintf(stderr, "analysis returned a block of %d instr for block from %d to %d (size %d)\n", blockSize, block->vliwStartAddress, block->vliwEndAddress, originalScheduleSize);
 			block->instructions = (uint32*) malloc(blockSize*4*sizeof(uint32));
 			for (int oneBytecodeInstr = 0; oneBytecodeInstr<blockSize; oneBytecodeInstr++){
@@ -272,12 +287,19 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 				block->instructions[4*oneBytecodeInstr + 3] = readInt(platform->bytecode, 16*oneBytecodeInstr + 12);
 			}
 
+			//We check if we find a jump as last instruction
+			char opcodeOfLastInstr = getOpcode(block->instructions, blockSize-1);
+			if ((opcodeOfLastInstr >> 4) == 2 && opcodeOfLastInstr != VEX_MOVI && opcodeOfLastInstr != VEX_SETCOND && opcodeOfLastInstr != VEX_SETCONDF){
+				block->jumpID = blockSize-1;
+			}
+
 			block->nbInstr = blockSize;
+			block->blockState = IRBLOCK_PROC;
 		}
 	}
 
 	procedure->print();
-
+	fprintf(stderr, "Procedure entry point was %d\n", procedure->entryBlock->vliwStartAddress);
 
 	fprintf(stderr, "Analysis done ! \n");
 
