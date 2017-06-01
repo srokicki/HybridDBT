@@ -699,334 +699,325 @@ ac_int<16, false> instructionsStages[256];
 
 // Stages windows
 ac_int<32, true> stageWindow[STAGE_NUMBER][WINDOW_SIZE]
-  = { { -1,-1,-1,-1 }
-    , { -1,-1,-1,-1 }
-    , { -1,-1,-1,-1 }
-    , { -1,-1,-1,-1 } };
+	= { { -1,-1,-1,-1 }
+		, { -1,-1,-1,-1 }
+		, { -1,-1,-1,-1 }
+		, { -1,-1,-1,-1 } };
 
 // Stages types
 ac_int<3, false> stages[STAGE_NUMBER] = { 0, 3, 1, 2 };
 
 ac_int<2, false> getType(ac_int<50, false> instruction) {
-  return instruction.slc<2>(30+18);
+	return instruction.slc<2>(30+18);
 }
 
 ac_int<32, false> scheduling(
-  ac_int<1, false> optLevel,
-  ac_int<8, false> basicBlockSize,
-  ac_int<128, false> bytecode[256],
-  ac_int<128, false> binaries[1024],
-  ac_int<16, false> addressInBinaries,
-  ac_int<6, false> placeOfRegisters[512],
-  ac_int<6, false> numberFreeRegister,
-  ac_int<6, false> freeRegisters[64],
-  ac_int<4, false> issue_width,
-  ac_int<MAX_ISSUE_WIDTH * 2, false> way_specialisation,
-  ac_int<32, false> placeOfInstr[256]
+	ac_int<1, false> optLevel,
+	ac_int<8, false> basicBlockSize,
+	ac_int<128, false> bytecode[256],
+	ac_int<128, false> binaries[1024],
+	ac_int<16, false> addressInBinaries,
+	ac_int<6, false> placeOfRegisters[512],
+	ac_int<6, false> numberFreeRegister,
+	ac_int<6, false> freeRegisters[64],
+	ac_int<4, false> issue_width,
+	ac_int<MAX_ISSUE_WIDTH * 2, false> way_specialisation,
+	ac_int<32, false> placeOfInstr[256]
 ){
-  //**************************************************************
-  // Local Variables
-  //**************************************************************
- 
-  ac_int<1, false> haveJump = 0;
-  ac_int<32, false> jumpPlace;
+	//**************************************************************
+	// Local Variables
+	//**************************************************************
 
-  //**************************************************************
-  // Reset the scheduler's state
-  //**************************************************************
+	ac_int<1, false> haveJump = 0;
+	ac_int<32, false> jumpPlace;
 
-  for (ac_int<STAGE_NUMBER_L2+1, false> stageId = 0; stageId < STAGE_NUMBER; ++stageId) {
+	//**************************************************************
+	// Reset the scheduler's state
+	//**************************************************************
 
-      for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
-          ; windowOffset < WINDOW_SIZE; ++windowOffset) {
-              stageWindow[stageId][windowOffset] = -1;
-      } // for windowOffset
-  } // for stageId
+	for (ac_int<STAGE_NUMBER_L2+1, false> stageId = 0; stageId < STAGE_NUMBER; ++stageId) {
+
+			for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
+					; windowOffset < WINDOW_SIZE; ++windowOffset) {
+							stageWindow[stageId][windowOffset] = -1;
+			} // for windowOffset
+	} // for stageId
 
 
-  ac_int<8, false> instructionId = 0;
-  ac_int<16, false> windowPosition = addressInBinaries;
-  while (instructionId < basicBlockSize) {
-    ac_int<128, false> bytecode_word = bytecode[instructionId];
-    ac_int<32, false> bytecode_word1 = bytecode_word.slc<32>(96);
-    ac_int<32, false> bytecode_word2 = bytecode_word.slc<32>(64);    			
+	ac_int<8, false> instructionId = 0;
+	ac_int<16, false> windowPosition = addressInBinaries;
+	while (instructionId < basicBlockSize) {
+		ac_int<128, false> bytecode_word = bytecode[instructionId];
+		ac_int<32, false> bytecode_word1 = bytecode_word.slc<32>(96);
+		ac_int<32, false> bytecode_word2 = bytecode_word.slc<32>(64);
 
-    ac_int<32, false> bytecode_word3 = bytecode_word.slc<32>(32);
-    ac_int<32, false> bytecode_word4 = bytecode_word.slc<32>(0);
+		ac_int<32, false> bytecode_word3 = bytecode_word.slc<32>(32);
+		ac_int<32, false> bytecode_word4 = bytecode_word.slc<32>(0);
 
-    //
-    // REMINDER: This is how you decompose the IR into an instruction and
-    // its dependencies
-    //
+		//
+		//
+		//
 
-    ac_int<50, false> instruction = 0;
-    instruction.set_slc(18, bytecode_word1);
-    instruction.set_slc(0, bytecode_word2.slc<18>(14));
-    instructions[instructionId] = instruction;
+		ac_int<50, false> instruction = 0;
+		instruction.set_slc(18, bytecode_word1);
+		instruction.set_slc(0, bytecode_word2.slc<18>(14));
+		instructions[instructionId] = instruction;
 
-    // Type of Functional Unit needed by this instruction
-    ac_int<2, false> unitType = getType(instruction);
+		// Type of Functional Unit needed by this instruction
+		ac_int<2, false> unitType = getType(instruction);
 
-    // We split different information from the instruction
-    ac_int<2, false> typeCode = instruction.slc<2>(46);
-    ac_int<1, false> alloc = instruction[45];
-    ac_int<1, false> allocBr = instruction[44];
-    ac_int<7, false> opCode = instruction.slc<7>(37);
-    ac_int<1, false> isImm = instruction[36];
-    ac_int<1, false> isBr = instruction[35];
-    ac_int<9, false> virtualRDest = instruction.slc<9>(0);
-    ac_int<9, false> virtualRIn2 = instruction.slc<9>(9);
-    ac_int<9, false> virtualRIn1_imm9 = instruction.slc<9>(18);
-    ac_int<13, false> imm13 = instruction.slc<13>(18); //TODO
-    ac_int<19, false> imm19 = instruction.slc<19>(9);
-    ac_int<9, false> brCode = instruction.slc<9>(27);
+		// We split different information from the instruction
+		ac_int<2, false> typeCode = instruction.slc<2>(46);
+		ac_int<1, false> alloc = instruction[45];
+		ac_int<1, false> allocBr = instruction[44];
+		ac_int<7, false> opCode = instruction.slc<7>(37);
+		ac_int<1, false> isImm = instruction[36];
+		ac_int<1, false> isBr = instruction[35];
+		ac_int<9, false> virtualRDest = instruction.slc<9>(0);
+		ac_int<9, false> virtualRIn2 = instruction.slc<9>(9);
+		ac_int<9, false> virtualRIn1_imm9 = instruction.slc<9>(18);
+		ac_int<13, false> imm13 = instruction.slc<13>(18); //TODO
+		ac_int<19, false> imm19 = instruction.slc<19>(9);
+		ac_int<9, false> brCode = instruction.slc<9>(27);
 
-    // Find the earliest place which avoids RAW, WAR, or WAW conflicts
-    ac_int<1, false> found = false;
-    ac_int<32, false> earliest_place = 0;
+		// Find the earliest place which avoids RAW, WAR, or WAW conflicts
+		ac_int<1, false> found = false;
+		ac_int<32, false> earliest_place = 0;
 
-    // Depending on the dependency and the pipeline stages,
-    // some offset must be added:
-    //
-    // Pipeline stages : DC RD EX WR
-    //                      DC RD EX WR
-    //                         DC RD EX WR
-    //                            DC RD EX WR
-    //
 #define max(x,y) (x>y) ? x : y
 
-    ac_int<3, false> nbDataDeps    = bytecode_word2.slc<3>(3);
-    ac_int<3, false> nbNonDataDeps = bytecode_word2.slc<3>(0) - nbDataDeps;
-    ac_int<8, false> deps[7];
-    deps[0] = bytecode_word3.slc<8>(16);
-    deps[1] = bytecode_word3.slc<8>(8);
-    deps[2] = bytecode_word3.slc<8>(0);
-    deps[3] = bytecode_word4.slc<8>(24);
-    deps[4] = bytecode_word4.slc<8>(16);
-    deps[5] = bytecode_word4.slc<8>(8);
-    deps[6] = bytecode_word4.slc<8>(0);
+		ac_int<3, false> nbDataDeps    = bytecode_word2.slc<3>(3);
+		ac_int<3, false> nbNonDataDeps = bytecode_word2.slc<3>(0) - nbDataDeps;
+		ac_int<8, false> deps[7];
+		deps[0] = bytecode_word3.slc<8>(16);
+		deps[1] = bytecode_word3.slc<8>(8);
+		deps[2] = bytecode_word3.slc<8>(0);
+		deps[3] = bytecode_word4.slc<8>(24);
+		deps[4] = bytecode_word4.slc<8>(16);
+		deps[5] = bytecode_word4.slc<8>(8);
+		deps[6] = bytecode_word4.slc<8>(0);
 
-    // Finding RAW dependences
-    for (ac_int<3, false> i = 0; i < nbDataDeps; ++i) {
-      ac_int<2, false> gap = (instructionsStages[deps[i]] == 0 || 
-                              instructionsStages[deps[i]] == 3) ? 2 : 3;
-      earliest_place = max(earliest_place, (ac_int<32,false>(instructionsAddresses[deps[i]]+gap)));
-    }
-    
-    // Finding non-raw dependencies
-    for (ac_int<3, false> i = 0; i < nbNonDataDeps; ++i) {
-      earliest_place = max(earliest_place, (ac_int<32,false>(instructionsAddresses[deps[6-i]]+1)));
-    }
+		// Finding RAW dependences
+		for (ac_int<3, false> i = 0; i < nbDataDeps; ++i) {
+			ac_int<2, false> gap = (instructionsStages[deps[i]] == 0 ||
+															instructionsStages[deps[i]] == 3) ? 2 : 3;
+			earliest_place = max(earliest_place, (ac_int<32,false>(instructionsAddresses[deps[i]]+gap)));
+		}
 
-    // Finding an empty place in the window
-    auto bestWindowOffset = WINDOW_SIZE;
-    ac_int<STAGE_NUMBER_L2+1, false> bestStageId;
-    // Find the earliest place in the current window
-    for (ac_int<STAGE_NUMBER_L2+1, false> _stageId = 0; _stageId < STAGE_NUMBER; ++_stageId) {
-      auto stageId = stages[_stageId];
-      auto stageType = way_specialisation.slc<2>(stageId << 1);
-      if (unitType == stageType || unitType == 2) {
-        for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
-            ; windowOffset < WINDOW_SIZE; ++windowOffset) {
+		// Finding non-raw dependencies
+		for (ac_int<3, false> i = 0; i < nbNonDataDeps; ++i) {
+			earliest_place = max(earliest_place, (ac_int<32,false>(instructionsAddresses[deps[6-i]]+1)));
+		}
 
-          if (stageWindow[stageId][windowOffset] == -1) {
-            if (windowPosition+windowOffset >= earliest_place
-                && windowOffset < bestWindowOffset) {
-              bestWindowOffset = windowOffset;
-              bestStageId = stageId;
-              found = true;
-            }
-          }
-        } // for windowOffset
-      }
-    } // for stageId
+		// Finding an empty place in the window
+		auto bestWindowOffset = WINDOW_SIZE;
+		ac_int<STAGE_NUMBER_L2+1, false> bestStageId;
+		// Find the earliest place in the current window
+		for (ac_int<STAGE_NUMBER_L2+1, false> _stageId = 0; _stageId < STAGE_NUMBER; ++_stageId) {
+			auto stageId = stages[_stageId];
+			auto stageType = way_specialisation.slc<2>(stageId << 1);
+			if (unitType == stageType || unitType == 2) {
+				for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
+						; windowOffset < WINDOW_SIZE; ++windowOffset) {
+
+					if (stageWindow[stageId][windowOffset] == -1) {
+						if (windowPosition+windowOffset >= earliest_place
+								&& windowOffset < bestWindowOffset) {
+							bestWindowOffset = windowOffset;
+							bestStageId = stageId;
+							found = true;
+						}
+					}
+				} // for windowOffset
+			}
+		} // for stageId
 #undef max
 
-    // Whenever the instruction doesn't fit:
-    // - write all instructions of the window
-    // - shift the window
-    if (!found) {
-      for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
-          ; windowOffset < WINDOW_SIZE; ++windowOffset) {
+		// Whenever the instruction doesn't fit:
+		// - write all instructions of the window
+		// - shift the window
+		if (!found) {
+			for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
+					; windowOffset < WINDOW_SIZE; ++windowOffset) {
 
-          ac_int<256, false> binariesWord;
+					ac_int<256, false> binariesWord;
 
-        for (ac_int<STAGE_NUMBER_L2+1, false> _stageId = 0
-            ; _stageId < STAGE_NUMBER; ++_stageId) {
-          auto stageId = _stageId; // was stages[_stageId]  before
-            if (stageWindow[stageId][windowOffset] != -1) {
-              auto iId = stageWindow[stageId][windowOffset];
-              ac_int<50, false> instruction = instructions[iId];
+				for (ac_int<STAGE_NUMBER_L2+1, false> _stageId = 0
+						; _stageId < STAGE_NUMBER; ++_stageId) {
+					auto stageId = _stageId; // was stages[_stageId]  before
+						if (stageWindow[stageId][windowOffset] != -1) {
+							auto iId = stageWindow[stageId][windowOffset];
+							ac_int<50, false> instruction = instructions[iId];
 
-              // Type of Functional Unit needed by this instruction
-              ac_int<2, false> unitType = getType(instruction);
+							// Type of Functional Unit needed by this instruction
+							ac_int<2, false> unitType = getType(instruction);
 
-              // We split different information from the instruction
-              ac_int<2, false> typeCode = instruction.slc<2>(46);
-              ac_int<1, false> alloc = instruction[45];
-              ac_int<1, false> allocBr = instruction[44];
-              ac_int<7, false> opCode = instruction.slc<7>(37);
-              ac_int<1, false> isImm = instruction[36];
-              ac_int<1, false> isBr = instruction[35];
-              ac_int<9, false> virtualRDest = instruction.slc<9>(0);
-              ac_int<9, false> virtualRIn2 = instruction.slc<9>(9);
-              ac_int<9, false> virtualRIn1_imm9 = instruction.slc<9>(18);
-              ac_int<13, false> imm13 = instruction.slc<13>(18); //TODO
-              ac_int<19, false> imm19 = instruction.slc<19>(9);
-              ac_int<9, false> brCode = instruction.slc<9>(27);
+							// We split different information from the instruction
+							ac_int<2, false> typeCode = instruction.slc<2>(46);
+							ac_int<1, false> alloc = instruction[45];
+							ac_int<1, false> allocBr = instruction[44];
+							ac_int<7, false> opCode = instruction.slc<7>(37);
+							ac_int<1, false> isImm = instruction[36];
+							ac_int<1, false> isBr = instruction[35];
+							ac_int<9, false> virtualRDest = instruction.slc<9>(0);
+							ac_int<9, false> virtualRIn2 = instruction.slc<9>(9);
+							ac_int<9, false> virtualRIn1_imm9 = instruction.slc<9>(18);
+							ac_int<13, false> imm13 = instruction.slc<13>(18); //TODO
+							ac_int<19, false> imm19 = instruction.slc<19>(9);
+							ac_int<9, false> brCode = instruction.slc<9>(27);
 
-              //***************************************
-              //We generate the instruction
-              ac_int<32, false> generatedInstruction;
-              generatedInstruction.set_slc(0, opCode);
-              generatedInstruction.set_slc(26, placeOfRegisters[virtualRIn2]);
+							//***************************************
+							//We generate the instruction
+							ac_int<32, false> generatedInstruction;
+							generatedInstruction.set_slc(0, opCode);
+							generatedInstruction.set_slc(26, placeOfRegisters[virtualRIn2]);
 
-              if (typeCode == 0) { //The instruction is R type
+							if (typeCode == 0) { //The instruction is R type
 
-                if (isImm) {
-                  generatedInstruction.set_slc(7, imm13);
-                  generatedInstruction.set_slc(20, placeOfRegisters[virtualRDest]);
-                  placeOfRegisters[iId] = placeOfRegisters[virtualRDest];
-                }
-                else{
-                  generatedInstruction.set_slc(14, placeOfRegisters[virtualRDest]);
-                  generatedInstruction.set_slc(20, placeOfRegisters[virtualRIn1_imm9]);
-                  placeOfRegisters[iId] = placeOfRegisters[virtualRDest];
-                }
-              }
-              else { //The instruction is I Type
-                if (opCode == 0x28) {
-                  generatedInstruction.set_slc(26, placeOfRegisters[virtualRDest]);
-                  placeOfRegisters[iId] = placeOfRegisters[virtualRDest];
-                }
-                else{
-                  generatedInstruction.set_slc(26, placeOfRegisters[virtualRDest]);
-                  placeOfRegisters[iId] = placeOfRegisters[virtualRDest];
-                }
-                generatedInstruction.set_slc(7, imm19);
-              }
+								if (isImm) {
+									generatedInstruction.set_slc(7, imm13);
+									generatedInstruction.set_slc(20, placeOfRegisters[virtualRDest]);
+									placeOfRegisters[iId] = placeOfRegisters[virtualRDest];
+								}
+								else{
+									generatedInstruction.set_slc(14, placeOfRegisters[virtualRDest]);
+									generatedInstruction.set_slc(20, placeOfRegisters[virtualRIn1_imm9]);
+									placeOfRegisters[iId] = placeOfRegisters[virtualRDest];
+								}
+							}
+							else { //The instruction is I Type
+								if (opCode == 0x28) {
+									generatedInstruction.set_slc(26, placeOfRegisters[virtualRDest]);
+									placeOfRegisters[iId] = placeOfRegisters[virtualRDest];
+								}
+								else{
+									generatedInstruction.set_slc(26, placeOfRegisters[virtualRDest]);
+									placeOfRegisters[iId] = placeOfRegisters[virtualRDest];
+								}
+								generatedInstruction.set_slc(7, imm19);
+							}
 
-              placeOfInstr[stageWindow[stageId][windowOffset]] = windowPosition + windowOffset;
-              binariesWord.set_slc(stageId*32, generatedInstruction);
-            } else { binariesWord.set_slc(stageId*32, ac_int<32,false>(0)); }
-            //after all stages has been filled, we commit the word
-            binaries[ac_int<32, false>(windowPosition + windowOffset)]     = binariesWord.slc<128>(0);
-            stageWindow[stageId][windowOffset] = -1;
-          } // for stageId
-        } // for windowOffset
+							placeOfInstr[stageWindow[stageId][windowOffset]] = windowPosition + windowOffset;
+							binariesWord.set_slc(stageId*32, generatedInstruction);
+						} else { binariesWord.set_slc(stageId*32, ac_int<32,false>(0)); }
+						//after all stages has been filled, we commit the word
+						binaries[ac_int<32, false>(windowPosition + windowOffset)]     = binariesWord.slc<128>(0);
+						stageWindow[stageId][windowOffset] = -1;
+					} // for stageId
+				} // for windowOffset
 
-        windowPosition += WINDOW_SIZE;
-    } else { // if (!found)
+				windowPosition += WINDOW_SIZE;
+		} else { // if (!found)
 
-      instructionsAddresses[instructionId] = bestWindowOffset+windowPosition;
-      instructionsStages[instructionId] = bestStageId;
-      stageWindow[bestStageId][bestWindowOffset] = instructionId;
+			instructionsAddresses[instructionId] = bestWindowOffset+windowPosition;
+			instructionsStages[instructionId] = bestStageId;
+			stageWindow[bestStageId][bestWindowOffset] = instructionId;
 
 			if (instruction.slc<2>(48) == 0){
-        //This is a jump
-        fprintf(stderr, "Jump is placed at %d\n", (unsigned int)instructionsAddresses[instructionId]);
-        haveJump = 1;
-        jumpPlace = instructionsAddresses[instructionId];
+				//This is a jump
+				fprintf(stderr, "Jump is placed at %d\n", (unsigned int)instructionsAddresses[instructionId]);
+				haveJump = 1;
+				jumpPlace = instructionsAddresses[instructionId];
 			}
 
-      //instructionsStages[instructionId]    = stages[unitType];
-      ++instructionId;
-    } // else (!found)
+			//instructionsStages[instructionId]    = stages[unitType];
+			++instructionId;
+		} // else (!found)
 
-  } // while (1)
+	} // while (1)
 
-  // used to save the last windowOffset in which there is at least an instruction
-  // to truncate the empty NOP space at the end
-  ac_int<WINDOW_SIZE_L2+1, false> lastGap;
-  for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
-      ; windowOffset < WINDOW_SIZE; ++windowOffset) {
+	// used to save the last windowOffset in which there is at least an instruction
+	// to truncate the empty NOP space at the end
+	ac_int<WINDOW_SIZE_L2+1, false> lastGap;
+	for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
+			; windowOffset < WINDOW_SIZE; ++windowOffset) {
 
-    ac_int<256, false> binariesWord;
+		ac_int<256, false> binariesWord;
 
-    for (ac_int<STAGE_NUMBER_L2+1, false> _stageId = 0
-        ; _stageId < STAGE_NUMBER; ++_stageId) {
-      auto stageId = _stageId; // was stages[_stageId]  before
-      auto iId = stageWindow[stageId][windowOffset];
-      fprintf(stderr, "%3d ", (unsigned int)iId);
-      if (stageWindow[stageId][windowOffset] != -1) {
+	for (ac_int<STAGE_NUMBER_L2+1, false> _stageId = 0
+			 ; _stageId < STAGE_NUMBER; ++_stageId) {
+			auto stageId = _stageId; // was stages[_stageId]  before
+			auto iId = stageWindow[stageId][windowOffset];
+			fprintf(stderr, "%3d ", (unsigned int)iId);
+			if (stageWindow[stageId][windowOffset] != -1) {
 
-        lastGap = windowOffset;
+					lastGap = windowOffset;
 
-        ac_int<50, false> instruction = instructions[iId];
+					ac_int<50, false> instruction = instructions[iId];
 
-        // Type of Functional Unit needed by this instruction
-        ac_int<2, false> unitType = getType(instruction);
+					// Type of Functional Unit needed by this instruction
+					ac_int<2, false> unitType = getType(instruction);
 
-        // We split different information from the instruction
-        ac_int<2, false> typeCode = instruction.slc<2>(46);
-        ac_int<1, false> alloc = instruction[45];
-        ac_int<1, false> allocBr = instruction[44];
-        ac_int<7, false> opCode = instruction.slc<7>(37);
-        ac_int<1, false> isImm = instruction[36];
-        ac_int<1, false> isBr = instruction[35];
-        ac_int<9, false> virtualRDest = instruction.slc<9>(0);
-        ac_int<9, false> virtualRIn2 = instruction.slc<9>(9);
-        ac_int<9, false> virtualRIn1_imm9 = instruction.slc<9>(18);
-        ac_int<13, false> imm13 = instruction.slc<13>(18);
-        ac_int<19, false> imm19 = instruction.slc<19>(9);
-        ac_int<9, false> brCode = instruction.slc<9>(27);
+					// We split different information from the instruction
+					ac_int<2, false> typeCode = instruction.slc<2>(46);
+					ac_int<1, false> alloc = instruction[45];
+					ac_int<1, false> allocBr = instruction[44];
+					ac_int<7, false> opCode = instruction.slc<7>(37);
+					ac_int<1, false> isImm = instruction[36];
+					ac_int<1, false> isBr = instruction[35];
+					ac_int<9, false> virtualRDest = instruction.slc<9>(0);
+					ac_int<9, false> virtualRIn2 = instruction.slc<9>(9);
+					ac_int<9, false> virtualRIn1_imm9 = instruction.slc<9>(18);
+					ac_int<13, false> imm13 = instruction.slc<13>(18);
+					ac_int<19, false> imm19 = instruction.slc<19>(9);
+					ac_int<9, false> brCode = instruction.slc<9>(27);
 
-        //***************************************
-        //We generate the instruction
-        ac_int<32, false> generatedInstruction;
-        generatedInstruction.set_slc(0, opCode);
-        generatedInstruction.set_slc(26, placeOfRegisters[virtualRIn2]);
+					//***************************************
+					//We generate the instruction
+					ac_int<32, false> generatedInstruction;
+					generatedInstruction.set_slc(0, opCode);
+					generatedInstruction.set_slc(26, placeOfRegisters[virtualRIn2]);
 
-        if (typeCode == 0) { //The instruction is R type
+					if (typeCode == 0) { //The instruction is R type
 
-          if (isImm) {
-            generatedInstruction.set_slc(7, imm13);
-            generatedInstruction.set_slc(20, placeOfRegisters[virtualRDest]);
-                  placeOfRegisters[iId] = placeOfRegisters[virtualRDest];
-          }
-          else{
-            generatedInstruction.set_slc(14, placeOfRegisters[virtualRDest]);
-            generatedInstruction.set_slc(20, placeOfRegisters[virtualRIn1_imm9]);
-                  placeOfRegisters[iId] = placeOfRegisters[virtualRDest];
-          }
-        }
-        else { //The instruction is I Type
-          if (opCode == 0x28) {
-            generatedInstruction.set_slc(26, placeOfRegisters[virtualRDest]);
-                  placeOfRegisters[iId] = placeOfRegisters[virtualRDest];
-          }
-          else{
-            generatedInstruction.set_slc(26, placeOfRegisters[virtualRDest]);
-                  placeOfRegisters[iId] = placeOfRegisters[virtualRDest];
-          }
-          generatedInstruction.set_slc(7, imm19);
-        }
-        placeOfInstr[stageWindow[stageId][windowOffset]] = windowPosition + windowOffset;
-        binariesWord.set_slc(stageId*32, generatedInstruction);
-      } else { binariesWord.set_slc(stageId*32, ac_int<32,false>(0)); }
+							if (isImm) {
+									generatedInstruction.set_slc(7, imm13);
+									generatedInstruction.set_slc(20, placeOfRegisters[virtualRDest]);
+									placeOfRegisters[iId] = placeOfRegisters[virtualRDest];
+								}
+							else{
+									generatedInstruction.set_slc(14, placeOfRegisters[virtualRDest]);
+									generatedInstruction.set_slc(20, placeOfRegisters[virtualRIn1_imm9]);
+									placeOfRegisters[iId] = placeOfRegisters[virtualRDest];
+								}
+						}
+					else { //The instruction is I Type
+							if (opCode == 0x28) {
+									generatedInstruction.set_slc(26, placeOfRegisters[virtualRDest]);
+									placeOfRegisters[iId] = placeOfRegisters[virtualRDest];
+								}
+							else{
+									generatedInstruction.set_slc(26, placeOfRegisters[virtualRDest]);
+									placeOfRegisters[iId] = placeOfRegisters[virtualRDest];
+								}
+							generatedInstruction.set_slc(7, imm19);
+						}
+					placeOfInstr[stageWindow[stageId][windowOffset]] = windowPosition + windowOffset;
+					binariesWord.set_slc(stageId*32, generatedInstruction);
+				} else { binariesWord.set_slc(stageId*32, ac_int<32,false>(0)); }
 
-      //after all stages has been filled, we commit the word
-      binaries[ac_int<32, false>(windowPosition + windowOffset)]     = binariesWord.slc<128>(0);
-      stageWindow[stageId][windowOffset] = -1;
-    } // for stageId
-    fprintf(stderr,"\n");
-  } // for windowOffset
+			//after all stages has been filled, we commit the word
+			binaries[ac_int<32, false>(windowPosition + windowOffset)]     = binariesWord.slc<128>(0);
+			stageWindow[stageId][windowOffset] = -1;
+		} // for stageId
+	fprintf(stderr,"\n");
+	} // for windowOffset
 
-  if (haveJump){
+	if (haveJump){
 //		if (jumpPlace < windowPosition+lastGap-1){
 //			if (binaries[windowPosition+lastGap-1].slc<32>(96) != 0){
 //				//binaries[writeInBinaries].set_slc(96, binaries[jumpPlace].slc<32>(96));
 //        lastGap++;
 //			}
 //			binaries[windowPosition+lastGap-1].set_slc(96,binaries[jumpPlace].slc<32>(96));
-		  ac_int<32, false> const0 = 0;
-		  binaries[jumpPlace].set_slc(96, const0);
+			ac_int<32, false> const0 = 0;
+			binaries[jumpPlace].set_slc(96, const0);
 //		} else {
 //      lastGap = jumpPlace;
 //    }
 	}
 
-  return windowPosition+lastGap+1-addressInBinaries;
+	return windowPosition+lastGap+1-addressInBinaries;
 }
 #endif
 #endif
