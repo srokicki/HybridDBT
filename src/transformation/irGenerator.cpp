@@ -1039,7 +1039,7 @@ int irGenerator(unsigned char* code, unsigned int *size, unsigned int addressSta
 
 #ifndef __NIOS
 
-#define FIRST_RENAME 10
+#define FIRST_RENAME 20
 #define LAST_RENAME 20
 
 /* Global values */
