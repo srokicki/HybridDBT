@@ -1,4 +1,6 @@
 #include <transformation/irScheduler.h>
+#include <isa/irISA.h>
+#include <isa/vexISA.h>
 #include <iostream>
 
 #define MAX_ISSUE_WIDTH 8
@@ -82,8 +84,10 @@ for (ac_int<32, false> i = 0; i < 1024; ++i) {
 }
 
 		 ac_int<1, false> optLevel = 0;
-		 ac_int<8, false> basicBlockSize = 53;
-
+		 ac_int<8, false> basicBlockSize = 54;
+for (ac_int<8, false> i = 0; i < basicBlockSize; ++i) {
+		printBytecodeInstruction(i, bytecode[i*4], bytecode[i*4+1], bytecode[i*4+2], bytecode[i*4+3]);
+	}
 		 ac_int<128, false> binaries[1024];
 		 ac_int<6, false> placeOfRegisters[512];
 		 for (ac_int<32, false> i = 0; i < 64; ++i) {
@@ -96,8 +100,13 @@ for (ac_int<32, false> i = 0; i < 1024; ++i) {
 		 ac_int<MAX_ISSUE_WIDTH * 2, false> way_specialisation = 0xadb4;
 		 ac_int<32, false> placeOfInstr[256];
 
-		 std::cout << (unsigned int)scheduling(optLevel, basicBlockSize, mon_bytecode, binaries, 0, placeOfRegisters, numberFreeRegister, freeRegisters, issue_width, way_specialisation, placeOfInstr) << std::endl;
+		 ac_int<32, false> last = scheduling(optLevel, basicBlockSize, mon_bytecode, binaries, 0, placeOfRegisters, numberFreeRegister, freeRegisters, issue_width, way_specialisation, placeOfInstr);
 
-
+     for (ac_int<32, false> i = 0; i < last; ++i) {
+       std::cout << printDecodedInstr(binaries[i].slc<32>(96))
+                 << printDecodedInstr(binaries[i].slc<32>(64))
+                 << printDecodedInstr(binaries[i].slc<32>(32))
+                 << printDecodedInstr(binaries[i].slc<32>( 0)) << std::endl;
+     }
 	return 0;
 }

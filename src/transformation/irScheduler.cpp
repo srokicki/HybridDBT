@@ -695,14 +695,10 @@ ac_int<50, false> instructions[256];
 
 // Scheduled instructions (adress, stage) couples
 ac_int<32, false> instructionsAddresses[256];
-ac_int<16, false> instructionsStages[256];
+ac_int<8, false> instructionsStages[256];
 
 // Stages windows
-ac_int<32, true> stageWindow[STAGE_NUMBER][WINDOW_SIZE]
-	= { { -1,-1,-1,-1 }
-		, { -1,-1,-1,-1 }
-		, { -1,-1,-1,-1 }
-		, { -1,-1,-1,-1 } };
+ac_int<8, true> stageWindow[STAGE_NUMBER][WINDOW_SIZE];
 
 // Stages types
 ac_int<3, false> stages[STAGE_NUMBER] = { 0, 3, 1, 2 };
