@@ -4,7 +4,6 @@ add_subdirectory(simulator)
 add_subdirectory(isa)
 add_subdirectory(transformation)
 add_subdirectory(tools)
-add_subdirectory(montest1)
 
 set(SOURCE
    ${SOURCE}
