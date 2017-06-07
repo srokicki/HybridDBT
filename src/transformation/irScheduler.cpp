@@ -739,38 +739,32 @@ ac_int<32, false> createInstruction(ac_int<9, false> instructionId, ac_int<6, fa
 	ac_int<13, false> imm13 = instruction.slc<13>(18); //TODO
 	ac_int<19, false> imm19 = instruction.slc<19>(9);
 	ac_int<9, false> brCode = instruction.slc<9>(27);
-
-	//***************************************
+//***************************************
 	//We generate the instruction
 	ac_int<32, false> generatedInstruction;
 	generatedInstruction.set_slc(0, opCode);
-	generatedInstruction.set_slc(26, placeOfRegisters[virtualRIn2]);
+	generatedInstruction.set_slc(26, ac_int<6>(virtualRIn2));
 
 	if (typeCode == 0) { //The instruction is R type
 
 		if (isImm) {
 			generatedInstruction.set_slc(7, imm13);
-			generatedInstruction.set_slc(20, placeOfRegisters[virtualRDest]);
-			placeOfRegisters[instructionId] = placeOfRegisters[virtualRDest];
+			generatedInstruction.set_slc(20, ac_int<6>(virtualRDest));
 		}
 		else{
-			generatedInstruction.set_slc(14, placeOfRegisters[virtualRDest]);
-			generatedInstruction.set_slc(20, placeOfRegisters[virtualRIn1_imm9]);
-			placeOfRegisters[instructionId] = placeOfRegisters[virtualRDest];
+			generatedInstruction.set_slc(14, ac_int<6>(virtualRDest));
+			generatedInstruction.set_slc(20, ac_int<6>(virtualRIn1_imm9));
 		}
 	}
 	else { //The instruction is I Type
 		if (opCode == 0x28) {
-			generatedInstruction.set_slc(26, placeOfRegisters[virtualRDest]);
-			placeOfRegisters[instructionId] = placeOfRegisters[virtualRDest];
+			generatedInstruction.set_slc(26, ac_int<6>(virtualRDest));
 		}
 		else{
-			generatedInstruction.set_slc(26, placeOfRegisters[virtualRDest]);
-			placeOfRegisters[instructionId] = placeOfRegisters[virtualRDest];
+			generatedInstruction.set_slc(26, ac_int<6>(virtualRDest));
 		}
 		generatedInstruction.set_slc(7, imm19);
 	}
-
 	return generatedInstruction;
 }
 
@@ -951,7 +945,14 @@ ac_int<32, false> scheduling(
 		} else {
 			placeOfInstr[instructionId] = windowPosition + bestWindowOffset;
 			instructionsStages[instructionId] = bestStageId;
+			instructions[instructionId].set_slc(0, ac_int<9, false>(placeOfRegisters[virtualRDest]));
+			instructions[instructionId].set_slc(9, ac_int<9, false>(placeOfRegisters[virtualRIn2]));
 			placeOfRegisters[instructionId] = placeOfRegisters[virtualRDest];
+
+			if (typeCode == 0 && !isImm) {
+				instructions[instructionId].set_slc(18, ac_int<9, false>(placeOfRegisters[virtualRIn1_imm9]));
+			}
+
 			stageWindow[offset(bestWindowOffset)].set_slc(bestStageId*9, instructionId);
 
 			if (instruction.slc<2>(48) == 0) {
@@ -962,28 +963,25 @@ ac_int<32, false> scheduling(
 			instructionId++;
 		}
 	}
-
 	ac_int<32, false> lastGap;
 	for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
 	; windowOffset < WINDOW_SIZE; ++windowOffset) {
 
-			ac_int<128, false> binariesWord;
-			ac_int<STAGE_NUMBER*9, false> windowWord = stageWindow[offset(windowOffset)];
+		ac_int<128, false> binariesWord;
+		ac_int<STAGE_NUMBER*9, false> windowWord = stageWindow[offset(windowOffset)];
+		binariesWord.set_slc(0, createInstruction(windowWord.slc<9>(0), placeOfRegisters));
+		binariesWord.set_slc(32, createInstruction(windowWord.slc<9>(9), placeOfRegisters));
+		binariesWord.set_slc(64, createInstruction(windowWord.slc<9>(18), placeOfRegisters));
+		binariesWord.set_slc(96, createInstruction(windowWord.slc<9>(27), placeOfRegisters));
+		if (binariesWord != 0) {
+			lastGap = windowOffset;
+		}
 
-			binariesWord.set_slc(0, createInstruction(windowWord.slc<9>(0), placeOfRegisters));
-			binariesWord.set_slc(32, createInstruction(windowWord.slc<9>(9), placeOfRegisters));
-			binariesWord.set_slc(64, createInstruction(windowWord.slc<9>(18), placeOfRegisters));
-			binariesWord.set_slc(96, createInstruction(windowWord.slc<9>(27), placeOfRegisters));
-
-			if (binariesWord != 0)
-				lastGap = windowOffset;
-
-			binaries[windowPosition+windowOffset] = binariesWord;
+		binaries[windowPosition+windowOffset] = binariesWord;
 	}
-
 	if (haveJump){
-			ac_int<32, false> const0 = 0;
-			binaries[jumpPlace].set_slc(96, const0);
+		ac_int<32, false> const0 = 0;
+		binaries[jumpPlace].set_slc(96, const0);
 	}
 
 	return windowPosition+lastGap+1-addressInBinaries;
