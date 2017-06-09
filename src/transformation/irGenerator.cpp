@@ -1039,7 +1039,7 @@ int irGenerator(unsigned char* code, unsigned int *size, unsigned int addressSta
 
 #ifndef __NIOS
 
-#define FIRST_RENAME 20
+#define FIRST_RENAME 10
 #define LAST_RENAME 20
 
 /* Global values */
@@ -1867,12 +1867,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				ac_int<3, false> nbSucc = bytecodeWord.slc<3>(64);
 
 				if (nbSucc == 0 && oneInstructionFromBlock != jumpID){
-
-					bytecodeWord.set_slc(0, jumpID);
-					nbSucc++;
-					numberDependencies++;
-					bytecodeWord.set_slc(64, nbSucc);
-					bytecode[oneInstructionFromBlock] = bytecodeWord;
+					writeDependency_ac(bytecode, oneInstructionFromBlock,jumpID, 0, &bytecode[jumpID]);
 				}
 			}
 			jumpBytecodeWord.set_slc(64+6, numberDependencies);
@@ -1905,6 +1900,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			//	bytecode[lastWriter].set_slc(64+6, newDepNumber);
 			}
 		}
+
 
 
 

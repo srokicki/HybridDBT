@@ -696,6 +696,8 @@ ac_int<9, false> instructionId;
 ac_int<16, false> windowPosition;
 ac_int<4, false> windowShift;
 
+ac_int<8, false> registerDependencies[64];
+
 // IR instruction buffer
 ac_int<50, false> instructions[256];
 
@@ -832,6 +834,19 @@ ac_int<32, false> scheduling(
 		ac_int<19, false> imm19 = instruction.slc<19>(9);
 		ac_int<9, false> brCode = instruction.slc<9>(27);
 
+		ac_int<6, false> dest;
+
+		if (alloc) {
+			if (numberFreeRegister > 0) {
+				dest = freeRegisters[--numberFreeRegister];
+				registerDependencies[dest] = bytecode_word2.slc<8>(6);
+			} else {
+				return basicBlockSize+1;
+			}
+		} else {
+			dest = placeOfRegisters[virtualRDest];
+		}
+
 		// Find the earliest place which avoids RAW, WAR, or WAW conflicts
 		ac_int<1, false> found = false;
 		ac_int<32, false> earliest_place = 0;
@@ -945,12 +960,22 @@ ac_int<32, false> scheduling(
 		} else {
 			placeOfInstr[instructionId] = windowPosition + bestWindowOffset;
 			instructionsStages[instructionId] = bestStageId;
-			instructions[instructionId].set_slc(0, ac_int<9, false>(placeOfRegisters[virtualRDest]));
-			instructions[instructionId].set_slc(9, ac_int<9, false>(placeOfRegisters[virtualRIn2]));
-			placeOfRegisters[instructionId] = placeOfRegisters[virtualRDest];
+
+			instructions[instructionId].set_slc(0, ac_int<9, false>(dest));
+			placeOfRegisters[instructionId] = dest;
+
+			ac_int<9, false> rin2 = placeOfRegisters[virtualRIn2];
+			instructions[instructionId].set_slc(9, rin2);
+			if (!(--registerDependencies[rin2])) {
+				freeRegisters[numberFreeRegister++] = rin2;
+			}
 
 			if (typeCode == 0 && !isImm) {
-				instructions[instructionId].set_slc(18, ac_int<9, false>(placeOfRegisters[virtualRIn1_imm9]));
+					ac_int<9, false> rin1 = placeOfRegisters[virtualRIn1_imm9];
+					instructions[instructionId].set_slc(18, rin1);
+					if (!(--registerDependencies[rin1])) {
+						freeRegisters[numberFreeRegister++] = rin1;
+					}
 			}
 
 			stageWindow[offset(bestWindowOffset)].set_slc(bestStageId*9, instructionId);
