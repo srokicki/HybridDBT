@@ -1040,7 +1040,7 @@ int irGenerator(unsigned char* code, unsigned int *size, unsigned int addressSta
 #ifndef __NIOS
 
 #define FIRST_RENAME 10
-#define LAST_RENAME 20
+#define LAST_RENAME 10
 
 /* Global values */
 uint1 isOutsideNext = 0;
@@ -1775,7 +1775,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				oneBytecode = assembleRBytecodeInstruction(2, alloc, opcode, pred2, pred1, destination, 0);
 			}
 			else if (isProfile){
-				oneBytecode = assembleRiBytecodeInstruction(1, 0, opcode, reg20, 0, 0, 0);
+				oneBytecode = assembleRiBytecodeInstruction(1, 0, opcode, 256, imm13, 256, 0);
 			}
 			else{
 				#ifndef __CATAPULT

@@ -1189,7 +1189,7 @@ int VexSimulator::doStep(){
 
 
 #ifndef __CATAPULT
-	if (debugLevel >= 1 || cycle > 53000000){
+	if (debugLevel >= 1){
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
 		std::cerr << printDecodedInstr(ftoDC1.instruction);
 		std::cerr << ";";
