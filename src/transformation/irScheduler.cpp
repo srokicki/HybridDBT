@@ -11,6 +11,7 @@
 
 #include <types.h>
 #include <isa/irISA.h>
+#include <isa/vexISA.h>
 
 #ifndef IR_SUCC
 #define __SCOREBOARD
@@ -719,7 +720,7 @@ ac_int<WINDOW_SIZE_L2+1, false> offset(ac_int<WINDOW_SIZE_L2+1, false> off) {
 	return (off + windowShift) % WINDOW_SIZE;
 }
 
-ac_int<32, false> createInstruction(ac_int<32, false> instruction) {
+ac_int<32, false> createInstruction(ac_int<50, false> instruction) {
 
 	// Type of Functional Unit needed by this instruction
 	ac_int<2, false> unitType = getType(instruction);
@@ -794,10 +795,7 @@ ac_int<32, false> scheduling(
 
 	for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
 	; windowOffset < WINDOW_SIZE; ++windowOffset) {
-			stageWindow[windowOffset].set_slc( 0, cst1ff);
-			stageWindow[windowOffset].set_slc( 9, cst1ff);
-			stageWindow[windowOffset].set_slc(18, cst1ff);
-			stageWindow[windowOffset].set_slc(27, cst1ff);
+			stageWindow[windowOffset] = 0;
 	}
 
 	while (instructionId < basicBlockSize) {
@@ -882,46 +880,45 @@ ac_int<32, false> scheduling(
 		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
 		; windowOffset < WINDOW_SIZE; ++windowOffset)
 		{
-			ac_int<STAGE_NUMBER*9, false> windowWord = stageWindow[offset(windowOffset)];
-			ac_int<STAGE_NUMBER_L2+1, false> stageId;
+			ac_int<STAGE_NUMBER*32, false> windowWord = stageWindow[offset(windowOffset)];
 
 			stageType = way_specialisation.slc<2>(0 << 1);
 			if ((unitType == stageType || unitType == 2)
-			 && windowWord.slc<32>(0) == zero32
+			 && windowWord.slc<32>(0) == 0
 			 && windowPosition+windowOffset >= earliest_place
 			 && windowOffset < bestWindowOffset) {
 					bestWindowOffset = windowOffset;
-					bestStageId = stageId;
+					bestStageId = 0;
 					found = true;
 			}
 
 			stageType = way_specialisation.slc<2>(1 << 1);
 			if ((unitType == stageType || unitType == 2)
-			 && windowWord.slc<32>(32) == zero32
+			 && windowWord.slc<32>(32) == 0
 			 && windowPosition+windowOffset >= earliest_place
 			 && windowOffset < bestWindowOffset) {
 					bestWindowOffset = windowOffset;
-					bestStageId = stageId;
+					bestStageId = 1;
 					found = true;
 			}
 
 			stageType = way_specialisation.slc<2>(2 << 1);
 			if ((unitType == stageType || unitType == 2)
-			 && windowWord.slc<32>(64) == zero32
+			 && windowWord.slc<32>(64) == 0
 			 && windowPosition+windowOffset >= earliest_place
 			 && windowOffset < bestWindowOffset) {
 					bestWindowOffset = windowOffset;
-					bestStageId = stageId;
+					bestStageId = 2;
 					found = true;
 			}
 
-			stageType = way_specialisation.slc<2>(stageId << 1);
+			stageType = way_specialisation.slc<2>(3 << 1);
 			if ((unitType == stageType || unitType == 2)
-			 && windowWord.slc<32>(96) == zero32
+			 && windowWord.slc<32>(96) == 0
 			 && windowPosition+windowOffset >= earliest_place
 			 && windowOffset < bestWindowOffset) {
 					bestWindowOffset = windowOffset;
-					bestStageId = stageId;
+					bestStageId = 3;
 					found = true;
 			}
 		}
