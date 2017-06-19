@@ -76,7 +76,7 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 			//We now place the profile instr
 			if (instr64 == 0){
 				//We found a place
-				uint32 instr = assembleRiInstruction(VEX_PROFILE, numberProfiledBlocks, 0, 0);
+				uint32 instr = assembleRiInstruction(VEX_PROFILE,0,0, numberProfiledBlocks);
 				writeInt(this->platform->vliwBinaries, oneInstruction*16+4, instr);
 				successfullInsertion = 1;
 				break;
