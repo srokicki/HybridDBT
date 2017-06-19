@@ -17,7 +17,7 @@
  *
  ********************************************************************/
 
-#define MEMORY_SIZE 70000
+#define MEMORY_SIZE 150000
 
 
 #include <simulator/vexSimulator.h>
