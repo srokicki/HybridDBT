@@ -170,7 +170,7 @@ void IRProcedure::print(){
 
 	fprintf(stderr, "digraph{\n");
 	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
-		fprintf(stderr, "node_%d[label=\"size %d\"];\n", this->blocks[oneBlockInProcedure]->vliwStartAddress, this->blocks[oneBlockInProcedure]->nbInstr);
+		fprintf(stderr, "node_%d[label=\"node %d - size %d\"];\n",this->blocks[oneBlockInProcedure]->vliwStartAddress,  this->blocks[oneBlockInProcedure]->vliwStartAddress, this->blocks[oneBlockInProcedure]->vliwEndAddress - this->blocks[oneBlockInProcedure]->vliwStartAddress);
 	}
 	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
 
