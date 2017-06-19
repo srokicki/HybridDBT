@@ -76,6 +76,10 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	}
 
 	block->nbInstr = blockSize;
+	char opcodeOfLastInstr = getOpcode(block->instructions, blockSize-1);
+	if ((opcodeOfLastInstr >> 4) == 2 && opcodeOfLastInstr != VEX_MOVI && opcodeOfLastInstr != VEX_SETCOND && opcodeOfLastInstr != VEX_SETCONDF){
+		block->jumpID = blockSize-1;
+	}
 #ifndef __NIOS
 fprintf(stderr, "*************************************************************************\n");
 fprintf(stderr, "Previous version of sources:\n");
@@ -104,9 +108,15 @@ for (int i=basicBlockStart;i<basicBlockEnd;i++){
 		printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
 	}
 
+	for (int i=0; i<blockSize; i++){
+		fprintf(stderr, "0x%x, 0x%x, 0x%x, 0x%x,\n",readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
+	}
+
+
 	//Preparation of required memories
-	for (int oneFreeRegister = 34; oneFreeRegister<63; oneFreeRegister++)
-		platform->freeRegisters[oneFreeRegister-35] = oneFreeRegister;
+	for (int oneFreeRegister = 33; oneFreeRegister<63; oneFreeRegister++)
+		platform->freeRegisters[oneFreeRegister-33] = oneFreeRegister;
+
 
 	for (int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
 		platform->placeOfRegisters[256+onePlaceOfRegister] = onePlaceOfRegister;
@@ -141,7 +151,8 @@ for (int i=basicBlockStart;i<basicBlockEnd;i++){
 		 *****************************************************************/
 
 		char isRelativeJump = (jumpInstruction & 0x7f) == VEX_BR || (jumpInstruction & 0x7f) == VEX_BRF;
-		char isPassthroughJump = isRelativeJump || (jumpInstruction & 0x7f) == VEX_CALL || (jumpInstruction & 0x7f) == VEX_CALLR;
+		char isNoJump = (jumpInstruction & 0x70) != (VEX_CALL>>4);
+		char isPassthroughJump = isRelativeJump || (jumpInstruction & 0x7f) == VEX_CALL || (jumpInstruction & 0x7f) == VEX_CALLR ;
 
 		//Ofset correction
 		if (isRelativeJump){
@@ -161,6 +172,9 @@ for (int i=basicBlockStart;i<basicBlockEnd;i++){
 			fprintf(stderr, "Correction of jump at the end of the block. Original offset was %d\n From it derivated destination %d and new offset %d\n", offset, destination, newOffset);
 			jumpInstruction = (jumpInstruction & 0xfc00007f) | ((newOffset & 0x7ffff) << 7);
 		}
+//		else if (isNoJump){
+//			jumpInstruction = assembleIInstruction(VEX_GOTO, basicBlockEnd<<2, 0);
+//		}
 
 		//Insertion of jump instruction
 		writeInt(platform->vliwBinaries, (basicBlockStart+binaSize-2)*16 + 0, jumpInstruction);
@@ -203,7 +217,7 @@ for (int i=basicBlockStart;i<basicBlockEnd;i++){
 		fprintf(stderr, "*************************************************************************\n");
 
 		//We modify the stored information concerning the block
-		block->vliwEndAddress = basicBlockStart + binaSize + 1;
+		block->vliwEndAddress = basicBlockStart + binaSize;
 	}
 	else{
 		fprintf(stderr, "Schedule is dropped (%d cycles)\n", binaSize);
