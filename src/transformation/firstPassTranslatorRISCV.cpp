@@ -31,7 +31,7 @@
 
 
 
-const unsigned int debugLevel = 1;
+const unsigned int debugLevel = 0;
 
 using namespace std;
 
