@@ -12,7 +12,7 @@
 
 
 /********************************************************************
- * IR condifiguration
+ * IR configuration
  * ******************************************************************
  *
  * We define here preprocessor values which change the IR configuration.
@@ -21,7 +21,7 @@
  *
  *******************************************************************/
 
-//#define IR_SUCC
+#define IR_SUCC
 
 /********************************************************************
  * Declaration of a data structure to represent the control flow of the binaries analyzed.
@@ -59,17 +59,30 @@ public:
 class IRBlock
 {
 public:
+	//Link with source binaries
+	unsigned int sourceStartAddress; //This represent the block start address in source binaries
+	unsigned int sourceEndAddress;	 //This represent the block end address in source binaries
+	unsigned int sourceDestination;	 //This represent the jump destination if any. If there are no jump of unpredictable jump its value is 0.
+
+	//Link with VLIW binaries
 	unsigned int vliwStartAddress;	//Address of the first instruction in the block
 	unsigned int vliwEndAddress;   	//End address is the address of the first instruction not in the block
-	uint32 *instructions;			//A pointer to an array of uint128 describint the instructions
-	int nbInstr;
-	int section;
+
+	//Control flow graph
+	char nbSucc;					//Number of successors
+	IRBlock* successor1;			//pointer to first successor
+	IRBlock* successor2;			//pointer to second successor
+	short jumpID;					//Index of the jump instruction in the block's list of instruction
+	unsigned int jumpPlace;			//Address of the jump instruction in the VLIW memory
+
+	uint32 *instructions;			//A pointer to an array of uint128 describing the instructions
+	int nbInstr;					//The number of instructions
+
 	unsigned int blockState;		//A value to store its state (optimized/translated or other things like that)
-	char nbSucc;
-	short jumpID;
-	unsigned int jumpPlace;
-	IRBlock* successor1;
-	IRBlock* successor2;
+
+	int section;
+
+
 
 	IRBlock(int startAddress, int endAddress, int section);
 	~IRBlock();
@@ -85,8 +98,10 @@ public:
 #define IRBLOCK_STATE_PROFILED 1
 #define IRBLOCK_STATE_SCHEDULED 2
 #define IRBLOCK_PROC 3
+#define IRBLOCK_UNROLLED 4
 
-#define IRBLOCK_STATE_RECONF 4
+
+#define IRBLOCK_STATE_RECONF 5
 
 class IRApplication{
 public:
