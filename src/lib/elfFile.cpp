@@ -196,6 +196,15 @@ ElfFile::ElfFile(char* pathToElfFile){
 		}
 	}
 
+
+	for (unsigned int sectionNumber = 0; sectionNumber < tableSize; sectionNumber++){
+		ElfSection *section = this->sectionTable->at(sectionNumber);
+		if (section->getName().compare(std::string(".strtab")) == 0){
+			this->indexOfSymbolNameSection = sectionNumber;
+			break;
+		}
+	}
+
 }
 
 ElfFile* ElfFile::copy(char* newDest){

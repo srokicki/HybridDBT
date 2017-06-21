@@ -238,7 +238,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 
 	//		| init -= startAddr	 | stw r6 -12(sp)		|					| offset = 7
 	cycle++;
-	writeInt(platform->vliwBinaries, cycle*16+0, assembleRiInstruction(VEX_SUBi, 4, 4, startAddress & 0xfff));
+	writeInt(platform->vliwBinaries, cycle*16+0, 0/*assembleRiInstruction(VEX_SUBi, 4, 4, startAddress & 0xfff)*/);
 	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 6, 2, -24));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleIInstruction(VEX_MOVI, 7, 5));

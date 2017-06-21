@@ -70,7 +70,7 @@ int translateOneSection(DBTPlateform &dbtPlateform, uint32 placeCode, int source
 }
 
 
-void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressStart, uint32 &size, DBTPlateform *platform){
+void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressStart, uint32 &size, uint32 &pcStart, DBTPlateform *platform){
 
 #ifndef __NIOS
 	//We open the elf file and search for the section that is of interest for us
@@ -101,6 +101,18 @@ void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressS
 			free(data);
 		}
 	}
+
+	for (int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++){
+		ElfSymbol *symbol = elfFile.symbols->at(oneSymbol);
+		const char* name = (const char*) &(elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode()[symbol->name]);
+
+		if (strcmp(name, "_start") == 0){
+			fprintf(stderr, "%s\n", name);
+			pcStart = symbol->offset;
+
+		}
+	}
+
 
 
 #else
@@ -299,9 +311,10 @@ int main(int argc, char *argv[])
 	unsigned char* code;
 	unsigned int addressStart;
 	uint32 size;
+	uint32 pcStart;
 
 	//We read the binaries
-	readSourceBinaries(FILE, code, addressStart, size, &dbtPlateform);
+	readSourceBinaries(FILE, code, addressStart, size, pcStart, &dbtPlateform);
 
 	int numberOfSections = 1 + (size>>10);
 	IRApplication application = IRApplication(numberOfSections);
@@ -418,6 +431,13 @@ int main(int argc, char *argv[])
 	dbtPlateform.vexSimulator->initializeRun(0, localArgc, localArgv);
 	#endif
 
+	//We change the init code to jump at the correct place
+	uint32 translatedStartPC = solveUnresolvedJump((pcStart-addressStart)>>2);
+	unsigned int instruction = assembleIInstruction(VEX_CALL, translatedStartPC<<2, 0);
+	writeInt(dbtPlateform.vliwBinaries, 0, instruction);
+
+
+	fprintf(stderr, "Vliw start is %x pc start is %x\n", addressStart, pcStart);
 //	for (int i=0;i<placeCode;i++){
 //		fprintf(stderr, "%d ", i*4);
 //		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");

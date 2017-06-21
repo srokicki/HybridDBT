@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cstring>
 #include <lib/elfFile.h>
 #include <unistd.h>
 
@@ -124,7 +125,21 @@ int main(int argc, char* argv[]){
 			}
 		}
 	}
+
 	simulator->pc = 0x10000;
+
+	for (int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++){
+		ElfSymbol *symbol = elfFile.symbols->at(oneSymbol);
+		const char* name = (const char*) &(elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode()[symbol->name]);
+
+		if (strcmp(name, "_start") == 0){
+			fprintf(stderr, "%s\n", name);
+			simulator->pc = symbol->offset;
+
+		}
+	}
+	fprintf(stderr, "PC start is %x\n", simulator->pc);
+
 	simulator->doSimulation(2000000000);
 
 }
