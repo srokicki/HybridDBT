@@ -693,40 +693,77 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 
 #warning "Using Scoreboard Scheduler"
 
-const int STAGE_NUMBER_L2 = 2;
-const int STAGE_NUMBER = 4;
-const int WINDOW_SIZE_L2  = 3;
+template<int N> struct l2 { enum { value = 1 + l2<N/2>::value }; };
+template<> struct l2<1> { enum { value = 1 }; };
+
+// window constants
+const int STAGE_NUMBER = 8;
+const int STAGE_NUMBER_L2 = l2<STAGE_NUMBER>::value;
 const int WINDOW_SIZE  = 8;
+const int WINDOW_SIZE_L2  = l2<WINDOW_SIZE>::value;
 
-ac_int<1, false> haveJump;
-ac_int<32, false> jumpPlace;
-ac_int<9, false> instructionId;
-ac_int<16, false> windowPosition;
-ac_int<4, false> windowShift;
-
-ac_int<8, false> registerDependencies[256];
-
-// Scheduled instructions (adress, stage) couples
-ac_int<8, false> instructionsStages[256];
-ac_int<8, false> lastInstructionStage;
-ac_int<32, false> lastPlaceOfInstr;
-
-// Stages windows
-ac_int<STAGE_NUMBER*32, false> stageWindow[WINDOW_SIZE];
+// useful constants
 const ac_int<9, false> cst1ff = 0x1ff;
 const ac_int<32, false> zero32 = 0;
 
-// Stages types
-ac_int<3, false> stages[STAGE_NUMBER] = { 0, 3, 1, 2 };
+// for replacing the jump instruction at a basic block end
+ac_int<1, false> haveJump;
+ac_int<32, false> jumpPlace;
 
+// computed instructino ID
+ac_int<9, false> instructionId;
+
+// window position in the VEX binaries
+ac_int<16, false> windowPosition;
+
+// used to virtually shift the window (instead of copying the values backward)
+ac_int<4, false> windowShift;
+
+// for knowing when to enable a register for allocation
+ac_int<8, false> registerDependencies[256];
+
+// for WAR dependencies
+ac_int<32, false> lastRead[64];
+
+// Scheduled instructions stages
+ac_int<8, false> instructionsStages[256];
+
+// explicit forwarding for catapult (lowering II)
+ac_int<8, false> lastInstructionStage;
+ac_int<32, false> lastPlaceOfInstr;
+
+ac_int<32, false> window[WINDOW_SIZE][STAGE_NUMBER];
+ac_int<8, false> freeSlot[WINDOW_SIZE];
+
+ac_int<32, false> max(ac_int<32, false> a, ac_int<32, false> b) {
+	return a > b ? a : b;
+}
+
+/**
+ * @brief computes the instruction type in order to know which stage
+ *				it can go on
+ * @param the instruction
+ * @return its type
+ */
 ac_int<2, false> getType(ac_int<50, false> instruction) {
 	return instruction.slc<2>(30+18);
 }
 
+/**
+ * @brief computes the real window offset for circular buffer representation
+ * @param the virtual offset
+ * @return the real offset
+ */
 ac_int<WINDOW_SIZE_L2+1, false> offset(ac_int<WINDOW_SIZE_L2+1, false> off) {
 	return (off + windowShift) % WINDOW_SIZE;
 }
 
+/**
+ * @brief Creates a VEX instruction from a bytecode instruction with real
+ *				registers (virtual registers represent real ones)
+ * @param the bytecode instruction
+ * @return the VEX instruction
+ */
 ac_int<32, false> createInstruction(ac_int<50, false> instruction) {
 
 	// Type of Functional Unit needed by this instruction
@@ -745,7 +782,8 @@ ac_int<32, false> createInstruction(ac_int<50, false> instruction) {
 	ac_int<13, false> imm13 = instruction.slc<13>(18); //TODO
 	ac_int<19, false> imm19 = instruction.slc<19>(9);
 	ac_int<9, false> brCode = instruction.slc<9>(27);
-//***************************************
+
+	//***************************************
 	//We generate the instruction
 	ac_int<32, false> generatedInstruction = 0;
 	generatedInstruction.set_slc(0, opCode);
@@ -771,24 +809,25 @@ ac_int<32, false> createInstruction(ac_int<50, false> instruction) {
 		}
 		generatedInstruction.set_slc(7, imm19);
 	}
+
 	return generatedInstruction;
 }
-
+#pragma hls_design top
 ac_int<32, false> scheduling(
-	ac_int<1, false> optLevel,
-	ac_int<8, false> basicBlockSize,
-	ac_int<128, false> bytecode[256],
-	ac_int<128, false> binaries[1024],
-	ac_int<16, false> addressInBinaries,
-	ac_int<6, false> placeOfRegisters[512],
-	ac_int<6, false> numberFreeRegister,
-	ac_int<6, false> freeRegisters[64],
-	ac_int<4, false> issue_width,
-	ac_int<MAX_ISSUE_WIDTH * 2, false> way_specialisation,
-	ac_int<32, false> placeOfInstr[256]
+ac_int<1, false> optLevel,
+ac_int<8, false> basicBlockSize,
+ac_int<128, false> bytecode[256],
+ac_int<128, false> binaries[1024],
+ac_int<16, false> addressInBinaries,
+ac_int<6, false> placeOfRegisters[512],
+ac_int<6, false> numberFreeRegister,
+ac_int<6, false> freeRegisters[64],
+ac_int<8, false> issue_width, // TODO: change to 1 boolean per issue
+ac_int<MAX_ISSUE_WIDTH * 2, false> way_specialisation,
+ac_int<32, false> placeOfInstr[256]
 ){
 	//**************************************************************
-	// Local Variables
+	// Setup scheduler state
 	//**************************************************************
 
 	haveJump = 0;
@@ -796,20 +835,23 @@ ac_int<32, false> scheduling(
 	windowPosition = addressInBinaries;
 	windowShift = 0;
 
-	//**************************************************************
-	// Reset the scheduler's state
-	//**************************************************************
-
 	for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
 	; windowOffset < WINDOW_SIZE; ++windowOffset) {
-			stageWindow[windowOffset] = 0;
+			freeSlot[windowOffset] = 0xFF;
 	}
 
+	--numberFreeRegister;
+
 	while (instructionId < basicBlockSize) {
+
+		//**************************************************************
+		// Fetching / Decoding instruction
+		//**************************************************************
+
 		ac_int<128, false> bytecode_word = bytecode[instructionId];
+
 		ac_int<32, false> bytecode_word1 = bytecode_word.slc<32>(96);
 		ac_int<32, false> bytecode_word2 = bytecode_word.slc<32>(64);
-
 		ac_int<32, false> bytecode_word3 = bytecode_word.slc<32>(32);
 		ac_int<32, false> bytecode_word4 = bytecode_word.slc<32>(0);
 
@@ -820,7 +862,6 @@ ac_int<32, false> scheduling(
 		// Type of Functional Unit needed by this instruction
 		ac_int<2, false> unitType = getType(instruction);
 
-		// We split different information from the instruction
 		ac_int<2, false> typeCode = instruction.slc<2>(46);
 		ac_int<1, false> alloc = instruction[45];
 		ac_int<1, false> allocBr = instruction[44];
@@ -834,25 +875,10 @@ ac_int<32, false> scheduling(
 		ac_int<19, false> imm19 = instruction.slc<19>(9);
 		ac_int<9, false> brCode = instruction.slc<9>(27);
 
+		// real dest register (after alloc/dereferencing)
 		ac_int<6, false> dest;
 
-		if (alloc) {
-			if (numberFreeRegister > 0) {
-				dest = freeRegisters[--numberFreeRegister];
-				registerDependencies[instructionId] = bytecode_word2.slc<8>(6);
-			} else {
-				return basicBlockSize+1;
-			}
-		} else {
-			dest = placeOfRegisters[virtualRDest];
-		}
-
-		// Find the earliest place which avoids RAW, WAR, or WAW conflicts
-		ac_int<1, false> found = false;
-		ac_int<32, false> earliest_place = 0;
-
-#define max(x,y) (x>y) ? x : y
-
+		// for RAW/WAW dependencies
 		ac_int<3, false> nbDataDeps    = bytecode_word2.slc<3>(3);
 		ac_int<3, false> nbNonDataDeps = bytecode_word2.slc<3>(0) - nbDataDeps;
 		ac_int<8, false> deps[7];
@@ -864,84 +890,149 @@ ac_int<32, false> scheduling(
 		deps[5] = bytecode_word4.slc<8>(8);
 		deps[6] = bytecode_word4.slc<8>(0);
 
-		// Finding RAW dependences
+		//**************************************************************
+		// Allocation
+		//**************************************************************
+
+		// if allocation requested (for dest)
+		if (alloc) {
+			// take the first free register + update register dependencies
+			if (numberFreeRegister > 0) {
+				dest = freeRegisters[--numberFreeRegister];
+				registerDependencies[instructionId] = bytecode_word2.slc<8>(6);
+			} else {
+				// else crash
+				return basicBlockSize+1;
+			}
+		} else {
+			dest = placeOfRegisters[virtualRDest];
+		}
+
+		//**************************************************************
+		// Computing dependencies
+		//**************************************************************
+
+		ac_int<32, false> earliest_place = 0;
+
+		// here, ternary conditions are for forwarding purpose
 		for (ac_int<3, false> i = 0; i < 7; ++i) {
+			ac_int<32, false> place = (deps[i] != instructionId-1) ? placeOfInstr[deps[i]] : lastPlaceOfInstr;
+
+			// RAW (gap depends on the type of stage because of pipeline length diffs)
 			if (i < nbDataDeps) {
 				ac_int<8, false> stg = (deps[i] != instructionId-1) ? instructionsStages[deps[i]] : lastInstructionStage;
-				ac_int<32, false> place = (deps[i] != instructionId-1) ? placeOfInstr[deps[i]] : lastPlaceOfInstr;
 				ac_int<2, false> gap = (stg == 0 || stg == 3) ? 2 : 3;
 				earliest_place = max(earliest_place, (ac_int<32,false>(place+gap)));
-			} else if (7-i < nbNonDataDeps) {
-				ac_int<32, false> place = (deps[6-i] != instructionId-1) ? placeOfInstr[deps[6-i]] : lastPlaceOfInstr;
+			}
+			// WAW
+			else if (6-i < nbNonDataDeps) {
 				earliest_place = max(earliest_place, (ac_int<32,false>(place+1)));
 			}
 		}
 
+		// WAR
+		earliest_place = max(earliest_place, lastRead[dest]);
+
+		//**************************************************************
+		// Placing the instruction
+		//**************************************************************
+
 		ac_int<WINDOW_SIZE_L2+1, false> bestWindowOffset = WINDOW_SIZE;
 		ac_int<STAGE_NUMBER_L2+1, false> bestStageId;
-		ac_int<2, false> stageType;
 
-#undef max
+		// for explicit tree reduction purpose
+		ac_int<WINDOW_SIZE, false> possible = 0;
+		ac_int<STAGE_NUMBER_L2, false> bestStage[WINDOW_SIZE];
+		ac_int<WINDOW_SIZE_L2, false> bestOffset[WINDOW_SIZE];
 
-		// Find the earliest place in the current window
-		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
-		; windowOffset < WINDOW_SIZE; ++windowOffset)
+		for (ac_int<STAGE_NUMBER_L2+1, false> stageId = 0
+		; stageId < STAGE_NUMBER; stageId += 2)
 		{
-			ac_int<STAGE_NUMBER*32, false> windowWord = stageWindow[offset(windowOffset)];
-
-			stageType = way_specialisation.slc<2>(0 << 1);
-			if ((unitType == stageType || unitType == 2)
-			 && windowWord.slc<32>(0) == 0
-			 && windowPosition+windowOffset >= earliest_place
-			 && windowOffset < bestWindowOffset) {
-					bestWindowOffset = windowOffset;
-					bestStageId = 0;
-					found = true;
+			ac_int<2, false> stageType = way_specialisation.slc<2>(stageId << 1);
+			if (issue_width[stageId] && (unitType == stageType || unitType == 2)) {
+				for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
+				; windowOffset < WINDOW_SIZE; ++windowOffset)
+				{
+					if (freeSlot[offset(windowOffset)][stageId]
+					&& !possible[windowOffset]) {
+						bestStage[windowOffset] = stageId;
+						bestOffset[windowOffset] = windowOffset;
+						possible[windowOffset] = 1;
+					}
+				}
 			}
-
-			stageType = way_specialisation.slc<2>(1 << 1);
-			if ((unitType == stageType || unitType == 2)
-			 && windowWord.slc<32>(32) == 0
-			 && windowPosition+windowOffset >= earliest_place
-			 && windowOffset < bestWindowOffset) {
-					bestWindowOffset = windowOffset;
-					bestStageId = 1;
-					found = true;
+			stageType = way_specialisation.slc<2>((stageId << 1) + 2);
+			if (issue_width[stageId] && (unitType == stageType || unitType == 2)) {
+				for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
+				; windowOffset < WINDOW_SIZE; ++windowOffset)
+				{
+					if (freeSlot[offset(windowOffset)][stageId+1]
+					&& !possible[windowOffset]) {
+						bestStage[windowOffset] = stageId+1;
+						bestOffset[windowOffset] = windowOffset;
+						possible[windowOffset] = 1;
+					}
+				}
 			}
-
-			stageType = way_specialisation.slc<2>(2 << 1);
-			if ((unitType == stageType || unitType == 2)
-			 && windowWord.slc<32>(64) == 0
-			 && windowPosition+windowOffset >= earliest_place
-			 && windowOffset < bestWindowOffset) {
-					bestWindowOffset = windowOffset;
-					bestStageId = 2;
-					found = true;
+		}
+		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0; windowOffset < WINDOW_SIZE; windowOffset += 2) {
+			if (windowOffset+windowPosition+1 >= earliest_place && possible[windowOffset+1] && !possible[windowOffset]) {
+				bestOffset[windowOffset] = bestOffset[windowOffset+1];
+				bestStage[windowOffset] = bestStage[windowOffset+1];
+				possible[windowOffset] = 1;
 			}
-
-			stageType = way_specialisation.slc<2>(3 << 1);
-			if ((unitType == stageType || unitType == 2)
-			 && windowWord.slc<32>(96) == 0
-			 && windowPosition+windowOffset >= earliest_place
-			 && windowOffset < bestWindowOffset) {
-					bestWindowOffset = windowOffset;
-					bestStageId = 3;
-					found = true;
+		}
+		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0; windowOffset < WINDOW_SIZE; windowOffset += 4) {
+			if (windowOffset+windowPosition+2 >= earliest_place && possible[windowOffset+2] && !possible[windowOffset]) {
+				bestOffset[windowOffset] = bestOffset[windowOffset+2];
+				bestStage[windowOffset] = bestStage[windowOffset+2];
+				possible[windowOffset] = 1;
+			}
+		}
+		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0; windowOffset < WINDOW_SIZE; windowOffset += 8) {
+			if (windowOffset+windowPosition+4 >= earliest_place && possible[windowOffset+4] && !possible[windowOffset]) {
+				bestOffset[windowOffset] = bestOffset[windowOffset+4];
+				bestStage[windowOffset] = bestStage[windowOffset+4];
+				possible[windowOffset] = 1;
 			}
 		}
 
-		// Whenever the instruction doesn't fit:
-		// - write all instructions of the window
-		// - shift the window
-		if (!found) {
+		bestWindowOffset = bestOffset[0];
+		bestStageId = bestStage[0];
+
+		//**************************************************************
+		//  Place found : Schedule the instruction + next
+		// !Place found : Write binaries + shift the window + retry scheduling
+		//**************************************************************
+
+		if (!possible[0]) {
 			for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
 			; windowOffset < 3; ++windowOffset) {
-				binaries[windowPosition+windowOffset] = stageWindow[offset(windowOffset)];
-				stageWindow[offset(windowOffset)] = 0;
+				ac_int<256, false> binariesWord;
+				ac_int<WINDOW_SIZE_L2, false> off = offset(windowOffset);
+				ac_int<8, false> available = freeSlot[off];
+
+				for (ac_int<STAGE_NUMBER_L2+1, false> stageId = 0
+				; stageId < STAGE_NUMBER; ++stageId) {
+					binariesWord.set_slc(  stageId*32
+					, available[stageId] ? zero32 : window[off][stageId]);
+				}
+
+				freeSlot[off] = 0xFF;
+
+				if (!issue_width[4]) {
+					//binaries[windowPosition+windowOffset] = stageWindow[offset(windowOffset)].slc<128>(0);
+					binaries[windowPosition+windowOffset] = binariesWord.slc<128>(0);
+				} else {
+					//binaries[2*(windowPosition+windowOffset)] = stageWindow[offset(windowOffset)].slc<128>(0);
+					//binaries[2*(windowPosition+windowOffset)+1] = stageWindow[offset(windowOffset)].slc<128>(128);
+					binaries[2*(windowPosition+windowOffset)] = binariesWord.slc<128>(0);
+					binaries[2*(windowPosition+windowOffset)+1] = binariesWord.slc<128>(128);
+				}
 			}
 
 			windowPosition += 3;
-			windowShift = (windowShift+3) % WINDOW_SIZE;
+			windowShift = (windowShift+3)%WINDOW_SIZE;
 		} else {
 			lastPlaceOfInstr = windowPosition + bestWindowOffset;
 			placeOfInstr[instructionId] = windowPosition + bestWindowOffset;
@@ -961,14 +1052,16 @@ ac_int<32, false> scheduling(
 			ac_int<8, false> rin2Dep = registerDependencies[rin2];
 
 			if (rin2 < 256 && rin2Dep == 1) {
-				freeRegisters[numberFreeRegister++] = rin2;
+				freeRegisters[numberFreeRegister++] = placeOfRegisters[virtualRIn2];
 			}
 
 			if (typeCode == 0 && !isImm) {
+
+					lastRead[placeOfRegisters[virtualRIn1_imm9]] = lastPlaceOfInstr;
 					instruction.set_slc(18, rin1);
 
 					if (rin1 < 256 && rin1Dep == 1) {
-						freeRegisters[numberFreeRegister++] = rin1;
+						freeRegisters[numberFreeRegister++] = placeOfRegisters[virtualRIn1_imm9];
 					}
 
 					if (rin1 < 256 && rin1 == rin2) {
@@ -984,7 +1077,10 @@ ac_int<32, false> scheduling(
 				registerDependencies[rin2] = rin2Dep - 1;
 			}
 
-			stageWindow[offset(bestWindowOffset)].set_slc(bestStageId*32, createInstruction(instruction));
+			lastRead[placeOfRegisters[virtualRIn2]] = lastPlaceOfInstr;
+
+			window[offset(bestWindowOffset)][bestStageId] = createInstruction(instruction);
+			freeSlot[offset(bestWindowOffset)][bestStageId] = 0;
 
 			if (instruction.slc<2>(48) == 0) {
 				haveJump = 1;
@@ -994,23 +1090,47 @@ ac_int<32, false> scheduling(
 			instructionId++;
 		}
 	}
-	ac_int<32, false> lastGap;
+
+	//**************************************************************
+	// Write remaining binaries + find the last word which contains instructions
+	//**************************************************************
+
+	ac_int<32, false> lastGap = 0;
 	for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
 	; windowOffset < WINDOW_SIZE; ++windowOffset) {
+		ac_int<256, false> binariesWord;
+		ac_int<WINDOW_SIZE_L2, false> off = offset(windowOffset);
+		ac_int<8, false> available = freeSlot[off];
 
-		if (stageWindow[offset(windowOffset)] != 0) {
+		for (ac_int<STAGE_NUMBER_L2+1, false> stageId = 0
+		; stageId < STAGE_NUMBER; ++stageId) {
+			binariesWord.set_slc(  stageId*32
+			, available[stageId] ? zero32 : window[off][stageId]);
+		}
+
+		if (available) {
 			lastGap = windowOffset;
 		}
 
-		binaries[windowPosition+windowOffset] = stageWindow[offset(windowOffset)];
-	}
-	if (haveJump){
-		ac_int<32, false> const0 = 0;
-		binaries[jumpPlace].set_slc(96, const0);
+		freeSlot[off] = 0xFF;
+		if (!issue_width[4]) {
+			//binaries[windowPosition+windowOffset] = stageWindow[offset(windowOffset)].slc<128>(0);
+			binaries[windowPosition+windowOffset] = binariesWord.slc<128>(0);
+		} else {
+			//binaries[2*(windowPosition+windowOffset)] = stageWindow[offset(windowOffset)].slc<128>(0);
+			//binaries[2*(windowPosition+windowOffset)+1] = stageWindow[offset(windowOffset)].slc<128>(128);
+			binaries[2*(windowPosition+windowOffset)] = binariesWord.slc<128>(0);
+			binaries[2*(windowPosition+windowOffset)+1] = binariesWord.slc<128>(128);
+		}
 	}
 
-	return windowPosition+lastGap+1-addressInBinaries;
+	if (haveJump) {
+		binaries[jumpPlace].set_slc(96, zero32);
+	}
+
+	return (issue_width[4] ? 2 : 1)*(windowPosition+lastGap-1)-addressInBinaries;
 }
+
 #endif
 #endif
 
@@ -1028,7 +1148,7 @@ int irScheduler(DBTPlateform *platform, uint1 optLevel, uint8 basicBlockSize, ui
 
 	#ifndef __NIOS
 	return scheduling(optLevel, basicBlockSize, platform->bytecode, platform->vliwBinaries, addressInBinaries, platform->placeOfRegisters,
-			numberFreeRegister, platform->freeRegisters, issue_width, way_specialisation, platform->placeOfInstr);
+	numberFreeRegister, platform->freeRegisters, 0b1111, way_specialisation, platform->placeOfInstr);
 	#else
 	unsigned int argA = optLevel + (basicBlockSize << 1) + (addressInBinaries << 16);
 	unsigned int argB = issue_width + (way_specialisation << 4);

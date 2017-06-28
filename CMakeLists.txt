@@ -24,5 +24,13 @@ add_subdirectory(src)
 foreach(oneExecutable ${EXECUTABLE})
 	get_filename_component(execName ${oneExecutable} NAME_WE)
 
-	add_executable(${execName} ${SOURCE} ${oneExecutable})
+  if (execName MATCHES "dbt")
+    add_executable(dbtList ${SOURCE} ${oneExecutable})
+    set_target_properties(dbtList PROPERTIES COMPILE_DEFINITIONS "IR_SUCC")
+    
+    add_executable(dbtScoreboard ${SOURCE} ${oneExecutable})
+  else()
+	  add_executable(${execName} ${SOURCE} ${oneExecutable})
+  endif()
+
 endforeach(oneExecutable)
