@@ -1,6 +1,8 @@
 
 #ifndef __CATAPULT
 #include <stdio.h>
+#include <stdlib.h>
+
 #include <dbt/dbtPlateform.h>
 #endif
 
@@ -26,6 +28,8 @@
 #ifndef __SCOREBOARD
 
 #warning "Using List Scheduler"
+
+char countToFail;
 
 const int numberOfFUs = 4;                      //Correspond to the number of concurent instructions possible
 int latencies[4] = {4,4,4,4};   //The latencies of the different pipeline stages
@@ -166,7 +170,6 @@ void insertReadyInstructionOpt(ac_int<8, false> instructionNumber){
     ac_int<2, false> type = getType(instruction);
     ac_int<6, false> place;
 
-    printf("instruction %d has type %d\n", instructionNumber, type);
         if ((writePlaceRead + 1) == writePlaceWrite){
             stall = 1;
         }
@@ -242,12 +245,12 @@ void getFirstInstruction(int type){
  */
 
 //The argument optLevel is here to set the difficulty of the scheduling : 0 mean that there is just a binary priority and 1 mean that we'll consider the entire priority value
-ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBlockSize, ac_int<128, false> bytecode[256], ac_int<128, false> binaries[1024],ac_int<16, false> addressInBinaries,  ac_int<6, false> placeOfRegisters[512], ac_int<6, false> numberFreeRegister, ac_int<6, false> freeRegisters[64],ac_int<4, false> issue_width, ac_int<MAX_ISSUE_WIDTH * 2, false> way_specialisation, ac_int<32, false> placeOfInstr[256]){
+ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBlockSize, ac_int<128, false> bytecode[256], ac_int<128, false> binaries[65536],ac_int<16, false> addressInBinaries,  ac_int<6, false> placeOfRegisters[512], ac_int<6, false> numberFreeRegister, ac_int<6, false> freeRegisters[64],ac_int<4, false> issue_width, ac_int<MAX_ISSUE_WIDTH * 2, false> way_specialisation, ac_int<32, false> placeOfInstr[256]){
     ac_int<32, false> cycleNumber = 0; //This is the current cycle
     ac_int<2, false> lineNumber = 0;
     ac_int<32,false> writeInBinaries =addressInBinaries;
-    writeFreeRegister = numberFreeRegister;
 
+    countToFail = 0;
     for (int i=0; i<64; i++){
     	writePlace[i] = i;
     }
@@ -255,7 +258,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
     writePlaceWrite = 0;
 
     readFreeRegister = 0;
-    writeFreeRegister = 0;
+    writeFreeRegister = numberFreeRegister;
 
     readyNumber[0] = 0;
     readyNumber[1] = 0;
@@ -283,8 +286,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 		numbersOfDependencies[i] = bytecode[i].slc<8>(6+64);
 		priorities[i] = bytecode[i].slc<8>(24+32);
 		ac_int<3, false> const7 = 7;
-		numbersOfRegisterDependencies[i] = (bytecode[i][64+14+8]) ? const7 : bytecode[i].slc<3>(3+64);
-
+		numbersOfRegisterDependencies[i] = (bytecode[i][96+27]) ? bytecode[i].slc<3>(3+64) : const7;
 
 		if (numbersOfDependencies[i] == 0){
 		    if (fifoNumberElement == 64)
@@ -340,7 +342,6 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
         ac_int<3, false> stageForSuccessors = 0;
 
         ac_int<256, false> binariesWord = 0;
-
 
         //For each functional unit, we assign the most prior instruction
         for (ac_int<6, false> stageIndex = 0; stageIndex < issue_width; stageIndex++){
@@ -404,8 +405,15 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 						placeOfRegisters[returnGetFirstNumber] = dest;
 						readFreeRegister++;
 						numberFreeRegister--;
+						countToFail=0;
+						fprintf(stderr, "allocating %d\n", dest);
 					}
 					else {
+						countToFail++;
+						if (countToFail == 7){
+							fprintf(stderr, "Failed...\n");
+							exit(-1);
+						}
 						//There is no free registers, we need to cancel the current instruction being scheduled
 						fifoInsertReadyInstruction[fifoPlaceToWrite] = returnGetFirstNumber;
 						fifoPlaceToWrite++;
@@ -423,11 +431,11 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 
 				//If the allocation of the instruction is validated
 				if (isSchedulable){
+
 					scheduledInstructions++;
 
 					if (instruction.slc<2>(48) == 0){
 						//This is a jump
-						fprintf(stderr, "Jump is placed at %d\n", (unsigned int)writeInBinaries);
 						haveJump = 1;
 						jumpPlace = writeInBinaries;
 					}
@@ -582,7 +590,6 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 				numbersOfRegisterDependencies[usedRegister[oldLineNumber][i]] = numberDep;
 
 				ac_int<6, false> place = placeOfRegisters[usedRegister[oldLineNumber][i]].slc<6>(0);
-
 
 
 				if (numberDep == 0){

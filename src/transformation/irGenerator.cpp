@@ -1870,8 +1870,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 					writeDependency_ac(bytecode, oneInstructionFromBlock,jumpID, 0, &bytecode[jumpID]);
 				}
 			}
-			jumpBytecodeWord.set_slc(64+6, numberDependencies);
-			bytecode[jumpID] = jumpBytecodeWord;
 		}
 
 		//Modification of last writer on renamed registers

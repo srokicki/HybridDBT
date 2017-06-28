@@ -49,14 +49,13 @@ void printStats(unsigned int size, short* blockBoundaries){
 }
 
 
-int translateOneSection(DBTPlateform &dbtPlateform, uint32 placeCode, int sectionStart, int startAddressSource, int endAddressSource){
+int translateOneSection(DBTPlateform &dbtPlateform, uint32 placeCode, int sourceStartAddress, int sectionStartAddress, int sectionEndAddress){
 	int previousPlaceCode = placeCode;
-	uint32 size = (endAddressSource - startAddressSource)>>2;
-	int addressStart = startAddressSource;
+	uint32 size = (sectionEndAddress - sectionStartAddress)>>2;
 	placeCode = firstPassTranslator_RISCV(&dbtPlateform,
 			size,
-			sectionStart,
-			addressStart,
+			sourceStartAddress,
+			sectionStartAddress,
 			placeCode);
 
 
@@ -71,7 +70,7 @@ int translateOneSection(DBTPlateform &dbtPlateform, uint32 placeCode, int sectio
 }
 
 
-void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressStart, uint32 &size, DBTPlateform *platform){
+void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressStart, uint32 &size, uint32 &pcStart, DBTPlateform *platform){
 
 #ifndef __NIOS
 	//We open the elf file and search for the section that is of interest for us
@@ -102,6 +101,18 @@ void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressS
 			free(data);
 		}
 	}
+
+	for (int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++){
+		ElfSymbol *symbol = elfFile.symbols->at(oneSymbol);
+		const char* name = (const char*) &(elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode()[symbol->name]);
+
+		if (strcmp(name, "_start") == 0){
+			fprintf(stderr, "%s\n", name);
+			pcStart = symbol->offset;
+
+		}
+	}
+
 
 
 #else
@@ -300,9 +311,10 @@ int main(int argc, char *argv[])
 	unsigned char* code;
 	unsigned int addressStart;
 	uint32 size;
+	uint32 pcStart;
 
 	//We read the binaries
-	readSourceBinaries(FILE, code, addressStart, size, &dbtPlateform);
+	readSourceBinaries(FILE, code, addressStart, size, pcStart, &dbtPlateform);
 
 	int numberOfSections = 1 + (size>>10);
 	IRApplication application = IRApplication(numberOfSections);
@@ -336,27 +348,6 @@ int main(int argc, char *argv[])
 	}
 
 
-	//Test debug
-//	ElfFile elfFile(FILE);
-//	dbtPlateform.riscvSimulator = new RiscvSimulator();
-//	dbtPlateform.riscvSimulator->initialize(localArgc, localArgv);
-//	dbtPlateform.riscvSimulator->debugLevel = VERBOSE*2;
-//
-//	for (unsigned int sectionCounter = 0; sectionCounter<elfFile.sectionTable->size(); sectionCounter++){
-//		ElfSection *oneSection = elfFile.sectionTable->at(sectionCounter);
-//
-//		if (oneSection->address != 0){
-//			//If the address is not null we place its content into memory
-//			unsigned char* sectionContent = oneSection->getSectionCode();
-//
-//			for (unsigned int byteNumber = 0; byteNumber<oneSection->size; byteNumber++){
-//				dbtPlateform.riscvSimulator->stb(oneSection->address + byteNumber, sectionContent[byteNumber]);
-//			}
-//		}
-//	}
-//
-//	dbtPlateform.riscvSimulator->pc = 0x10000;
-
 	/********************************************************
 	 * First part of DBT: generating the first pass translation of binaries
 	 *******************************************************
@@ -382,20 +373,9 @@ int main(int argc, char *argv[])
 
 		placeCode =  translateOneSection(dbtPlateform, placeCode, addressStart, startAddressSource,endAddressSource);
 
-		buildBasicControlFlow(dbtPlateform, oneSection, startAddressSource, oldPlaceCode, placeCode, &application);
+		buildBasicControlFlow(&dbtPlateform, oneSection,addressStart, startAddressSource, oldPlaceCode, placeCode, &application, &profiler);
 
 
-		//We select blocks for profiling:
-		//If a block has more than 16 instructions, it is eligible for profiling.
-		//TODO use a DEFINE instead of a fixed number of threshold
-		for (int oneBlock = 0; oneBlock<application.numbersBlockInSections[oneSection]; oneBlock++){
-			IRBlock *block = application.blocksInSections[oneSection][oneBlock];
-
-			if (block->vliwEndAddress - block->vliwStartAddress>7){
-				profiler.profileBlock(application.blocksInSections[oneSection][oneBlock]);
-			}
-
-		}
 
 		int** insertions = (int**) malloc(sizeof(int **));
 		int nbIns = getInsertionList(oneSection*1024, insertions);
@@ -412,38 +392,20 @@ int main(int argc, char *argv[])
 		unsigned int initialDestination = unresolvedJumpsArray[oneUnresolvedJump+1];
 		unsigned int type = unresolvedJumpsTypeArray[oneUnresolvedJump+1];
 
-		unsigned int oldJump = readInt(dbtPlateform.vliwBinaries, 16*(source));
-		unsigned int indexOfDestination = 0;
 		unsigned char isAbsolute = ((type & 0x7f) != VEX_BR) && ((type & 0x7f) != VEX_BRF);
-
 		unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(initialDestination);
+
 		if (destinationInVLIWFromNewMethod == -1){
 			printf("A jump from %d to %x is still unresolved... (%d insertions)\n", source, initialDestination, insertionsArray[(initialDestination>>10)<<11]);
 		}
-		else if (isAbsolute){
-			//In here we solve an absolute jump
-			indexOfDestination = destinationInVLIWFromNewMethod;
-			initialDestination = destinationInVLIWFromNewMethod;
-			initialDestination = initialDestination << 2; //This is compute the destination according to the #of instruction and not the number of 4-instr bundle
-			writeInt(dbtPlateform.vliwBinaries, 16*(source), type + ((initialDestination & 0x7ffff)<<7));
-
-		}
 		else{
-			//In here we solve a relative jump
-			indexOfDestination = destinationInVLIWFromNewMethod;
-			initialDestination = destinationInVLIWFromNewMethod;
+			int immediateValue = (isAbsolute) ? (destinationInVLIWFromNewMethod << 2) : ((destinationInVLIWFromNewMethod  - source)<<2);
+			writeInt(dbtPlateform.vliwBinaries, 16*(source), type + ((immediateValue & 0x7ffff)<<7));
 
-			initialDestination = initialDestination  - (source) ;
-			initialDestination = initialDestination << 2; //This is compute the destination according to the #of instruction and not the number of 4-instr bundle
-
-			//We modify the jump instruction to make it jump at the correct place
-			writeInt(dbtPlateform.vliwBinaries, 16*(source), type + ((initialDestination & 0x7ffff)<<7));
-
+			unsigned int instructionBeforePreviousDestination = readInt(dbtPlateform.vliwBinaries, 16*(destinationInVLIWFromNewMethod-1)+12);
+			if (instructionBeforePreviousDestination != 0)
+				writeInt(dbtPlateform.vliwBinaries, 16*(source+1)+12, instructionBeforePreviousDestination);
 		}
-
-		unsigned int instructionBeforePreviousDestination = readInt(dbtPlateform.vliwBinaries, 16*(indexOfDestination-1)+12);
-		if (instructionBeforePreviousDestination != 0)
-					writeInt(dbtPlateform.vliwBinaries, 16*(source+1)+12, instructionBeforePreviousDestination);
 	}
 
 
@@ -469,6 +431,13 @@ int main(int argc, char *argv[])
 	dbtPlateform.vexSimulator->initializeRun(0, localArgc, localArgv);
 	#endif
 
+	//We change the init code to jump at the correct place
+	uint32 translatedStartPC = solveUnresolvedJump((pcStart-addressStart)>>2);
+	unsigned int instruction = assembleIInstruction(VEX_CALL, translatedStartPC<<2, 0);
+	writeInt(dbtPlateform.vliwBinaries, 0, instruction);
+
+
+	fprintf(stderr, "Vliw start is %x pc start is %x\n", addressStart, pcStart);
 //	for (int i=0;i<placeCode;i++){
 //		fprintf(stderr, "%d ", i*4);
 //		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
@@ -501,16 +470,24 @@ int main(int argc, char *argv[])
 			}
 
 
-				if (scheduleCounter < 1 && OPTLEVEL >= 2 && profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
+				if (OPTLEVEL >= 2 && profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
 
 					fprintf(stderr, "[%d] Block from %d to %d is eligible advanced control flow building\n",dbtPlateform.vexSimulator->cycle, block->vliwStartAddress, block->vliwEndAddress);
 					buildAdvancedControlFlow(&dbtPlateform, block, &application);
 					block->blockState = IRBLOCK_PROC;
 					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
-					placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
-//					placeCode = reconfigureVLIW(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
-//					dbtPlateform.vexSimulator->debugLevel = 1;
-					scheduleCounter++;
+					if (application.procedures[application.numberProcedures-1]->nbBlock<40 && application.procedures[application.numberProcedures-1]->nbBlock>3){
+
+
+						placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
+	//					placeCode = reconfigureVLIW(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
+	//					dbtPlateform.vexSimulator->debugLevel = 1;
+						scheduleCounter++;
+						application.procedures[application.numberProcedures-1]->print();
+					}
+					else{
+						fprintf(stderr, "Dropping...\n");
+					}
 				}
 		}
 

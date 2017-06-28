@@ -59,7 +59,7 @@ class VexSimulator : public GenericSimulator {
 	ac_int<4, false> issueWidth;
 	ac_int<1, false> cond;
 	ac_int<1, false> unitActivation[8];
-	ac_int<8, false> profileResult[64];
+	ac_int<8, false> profileResult[8192];
 
 	//Tools for printing average IPC
 	uint64_t nbInstr;

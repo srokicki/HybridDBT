@@ -136,8 +136,8 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 		ac_int<64, false> address = extoMem.result;
 
 		if (extoMem.opCode == VEX_PROFILE){
-			if (this->profileResult[extoMem.dest] != 255)
-				this->profileResult[extoMem.dest]++;
+			if (this->profileResult[extoMem.result] != 255)
+				this->profileResult[extoMem.result]++;
 
 			memtoWB->WBena = 0;
 		}
@@ -470,7 +470,6 @@ void VexSimulator::doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 			selectSra32 ? sra_result_32 :
 			srl_result_32;
 
-
 	extoMem->result = selectAdd ? add_result :
 			selectSub ? sub_result :
 			selectSll ? sl_result :
@@ -778,6 +777,7 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 
 	ac_int<64, true> regValueA = REG[RA];
 	ac_int<64, true> regValueB = REG[secondRegAccess];
+
 
 	dctoEx->opCode = OP;
 	dctoEx->datac = regValueB; //For store instructions

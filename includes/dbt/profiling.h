@@ -18,7 +18,7 @@ public:
 	DBTPlateform *platform;		  //Pointer to the DBT platform
 	int destinationCallProfiling; //This is the vliw address of the start of the profiling procedure in VLIW memory
 	int numberProfiledBlocks = 0; //Number of profiled blocks
-	IRBlock* profiledBlocks[1024];// list of profiled blocks
+	IRBlock* profiledBlocks[8192];// list of profiled blocks
 
 	Profiler(DBTPlateform *platform);
 

@@ -27,6 +27,7 @@ public:
 	std::vector<std::string> *nameTable;
 	std::vector<ElfSymbol*> *symbols;
 
+	int indexOfSymbolNameSection;
 
 	ElfFile(char* pathToElfFile);
 	ElfFile* copy(char* newDest);

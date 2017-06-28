@@ -9,6 +9,7 @@
 
 #include <dbt/dbtPlateform.h>
 #include <dbt/insertions.h>
+#include <dbt/profiling.h>
 
 #include <isa/irISA.h>
 #include <isa/vexISA.h>
@@ -25,7 +26,7 @@
 #define TEMP_BLOCK_STORAGE_SIZE 900
 
 
-void buildBasicControlFlow(DBTPlateform dbtPlateform, int section, int mipsStartAddress, int startAddress, int endAddress, IRApplication *application){
+void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStartAddress, int sectionStartAddress, int startAddress, int endAddress, IRApplication *application, Profiler *profiler){
 
 	int sizeNewlyTranslated = endAddress-startAddress;
 	mipsStartAddress = mipsStartAddress>>2;
@@ -38,7 +39,7 @@ void buildBasicControlFlow(DBTPlateform dbtPlateform, int section, int mipsStart
 		insertionMap[oneInstruction] = 0;
 
 	int** insertions = (int**) malloc (sizeof(int**));
-	int numberInsertions = getInsertionList(mipsStartAddress-0x4000, insertions); //TODO
+	int numberInsertions = getInsertionList((sectionStartAddress>>2) - mipsStartAddress, insertions); //TODO
 	for (int oneInsertion = 0; oneInsertion < numberInsertions; oneInsertion++){
 		//We mark the destination as an insertion
 		int index = (*insertions)[oneInsertion];
@@ -55,43 +56,104 @@ void buildBasicControlFlow(DBTPlateform dbtPlateform, int section, int mipsStart
 	int indexInMipsBinaries = 0;
 	int indexInVLIWBinaries = 0;
 	int previousBlockStart = 0;
-	for (int oneInstruction = 0; oneInstruction < sizeNewlyTranslated; oneInstruction++){
-		int offset = (indexInMipsBinaries + mipsStartAddress);
-//		int bitOffset = (indexInMipsBinaries + mipsStartAddress) & 0x7;
-		char blockBoundary = (dbtPlateform.blockBoundaries[offset]);
+	int previousBlockStartSource = 0;
 
-		if (blockBoundary && !insertionMap[oneInstruction]){
+	//Online resolution of jumps
+	unsigned int unresolvedJumpIndex = 0;
+
+
+
+	for (int oneInstruction = 0; oneInstruction <= sizeNewlyTranslated; oneInstruction++){
+		int offset = (indexInMipsBinaries + ((sectionStartAddress>>2) - mipsStartAddress));
+		char blockBoundary = 1;
+		if (oneInstruction != sizeNewlyTranslated)
+			blockBoundary = (dbtPlateform->blockBoundaries[offset]);
+		char isInsertion = (oneInstruction == sizeNewlyTranslated) ? 0 : insertionMap[oneInstruction];
+
+		if (blockBoundary && !isInsertion & previousBlockStart<indexInVLIWBinaries){
+
+
+			/******************************************************************************************
+			 ******************************  Creation and insertion of the block
+			 ******************************************************************************************
+			 * A new boundary has been reached, we have to create the IRBlock, to give him its values
+			 * (eg. vliwStartAddress, vliwEndAddress, sourceStartAddress, sourceEndAddress etc...) and
+			 * we insert it in the IRApplication
+			 *
+			 ******************************************************************************************/
 
 			//We reach the end of a block: we create the block and mark this place as a new start
 			IRBlock *newBlock = new IRBlock(previousBlockStart+startAddress, indexInVLIWBinaries+startAddress, section);
+			newBlock->sourceStartAddress = previousBlockStartSource + (sectionStartAddress>>2);
+			newBlock->sourceEndAddress = indexInMipsBinaries + (sectionStartAddress>>2);
+			newBlock->sourceDestination = -1;
+
+
 			application->addBlock(newBlock, section);
 
-			blockCounter++;
-			if (blockCounter > TEMP_BLOCK_STORAGE_SIZE){
-				fprintf(stderr, "Error while building basic control flow: temporary storage size for blocks is too small and nothing has been implemented to handle this...\n");
-				exit(0);
+
+			/******************************************************************************************
+			 ******************************  Branch resolution
+			 ******************************************************************************************
+			 * If we find that there is an unresolved jump in this block, we find the correct location and
+			 * solve it if possible (eg. if the destination has already been translated.
+			 *
+			 ******************************************************************************************/
+			unsigned int oneJumpSource = dbtPlateform->unresolvedJumps_src[unresolvedJumpIndex];
+			unsigned int oneJumpInitialDestination = dbtPlateform->unresolvedJumps[unresolvedJumpIndex];
+			unsigned int oneJumpType = dbtPlateform->unresolvedJumps_type[unresolvedJumpIndex];
+
+			if (newBlock->vliwEndAddress - 2 == oneJumpSource){
+
+				//We save the destination
+				newBlock->sourceDestination = oneJumpInitialDestination+(sectionStartAddress>>2);
+
+				unsigned char isAbsolute = ((oneJumpType & 0x7f) != VEX_BR) && ((oneJumpType & 0x7f) != VEX_BRF);
+				unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(oneJumpInitialDestination+((sectionStartAddress>>2)-mipsStartAddress));
+				if (destinationInVLIWFromNewMethod == -1){
+					//In this case, the jump cannot be resolved because the destination block is not translated yet.
+					//We store information concerning the destination and it will be resolved later
+
+					int numberUnresolvedJumps = unresolvedJumpsArray[0];
+					unresolvedJumpsArray[1+numberUnresolvedJumps] = oneJumpInitialDestination+((sectionStartAddress>>2)-mipsStartAddress);
+					unresolvedJumpsTypeArray[1+numberUnresolvedJumps] = oneJumpType;
+					unresolvedJumpsSourceArray[1+numberUnresolvedJumps] = oneJumpSource;
+
+					unresolvedJumpsArray[0] = numberUnresolvedJumps+1;
+				}
+				else{
+					//The jump can be resolved
+					int immediateValue = (isAbsolute) ? (destinationInVLIWFromNewMethod << 2) : ((destinationInVLIWFromNewMethod  - oneJumpSource)<<2);
+					writeInt(dbtPlateform->vliwBinaries, 16*(oneJumpSource), oneJumpType + ((immediateValue & 0x7ffff)<<7));
+
+					unsigned int instructionBeforePreviousDestination = readInt(dbtPlateform->vliwBinaries, 16*(destinationInVLIWFromNewMethod-1)+12);
+					if (instructionBeforePreviousDestination != 0)
+						writeInt(dbtPlateform->vliwBinaries, 16*(oneJumpSource+1)+12, instructionBeforePreviousDestination);
+				}
+
+				unresolvedJumpIndex++;
 			}
 
+			fprintf(stderr, "Creating block from %x to %x (with dest at %x)\n", newBlock->sourceStartAddress, newBlock->sourceEndAddress, newBlock->sourceDestination);
 
+
+			//If the block is big enough, we profile it
+			if (newBlock->vliwEndAddress - newBlock->vliwStartAddress > 7)
+				profiler->profileBlock(application->blocksInSections[section][application->numbersBlockInSections[section] - 1]);
+
+
+			/******************************************************************************************/
+			// We update interLoop values
 			previousBlockStart = indexInVLIWBinaries;
+			previousBlockStartSource = indexInMipsBinaries;
 
 		}
 
+
 		//We increase counters: both if we are not in an insertion, only the VLIW if we are
 		indexInVLIWBinaries++;
-		if (!insertionMap[oneInstruction])
+		if (!isInsertion)
 			indexInMipsBinaries++;
-	}
-
-	//We reach the end of a block: we create the block and mark this place as a new start
-	IRBlock *newBlock = new IRBlock(previousBlockStart+startAddress, indexInVLIWBinaries+startAddress, section);
-	application->addBlock(newBlock, section);
-	previousBlockStart = indexInVLIWBinaries;
-
-	blockCounter++;
-	if (blockCounter > TEMP_BLOCK_STORAGE_SIZE){
-		fprintf(stderr, "Error while building basic control flow: temporary storage size for blocks is too small and nothing has been implemented to handle this...\n");
-		exit(0);
 	}
 
 	//We free temporary used data
@@ -102,13 +164,13 @@ void buildBasicControlFlow(DBTPlateform dbtPlateform, int section, int mipsStart
 
 void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApplication *application){
 
-	IRBlock *blocksToStudy[20];
+	IRBlock *blocksToStudy[50];
 	int numberBlockToStudy = 1;
 	blocksToStudy[0] = startBlock;
 	IRBlock *entryBlock = startBlock;
 	int indexEntryBlock = 0;
 
-	IRBlock *blockInProcedure[TEMP_PROCEDURE_STORAGE_SIZE];
+	IRBlock *blockInProcedure[TEMP_BLOCK_STORAGE_SIZE];
 	int numberBlockInProcedure = 0;
 
 
@@ -121,132 +183,97 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 		unsigned int endAddress = currentBlock->vliwEndAddress;
 		unsigned int jumpInstruction = readInt(platform->vliwBinaries, (endAddress-2)*16);
 
-
+		fprintf(stderr, "jump is %x\n", jumpInstruction);
 
 		if (currentBlock->nbSucc != -1)
 			continue;
 
-		if (numberBlockInProcedure>TEMP_PROCEDURE_STORAGE_SIZE){
+		if (numberBlockInProcedure>TEMP_BLOCK_STORAGE_SIZE){
 			fprintf(stderr, "Error while building advanced control flow: temporary storage size for blocks is too small and nothing has been implemented to handle this...\n");
 			exit(0);
 		}
 
 		blockInProcedure[numberBlockInProcedure] = currentBlock;
 		numberBlockInProcedure++;
-		//We only consider successors if they are after a branch or a goto instruction.
 
-		//If we meet a CALL or a GOTOR (return) instruction we consider it to be the end of the 'procedure'
-		// and thus we end the analysis.
 
-		if (((jumpInstruction & 0x7f) == VEX_BR) || ((jumpInstruction & 0x7f) == VEX_BRF)){
-			//In this case we have to find one block with its start address, the other one is the next block
+		/******************************************************************************************
+		 ******************************  Successor resolution
+		 ******************************************************************************************
+		 * In this part we will go through all blocks in order to find the object which represent successors of the current block.
+		 * This step is currently expensive and may be simplified by creating a map between addresses and blocks or maybe a
+		 * dichotomy search function (if they are correctly sorted according to their start address).
+		 *
+		 ******************************************************************************************/
 
-			//We compute the destination(s)
-			int offset = (jumpInstruction >> 7) & 0x7ffff;
-			if ((offset & 0x40000) != 0)
-				offset = offset - 0x80000;
-			int successor1Start = endAddress-2 + (offset>>2);
-			int successor2Start = endAddress;
+		//We determine the kind of jump we face
+		bool isConditionalBranch = ((jumpInstruction & 0x7f) == VEX_BR) || ((jumpInstruction & 0x7f) == VEX_BRF);
+		bool isJump = (jumpInstruction & 0x7f) == VEX_GOTO;
+		bool isCall = (jumpInstruction & 0x7f) == VEX_CALL;
+		bool isReturn = (jumpInstruction & 0x7f) == VEX_RETURN;
+		bool isNothing = ((jumpInstruction & 0x7f) != VEX_CALL) && ((jumpInstruction & 0x7f) != VEX_CALLR) && ((jumpInstruction & 0x7f) != VEX_GOTOR) && ((jumpInstruction & 0x7f) != VEX_STOP);
 
-			//We find the corresponding blocks
+
+		//We determine the name of successor(s)
+		int successor1, successor2, nbSucc;
+		if (isConditionalBranch){
+			successor1 = currentBlock->sourceDestination;
+			successor2 = currentBlock->sourceEndAddress;
+			nbSucc = 2;
+			fprintf(stderr, "Looking for %x and %x\n", successor1, successor2);
+
+		}
+		else if (isJump){
+			if (currentBlock->sourceDestination != -1){
+				successor1 = currentBlock->sourceDestination;
+				nbSucc = 1;
+				fprintf(stderr, "Looking for %x\n", successor1);
+
+			}
+		}
+		else if (isCall || isNothing){
+			successor1 = currentBlock->sourceEndAddress;
+			nbSucc = 1;
+			fprintf(stderr, "Looking for %x\n", successor1);
+
+		}
+		else{
+			nbSucc = 0;
+		}
+
+		//We find the corresponding block(s)
+		if (nbSucc > 0)
 			for (int oneSection = 0; oneSection<application->numberOfSections; oneSection++){
-//				fprintf(stderr, "xtest sc\n");
 				for (int oneBlock = 0; oneBlock < application->numbersBlockInSections[oneSection]; oneBlock++){
 					IRBlock *block = application->blocksInSections[oneSection][oneBlock];
-					if (block->vliwStartAddress == successor1Start)
+					if (block->sourceStartAddress == successor1)
 						currentBlock->successor1 = block;
-					else if (block->vliwStartAddress == successor2Start)
+					else if (nbSucc > 1 && block->sourceStartAddress == successor2)
 						currentBlock->successor2 = block;
 				}
 			}
 
-			//We store the result
-			currentBlock->nbSucc = 2;
+
+		//We store the result and add the blocks to the list of block to study
+		currentBlock->nbSucc = nbSucc;
+
+		if (nbSucc > 0){
 			blocksToStudy[numberBlockToStudy] = currentBlock->successor1;
+			fprintf(stderr, "Adding Block %x to successors\n", currentBlock->successor1);
+		}
+		if (nbSucc > 1){
 			blocksToStudy[numberBlockToStudy+1] = currentBlock->successor2;
-			numberBlockToStudy += 2;
-
-
-			//We actualize if needed the entryBlock TODO:check this
-			if (entryBlock->vliwStartAddress > currentBlock->vliwStartAddress){
-				entryBlock = currentBlock;
-				indexEntryBlock = numberBlockInProcedure;
-			}
-
-
+			fprintf(stderr, "Adding Block %x to successors\n", currentBlock->successor2);
 		}
-		else if ((jumpInstruction & 0x7f) == VEX_GOTO){
-			//In this case there is only one successor which is the destination of the GOTO
-
-			//We compute the destination(s)
-			int destination = (jumpInstruction >> 7) & 0x7ffff;
-			if ((destination & 0x40000) != 0)
-				destination = destination - 0x80000;
-			int successor1Start = destination>>2;
-
-			//We find the corresponding block
-			for (int oneSection = 0; oneSection<application->numberOfSections; oneSection++){
-				for (int oneBlock = 0; oneBlock < application->numbersBlockInSections[oneSection]; oneBlock++){
-					IRBlock *block = application->blocksInSections[oneSection][oneBlock];
-
-					if (block->vliwStartAddress == successor1Start){
-						currentBlock->successor1 = block;
-						break;
-					}
-				}
-			}
-
-			//We store the result
-			currentBlock->nbSucc = 1;
-			blocksToStudy[numberBlockToStudy] = currentBlock->successor1;
-			numberBlockToStudy++;
+		numberBlockToStudy += nbSucc;
 
 
-			//We actualize if needed the entryBlock TODO:check this
-			if (entryBlock->vliwStartAddress > currentBlock->vliwStartAddress){
-				entryBlock = currentBlock;
-				indexEntryBlock = numberBlockInProcedure;
-			}
-
+		//We actualize if needed the entryBlock TODO:check this
+		if (entryBlock->vliwStartAddress > currentBlock->vliwStartAddress){
+			entryBlock = currentBlock;
+			indexEntryBlock = numberBlockInProcedure;
 		}
-		else if (((jumpInstruction & 0x7f) != VEX_CALL) && ((jumpInstruction & 0x7f) != VEX_CALLR) && ((jumpInstruction & 0x7f) != VEX_GOTOR) && ((jumpInstruction & 0x7f) != VEX_STOP)){
-			//If there is no jump instruction at the end of the block then the successor is the next block
 
-			//We compute the destination(s)
-			int successor1Start = endAddress;
-
-			//We find the corresponding block
-			for (int oneSection = 0; oneSection<application->numberOfSections; oneSection++){
-				for (int oneBlock = 0; oneBlock < application->numbersBlockInSections[oneSection]; oneBlock++){
-					IRBlock *block = application->blocksInSections[oneSection][oneBlock];
-					if (block->vliwStartAddress == successor1Start){
-						currentBlock->successor1 = block;
-						break;
-					}
-				}
-			}
-
-			//We store the result
-			currentBlock->nbSucc = 1;
-			blocksToStudy[numberBlockToStudy] = currentBlock->successor1;
-			numberBlockToStudy++;
-
-
-			//We actualize if needed the entryBlock TODO:check this
-			if (entryBlock->vliwStartAddress > currentBlock->vliwStartAddress){
-				entryBlock = currentBlock;
-				indexEntryBlock = numberBlockInProcedure;
-			}
-
-		}
-		else{
-			//We actualize if needed the entryBlock TODO:check this
-			if (entryBlock->vliwStartAddress > currentBlock->vliwStartAddress){
-				entryBlock = currentBlock;
-				indexEntryBlock = numberBlockInProcedure;
-			}
-			currentBlock->nbSucc = 0;
-		}
 	}
 
 
@@ -254,8 +281,23 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 	IRProcedure *procedure = new IRProcedure(entryBlock, numberBlockInProcedure);
 	procedure->blocks = (IRBlock**) malloc(numberBlockInProcedure * sizeof(IRBlock*));
 
-	memcpy(procedure->blocks, blockInProcedure, numberBlockInProcedure * sizeof(IRBlock*));
-	procedure->entryBlock = procedure->blocks[indexEntryBlock];
+	//TODO code a better sort function
+	int previousIndex = 0;
+	for (int oneBlock = 0; oneBlock<numberBlockInProcedure; oneBlock++){
+		int minBlock = 0x1000000;
+		int minBlockIndex = 0;
+		for (int oneOtherBlock = 0; oneOtherBlock<numberBlockInProcedure; oneOtherBlock++){
+			if (blockInProcedure[oneOtherBlock]->sourceStartAddress > previousIndex && blockInProcedure[oneOtherBlock]->sourceStartAddress < minBlock){
+				minBlock = blockInProcedure[oneOtherBlock]->sourceStartAddress;
+				minBlockIndex = oneOtherBlock;
+			}
+
+		}
+		procedure->blocks[oneBlock] = blockInProcedure[minBlockIndex];
+		previousIndex = minBlock;
+	}
+
+	procedure->entryBlock = procedure->blocks[0];
 	application->addProcedure(procedure);
 
 
@@ -272,6 +314,7 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 				platform->globalVariables[oneGlobalVariable] = 256 + oneGlobalVariable;
 
 			int originalScheduleSize = block->vliwEndAddress - block->vliwStartAddress- 1;
+
 
 
 			int blockSize = irGenerator(platform, block->vliwStartAddress, originalScheduleSize, globalVariableCounter);

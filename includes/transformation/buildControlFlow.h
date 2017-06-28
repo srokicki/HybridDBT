@@ -10,6 +10,7 @@
 
 #include <dbt/dbtPlateform.h>
 #include <isa/irISA.h>
+#include <dbt/profiling.h>
 
 /********************************************************************
  * Declaration a procedure made to build the basic control flow
@@ -26,7 +27,7 @@
  *
  *******************************************************************/
 
-void buildBasicControlFlow(DBTPlateform dbtPlateform, int section, int mipsStartAddress, int startAddress, int endAddress, IRApplication *application);
+void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStartAddress,int sectionStartAddress, int startAddress, int endAddress, IRApplication *application, Profiler *profiler);
 void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApplication *application);
 
 #endif /* INCLUDES_TRANSFORMATION_BUILDCONTROLFLOW_H_ */

@@ -69,7 +69,6 @@ void storeWordFromInsertionMemory(int offset, int word){
 
 
 void initializeInsertionsMemory(int sizeSourceCode){
-	printf("%x\n", sizeSourceCode);
 	int nbBlock = 1+( sizeSourceCode>>12);
 	for (int oneBlock = 0; oneBlock<nbBlock; oneBlock++){
 		int offset = oneBlock<<(SHIFT_FOR_INSERTION_SECTION-2);
@@ -82,7 +81,6 @@ void addInsertions(uint32 blockStartAddressInSources, uint32 blockStartAddressIn
 
 
 	int section = blockStartAddressInSources >> 10;
-
 	int offset = section << (SHIFT_FOR_INSERTION_SECTION-2); // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
 	//Currently offset point to the struct corresponding to the code section.
 	storeWordFromInsertionMemory(offset, numberInsertions);
@@ -240,7 +238,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 
 	//		| init -= startAddr	 | stw r6 -12(sp)		|					| offset = 7
 	cycle++;
-	writeInt(platform->vliwBinaries, cycle*16+0, assembleRiInstruction(VEX_SUBi, 4, 4, startAddress & 0xfff));
+	writeInt(platform->vliwBinaries, cycle*16+0, 0/*assembleRiInstruction(VEX_SUBi, 4, 4, startAddress & 0xfff)*/);
 	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 6, 2, -24));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleIInstruction(VEX_MOVI, 7, 5));
@@ -309,16 +307,23 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	writeInt(platform->vliwBinaries, cycle*16+8, assembleRInstruction(VEX_ADD, 4, 4, 6));
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleRInstruction(VEX_SH2ADD, 6, 8, 5));
 
-	// 		| br t1	 | 					| 					|
+	// 		| 				 | 					 	|					|
 	cycle++;
-	writeInt(platform->vliwBinaries, cycle*16+0, assembleIInstruction(VEX_BR, (bcl-cycle)<<2, 9));
+	writeInt(platform->vliwBinaries, cycle*16+0, 0);
 	writeInt(platform->vliwBinaries, cycle*16+4, 0);
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 
-	// 		| v1 = (start<<2) + v1	 | 					 	|					|
+	// 		| br t1	 | 					| 					| v1 = (start<<2) + v1
 	cycle++;
-	writeInt(platform->vliwBinaries, cycle*16+0, assembleRInstruction(VEX_SH2ADD, 6, 7, 6));
+	writeInt(platform->vliwBinaries, cycle*16+0, assembleIInstruction(VEX_BR, (bcl-cycle)<<2, 9));
+	writeInt(platform->vliwBinaries, cycle*16+4, 0);
+	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+	writeInt(platform->vliwBinaries, cycle*16+12, assembleRInstruction(VEX_SH2ADD, 6, 7, 6));
+
+	// 		|					 | 					 	|					|
+	cycle++;
+	writeInt(platform->vliwBinaries, cycle*16+0, 0);
 	writeInt(platform->vliwBinaries, cycle*16+4, 0);
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, 0);
