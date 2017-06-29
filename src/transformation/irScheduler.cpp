@@ -840,6 +840,9 @@ ac_int<32, false> placeOfInstr[256]
 			freeSlot[windowOffset] = 0xFF;
 	}
 
+	for (ac_int<l2<64>::value+1, false> i = 0; i < 64; ++i) {
+		lastRead[i] = 0;
+	}
 	--numberFreeRegister;
 
 	while (instructionId < basicBlockSize) {
@@ -890,6 +893,10 @@ ac_int<32, false> placeOfInstr[256]
 		deps[5] = bytecode_word4.slc<8>(8);
 		deps[6] = bytecode_word4.slc<8>(0);
 
+		//For alloc
+		ac_int<6, false> accessPlaceOfReg = placeOfRegisters[virtualRDest];
+		ac_int<6, false> accessFreeReg = freeRegisters[numberFreeRegister];
+
 		//**************************************************************
 		// Allocation
 		//**************************************************************
@@ -898,14 +905,15 @@ ac_int<32, false> placeOfInstr[256]
 		if (alloc) {
 			// take the first free register + update register dependencies
 			if (numberFreeRegister > 0) {
-				dest = freeRegisters[--numberFreeRegister];
+					numberFreeRegister--;
+				dest = accessFreeReg;
 				registerDependencies[instructionId] = bytecode_word2.slc<8>(6);
 			} else {
 				// else crash
 				return basicBlockSize+1;
 			}
 		} else {
-			dest = placeOfRegisters[virtualRDest];
+			dest = accessPlaceOfReg;
 		}
 
 		//**************************************************************
@@ -1000,12 +1008,59 @@ ac_int<32, false> placeOfInstr[256]
 		bestWindowOffset = bestOffset[0];
 		bestStageId = bestStage[0];
 
+		//Generation of instruction
+		instruction.set_slc(0, ac_int<9, false>(dest));
+		placeOfRegisters[instructionId] = dest;
+
+		ac_int<9, false> rin1 = virtualRIn1_imm9;
+		ac_int<9, false> rin2 = virtualRIn2;
+
+		ac_int<6, false> placeOfRin1 = placeOfRegisters[rin1];
+		ac_int<6, false> placeOfRin2 = placeOfRegisters[rin2];
+
+		instruction.set_slc(9, placeOfRin2);
+
+		ac_int<8, false> rin1Dep = registerDependencies[rin1];
+		ac_int<8, false> rin2Dep = registerDependencies[rin2];
+
+		ac_int<1, false> useRin1 = typeCode == 0 && !isImm;
+
+
+		if (useRin1) {
+
+				instruction.set_slc(18, rin1);
+
+				if (!rin1[8] && rin1 == rin2) {
+					 rin1Dep -= 2;
+				} else {
+					if (!rin1[8])
+						rin1Dep--;
+
+					if (!rin2[8])
+						rin2Dep--;
+				}
+		} else if (!rin2[8]) {
+			rin2Dep--;
+		}
+		registerDependencies[rin1] = rin1Dep;
+		registerDependencies[rin2] = rin2Dep;
+
+		if (useRin1 && !rin1[8] && rin1Dep == 0)
+			freeRegisters[numberFreeRegister++] = placeOfRin1;
+		if (!rin2[8] && rin2Dep == 0)
+			freeRegisters[numberFreeRegister++] = placeOfRin2;
+
+
+
 		//**************************************************************
 		//  Place found : Schedule the instruction + next
 		// !Place found : Write binaries + shift the window + retry scheduling
 		//**************************************************************
 
 		if (!possible[0]) {
+
+			ac_int<32, false> advance = (earliest_place > windowPosition+WINDOW_SIZE) ? earliest_place-windowPosition-WINDOW_SIZE+1 : ac_int<35,true>(1);
+
 			for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
 			; windowOffset < 3; ++windowOffset) {
 				ac_int<256, false> binariesWord;
@@ -1018,7 +1073,8 @@ ac_int<32, false> placeOfInstr[256]
 					, available[stageId] ? zero32 : window[off][stageId]);
 				}
 
-				freeSlot[off] = 0xFF;
+				if (windowOffset < advance)
+					freeSlot[off] = 0xFF;
 
 				if (!issue_width[4]) {
 					//binaries[windowPosition+windowOffset] = stageWindow[offset(windowOffset)].slc<128>(0);
@@ -1031,64 +1087,39 @@ ac_int<32, false> placeOfInstr[256]
 				}
 			}
 
-			windowPosition += 3;
-			windowShift = (windowShift+3)%WINDOW_SIZE;
-		} else {
-			lastPlaceOfInstr = windowPosition + bestWindowOffset;
-			placeOfInstr[instructionId] = windowPosition + bestWindowOffset;
+			windowPosition += advance;
+			windowShift = (windowShift+(advance))%WINDOW_SIZE;
 
-			lastInstructionStage = bestStageId;
-			instructionsStages[instructionId] = bestStageId;
-
-			instruction.set_slc(0, ac_int<9, false>(dest));
-			placeOfRegisters[instructionId] = dest;
-
-			ac_int<9, false> rin1 = virtualRIn1_imm9;
-			ac_int<9, false> rin2 = virtualRIn2;
-
-			instruction.set_slc(9, placeOfRegisters[virtualRIn2]);
-
-			ac_int<8, false> rin1Dep = registerDependencies[rin1];
-			ac_int<8, false> rin2Dep = registerDependencies[rin2];
-
-			if (rin2 < 256 && rin2Dep == 1) {
-				freeRegisters[numberFreeRegister++] = placeOfRegisters[virtualRIn2];
+			for (ac_int<STAGE_NUMBER_L2+1, false> stageId = 0; stageId < STAGE_NUMBER; ++stageId) {
+				ac_int<2, false> stageType = way_specialisation.slc<2>(stageId << 1);
+				if ((unitType == 2 || stageType == unitType) && issue_width[stageId]) {
+					bestStageId = stageId;
+				}
 			}
 
-			if (typeCode == 0 && !isImm) {
-
-					lastRead[placeOfRegisters[virtualRIn1_imm9]] = lastPlaceOfInstr;
-					instruction.set_slc(18, rin1);
-
-					if (rin1 < 256 && rin1Dep == 1) {
-						freeRegisters[numberFreeRegister++] = placeOfRegisters[virtualRIn1_imm9];
-					}
-
-					if (rin1 < 256 && rin1 == rin2) {
-						registerDependencies[rin1] = rin1Dep - 2;
-					} else {
-						if (rin1 < 256)
-							registerDependencies[rin1] = rin1Dep - 1;
-
-						if (rin2 < 256)
-							registerDependencies[rin2] = rin2Dep - 1;
-					}
-			} else if (rin2 < 256) {
-				registerDependencies[rin2] = rin2Dep - 1;
-			}
-
-			lastRead[placeOfRegisters[virtualRIn2]] = lastPlaceOfInstr;
-
-			window[offset(bestWindowOffset)][bestStageId] = createInstruction(instruction);
-			freeSlot[offset(bestWindowOffset)][bestStageId] = 0;
-
-			if (instruction.slc<2>(48) == 0) {
-				haveJump = 1;
-				jumpPlace = placeOfInstr[instructionId];
-			}
-
-			instructionId++;
+			bestWindowOffset = WINDOW_SIZE-1;
 		}
+
+		lastPlaceOfInstr = windowPosition + bestWindowOffset;
+		placeOfInstr[instructionId] = windowPosition + bestWindowOffset;
+
+		lastInstructionStage = bestStageId;
+		instructionsStages[instructionId] = bestStageId;
+
+		lastRead[placeOfRin2] = lastPlaceOfInstr;
+		if (useRin1)
+			lastRead[placeOfRin1] = lastPlaceOfInstr;
+
+		window[offset(bestWindowOffset)][bestStageId] = createInstruction(instruction);
+		freeSlot[offset(bestWindowOffset)][bestStageId] = 0;
+
+		if (instruction.slc<2>(48) == 0) {
+			haveJump = 1;
+			jumpPlace = placeOfInstr[instructionId];
+		}
+
+		instructionId++;
+
 	}
 
 	//**************************************************************
@@ -1130,7 +1161,6 @@ ac_int<32, false> placeOfInstr[256]
 
 	return (issue_width[4] ? 2 : 1)*(windowPosition+lastGap-1)-addressInBinaries;
 }
-
 #endif
 #endif
 

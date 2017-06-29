@@ -21,7 +21,7 @@
  *
  *******************************************************************/
 
-#define IR_SUCC
+//#define IR_SUCC
 
 /********************************************************************
  * Declaration of a data structure to represent the control flow of the binaries analyzed.
