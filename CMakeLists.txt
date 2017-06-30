@@ -25,8 +25,8 @@ foreach(oneExecutable ${EXECUTABLE})
 	get_filename_component(execName ${oneExecutable} NAME_WE)
 
   if (execName MATCHES "dbt")
-    add_executable(dbtList ${SOURCE} ${oneExecutable})
-    set_target_properties(dbtList PROPERTIES COMPILE_DEFINITIONS "IR_SUCC")
+    add_executable(dbt ${SOURCE} ${oneExecutable})
+    set_target_properties(dbt PROPERTIES COMPILE_DEFINITIONS "IR_SUCC")
     
     add_executable(dbtScoreboard ${SOURCE} ${oneExecutable})
   else()
