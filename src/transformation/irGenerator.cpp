@@ -636,7 +636,53 @@ int irGenerator(unsigned char* code, unsigned int *size, unsigned int addressSta
 
 							bytecode1 += (0x2<<28); //stage=0 type = 2
 							bytecode1 += 0;
-							bytecode1 += functBinding[funct] << 19;
+							bytecode1 += functBinding[funct] << 19;1236 ADDWi r12  = r15 0x2 ADDWi r13  = r15 0x1 ANDi r34  = r33 0x255 ADDW r14  = r6 r15
+							1237 SLLWi r35  = r10 0x4 CMPNE r32  = r10 r28 ADDWi r15  = r15 0x3 ANDi r36  = r10 0x15
+							1238 ADDi r37  = r14 0x2  ADDi r39  = r14 0x1  SLLWi r12  = r12 0x4 SLLi r38  = r14 0x2
+							1239 ADDWi r40  = r36 0x2 ADDWi r42  = r36 0x1 ANDi r43  = r35 0x255 ADDW r41  = r6 r36
+							1240 SLLi r44  = r37 0x2  ADDWi r45  = r36 0x3 ADD r46  = r34 r16   SLLWi r15  = r15 0x4
+							1241 ADDi r47  = r41 0x2  ADDi r49  = r41 0x1  SLLWi r50  = r40 0x4 SLLi r48  = r41 0x2
+							1242 ADD r51  = r43 r16   ADDi r53  = r41 0x3  ADD r12  = r16 r12   SLLWi r52  = r42 0x4
+							1243 SLLi r54  = r47 0x2  SLLWi r56  = r45 0x4 SLLi r57  = r39 0x2  SLLi r55  = r46 0x2
+							1244 ADD r58  = r16 r52   ADD r60  = r16 r50   SLLi r61  = r49 0x2  SLLi r59  = r51 0x2
+							1245 ADD r42  = r11 r55   SLLi r33  = r53 0x2  SLLWi r13  = r13 0x4 SLLi r12  = r12 0x2
+							1246 ADD r36  = r11 r59   ADD r37  = r11 r57   ADD r34  = r16 r56   SLLi r35  = r58 0x2
+							1247 ADD r41  = r11 r61   ADD r43  = r11 r38   LDW r8  = r42 0x0    SLLi r40  = r60 0x2
+							1248 ADD r42  = r11 r35   ADD r47  = r11 r48   ADD r46  = r11 r54   ADD r13  = r16 r13
+							1249 ADD r45  = r11 r40   ADD r52  = r11 r33   LDW r18  = r37 0x0   SLLi r39  = r34 0x2
+							1250 SLLi r13  = r13 0x2  ADD r51  = r11 r44   ADDi r14  = r14 0x3  ADD r15  = r16 r15
+							1251 ADD r50  = r11 r39   NOP                  NOP                  ADDWi r49  = r10 0x4
+							1252 SLLi r15  = r15 0x2  NOP                  NOP                  ADD r13  = r11 r13
+							1253 CMPNE r55  = r49 r28 ADD r12  = r11 r12   LDW r19  = r51 0x0   SLLi r14  = r14 0x2
+							1254 ADD r15  = r11 r15   NOP                  LDW r13  = r13 0x0   NOP
+							1255 ADD r14  = r11 r14   NOP                  LDW r9  = r43 0x0    NOP
+							1256 NOP                  NOP                  LDW r7  = r12 0x0    NOP
+							1257 NOP                  NOP                  LDW r5  = r14 0x0    NOP
+							1258 NOP                  MPYW r14  = r18 r13  LDW r53  = r42 0x0   NOP
+							1259 NOP                  MPYW r13  = r19 r7   LDW r59  = r47 0x0   NOP
+							1260 NOP                  NOP                  ? r58  = r0 0x1      NOP
+							1261 NOP                  NOP                  LDW r12  = r15 0x0   NOP
+							1262 SETc r9  = r59 r32   MPYW r15  = r9 r8    LDW r57  = r41 0x0   NOP
+							1263 NOP                  NOP                  LDW r56  = r45 0x0   NOP
+							1264 NOP                  NOP                  LDW r61  = r52 0x0   NOP
+							1265 ADDW r15  = r14 r15  MPYW r60  = r57 r53  LDW r38  = r50 0x0   NOP
+							1266 SETc r7  = r56 r32   MPYW r14  = r5 r12   LDW r35  = r36 0x0   NOP
+							1267 ADDW r15  = r15 r13  NOP                  LDW r48  = r46 0x0   SETc r5  = r61 r32
+							1268 SETc r12  = r38 r32  NOP                  NOP                  SETc r10  = r49 r32
+							1269 ADDW r15  = r15 r14  MPYW r54  = r59 r35  NOP                  SETc r8  = r35 r32
+							1270 NOP                  MPYW r40  = r48 r56  NOP                  NOP
+							1271 ADDW r17  = r15 r17  NOP                  NOP                  NOP
+							1272 ADDW r34  = r60 r54  NOP                  NOP                  NOP
+							1273 SETc r13  = r40 r32  MPYW r33  = r61 r38  NOP                  NOP
+							1274 ADDW r37  = r34 r40  NOP                  NOP                  SETc r18  = r57 r32
+							1275 NOP                  NOP                  NOP                  NOP
+							1276 ADDW r44  = r37 r33  NOP                  NOP                  SETc r14  = r33 r32
+							1277 SETc r19  = r48 r32  NOP                  NOP                  NOP
+							1278 SETc r15  = r44 r32  NOP                  NOP                  ADDW r39  = r44 r17
+							1279 SETc r32  = r55 r32  NOP                  NOP                  NOP
+							1280 SETc r17  = r39 r32  NOP                  NOP                  NOP
+							1281 NOP                  NOP                  NOP                  BR r32, -188
+							1282 NOP                  NOP                  NOP                  NOP
 
 							bytecode2 += pred1 << 14;
 							bytecode2 += numberDependencies<<6;
@@ -1040,7 +1086,7 @@ int irGenerator(unsigned char* code, unsigned int *size, unsigned int addressSta
 #ifndef __NIOS
 
 #define FIRST_RENAME 0
-#define LAST_RENAME 10
+#define LAST_RENAME 0
 
 /* Global values */
 uint1 isOutsideNext = 0;

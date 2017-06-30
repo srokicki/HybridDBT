@@ -8,8 +8,9 @@
 #ifndef __NIOS
 
 #include <fcntl.h>
+#include <unistd.h>
 #include <sys/stat.h>
-
+#include <sys/time.h>
 #include <types.h>
 #include <simulator/genericSimulator.h>
 
@@ -19,7 +20,7 @@ void GenericSimulator::initialize(int argc, char** argv){
 	//We initialize registers
 	for (int oneReg = 0; oneReg < 32; oneReg++)
 		REG[oneReg] = 0;
-	REG[2] = 0x70000;
+	REG[2] = 0xf00000;
 
 	/******************************************************
 	 * Argument passing:
@@ -53,11 +54,6 @@ void GenericSimulator::initialize(int argc, char** argv){
 
 void GenericSimulator::stb(ac_int<64, false> addr, ac_int<8, true> value){
 	this->memory[addr] = value & 0xff;
-	if (addr == 0x1e7c8){
-	//	fprintf(stderr, "watched value is written with %x\n", value);
-//		if (value == 58)
-//			this->debugLevel = 2;
-	}
 }
 
 
@@ -72,6 +68,7 @@ void GenericSimulator::stw(ac_int<64, false> addr, ac_int<32, true> value){
 	this->stb(addr+2, value.slc<8>(16));
 	this->stb(addr+1, value.slc<8>(8));
 	this->stb(addr+0, value.slc<8>(0));
+
 }
 
 void GenericSimulator::std(ac_int<64, false> addr, ac_int<64, true> value){
@@ -149,7 +146,7 @@ ac_int<64, false> GenericSimulator::solveSyscall(ac_int<64, false> syscallId, ac
 			return doWrite(arg1, arg2, arg3);
 		break;
 		case SYS_brk:
-			return arg1;
+			return this->doSbrk(arg1);
 		break;
 		case SYS_open:
 			return this->doOpen(arg1, arg2, arg3);
@@ -169,6 +166,12 @@ ac_int<64, false> GenericSimulator::solveSyscall(ac_int<64, false> syscallId, ac
 		case SYS_stat:
 			return this->doStat(arg1, arg2);
 		break;
+		case SYS_gettimeofday:
+			return doGettimeofday(arg1);
+		break;
+		case SYS_unlink:
+			return this->doUnlink(arg1);
+		break;
 		default:
 			printf("Unknown syscall with code %d\n", syscallId.slc<32>(0));
 			exit(-1);
@@ -185,7 +188,10 @@ ac_int<64, false> GenericSimulator::doRead(ac_int<64, false> file, ac_int<64, fa
 	ac_int<64, false> result;
 
 	if (file == 0){
-		result = fread(localBuffer, 1, size, stdin);
+		if (nbInStreams == 1)
+			result = fread(localBuffer, 1, size, inStreams[0]);
+		else
+			result = fread(localBuffer, 1, size, stdin);
 	}
 	else{
 		FILE* localFile = this->fileMap[file.slc<16>(0)];
@@ -208,9 +214,14 @@ ac_int<64, false> GenericSimulator::doWrite(ac_int<64, false> file, ac_int<64, f
 	for (int i=0; i<size; i++)
 		localBuffer[i] = this->ldb(bufferAddr + i);
 
-	if (file < 3){
-
-		ac_int<64, false> result = fwrite(localBuffer, 1, size, stdout);
+	if (file < 5){
+		fwrite(localBuffer, 1, size, stderr);
+		ac_int<64, false> result = 0;
+		int streamNB = (int) file-nbInStreams;
+		if (nbOutStreams + nbInStreams > file)
+			result = fwrite(localBuffer, 1, size, outStreams[streamNB]);
+		else
+			result = fwrite(localBuffer, 1, size, stdout);
 		return result;
 	}
 	else{
@@ -266,6 +277,9 @@ ac_int<64, false> GenericSimulator::doOpen(ac_int<64, false> path, ac_int<64, fa
 
 	this->fileMap[returnedResult.slc<16>(0)] = test;
 
+	fprintf(stderr, "open returned %x %s\n", test,localPath);
+
+
 	return returnedResult;
 
 }
@@ -320,6 +334,50 @@ ac_int<64, false> GenericSimulator::doStat(ac_int<64, false> filename, ac_int<64
 		this->stb(ptr+oneChar, ((char*)(&stat))[oneChar]);
 
 	return result;
+}
+
+ac_int<64, false> GenericSimulator::doSbrk(ac_int<64, false> value){
+	if (value == 0){
+		return this->heapAddress;
+	}
+	else {
+		this->heapAddress = value;
+		return value;
+	}
+}
+
+ac_int<64, false> GenericSimulator::doGettimeofday(ac_int<64, false> timeValPtr){
+	timeval* oneTimeVal;
+	struct timezone* oneTimeZone;
+	int result = gettimeofday(oneTimeVal, oneTimeZone);
+
+//	this->std(timeValPtr, oneTimeVal->tv_sec);
+//	this->std(timeValPtr+8, oneTimeVal->tv_usec);
+
+	return result;
+
+
+}
+
+ac_int<64, false> GenericSimulator::doUnlink(ac_int<64, false> path){
+	int oneStringElement = this->ldb(path);
+	int index = 0;
+	while (oneStringElement != 0){
+		index++;
+		oneStringElement = this->ldb(path+index);
+	}
+
+	int pathSize = index+1;
+
+	char* localPath = (char*) malloc(pathSize*sizeof(char));
+	for (int i=0; i<pathSize; i++)
+		localPath[i] = this->ldb(path + i);
+
+
+	int result = unlink(localPath);
+
+	return result;
+
 }
 
 #endif
