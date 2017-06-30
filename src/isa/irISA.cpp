@@ -370,6 +370,7 @@ void setOperands(uint32 *bytecode, char index, short operands[2]){
 
 void setDestinationRegister(uint32 *bytecode, char index, short newDestinationRegister){
 	fprintf(stderr, "Not implemented yet\n");
+	exit(-1);
 }
 
 void setAlloc(uint32 *bytecode, char index, char newAlloc){
@@ -383,6 +384,7 @@ void setAlloc(uint32 *bytecode, char index, char newAlloc){
 	writeInt(bytecode, index*16+0, bytecodeWord96);
 }
 
+#ifdef IR_SUCC
 void addDataDep(uint32 *bytecode, char index, char successor){
 	unsigned int bytecodeWord0 = readInt(bytecode, index*16+12);
 	unsigned int bytecodeWord32 = readInt(bytecode, index*16+8);
@@ -439,6 +441,63 @@ void addControlDep(uint32 *bytecode, char index, char successor){
 	succBytecodeWord64 += 0x40; //Plus one at the field located at an offset of 6 bits
 	writeInt(bytecode, successor*16+4, succBytecodeWord64);
 }
+#else
+
+void addDataDep(uint32 *bytecode, char index, char successor){
+	unsigned int bytecodeWord0 = readInt(bytecode, successor*16+12);
+	unsigned int bytecodeWord32 = readInt(bytecode, successor*16+8);
+	unsigned int bytecodeWord64 = readInt(bytecode, successor*16+4);
+
+	char nbDSucc = ((bytecodeWord64>>3) & 7);
+	char nbSucc = ((bytecodeWord64>>0) & 7);
+
+	int extendedDepName = index;
+	if (nbSucc<7){
+		bytecodeWord64 += 0x9; //plus one at both fields with no offset and fields with offset of 3
+		if (nbDSucc<3){
+			bytecodeWord32 |= (extendedDepName<<((2-nbDSucc)*8));
+			writeInt(bytecode, successor*16+8, bytecodeWord32);
+		}
+		else{
+			bytecodeWord0 |= (extendedDepName<<((6-(nbDSucc))*8));
+			writeInt(bytecode, successor*16+12, bytecodeWord0);
+		}
+		writeInt(bytecode, successor*16+4, bytecodeWord64);
+
+	}
+	//We add one to the number of dep
+	unsigned int otherBytecodeWord64 = readInt(bytecode, index*16+4);
+	otherBytecodeWord64 += 0x40; //Plus one at the field located at an offset of 6 bits
+	writeInt(bytecode, index*16+4, otherBytecodeWord64);
+}
+
+void addControlDep(uint32 *bytecode, char index, char successor){
+	unsigned int bytecodeWord0 = readInt(bytecode, successor*16+12);
+	unsigned int bytecodeWord32 = readInt(bytecode, successor*16+8);
+	unsigned int bytecodeWord64 = readInt(bytecode, successor*16+4);
+
+	char nbDSucc = ((bytecodeWord64>>3) & 7);
+	char nbSucc = ((bytecodeWord64>>0) & 7);
+	char nbCSucc = nbSucc - nbDSucc;
+
+	int extendedDepName = index;
+	if (nbSucc<7){
+		bytecodeWord64 += 0x1; //plus one at fields with no offset (eg nbSucc)
+		if (nbCSucc>3){
+			bytecodeWord32 |= (extendedDepName<<((nbCSucc-4)*8));
+			writeInt(bytecode, successor*16+8, bytecodeWord32);
+		}
+		else{
+			bytecodeWord0 |= (extendedDepName<<((nbCSucc)*8));
+			writeInt(bytecode, successor*16+12, bytecodeWord0);
+		}
+		writeInt(bytecode, successor*16+4, bytecodeWord64);
+
+	}
+	//We do not need to increment the number of dep...
+}
+
+#endif
 
 void addOffsetToDep(uint32 *bytecode, char index, char offset){
 	unsigned int bytecodeWord0 = readInt(bytecode, index*16+12);
