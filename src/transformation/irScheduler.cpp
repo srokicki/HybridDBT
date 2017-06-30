@@ -117,14 +117,14 @@ int getType(unsigned int ins){
 
 void insertReadyInstruction(ac_int<8, false> instructionNumber){
 	unsigned int instruction = instructions[instructionNumber];
-    ac_int<8, false> instructionPriority = priorities[instructionNumber];
-    ac_int<2, false> type = getType(instruction);
-    ac_int<6, false> place;
+	ac_int<8, false> instructionPriority = priorities[instructionNumber];
+		ac_int<2, false> type = getType(instruction);
+		ac_int<6, false> place;
 
-        if ((writePlaceRead + 1) == writePlaceWrite){
-            stall = 1;
-        }
-        else{
+		if ((writePlaceRead + 1) == writePlaceWrite){
+						stall = 1;
+					}
+				else{
 			place = writePlace[writePlaceRead];
 			writePlaceRead++;
 
@@ -138,7 +138,7 @@ void insertReadyInstruction(ac_int<8, false> instructionNumber){
 
 
 
-				if (readyNumber[type] == 0){
+			if (readyNumber[type] == 0){
 					first[type] = place;
 					last[type] = place;
 				}
@@ -150,7 +150,7 @@ void insertReadyInstruction(ac_int<8, false> instructionNumber){
 						first[type] = place;
 
 					}
-					else {
+				else {
 						// we insert at the end of the list
 						ac_int<16, false> tempNextElement;
 						tempNextElement.set_slc(8, place);
@@ -159,71 +159,71 @@ void insertReadyInstruction(ac_int<8, false> instructionNumber){
 
 					}
 
-            readyNumber[type]++;
-        }
+				readyNumber[type]++;
+					}
 }
 
 void insertReadyInstructionOpt(ac_int<8, false> instructionNumber){
 
 	unsigned int instruction = instructions[instructionNumber];
-    ac_int<8, false> instructionPriority = priorities[instructionNumber];
-    ac_int<2, false> type = getType(instruction);
-    ac_int<6, false> place;
+	ac_int<8, false> instructionPriority = priorities[instructionNumber];
+		ac_int<2, false> type = getType(instruction);
+		ac_int<6, false> place;
 
-        if ((writePlaceRead + 1) == writePlaceWrite){
-            stall = 1;
-        }
-        else{
+		if ((writePlaceRead + 1) == writePlaceWrite){
+						stall = 1;
+					}
+				else{
 			place = writePlace[writePlaceRead];
 			writePlaceRead++;
 
 			ac_int<9, false> tempReadyElement;
-            ac_int<16, false> tempNextElement;
+			ac_int<16, false> tempNextElement;
 
 			tempReadyElement[8] = 1;
 			tempReadyElement.set_slc(0, instructionNumber);
 			readyList[place] = tempReadyElement;
 
 
-	            if (instructionPriority >= firstPriorities[type] || readyNumber[type] == 0){
+			if (instructionPriority >= firstPriorities[type] || readyNumber[type] == 0){
 
-	            	tempNextElement.set_slc(8, first[type]);
-	            	tempNextElement.set_slc(0, firstPriorities[type]);
-	                first[type] = place;
-	                firstPriorities[type] = instructionPriority;
-	            }
-	            else {
-	                ac_int<6, false> currentPlace = first[type];
-	                ac_int<8, false> currentPriority = 255;
+									tempNextElement.set_slc(8, first[type]);
+								tempNextElement.set_slc(0, firstPriorities[type]);
+								first[type] = place;
+									firstPriorities[type] = instructionPriority;
+								}
+							else {
+									ac_int<6, false> currentPlace = first[type];
+									ac_int<8, false> currentPriority = 255;
 
-	                while (readyList[readyListNext[currentPlace].slc<8>(8)][8] && readyListNext[currentPlace].slc<8>(0) > instructionPriority && /*readyListNext[currentPlace].slc<8>(0) < currentPriority &&*/ currentPlace != readyListNext[currentPlace].slc<8>(8)){
-	                	currentPriority = readyListNext[currentPlace].slc<8>(0);
-	                	currentPlace = readyListNext[currentPlace].slc<8>(8);
-	                 }
+									while (readyList[readyListNext[currentPlace].slc<8>(8)][8] && readyListNext[currentPlace].slc<8>(0) > instructionPriority && /*readyListNext[currentPlace].slc<8>(0) < currentPriority &&*/ currentPlace != readyListNext[currentPlace].slc<8>(8)){
+											currentPriority = readyListNext[currentPlace].slc<8>(0);
+										currentPlace = readyListNext[currentPlace].slc<8>(8);
+										}
 
-	                tempNextElement.set_slc(8, readyListNext[currentPlace].slc<8>(8));
-	                readyListNext[currentPlace].set_slc(8, place);
-	                tempNextElement.set_slc(0, readyListNext[currentPlace].slc<8>(0));
-	                readyListNext[currentPlace].set_slc(0, instructionPriority);
-	            }
+									tempNextElement.set_slc(8, readyListNext[currentPlace].slc<8>(8));
+									readyListNext[currentPlace].set_slc(8, place);
+									tempNextElement.set_slc(0, readyListNext[currentPlace].slc<8>(0));
+									readyListNext[currentPlace].set_slc(0, instructionPriority);
+								}
 
-	        readyListNext[place] = tempNextElement;
-            readyNumber[type]++;
-        }
+							readyListNext[place] = tempNextElement;
+					readyNumber[type]++;
+					}
 }
 
 void getFirstInstruction(int type){
 	if (readyNumber[type] > 0){
-    		returnGetFirstNumber = readyList[first[type]].slc<8>(0);
-    		returnGetFirstEnable = 1;
-    		readyList[first[type]][8] = 0;
-    		writePlace[writePlaceWrite] = first[type];
-    		firstPriorities[type] = readyListNext[first[type]].slc<8>(0);
-    		first[type] = readyListNext[first[type]].slc<8>(8);
-    		readyNumber[type]--;
-    		writePlaceWrite++;
-    	}
-  	else if (readyNumber[2] > 0){
+			returnGetFirstNumber = readyList[first[type]].slc<8>(0);
+				returnGetFirstEnable = 1;
+				readyList[first[type]][8] = 0;
+				writePlace[writePlaceWrite] = first[type];
+				firstPriorities[type] = readyListNext[first[type]].slc<8>(0);
+				first[type] = readyListNext[first[type]].slc<8>(8);
+				readyNumber[type]--;
+				writePlaceWrite++;
+		}
+	else if (readyNumber[2] > 0){
 		returnGetFirstNumber = readyList[first[2]].slc<8>(0);
 		returnGetFirstEnable = 1;
 		readyList[first[2]][8] = 0;
@@ -232,10 +232,10 @@ void getFirstInstruction(int type){
 		first[2] = readyListNext[first[2]].slc<8>(8);
 		readyNumber[2]--;
 		writePlaceWrite++;
-    	}
-    	else {
-    		returnGetFirstEnable = 0;
-    	}
+		}
+	else {
+			returnGetFirstEnable = 0;
+		}
 }
 
 /*
@@ -246,39 +246,39 @@ void getFirstInstruction(int type){
 
 //The argument optLevel is here to set the difficulty of the scheduling : 0 mean that there is just a binary priority and 1 mean that we'll consider the entire priority value
 ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBlockSize, ac_int<128, false> bytecode[256], ac_int<128, false> binaries[65536],ac_int<16, false> addressInBinaries,  ac_int<6, false> placeOfRegisters[512], ac_int<6, false> numberFreeRegister, ac_int<6, false> freeRegisters[64],ac_int<4, false> issue_width, ac_int<MAX_ISSUE_WIDTH * 2, false> way_specialisation, ac_int<32, false> placeOfInstr[256]){
-    ac_int<32, false> cycleNumber = 0; //This is the current cycle
-    ac_int<2, false> lineNumber = 0;
-    ac_int<32,false> writeInBinaries =addressInBinaries;
+	ac_int<32, false> cycleNumber = 0; //This is the current cycle
+		ac_int<2, false> lineNumber = 0;
+		ac_int<32,false> writeInBinaries =addressInBinaries;
 
-    countToFail = 0;
-    for (int i=0; i<64; i++){
-    	writePlace[i] = i;
-    }
-    writePlaceRead =0;
-    writePlaceWrite = 0;
+		countToFail = 0;
+		for (int i=0; i<64; i++){
+				writePlace[i] = i;
+			}
+		writePlaceRead =0;
+		writePlaceWrite = 0;
 
-    readFreeRegister = 0;
-    writeFreeRegister = numberFreeRegister;
+		readFreeRegister = 0;
+		writeFreeRegister = numberFreeRegister;
 
-    readyNumber[0] = 0;
-    readyNumber[1] = 0;
-    readyNumber[2] = 0;
-    readyNumber[3] = 0;
+		readyNumber[0] = 0;
+		readyNumber[1] = 0;
+		readyNumber[2] = 0;
+		readyNumber[3] = 0;
 
 
-    stall =0;
-    aliveInstructions=0;
+		stall =0;
+		aliveInstructions=0;
 
-    fifoPlaceToWrite = 0;
-    fifoPlaceToRead = 0;
-    fifoNumberElement = 0;
+		fifoPlaceToWrite = 0;
+		fifoPlaceToRead = 0;
+		fifoNumberElement = 0;
 
-    scheduledInstructions = 0;
+		scheduledInstructions = 0;
 
-    globalOptLevel = optLevel;
+		globalOptLevel = optLevel;
 
-    ac_int<32, false> jumpPlace = 0;
-    ac_int<1, false> haveJump = 0;
+		ac_int<32, false> jumpPlace = 0;
+		ac_int<1, false> haveJump = 0;
 
 	for(int i = 0; i<basicBlockSize;i++){
 		instructions[i] = bytecode[i].slc<32>(96);
@@ -289,93 +289,93 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 		numbersOfRegisterDependencies[i] = (bytecode[i][96+27]) ? bytecode[i].slc<3>(3+64) : const7;
 
 		if (numbersOfDependencies[i] == 0){
-		    if (fifoNumberElement == 64)
-		          stall = 1;
-		    else{
-		          fifoInsertReadyInstruction[fifoPlaceToWrite] = i;
-		          fifoPlaceToWrite++;
-		          fifoNumberElement++;
-		          numbersOfDependencies[i]--;
-		      }
+				if (fifoNumberElement == 64)
+					stall = 1;
+				else{
+						fifoInsertReadyInstruction[fifoPlaceToWrite] = i;
+							fifoPlaceToWrite++;
+							fifoNumberElement++;
+							numbersOfDependencies[i]--;
+					}
 		}
 	}
 
-    while (1){
+	while (1){
 
-        // The scheduling will be done in three steps : the first one will solve
-        // dependencies and find ready instructions. The second one will give an
-        // instruction to every free functional unit. The final one will commit
-        // finished instructions. A loop correspond to a time cycle.
-    	if (stall){
-    		stall = 0;
-    		for (int i = 0; i < basicBlockSize; i++){
+				// The scheduling will be done in three steps : the first one will solve
+				// dependencies and find ready instructions. The second one will give an
+				// instruction to every free functional unit. The final one will commit
+				// finished instructions. A loop correspond to a time cycle.
+				if (stall){
+					stall = 0;
+				for (int i = 0; i < basicBlockSize; i++){
 
 				if (numbersOfDependencies[i] == 0){
-		          if (fifoNumberElement == 64){
-		              stall = 1;
-		              break;
-		          }
-		          else{
-		              fifoInsertReadyInstruction[fifoPlaceToWrite] = i;
-		              fifoPlaceToWrite++;
-		              fifoNumberElement++;
-		              numbersOfDependencies[i]--;
-		          }
+						if (fifoNumberElement == 64){
+									stall = 1;
+									break;
+								}
+							else{
+									fifoInsertReadyInstruction[fifoPlaceToWrite] = i;
+									fifoPlaceToWrite++;
+									fifoNumberElement++;
+									numbersOfDependencies[i]--;
+								}
 				}
-    		 }
-    	}
+					}
+				}
 
-        if (optLevel)
-            for (int i=0; i<fifoNumberElement; i++){
-                    insertReadyInstructionOpt(fifoInsertReadyInstruction[fifoPlaceToRead]);
-                    fifoPlaceToRead++;
-            }
-        else
-            for (int i=0; i<fifoNumberElement; i++){
-                    insertReadyInstruction(fifoInsertReadyInstruction[fifoPlaceToRead]);
-                    fifoPlaceToRead++;
-            }
+			if (optLevel)
+					for (int i=0; i<fifoNumberElement; i++){
+								insertReadyInstructionOpt(fifoInsertReadyInstruction[fifoPlaceToRead]);
+										fifoPlaceToRead++;
+							}
+				else
+					for (int i=0; i<fifoNumberElement; i++){
+								insertReadyInstruction(fifoInsertReadyInstruction[fifoPlaceToRead]);
+										fifoPlaceToRead++;
+							}
 
-        fifoNumberElement = 0;
+				fifoNumberElement = 0;
 
-        //We declare array for used registers and used successors
-        ac_int<3, false> stageForSuccessors = 0;
+				//We declare array for used registers and used successors
+				ac_int<3, false> stageForSuccessors = 0;
 
-        ac_int<256, false> binariesWord = 0;
+				ac_int<256, false> binariesWord = 0;
 
-        //For each functional unit, we assign the most prior instruction
-        for (ac_int<6, false> stageIndex = 0; stageIndex < issue_width; stageIndex++){
+				//For each functional unit, we assign the most prior instruction
+				for (ac_int<6, false> stageIndex = 0; stageIndex < issue_width; stageIndex++){
 
-        	ac_int<6, false> stage = stages[stageIndex];
+						ac_int<6, false> stage = stages[stageIndex];
 
-        	//We read functional unit configuration
-        	ac_int<2, false> type = way_specialisation.slc<2>(stage<<1);
-    		getFirstInstruction(type);
+					//We read functional unit configuration
+					ac_int<2, false> type = way_specialisation.slc<2>(stage<<1);
+					getFirstInstruction(type);
 
-    		//Depending on the stage type we find the lineNumber
-    		//  -> For normal instructions, this number correspond to current line number ('lineNumber')
-    		//  -> For multiplication, this number is the next lineNumber (lineNumber + 1 % 2)
+				//Depending on the stage type we find the lineNumber
+				//  -> For normal instructions, this number correspond to current line number ('lineNumber')
+				//  -> For multiplication, this number is the next lineNumber (lineNumber + 1 % 2)
 
-    		ac_int<2, false> nextLineNumber = lineNumber + 1;
-    		ac_int<2, false> secondNextLineNumber = lineNumber + 2;
-    		ac_int<2, false> lineNumberForStage = (type == 3 | type == 1) ?  secondNextLineNumber : nextLineNumber; //Note : the modulo is useless but here to remind that it is a 1 bit variable
+				ac_int<2, false> nextLineNumber = lineNumber + 1;
+				ac_int<2, false> secondNextLineNumber = lineNumber + 2;
+				ac_int<2, false> lineNumberForStage = (type == 3 | type == 1) ?  secondNextLineNumber : nextLineNumber; //Note : the modulo is useless but here to remind that it is a 1 bit variable
 
 
 			ac_int<32, false> generatedInstruction = 0;
 			ac_int<1, false> isSchedulable = 0;
 
 
-    		//We check if we found an instruction to insert
-            if (returnGetFirstEnable) {
+			//We check if we found an instruction to insert
+			if (returnGetFirstEnable) {
 
-            	isSchedulable = 1;
+								isSchedulable = 1;
 
-    			//We read the bytecode
-            	ac_int<128, false> bytecode_word = bytecode[returnGetFirstNumber];
-    			ac_int<32, false> bytecode_word1 = bytecode_word.slc<32>(96);
-    			ac_int<32, false> bytecode_word2 = bytecode_word.slc<32>(64);
-    			ac_int<32, false> bytecode_word3 = bytecode_word.slc<32>(32);
-    			ac_int<32, false> bytecode_word4 = bytecode_word.slc<32>(0);
+							//We read the bytecode
+							ac_int<128, false> bytecode_word = bytecode[returnGetFirstNumber];
+							ac_int<32, false> bytecode_word1 = bytecode_word.slc<32>(96);
+					ac_int<32, false> bytecode_word2 = bytecode_word.slc<32>(64);
+					ac_int<32, false> bytecode_word3 = bytecode_word.slc<32>(32);
+					ac_int<32, false> bytecode_word4 = bytecode_word.slc<32>(0);
 
 
 				ac_int<50, false> instruction = 0;
@@ -506,7 +506,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 
 					//***************************************
 					//We store the place
-         	placeOfInstr[returnGetFirstNumber] = writeInBinaries;
+					placeOfInstr[returnGetFirstNumber] = writeInBinaries;
 
 					//***************************************
 					//We generate the instruction
@@ -547,43 +547,43 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 						generatedInstruction.set_slc(7, imm19);
 					}
 				}
-            }
-            binariesWord.set_slc(stage*32, generatedInstruction);
-        }
+							}
+						binariesWord.set_slc(stage*32, generatedInstruction);
+					}
 
-        //after all stages has been filled, we commit the word
+				//after all stages has been filled, we commit the word
 		binaries[writeInBinaries] = binariesWord.slc<128>(0);
 		binaries[writeInBinaries + 1] = binariesWord.slc<128>(128);
-        writeInBinaries++;
+		writeInBinaries++;
 
-        if (issue_width > 4){
-        	writeInBinaries++;
-        }
+				if (issue_width > 4){
+						writeInBinaries++;
+					}
 
-        if (scheduledInstructions >= basicBlockSize)
-        	break;
+				if (scheduledInstructions >= basicBlockSize)
+					break;
 
-        cycleNumber++;
+				cycleNumber++;
 
-        if (issue_width > 4){
-            cycleNumber++;
-        }
+				if (issue_width > 4){
+						cycleNumber++;
+					}
 
-        //Next cycle
-     //   cycleNumber = cycleNumber+1;
+				//Next cycle
+				//   cycleNumber = cycleNumber+1;
 //        lineNumber = (lineNumber + 1) & 0x1;
 //        if (lineNumber == 3)
 //        	lineNumber = 0;*
-        ac_int<2, false> oldLineNumber = lineNumber;
-        lineNumber++; //Note to change this implementation for software version
+				ac_int<2, false> oldLineNumber = lineNumber;
+				lineNumber++; //Note to change this implementation for software version
 
 
 
-        ac_int<9, false> previousRegisterName = 511; //this value will never lead to successor reduction
-        ac_int<3, false> previousRegNumberOfDep = 0;
+				ac_int<9, false> previousRegisterName = 511; //this value will never lead to successor reduction
+				ac_int<3, false> previousRegNumberOfDep = 0;
 
-        for (int i=0; i<numbersUsedRegister[oldLineNumber]; i++){
-        	if ((usedRegister[oldLineNumber][i][8] != 1)){
+				for (int i=0; i<numbersUsedRegister[oldLineNumber]; i++){
+						if ((usedRegister[oldLineNumber][i][8] != 1)){
 				ac_int<3, false> numberDep = (usedRegister[oldLineNumber][i] == previousRegisterName) ?	previousRegNumberOfDep : numbersOfRegisterDependencies[usedRegister[oldLineNumber][i]];
 
 				numberDep--;
@@ -600,66 +600,66 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 
 				previousRegisterName = usedRegister[oldLineNumber][i];
 				previousRegNumberOfDep = numberDep;
-        	}
-        }
-        numbersUsedRegister[oldLineNumber] = 0;
+						}
+					}
+				numbersUsedRegister[oldLineNumber] = 0;
 
 
-        //Loop for successor reduction. Using previous* values as bypass, we should be able to pipeline the loop with
-        // an iteration interval of one (by removing memory dependency on 'numberOfDependencies')
-        ac_int<8, false> previousSuccessorName = 255;
-        ac_int<8, false> previousNumberOfDep = 0;
+				//Loop for successor reduction. Using previous* values as bypass, we should be able to pipeline the loop with
+				// an iteration interval of one (by removing memory dependency on 'numberOfDependencies')
+				ac_int<8, false> previousSuccessorName = 255;
+				ac_int<8, false> previousNumberOfDep = 0;
 
-        ac_int<3, false> stage = 0;
-        ac_int<6, false> successorNumberInStage = 0;
-        ac_int<1, false> type = (totalNumberOfSuccessors[oldLineNumber] == 0) ? 1 : 0;
+				ac_int<3, false> stage = 0;
+				ac_int<6, false> successorNumberInStage = 0;
+				ac_int<1, false> type = (totalNumberOfSuccessors[oldLineNumber] == 0) ? 1 : 0;
 
 
-        for(int i=0; i<totalNumberOfSuccessors[oldLineNumber] + totalNumberOfDataSuccessors[oldLineNumber]; i++){
-            ac_int<8, false> successorName = successors[oldLineNumber][type][stage].slc<8>(successorNumberInStage<<3);
-        	ac_int<8, false> numberDep = (successorName == previousSuccessorName) ? previousNumberOfDep : numbersOfDependencies[successorName];
-        	numberDep = numberDep - 1;
+				for(int i=0; i<totalNumberOfSuccessors[oldLineNumber] + totalNumberOfDataSuccessors[oldLineNumber]; i++){
+						ac_int<8, false> successorName = successors[oldLineNumber][type][stage].slc<8>(successorNumberInStage<<3);
+						ac_int<8, false> numberDep = (successorName == previousSuccessorName) ? previousNumberOfDep : numbersOfDependencies[successorName];
+					numberDep = numberDep - 1;
 
-        	ac_int<1, false> isNull = numberDep == 0;
-        	ac_int<1, false> isStall = fifoNumberElement == 64;
+					ac_int<1, false> isNull = numberDep == 0;
+					ac_int<1, false> isStall = fifoNumberElement == 64;
 
-        	stall = isStall;
+					stall = isStall;
 
-          previousSuccessorName = successorName;
-          previousNumberOfDep = numberDep;
+					previousSuccessorName = successorName;
+					previousNumberOfDep = numberDep;
 
-          //If the number of dependencies of the successor is now to 0, we add the instruction to the list
-          //of ready instructions:
+					//If the number of dependencies of the successor is now to 0, we add the instruction to the list
+					//of ready instructions:
 
-          ac_int<8, false> constant255 = 255;
-              numbersOfDependencies[successorName] = (isNull & !isStall) ? constant255 : numberDep;
+					ac_int<8, false> constant255 = 255;
+					numbersOfDependencies[successorName] = (isNull & !isStall) ? constant255 : numberDep;
 
-          if (isNull & !isStall){
-              fifoInsertReadyInstruction[fifoPlaceToWrite] = successorName;
-              fifoPlaceToWrite++;
-              fifoNumberElement++;
+							if (isNull & !isStall){
+							fifoInsertReadyInstruction[fifoPlaceToWrite] = successorName;
+							fifoPlaceToWrite++;
+							fifoNumberElement++;
 
-          }
+						}
 
-          //We update values to find next successor
-          successorNumberInStage++;
-          ac_int<1, false> stageOver = successorNumberInStage == successorNumbers[oldLineNumber][type][stage];
-          if (stageOver){
-            stage++;
-            successorNumberInStage = 0;
-            if (i+1 >= totalNumberOfSuccessors[oldLineNumber] && type == 0){
-              type = 1;
-              stage = 0;
-            }
-          }
+					//We update values to find next successor
+					successorNumberInStage++;
+					ac_int<1, false> stageOver = successorNumberInStage == successorNumbers[oldLineNumber][type][stage];
+					if (stageOver){
+							stage++;
+						successorNumberInStage = 0;
+						if (i+1 >= totalNumberOfSuccessors[oldLineNumber] && type == 0){
+								type = 1;
+							stage = 0;
+							}
+						}
 
-        }
-        totalNumberOfSuccessors[oldLineNumber] = 0;
-        totalNumberOfDataSuccessors[oldLineNumber] = 0;
-        successorStageNumber[oldLineNumber][0] = 0;
-        successorStageNumber[oldLineNumber][1] = 0;
+					}
+				totalNumberOfSuccessors[oldLineNumber] = 0;
+				totalNumberOfDataSuccessors[oldLineNumber] = 0;
+				successorStageNumber[oldLineNumber][0] = 0;
+				successorStageNumber[oldLineNumber][1] = 0;
 
-    }
+			}
 
 	if (haveJump){
 		if (jumpPlace < writeInBinaries-2){
@@ -686,7 +686,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 		//binaries[jumpPlace].set_slc(96, const0);
 	}
 
-    return writeInBinaries-addressInBinaries;
+	return writeInBinaries-addressInBinaries;
 }
 
 #else // __SCOREBOARD
@@ -953,9 +953,11 @@ ac_int<32, false> placeOfInstr[256]
 		ac_int<STAGE_NUMBER_L2, false> bestStage[WINDOW_SIZE];
 		ac_int<WINDOW_SIZE_L2, false> bestOffset[WINDOW_SIZE];
 
+		// available places search
 		for (ac_int<STAGE_NUMBER_L2+1, false> stageId = 0
 		; stageId < STAGE_NUMBER; stageId += 2)
 		{
+			// loop unrolled by hand to ease synthesis
 			ac_int<2, false> stageType = way_specialisation.slc<2>(stageId << 1);
 			if (issue_width[stageId] && (unitType == stageType || unitType == 2)) {
 				for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
@@ -969,6 +971,7 @@ ac_int<32, false> placeOfInstr[256]
 					}
 				}
 			}
+
 			stageType = way_specialisation.slc<2>((stageId << 1) + 2);
 			if (issue_width[stageId] && (unitType == stageType || unitType == 2)) {
 				for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
@@ -983,6 +986,8 @@ ac_int<32, false> placeOfInstr[256]
 				}
 			}
 		}
+
+		// 3 [for] loops for tree reduction over available places
 		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0; windowOffset < WINDOW_SIZE; windowOffset += 2) {
 			if (windowOffset+windowPosition+1 >= earliest_place && possible[windowOffset+1] && !possible[windowOffset]) {
 				bestOffset[windowOffset] = bestOffset[windowOffset+1];
@@ -990,6 +995,7 @@ ac_int<32, false> placeOfInstr[256]
 				possible[windowOffset] = 1;
 			}
 		}
+
 		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0; windowOffset < WINDOW_SIZE; windowOffset += 4) {
 			if (windowOffset+windowPosition+2 >= earliest_place && possible[windowOffset+2] && !possible[windowOffset]) {
 				bestOffset[windowOffset] = bestOffset[windowOffset+2];
@@ -997,6 +1003,7 @@ ac_int<32, false> placeOfInstr[256]
 				possible[windowOffset] = 1;
 			}
 		}
+
 		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0; windowOffset < WINDOW_SIZE; windowOffset += 8) {
 			if (windowOffset+windowPosition+4 >= earliest_place && possible[windowOffset+4] && !possible[windowOffset]) {
 				bestOffset[windowOffset] = bestOffset[windowOffset+4];
@@ -1008,7 +1015,11 @@ ac_int<32, false> placeOfInstr[256]
 		bestWindowOffset = bestOffset[0];
 		bestStageId = bestStage[0];
 
-		//Generation of instruction
+
+		//**************************************************************
+		// Generation + pre-placement of instruction
+		//**************************************************************
+
 		instruction.set_slc(0, ac_int<9, false>(dest));
 		placeOfRegisters[instructionId] = dest;
 
@@ -1052,10 +1063,9 @@ ac_int<32, false> placeOfInstr[256]
 
 
 
-		//**************************************************************
-		//  Place found : Schedule the instruction + next
-		// !Place found : Write binaries + shift the window + retry scheduling
-		//**************************************************************
+		//***********************************************************************
+		// !Place found : Write binaries + shift the window + correct placement
+		//***********************************************************************
 
 		if (!possible[0]) {
 
@@ -1099,6 +1109,10 @@ ac_int<32, false> placeOfInstr[256]
 
 			bestWindowOffset = WINDOW_SIZE-1;
 		}
+
+		//****************************************************************
+		// Writing instruction into the window buffer
+		//****************************************************************
 
 		lastPlaceOfInstr = windowPosition + bestWindowOffset;
 		placeOfInstr[instructionId] = windowPosition + bestWindowOffset;
@@ -1165,8 +1179,8 @@ ac_int<32, false> placeOfInstr[256]
 #endif
 
 int irScheduler(DBTPlateform *platform, uint1 optLevel, uint8 basicBlockSize, uint16 addressInBinaries,
-		int6 numberFreeRegister, uint4 issue_width,
-		uintIW way_specialisation){
+int6 numberFreeRegister, uint4 issue_width,
+uintIW way_specialisation){
 
 	//TODO clean it
 
@@ -1176,10 +1190,10 @@ int irScheduler(DBTPlateform *platform, uint1 optLevel, uint8 basicBlockSize, ui
 	exit(-1);
 #else
 
-	#ifndef __NIOS
+#ifndef __NIOS
 	return scheduling(optLevel, basicBlockSize, platform->bytecode, platform->vliwBinaries, addressInBinaries, platform->placeOfRegisters,
 	numberFreeRegister, platform->freeRegisters, 0b1111, way_specialisation, platform->placeOfInstr);
-	#else
+#else
 	unsigned int argA = optLevel + (basicBlockSize << 1) + (addressInBinaries << 16);
 	unsigned int argB = issue_width + (way_specialisation << 4);
 	return ALT_CI_COMPONENT_SCHEDULING_0(argA, argB);
@@ -1187,14 +1201,14 @@ int irScheduler(DBTPlateform *platform, uint1 optLevel, uint8 basicBlockSize, ui
 #endif
 #else
 
-	#ifndef __NIOS
+#ifndef __NIOS
 	return scheduling(optLevel, basicBlockSize, platform->bytecode, platform->vliwBinaries, addressInBinaries, platform->placeOfRegisters,
-			numberFreeRegister, platform->freeRegisters, issue_width, way_specialisation, platform->placeOfInstr);
-	#else
+	numberFreeRegister, platform->freeRegisters, issue_width, way_specialisation, platform->placeOfInstr);
+#else
 	unsigned int argA = optLevel + (basicBlockSize << 1) + (addressInBinaries << 16);
 	unsigned int argB = issue_width + (way_specialisation << 4);
 	return ALT_CI_COMPONENT_SCHEDULING_0(argA, argB);
-	#endif
+#endif
 #endif
 
 }
@@ -1282,22 +1296,22 @@ int getType(unsigned int ins){
 
 void insertReadyInstruction(unsigned char instructionNumber){
 	unsigned int instruction = instructions[instructionNumber];
-    unsigned char instructionPriority = priorities[instructionNumber];
-    unsigned char type = getType(instruction);
-    unsigned char place;
+	unsigned char instructionPriority = priorities[instructionNumber];
+		unsigned char type = getType(instruction);
+		unsigned char place;
 
-        if ((writePlaceRead + 1) == writePlaceWrite){
-            stall = 1;
-        }
-        else{
+		if ((writePlaceRead + 1) == writePlaceWrite){
+						stall = 1;
+					}
+				else{
 			place = writePlace[writePlaceRead];
-    		writePlaceRead = (writePlaceRead + 1) & 0xbf;
+			writePlaceRead = (writePlaceRead + 1) & 0xbf;
 
 			readyListEna[place] = 1;
 			readyList[place] = instructionNumber;
 
 
-				if (readyNumber[type] == 0){
+			if (readyNumber[type] == 0){
 					first[type] = place;
 					last[type] = place;
 				}
@@ -1307,75 +1321,75 @@ void insertReadyInstruction(unsigned char instructionNumber){
 						first[type] = place;
 
 					}
-					else {
+				else {
 						// we insert at the end of the list
 						readyListNext[last[type]] = place;
 						last[type] = place;
 
 					}
 
-            readyNumber[type]++;
-        }
+				readyNumber[type]++;
+					}
 }
 
 void insertReadyInstructionOpt(unsigned char instructionNumber){
 //printf("inserting %d \n", instructionNumber);
 	unsigned int instruction = instructions[instructionNumber];
-    unsigned char instructionPriority = priorities[instructionNumber];
-    unsigned char type = getType(instruction);
-    unsigned char place;
+	unsigned char instructionPriority = priorities[instructionNumber];
+		unsigned char type = getType(instruction);
+		unsigned char place;
 
-    	int writePlaceReadIncr = writePlaceRead + 1 - writePlaceWrite;
-        if (writePlaceReadIncr == 0){
-            stall = 1;
-        }
-        else{
+		int writePlaceReadIncr = writePlaceRead + 1 - writePlaceWrite;
+			if (writePlaceReadIncr == 0){
+						stall = 1;
+					}
+				else{
 			place = writePlace[writePlaceRead];
-    		writePlaceRead = (writePlaceRead + 1) & 0xbf;
+			writePlaceRead = (writePlaceRead + 1) & 0xbf;
 
 			readyListEna[place] = 1;
 			readyList[place] = instructionNumber;
 
-	            if (instructionPriority >= firstPriorities[type] || readyNumber[type] == 0){
+			if (instructionPriority >= firstPriorities[type] || readyNumber[type] == 0){
 
-	            	readyListNext[place] = first[type];
-	            	readyListPriorNext[place] = firstPriorities[type];
-	                first[type] = place;
-	                firstPriorities[type] = instructionPriority;
-	            }
-	            else {
-	                unsigned char currentPlace = first[type];
-	                unsigned char currentPriority = instructionPriority;
+									readyListNext[place] = first[type];
+								readyListPriorNext[place] = firstPriorities[type];
+								first[type] = place;
+									firstPriorities[type] = instructionPriority;
+								}
+							else {
+									unsigned char currentPlace = first[type];
+									unsigned char currentPriority = instructionPriority;
 
-	                while (readyListEna[readyListNext[currentPlace]]	 && readyListPriorNext[currentPlace]> instructionPriority && readyListPriorNext[currentPlace] < currentPriority && currentPlace != readyListNext[currentPlace]){
-	                	currentPriority = readyListPriorNext[currentPlace];
-	                	currentPlace = readyListNext[currentPlace];
-	                 }
+									while (readyListEna[readyListNext[currentPlace]]	 && readyListPriorNext[currentPlace]> instructionPriority && readyListPriorNext[currentPlace] < currentPriority && currentPlace != readyListNext[currentPlace]){
+											currentPriority = readyListPriorNext[currentPlace];
+										currentPlace = readyListNext[currentPlace];
+										}
 
-	            	readyListNext[place] = readyListNext[currentPlace];
-	            	readyListPriorNext[place] = readyListPriorNext[currentPlace];
-	            	readyListNext[currentPlace] = place;
+									readyListNext[place] = readyListNext[currentPlace];
+								readyListPriorNext[place] = readyListPriorNext[currentPlace];
+								readyListNext[currentPlace] = place;
 
-	                readyListPriorNext[currentPlace] = instructionPriority;
-	            }
-            readyNumber[type]++;
-        }
+								readyListPriorNext[currentPlace] = instructionPriority;
+								}
+							readyNumber[type]++;
+					}
 }
 
 
 void getFirstInstruction(int type){
 	if (readyNumber[type] > 0){
-    		returnGetFirstNumber = readyList[first[type]];
-    		returnGetFirstEnable = 1;
-    		readyListEna[first[type]] = 0;
-    		writePlace[writePlaceWrite] = first[type];
-    		firstPriorities[type] = readyListPriorNext[first[type]];
-    		first[type] = readyListNext[first[type]];
+			returnGetFirstNumber = readyList[first[type]];
+				returnGetFirstEnable = 1;
+				readyListEna[first[type]] = 0;
+				writePlace[writePlaceWrite] = first[type];
+				firstPriorities[type] = readyListPriorNext[first[type]];
+				first[type] = readyListNext[first[type]];
 
-    		readyNumber[type]--;
-    		writePlaceWrite = (writePlaceWrite + 1) & 0xbf;
-    	}
-  	else if (readyNumber[2] > 0){
+				readyNumber[type]--;
+				writePlaceWrite = (writePlaceWrite + 1) & 0xbf;
+		}
+	else if (readyNumber[2] > 0){
 		returnGetFirstNumber = readyList[first[2]];
 		returnGetFirstEnable = 1;
 		readyListEna[first[2]] = 0;
@@ -1384,265 +1398,265 @@ void getFirstInstruction(int type){
 		first[2] = readyListNext[first[2]];
 		readyNumber[2]--;
 		writePlaceWrite = (writePlaceWrite + 1) & 0xbf;
-    	}
-    	else {
-    		returnGetFirstEnable = 0;
-    	}
+		}
+	else {
+			returnGetFirstEnable = 0;
+		}
 }
 
 //The argument optLevel is here to set the difficulty of the scheduling : 0 mean that there is just a binary priority and 1 mean that we'll consider the entire priority value
 unsigned int scheduling(unsigned char optLevel, unsigned char basicBlockSize, unsigned int bytecode[1024], unsigned int binaries[1024], unsigned char placeOfRegisters[512], unsigned char numberFreeRegister, unsigned char freeRegisters[64], unsigned char issue_width, uintIW way_specialisation, unsigned int placeOfInstr[256]){
 
-    unsigned int cycleNumber = 0; //This is the current cycle
-    int lineNumber = 0;
-    unsigned int writeInBinaries =0;
-    writeFreeRegister = numberFreeRegister;
-    int i;
+	unsigned int cycleNumber = 0; //This is the current cycle
+		int lineNumber = 0;
+		unsigned int writeInBinaries =0;
+		writeFreeRegister = numberFreeRegister;
+		int i;
 
-    for (i=0; i<64; i++){
-    	writePlace[i] = i;
-    }
-    writePlaceRead =0;
-    writePlaceWrite = 0;
+		for (i=0; i<64; i++){
+				writePlace[i] = i;
+			}
+		writePlaceRead =0;
+		writePlaceWrite = 0;
 
-    readyNumber[0] = 0;
-    readyNumber[1] = 0;
-    readyNumber[2] = 0;
-    readyNumber[3] = 0;
+		readyNumber[0] = 0;
+		readyNumber[1] = 0;
+		readyNumber[2] = 0;
+		readyNumber[3] = 0;
 
-    for (i = 0; i<MAX_ISSUE_WIDTH; i++){
-      reservationTableEnable[0][i] = 0;
-      reservationTableEnable[1][i] = 0;
-      reservationTableEnable[2][i] = 0;
-      reservationTableEnable[3][i] = 0;
-    }
+		for (i = 0; i<MAX_ISSUE_WIDTH; i++){
+				reservationTableEnable[0][i] = 0;
+			reservationTableEnable[1][i] = 0;
+			reservationTableEnable[2][i] = 0;
+			reservationTableEnable[3][i] = 0;
+			}
 
-    stall =0;
-    aliveInstructions=0;
+		stall =0;
+		aliveInstructions=0;
 
-    fifoPlaceToWrite = 0;
-    fifoPlaceToRead = 0;
-    fifoNumberElement = 0;
+		fifoPlaceToWrite = 0;
+		fifoPlaceToRead = 0;
+		fifoNumberElement = 0;
 
-    scheduledInstructions = 0;
+		scheduledInstructions = 0;
 
-    globalOptLevel = optLevel;
+		globalOptLevel = optLevel;
 
-    for(i = 0; i<basicBlockSize;i++){
-      instructions[i] = bytecode[i*4];
-      instructionsEnd[i] = (bytecode[i*4+1] >> 14) & 0x3ffff;
-      numbersOfDependencies[i] = (bytecode[i*4+1] >> 6) % 256;
-      priorities[i] = (bytecode[i*4+2] >> 24) % 256;
-      numbersOfRegisterDependencies[i] = (bytecode[i*4+1] >> 3) % 8;
+		for(i = 0; i<basicBlockSize;i++){
+				instructions[i] = bytecode[i*4];
+			instructionsEnd[i] = (bytecode[i*4+1] >> 14) & 0x3ffff;
+			numbersOfDependencies[i] = (bytecode[i*4+1] >> 6) % 256;
+			priorities[i] = (bytecode[i*4+2] >> 24) % 256;
+			numbersOfRegisterDependencies[i] = (bytecode[i*4+1] >> 3) % 8;
 
-      if (numbersOfDependencies[i] == 0){
-        if (fifoNumberElement == 64)
-              stall = 1;
-        else{
-              fifoInsertReadyInstruction[fifoPlaceToWrite] = i;
-              fifoPlaceToWrite = (fifoPlaceToWrite + 1) % 64;
-              fifoNumberElement++;
-              numbersOfDependencies[i]--;
-        }
-      }
-    }
+			if (numbersOfDependencies[i] == 0){
+					if (fifoNumberElement == 64)
+					stall = 1;
+				else{
+						fifoInsertReadyInstruction[fifoPlaceToWrite] = i;
+							fifoPlaceToWrite = (fifoPlaceToWrite + 1) % 64;
+							fifoNumberElement++;
+							numbersOfDependencies[i]--;
+					}
+				}
+			}
 
-    while (1){
+		while (1){
 
-    	//If the fifo buffer is full, then we need to check once more every instruction in case some are ready but not inserted on the
-    	//ready list
-    	if (stall){
-    		stall = 0;
-    		for (i = 0; i < basicBlockSize; i++){
+				//If the fifo buffer is full, then we need to check once more every instruction in case some are ready but not inserted on the
+				//ready list
+				if (stall){
+					stall = 0;
+				for (i = 0; i < basicBlockSize; i++){
 
-          if (numbersOfDependencies[i] == 0){
-            if (fifoNumberElement == 64){
-              stall = 1;
-              break;
-            }
-            else{
-              fifoInsertReadyInstruction[fifoPlaceToWrite] = i;
-              fifoPlaceToWrite = (fifoPlaceToWrite + 1) % 64;
-              fifoNumberElement++;
-              numbersOfDependencies[i]--;
-            }
-          }
-        }
-      }
-
-
-
-    	//For every element in the ready list, we insert the instruction in the sorted ready list. Two insertion rules exist, depending on the
-    	//optimization level chosen.
-      if (optLevel)
-        for (i=0; i<fifoNumberElement; i++){
-                insertReadyInstructionOpt(fifoInsertReadyInstruction[fifoPlaceToRead]);
-                fifoPlaceToRead = (fifoPlaceToRead + 1) % 64;
-        }
-      else
-        for (i=0; i<fifoNumberElement; i++){
-                insertReadyInstructionOpt(fifoInsertReadyInstruction[fifoPlaceToRead]);
-                fifoPlaceToRead = (fifoPlaceToRead + 1) % 64;
-        }
-
-        fifoNumberElement = 0;
-
-        //For each stage, we schedule the first instruction (if possible) and generate the binary code
-
-        int stage;
-        for (stage = 0; stage < issue_width; stage++){
-        	unsigned char type = (way_specialisation >> (stage << 1)) % 4;
-    		getFirstInstruction(type);
-
-    		char nextLineNumber = (lineNumber + 1) & 0x1;
-    		char lineNumberForStage = (type == 3) ?  nextLineNumber : lineNumber;
-
-
-          if (returnGetFirstEnable) {
-            reservationTableNum[lineNumberForStage][stage] = returnGetFirstNumber;
-            reservationTableEnable[lineNumberForStage][stage] = 1;
-      unsigned int instruction = 0;
-      unsigned int instructionEnd = 0;
-      instruction =  instructions[returnGetFirstNumber];
-      instructionEnd = instructionsEnd[returnGetFirstNumber];
-
-      //We split different information from the instruction:
-      unsigned int typeCode = (instruction >> 28) % 4;
-      unsigned int alloc = (instruction >> 27) % 2;
-      unsigned int allocBr = (instruction >> 26) % 2;
-      unsigned int opCode = (instruction >> 19) % 128;
-      unsigned int isImm = (instruction >> 18) % 2;
-      unsigned int isBr = (instruction >> 17) % 2;
-      unsigned int virtualRDest = instructionEnd % 512;
-      unsigned int virtualRIn2 = (instructionEnd >> 9) % 512;
-      unsigned int virtualRIn1_imm9 = instruction % 512;
-      unsigned int imm11 = instruction % 2048;
-      unsigned int imm19 = ((instructionEnd >> 9) & 0x1ff) + (instruction & 0x3ff);
-      unsigned int brCode = (instruction >> 9) % 512;
-      unsigned int generatedInstruction = 0;
-
-      unsigned int dest;
-
-      //If the instruction allocate a new register (if alloc is equal to one), we choose a new register in the list of free registers
-      if (alloc == 1){
-        if (numberFreeRegister != 0){
-          dest = freeRegisters[readFreeRegister];
-          placeOfRegisters[returnGetFirstNumber] = dest;
-          isBrRegister[returnGetFirstNumber] = 0;
-          readFreeRegister = (readFreeRegister) + 1 & 0x3f;
-          numberFreeRegister--;
-        }
-        else {
-          //There is no free registers, we need to cancel the current instruction being scheduled
-          fifoInsertReadyInstruction[fifoPlaceToWrite] = returnGetFirstNumber;
-          fifoPlaceToWrite = (fifoPlaceToWrite + 1) % 64;
-          fifoNumberElement++;
-          reservationTableEnable[lineNumberForStage][stage] = 0;
-        }
-
-      }
-      //test !
-      else {
-        dest = placeOfRegisters[virtualRDest];
-        placeOfRegisters[returnGetFirstNumber] = dest;
-      }
-
-      if (reservationTableEnable[lineNumberForStage][stage]){
-        scheduledInstructions++;
-        if (typeCode == 0){
-          usedRegister[lineNumberForStage][numbersUsedRegister[lineNumberForStage]] = virtualRIn2;
-          numbersUsedRegister[lineNumberForStage]++;
-          if (!isImm){
-            usedRegister[lineNumberForStage][numbersUsedRegister[lineNumberForStage]] = virtualRIn1_imm9;
-            numbersUsedRegister[lineNumberForStage]++;
-          }
-
-        }
-        else if (typeCode == 1){
-          usedRegister[lineNumberForStage][numbersUsedRegister[lineNumberForStage]] = virtualRIn2;
-          numbersUsedRegister[lineNumberForStage]++;
-          usedRegister[lineNumberForStage][numbersUsedRegister[lineNumberForStage]] = brCode;
-          numbersUsedRegister[lineNumberForStage]++;
-          if (!isImm){
-            usedRegister[lineNumberForStage][numbersUsedRegister[lineNumberForStage]] = virtualRIn1_imm9;
-            numbersUsedRegister[lineNumberForStage]++;
-          }
-        }
-
-        //Instruction generation
-        generatedInstruction += opCode;
-        generatedInstruction += placeOfRegisters[virtualRIn2]<<26;
-
-        if (typeCode == 0){ //The instruction is R type
-          generatedInstruction += isImm<<7;
-          generatedInstruction += isBr<<8;
-
-          if (isImm){
-            generatedInstruction += imm11<<9;
-            generatedInstruction += dest<<20;//placeOfRegisters[virtualRDest];
-          }
-          else{
-            generatedInstruction += dest<<14;//placeOfRegisters[virtualRDest];
-            generatedInstruction += placeOfRegisters[virtualRIn1_imm9]<<20;
-          }
-        }
-        else if (typeCode == 1){ //The instruction is Rext Type
-          generatedInstruction += isImm<<7;
-
-          generatedInstruction += placeOfRegisters[brCode]<<8;
-
-          if (isImm){
-            generatedInstruction += virtualRIn1_imm9 << 11;
-            generatedInstruction += dest <<20;//placeOfRegisters[virtualRDest];
-          }
-          else{
-            generatedInstruction += dest << 14;//placeOfRegisters[virtualRDest];
-            generatedInstruction += placeOfRegisters[virtualRIn1_imm9] << 20;
-          }
-        }
-        else { //The instruction is I Type
-          generatedInstruction += dest << 26;placeOfRegisters[virtualRDest];
-          generatedInstruction += imm19 << 7;
-        }
-
-        binaries[writeInBinaries] = generatedInstruction;
-        writeInBinaries++;
-
-      }
-      else {
-        reservationTableEnable[lineNumberForStage][stage] = 0;
-        binaries[writeInBinaries] = 0;
-        writeInBinaries++;
-      }
-          }
-        else {
-          reservationTableEnable[lineNumberForStage][stage] = 0;
-          binaries[writeInBinaries] = 0;
-          writeInBinaries++;
-        }
-
-            if (reservationTableEnable[lineNumberForStage][stage])
-            	placeOfInstr[returnGetFirstNumber] = writeInBinaries-1;
-        }
+						if (numbersOfDependencies[i] == 0){
+							if (fifoNumberElement == 64){
+								stall = 1;
+							break;
+							}
+						else{
+								fifoInsertReadyInstruction[fifoPlaceToWrite] = i;
+							fifoPlaceToWrite = (fifoPlaceToWrite + 1) % 64;
+							fifoNumberElement++;
+							numbersOfDependencies[i]--;
+							}
+						}
+					}
+				}
 
 
 
-        //We check if the scheduling is over
-        if (scheduledInstructions >= basicBlockSize)
-        	break;
+			//For every element in the ready list, we insert the instruction in the sorted ready list. Two insertion rules exist, depending on the
+			//optimization level chosen.
+			if (optLevel)
+				for (i=0; i<fifoNumberElement; i++){
+						insertReadyInstructionOpt(fifoInsertReadyInstruction[fifoPlaceToRead]);
+								fifoPlaceToRead = (fifoPlaceToRead + 1) % 64;
+					}
+			else
+				for (i=0; i<fifoNumberElement; i++){
+						insertReadyInstructionOpt(fifoInsertReadyInstruction[fifoPlaceToRead]);
+								fifoPlaceToRead = (fifoPlaceToRead + 1) % 64;
+					}
 
-        //Next cycle
-        cycleNumber = cycleNumber+1;
+			fifoNumberElement = 0;
 
-        char oldLineNumber = lineNumber;
-        lineNumber = (lineNumber + 1) & 0x1;
+				//For each stage, we schedule the first instruction (if possible) and generate the binary code
+
+				int stage;
+				for (stage = 0; stage < issue_width; stage++){
+						unsigned char type = (way_specialisation >> (stage << 1)) % 4;
+					getFirstInstruction(type);
+
+				char nextLineNumber = (lineNumber + 1) & 0x1;
+				char lineNumberForStage = (type == 3) ?  nextLineNumber : lineNumber;
 
 
-        //The last step is the commit of the executed instructions: for every instruction scheduled xx cycles earlier, we reduce the register
-        // dependencies of data predecessors and the dependencies of successors
-        unsigned char successors[MAX_ISSUE_WIDTH*7];
-        unsigned char totalNumberOfSuccessors=0;
-        for (stage=0; stage<issue_width; stage++){
+				if (returnGetFirstEnable) {
+							reservationTableNum[lineNumberForStage][stage] = returnGetFirstNumber;
+						reservationTableEnable[lineNumberForStage][stage] = 1;
+						unsigned int instruction = 0;
+			unsigned int instructionEnd = 0;
+			instruction =  instructions[returnGetFirstNumber];
+			instructionEnd = instructionsEnd[returnGetFirstNumber];
+
+			//We split different information from the instruction:
+			unsigned int typeCode = (instruction >> 28) % 4;
+			unsigned int alloc = (instruction >> 27) % 2;
+			unsigned int allocBr = (instruction >> 26) % 2;
+			unsigned int opCode = (instruction >> 19) % 128;
+			unsigned int isImm = (instruction >> 18) % 2;
+			unsigned int isBr = (instruction >> 17) % 2;
+			unsigned int virtualRDest = instructionEnd % 512;
+			unsigned int virtualRIn2 = (instructionEnd >> 9) % 512;
+			unsigned int virtualRIn1_imm9 = instruction % 512;
+			unsigned int imm11 = instruction % 2048;
+			unsigned int imm19 = ((instructionEnd >> 9) & 0x1ff) + (instruction & 0x3ff);
+			unsigned int brCode = (instruction >> 9) % 512;
+			unsigned int generatedInstruction = 0;
+
+			unsigned int dest;
+
+			//If the instruction allocate a new register (if alloc is equal to one), we choose a new register in the list of free registers
+			if (alloc == 1){
+					if (numberFreeRegister != 0){
+						dest = freeRegisters[readFreeRegister];
+					placeOfRegisters[returnGetFirstNumber] = dest;
+					isBrRegister[returnGetFirstNumber] = 0;
+					readFreeRegister = (readFreeRegister) + 1 & 0x3f;
+					numberFreeRegister--;
+					}
+				else {
+						//There is no free registers, we need to cancel the current instruction being scheduled
+						fifoInsertReadyInstruction[fifoPlaceToWrite] = returnGetFirstNumber;
+					fifoPlaceToWrite = (fifoPlaceToWrite + 1) % 64;
+					fifoNumberElement++;
+					reservationTableEnable[lineNumberForStage][stage] = 0;
+					}
+
+				}
+			//test !
+			else {
+					dest = placeOfRegisters[virtualRDest];
+				placeOfRegisters[returnGetFirstNumber] = dest;
+				}
+
+			if (reservationTableEnable[lineNumberForStage][stage]){
+					scheduledInstructions++;
+				if (typeCode == 0){
+						usedRegister[lineNumberForStage][numbersUsedRegister[lineNumberForStage]] = virtualRIn2;
+					numbersUsedRegister[lineNumberForStage]++;
+					if (!isImm){
+							usedRegister[lineNumberForStage][numbersUsedRegister[lineNumberForStage]] = virtualRIn1_imm9;
+						numbersUsedRegister[lineNumberForStage]++;
+						}
+
+					}
+				else if (typeCode == 1){
+						usedRegister[lineNumberForStage][numbersUsedRegister[lineNumberForStage]] = virtualRIn2;
+					numbersUsedRegister[lineNumberForStage]++;
+					usedRegister[lineNumberForStage][numbersUsedRegister[lineNumberForStage]] = brCode;
+					numbersUsedRegister[lineNumberForStage]++;
+					if (!isImm){
+							usedRegister[lineNumberForStage][numbersUsedRegister[lineNumberForStage]] = virtualRIn1_imm9;
+						numbersUsedRegister[lineNumberForStage]++;
+						}
+					}
+
+				//Instruction generation
+				generatedInstruction += opCode;
+				generatedInstruction += placeOfRegisters[virtualRIn2]<<26;
+
+				if (typeCode == 0){ //The instruction is R type
+						generatedInstruction += isImm<<7;
+					generatedInstruction += isBr<<8;
+
+					if (isImm){
+							generatedInstruction += imm11<<9;
+						generatedInstruction += dest<<20;//placeOfRegisters[virtualRDest];
+						}
+					else{
+							generatedInstruction += dest<<14;//placeOfRegisters[virtualRDest];
+						generatedInstruction += placeOfRegisters[virtualRIn1_imm9]<<20;
+						}
+					}
+				else if (typeCode == 1){ //The instruction is Rext Type
+						generatedInstruction += isImm<<7;
+
+					generatedInstruction += placeOfRegisters[brCode]<<8;
+
+					if (isImm){
+							generatedInstruction += virtualRIn1_imm9 << 11;
+						generatedInstruction += dest <<20;//placeOfRegisters[virtualRDest];
+						}
+					else{
+							generatedInstruction += dest << 14;//placeOfRegisters[virtualRDest];
+						generatedInstruction += placeOfRegisters[virtualRIn1_imm9] << 20;
+						}
+					}
+				else { //The instruction is I Type
+						generatedInstruction += dest << 26;placeOfRegisters[virtualRDest];
+					generatedInstruction += imm19 << 7;
+					}
+
+				binaries[writeInBinaries] = generatedInstruction;
+				writeInBinaries++;
+
+				}
+			else {
+					reservationTableEnable[lineNumberForStage][stage] = 0;
+				binaries[writeInBinaries] = 0;
+				writeInBinaries++;
+				}
+						}
+					else {
+							reservationTableEnable[lineNumberForStage][stage] = 0;
+					binaries[writeInBinaries] = 0;
+					writeInBinaries++;
+						}
+
+					if (reservationTableEnable[lineNumberForStage][stage])
+							placeOfInstr[returnGetFirstNumber] = writeInBinaries-1;
+					}
+
+
+
+				//We check if the scheduling is over
+				if (scheduledInstructions >= basicBlockSize)
+					break;
+
+				//Next cycle
+				cycleNumber = cycleNumber+1;
+
+				char oldLineNumber = lineNumber;
+				lineNumber = (lineNumber + 1) & 0x1;
+
+
+				//The last step is the commit of the executed instructions: for every instruction scheduled xx cycles earlier, we reduce the register
+				// dependencies of data predecessors and the dependencies of successors
+				unsigned char successors[MAX_ISSUE_WIDTH*7];
+				unsigned char totalNumberOfSuccessors=0;
+				for (stage=0; stage<issue_width; stage++){
 
 
 			unsigned char instructionFinishedNum = reservationTableNum[lineNumber][stage];
@@ -1662,41 +1676,41 @@ unsigned int scheduling(unsigned char optLevel, unsigned char basicBlockSize, un
 
 			}
 
-        }
+					}
 
-        for (i=0; i<numbersUsedRegister[lineNumber]; i++){
-        	if ((usedRegister[lineNumber][i] < 256)){
-            numbersOfRegisterDependencies[usedRegister[lineNumber][i]]--;
+				for (i=0; i<numbersUsedRegister[lineNumber]; i++){
+						if ((usedRegister[lineNumber][i] < 256)){
+							numbersOfRegisterDependencies[usedRegister[lineNumber][i]]--;
 
-            if (numbersOfRegisterDependencies[usedRegister[lineNumber][i]] == 0){
-              freeRegisters[writeFreeRegister] = placeOfRegisters[usedRegister[lineNumber][i]];
-              writeFreeRegister = (writeFreeRegister + 1) & 0x3f;
-              numberFreeRegister++;
-            }
+						if (numbersOfRegisterDependencies[usedRegister[lineNumber][i]] == 0){
+								freeRegisters[writeFreeRegister] = placeOfRegisters[usedRegister[lineNumber][i]];
+							writeFreeRegister = (writeFreeRegister + 1) & 0x3f;
+							numberFreeRegister++;
+							}
 
-        	}
-        }
-        numbersUsedRegister[lineNumber] = 0;
+						}
+					}
+				numbersUsedRegister[lineNumber] = 0;
 
-        for(i=0; i<totalNumberOfSuccessors; i++){
+				for(i=0; i<totalNumberOfSuccessors; i++){
 
-        	unsigned char successorName = successors[i];
-          numbersOfDependencies[successorName] = numbersOfDependencies[successorName] - 1;
-          //If the number of dependencies of the successor is now to 0, we add the instruction to the list
-          //of ready instructions:
-          if (numbersOfDependencies[successorName] == 0){
-            if (fifoNumberElement == 64)
-                  stall = 1;
-            else{
-              fifoInsertReadyInstruction[fifoPlaceToWrite] = successorName;
-              fifoPlaceToWrite = (fifoPlaceToWrite + 1) % 64;
-              fifoNumberElement++;
-              numbersOfDependencies[successorName]--;
-            }
-          }
-        }
+						unsigned char successorName = successors[i];
+					numbersOfDependencies[successorName] = numbersOfDependencies[successorName] - 1;
+					//If the number of dependencies of the successor is now to 0, we add the instruction to the list
+					//of ready instructions:
+					if (numbersOfDependencies[successorName] == 0){
+							if (fifoNumberElement == 64)
+							stall = 1;
+						else{
+								fifoInsertReadyInstruction[fifoPlaceToWrite] = successorName;
+							fifoPlaceToWrite = (fifoPlaceToWrite + 1) % 64;
+							fifoNumberElement++;
+							numbersOfDependencies[successorName]--;
+							}
+						}
+					}
 
-    }
-    return cycleNumber;
+			}
+		return cycleNumber;
 }
 #endif
