@@ -99,9 +99,9 @@ const uint7 functBinding[64] = {
 		-1,
 		-1,
 
-		VEX_MPYHI,		//MFHI
+	0,//	VEX_MPYHI,		//MFHI
 		-1,		//MTHI
-		VEX_MPYLO,		//MFLO
+	0,//	VEX_MPYLO,		//MFLO
 		-1,		//MTLO
 		-1,
 		-1,

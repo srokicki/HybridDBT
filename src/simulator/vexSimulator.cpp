@@ -484,7 +484,6 @@ void VexSimulator::doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 			select32 ? result32 :
 			dctoEx.dataa;
 
-
 	extoMem->WBena = !(dctoEx.opCode == VEX_NOP); //TODO
 	if ((dctoEx.opCode == VEX_SETc & !dctoEx.datab) || (dctoEx.opCode == VEX_SETFc & dctoEx.datab))
 		extoMem->WBena = 0;
@@ -567,13 +566,16 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 	ac_int<64, true> mulhisu_result = mulsu_result.slc<64>(64);
 
 	ac_int<65, true> const0 = 0;
+	ac_int<64, false> constu0 = 0;
 
 #ifdef __CATAPULT
 	ac_int<64, true> div_result = 0; //Currently catapult version do not do division
 	ac_int<64, true> remu_result = 0;
 #else
 	ac_int<64, true> div_result = !dctoEx.datab ? const0 : dctoEx.dataa / dctoEx.datab;
-	ac_int<64, true> remu_result = !dctoEx.datab ? dctoEx.datab : dctoEx.dataa % dctoEx.datab;
+	ac_int<64, true> rem_result = !dctoEx.datab ? dctoEx.datab : dctoEx.dataa % dctoEx.datab;
+	ac_int<64, true> divu_result = !unsigned_datab ? constu0 : unsigned_dataa / unsigned_datab;
+	ac_int<64, true> remu_result = !unsigned_datab ? unsigned_datab : unsigned_dataa % unsigned_datab;
 #endif
 	ac_int<64, true> unsigned_sub_result = unsigned_dataa - unsigned_datab;
 
@@ -597,11 +599,19 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 	ac_int<1, false> selectSra32 = (dctoEx.opCode == VEX_SRAW)| (dctoEx.opCode == VEX_SRAWi);
 	ac_int<1, false> selectMult32 = (dctoEx.opCode == VEX_MPYW);
 	ac_int<1, false> selectDiv32 = (dctoEx.opCode == VEX_DIVW);
-	ac_int<1, false> select32 = selectSub32 || selectAdd32 || selectSll32 || selectSrl32 || selectSra32 || selectMult32 || selectDiv32;
+	ac_int<1, false> selectRem32 = (dctoEx.opCode == VEX_REMW);
+	ac_int<1, false> selectDivu32 = (dctoEx.opCode == VEX_DIVUW);
+	ac_int<1, false> selectRemu32 = (dctoEx.opCode == VEX_REMUW);
+
+	ac_int<1, false> select32 = selectSub32 || selectAdd32 || selectSll32 || selectSrl32 || selectSra32 || selectMult32 || selectDiv32|| selectDivu32|| selectRem32|| selectRemu32;
 
 	ac_int<32, true> dataa32 = dctoEx.dataa.slc<32>(0);
 	ac_int<32, false> unsigned_dataa32 = dctoEx.dataa.slc<32>(0);
+	ac_int<32, false> unsigned_datab32 = dctoEx.datab.slc<32>(0);
 	ac_int<32, true> datab32 = dctoEx.datab.slc<32>(0);
+	ac_int<33, true> const0_32 = 0;
+	ac_int<32, false> constu0_32 = 0;
+
 
 
 	ac_int<5, false> shiftAmount32 = datab32.slc<5>(0);
@@ -614,8 +624,12 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 	ac_int<32, true> const1 = 1;
 #ifdef __CATAPULT
 	ac_int<32, true> div_result_32 = 0; //Currently catapult version do not do division
+	ac_int<32, true> remu_result_32 = 0;
 #else
-	ac_int<32, true> div_result_32 = dataa32 / (datab32 == 0 ? const1 : datab32);
+	ac_int<32, true> div_result_32 = !datab32 ? const0_32 : dataa32 / datab32;
+	ac_int<32, true> rem_result_32 = !datab32 ? datab32 : dataa32 % datab32;
+	ac_int<32, true> divu_result_32 = !unsigned_datab32 ? constu0_32 : unsigned_dataa32 / unsigned_datab32;
+	ac_int<32, true> remu_result_32 = !unsigned_datab32 ? unsigned_datab32 : unsigned_dataa32 % unsigned_datab32;
 #endif
 
 	ac_int<64, true> result32 = selectAdd32 ? add_result_32 :
@@ -624,8 +638,10 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 			selectSra32 ? sra_result_32 :
 			selectMult32 ? mult_result_32 :
 			selectDiv32 ? div_result_32 :
+			selectRem32 ? rem_result_32 :
+			selectDivu32 ? divu_result_32 :
+			selectRemu32 ? remu_result_32 :
 			srl_result_32;
-
 
 
 	extoMem->result = selectAdd ? add_result :
@@ -639,12 +655,14 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 			selectXor ? xor_result :
 			selectNor ? nor_result :
 			selectCmp ? cmpResult :
-			(dctoEx.opCode == VEX_MPYLO) ? mullo_result :
-			(dctoEx.opCode == VEX_MPYHI) ? mulhi_result :
-			(dctoEx.opCode == VEX_MPYHISU) ? mulhisu_result :
-			(dctoEx.opCode == VEX_MPYHIU) ? mulhiu_result :
+			(dctoEx.opCode == VEX_MPY) ? mullo_result :
+			(dctoEx.opCode == VEX_MPYH) ? mulhi_result :
+			(dctoEx.opCode == VEX_MPYHSU) ? mulhisu_result :
+			(dctoEx.opCode == VEX_MPYHU) ? mulhiu_result :
+			(dctoEx.opCode == VEX_REM) ? rem_result :
+			(dctoEx.opCode == VEX_DIV) ? div_result :
 			(dctoEx.opCode == VEX_REMU) ? remu_result :
-			(dctoEx.opCode == VEX_DIVHI) ? div_result :
+			(dctoEx.opCode == VEX_DIVU) ? divu_result :
 			select32 ? result32 :
 			dctoEx.dataa;
 
@@ -682,8 +700,7 @@ void VexSimulator::doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<1, false> isIType = (OP.slc<3>(4) == 2);
 	ac_int<1, false> isImm = OP.slc<3>(4) == 1 || OP.slc<3>(4) == 6 || OP.slc<3>(4) == 7;
 
-	ac_int<1, false> isUnsigned = (OP == VEX_MPYLLU) | (OP == VEX_MPYLHU) | (OP == VEX_MPYHHU)
-			| (OP == VEX_MPYHIU) | (OP == VEX_CMPLTU) | (OP == VEX_CMPLTUi) | (OP == VEX_CMPGEU) | (OP == VEX_CMPGEUi)
+	ac_int<1, false> isUnsigned = (OP == VEX_CMPLTU) | (OP == VEX_CMPLTUi) | (OP == VEX_CMPGEU) | (OP == VEX_CMPGEUi)
 			| (OP == VEX_CMPGTU)
 			| (OP == VEX_CMPGTUi) | (OP == VEX_CMPLEU) | (OP == VEX_CMPLEUi);
 
@@ -759,8 +776,7 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<1, false> isIType = (OP.slc<3>(4) == 2);
 	ac_int<1, false> isImm = OP.slc<3>(4) == 1 || OP.slc<3>(4) == 6 || OP.slc<3>(4) == 7;
 
-	ac_int<1, false> isUnsigned = (OP == VEX_MPYLLU) | (OP == VEX_MPYLHU) | (OP == VEX_MPYHHU)
-			| (OP == VEX_MPYHIU) | (OP == VEX_CMPLTU) | (OP == VEX_CMPLTUi) | (OP == VEX_CMPGEU) | (OP == VEX_CMPGEUi)
+	ac_int<1, false> isUnsigned = (OP == VEX_CMPLTU) | (OP == VEX_CMPLTUi) | (OP == VEX_CMPGEU) | (OP == VEX_CMPGEUi)
 			| (OP == VEX_CMPGTU)
 			| (OP == VEX_CMPGTUi) | (OP == VEX_CMPLEU) | (OP == VEX_CMPLEUi);
 
@@ -847,8 +863,7 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<1, false> isIType = (OP.slc<3>(4) == 2);
 	ac_int<1, false> isImm = OP.slc<3>(4) == 1 || OP.slc<3>(4) == 6 || OP.slc<3>(4) == 7;
 
-	ac_int<1, false> isUnsigned = (OP == VEX_MPYLLU) | (OP == VEX_MPYLHU) | (OP == VEX_MPYHHU)
-			| (OP == VEX_MPYHIU) | (OP == VEX_CMPLTU) | (OP == VEX_CMPLTUi) | (OP == VEX_CMPGEU) | (OP == VEX_CMPGEUi)
+	ac_int<1, false> isUnsigned = (OP == VEX_CMPLTU) | (OP == VEX_CMPLTUi) | (OP == VEX_CMPGEU) | (OP == VEX_CMPGEUi)
 			| (OP == VEX_CMPGTU)
 			| (OP == VEX_CMPGTUi) | (OP == VEX_CMPLEU) | (OP == VEX_CMPLEUi);
 

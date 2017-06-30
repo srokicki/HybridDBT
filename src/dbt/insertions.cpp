@@ -290,7 +290,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, 0);
 	writeInt(platform->vliwBinaries, cycle*16+4, 0);
-	writeInt(platform->vliwBinaries, cycle*16+8, assembleRInstruction(VEX_MPYLO, 6, 9, 8));
+	writeInt(platform->vliwBinaries, cycle*16+8, assembleRInstruction(VEX_MPY, 6, 9, 8));
 	writeInt(platform->vliwBinaries, cycle*16+12, assembleRInstruction(VEX_SUB, 4, 4, 8));
 
 	// 		| t1 = cmpeqi size 1 |						|					| size = size >>1

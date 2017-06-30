@@ -10,22 +10,21 @@
 #define INCLUDES_VEX_H_
 
 #define VEX_NOP 0x0
-#define VEX_MPYLL 0x1
-#define VEX_MPYLLU 0x2
-#define VEX_MPYLH 0x3
-#define VEX_MPYLHU 0x4
-#define VEX_MPYHH 0x5
-#define VEX_MPYHHU 0x6
-#define VEX_MPYL 0x7
-#define VEX_DIVW 0x8
-#define VEX_MPYW 0x9
 
-#define VEX_MPYHISU 0xa
-#define VEX_MPYHIU 0xb
-#define VEX_MPYLO 0xc
-#define VEX_MPYHI 0xd
-#define VEX_REMU 0xe
-#define VEX_DIVHI 0xf
+#define VEX_MPYW 0x3
+#define VEX_DIVW 0x4
+#define VEX_DIVUW 0x5
+#define VEX_REMW 0x6
+#define VEX_REMUW 0x7
+
+#define VEX_MPYH 0x8
+#define VEX_MPYHSU 0x9
+#define VEX_MPYHU 0xa
+#define VEX_MPY 0xb
+#define VEX_DIV 0xc
+#define VEX_DIVU 0xd
+#define VEX_REM 0xe
+#define VEX_REMU 0xf
 
 #define VEX_LDD 0x10
 #define VEX_LDW 0x11
