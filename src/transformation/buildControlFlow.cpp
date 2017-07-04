@@ -134,9 +134,6 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 				unresolvedJumpIndex++;
 			}
 
-			fprintf(stderr, "Creating block from %x to %x (with dest at %x)\n", newBlock->sourceStartAddress, newBlock->sourceEndAddress, newBlock->sourceDestination);
-
-
 			//If the block is big enough, we profile it
 			if (newBlock->vliwEndAddress - newBlock->vliwStartAddress > 7)
 				profiler->profileBlock(application->blocksInSections[section][application->numbersBlockInSections[section] - 1]);
@@ -259,11 +256,9 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 
 		if (nbSucc > 0){
 			blocksToStudy[numberBlockToStudy] = currentBlock->successor1;
-			fprintf(stderr, "Adding Block %x to successors\n", currentBlock->successor1);
 		}
 		if (nbSucc > 1){
 			blocksToStudy[numberBlockToStudy+1] = currentBlock->successor2;
-			fprintf(stderr, "Adding Block %x to successors\n", currentBlock->successor2);
 		}
 		numberBlockToStudy += nbSucc;
 

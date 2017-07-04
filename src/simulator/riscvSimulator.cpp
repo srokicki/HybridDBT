@@ -20,7 +20,7 @@ ac_int<64, false> shiftMask[64];
 
 
 
-int RiscvSimulator::doSimulation(int nbCycle){
+int RiscvSimulator::doSimulation(int nbkCycle){
 	long long hilo;
 
 	//We initialize shiftmask
@@ -37,7 +37,7 @@ int RiscvSimulator::doSimulation(int nbCycle){
 	do{
 		this->doStep();
 	}
-	while (stop != 1 && n_inst<nbCycle);
+	while (stop != 1 && n_inst<nbkCycle*1000);
 
 	if (this->stop)
 		fprintf(stderr,"Simulation finished in %d cycles\n",n_inst);
@@ -174,6 +174,7 @@ void RiscvSimulator::doStep(){
 		break;
 		default:
 			printf("In BR switch case, this should never happen... Instr was %x\n", (int)ins);
+			exit(-1);
 		break;
 		}
 	break;
@@ -212,6 +213,7 @@ void RiscvSimulator::doStep(){
 		break;
 		default:
 			printf("In LD switch case, this should never happen... Instr was %x\n", (int)ins);
+			exit(-1);
 		break;
 		}
 	break;
@@ -219,6 +221,10 @@ void RiscvSimulator::doStep(){
 	//******************************************************************************************
 	//Treatment for: STORE INSTRUCTIONS
 	case RISCV_ST:
+		if (REG[rs1] + imm12_S_signed == 0x27fe0){
+			fprintf(stderr, "[%d;%x] test %x\n",this->n_inst, this->pc, REG[rs2]);
+
+		}
 		switch(funct3)
 		{
 		case RISCV_ST_STB:
@@ -235,6 +241,7 @@ void RiscvSimulator::doStep(){
 		break;
 		default:
 			printf("In ST switch case, this should never happen... Instr was %x\n", (int)ins);
+			exit(-1);
 		break;
 		}
 	break;
@@ -276,6 +283,7 @@ void RiscvSimulator::doStep(){
 		break;
 		default:
 			printf("In OPI switch case, this should never happen... Instr was %x\n", (int)ins);
+			exit(-1);
 		break;
 		}
 	break;
@@ -305,6 +313,7 @@ void RiscvSimulator::doStep(){
 		break;
 		default:
 			printf("In OPI switch case, this should never happen... Instr was %x\n", (int)ins);
+			exit(-1);
 		break;
 		}
 	break;
@@ -396,6 +405,7 @@ void RiscvSimulator::doStep(){
 			break;
 			default:
 				printf("In OP switch case, this should never happen... Instr was %x\n", (int)ins);
+				exit(-1);
 			break;
 			}
 		}
@@ -465,6 +475,7 @@ void RiscvSimulator::doStep(){
 			break;
 			default:
 				printf("In OPW switch case, this should never happen... Instr was %x\n", (int)ins);
+				exit(-1);
 			break;
 			}
 		}
@@ -478,7 +489,8 @@ void RiscvSimulator::doStep(){
 			REG[10] = solveSyscall(REG[17], REG[10], REG[11], REG[12], REG[13]);
 	break;
 	default:
-		printf("In default part of switch opcode, instr %x is not handled yet\n", (int) ins);
+		printf("In default part of switch opcode, instr %x is not handled yet(%x)\n", (int) ins, this->heapAddress);
+		exit(-1);
 	break;
 
 	}

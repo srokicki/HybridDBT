@@ -46,13 +46,21 @@ On the following, we will first see how to run the framework on existing RISC-V 
 
 If you want to execute the DBT framework on a given elf file (binaries.riscv), run the following command:
 
-	$ ./build/bin/dbt [-O 1|-v] binaries.riscv [-a "arguments"]
+	$ ./build/bin/dbt [-O optLevel] [-v] -f binaries.riscv [-a "arguments"] [-i inputStream] [-o outputStream]
 	
-When running on verbose mode (-v flag), debug messages from the DBT framework are printed on the standard error while all application messages are printed on the standard output. Simulator will also have access to all standard system calls through the simulator. It can for example, read/write files in your file system.
+The parameters are the following:
+* optLevel is the optimization level of the DBT process. It can take a value between 0 and two. Optimization level zero just performs the first naive translation of RISC-V binaries into VLIW, without trying to exploit ILP. Optimization level one will find blocks, generate the intermediate representation (IR) for them and use it to generate efficient binaries. Optimization level 2 will work at procedure level and try to build traces, unroll loops...
+* verbose (-v) if verbose is activated, the processor will print all its internal state at each cycle of the simulation. This represent a huge amount of data to print and thus slow down the simulation.
+* binaries.riscv is the RISC-V binary file we want to execute.
+* arguments is the list of argument to pass to the application executed.
+* inputStream can be used to set the source of the standard input. If a file is set there, then all read on the standard input will be done on this file instead.
+* outputStream can be used to set the destination of standard outputs. Same than for inputStream, if a file is set there, the output will be written in this file instead. Note that you can use several -o outputStream to allocate to the different standard output. If one is set at stderr or stdout, it will be mapped to the standard error or the standard output. 
+	
+Note that the simulator has access to the standard system calls on your computers. It can open/close files and read/write their contents.	
 
-We also provided an instruction level simulator for the RISC-V. You can use it with the following command:
+In addition to the DBT framework, we also provided an instruction level simulator for the RISC-V. This simulator can be used to make sure that the RISC-V binary file is compatible and should work on the DBT frameworK. This simulator shared a lot of code with the DBT framework. You can use it with the following command:
 
-	$ ./build/bin/simRISCV [-v] binaries.riscv [-a "arguments"]
+	$ ./build/bin/simRISCV [-v] -f binaries.riscv [-a "arguments"] [-i inputStream] [-o outputStream]
 
 This simulator is built to be compatible with all binaries that the DBT framework may accept. Combined with the DBT framework we can make sure that the translation layer is correct by comparing the two simulations.
 
@@ -60,18 +68,18 @@ This simulator is built to be compatible with all binaries that the DBT framewor
 
 In order to compile an application and generated RISC-V binaries compatible with the DBT framework, we have to follow the instruction found on the RISC-V web page:
 
-	$ git clone https://github.com/riscv/riscv-tools.git
-	$ cd riscv-tools
-	$ git submodule update --init --recursive
+	$ $ git clone --recursive https://github.com/riscv/riscv-gnu-toolchain
 	$ export RISCV=/path/to/install/riscv/toolchain
 	
-Then run the script provided to build the compiler:
+Then configure the toolchain to be compatible with the DBT framework: it needs to generate code for a RISC-V 64-bits core with the M extension. Floating point operation are done in software. You can change the prefix to choose where to install the toolchain.
 
-	$ ./build.sh
+	$ ./configure --prefix=/opt/riscv --with-arch=rv64im --with-abi=lp64
+	$ make
+
 	
-Once the compiler is done, you can at the folder $RISCV/bin to the path so that the compiler is easily used. To generate code with soft-float, just run the following command:
+Once the compiler is generated, you can add the folder /opt/riscv/bin to the path so that the compiler is easily used. To generate RISC-V binaries, just run the following command:
 
-	$ riscv64-unknown-elf-gcc -std=c99 -msoft-float -march=RV32IM -O3 helloworld.c -o helloworld
+	$ riscv64-unknown-elf-gcc -std=c99 -O3 helloworld.c -o helloworld
 	
 ## <a name="hardware"></a> How to use the hardware version
 

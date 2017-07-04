@@ -87,10 +87,16 @@ void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressS
 			addressStart = section->address + 0;
 			size = section->size/4 - 0;
 
+			if (size > MEMORY_SIZE){
+				fprintf(stderr, "Error: binary file has %d instructions, we currently handle a maximum size of %d\n", size, MEMORY_SIZE);
+				exit(-1);
+			}
+
+
 		}
 	}
 
-
+	unsigned int localHeapAddress = 0;
 	for (unsigned int sectionCounter = 0; sectionCounter<elfFile.sectionTable->size(); sectionCounter++){
 		ElfSection *section = elfFile.sectionTable->at(sectionCounter);
 
@@ -99,8 +105,12 @@ void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressS
 			unsigned char* data = section->getSectionCode();
 			platform->vexSimulator->initializeDataMemory(data, section->size, section->address);
 			free(data);
+
+			if (section->address + section->size > localHeapAddress)
+				localHeapAddress = section->address + section->size;
 		}
 	}
+	platform->vexSimulator->heapAddress = localHeapAddress;
 
 	for (int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++){
 		ElfSymbol *symbol = elfFile.symbols->at(oneSymbol);
@@ -210,10 +220,16 @@ int main(int argc, char *argv[])
 	int VERBOSE = 0;
 	int OPTLEVEL = 1;
 	int HELP = 0;
-	char* FILE = NULL;
-	char* ARGUMENTS = NULL;
+	char* binaryFile = NULL;
 
-	while ((c = getopt (argc, argv, "vOha:")) != -1)
+	char* ARGUMENTS = NULL;
+	FILE** inStreams = (FILE**) malloc(10*sizeof(FILE*));
+	FILE** outStreams = (FILE**) malloc(10*sizeof(FILE*));
+
+	int nbInStreams = 0;
+	int nbOutStreams = 0;
+
+	while ((c = getopt (argc, argv, "vO:ha:o:i:f:")) != -1)
 	switch (c)
 	  {
 	  case 'v':
@@ -226,14 +242,30 @@ int main(int argc, char *argv[])
 		  ARGUMENTS = optarg;
 	  break;
 	  case 'O':
-		  OPTLEVEL = atoi(argv[optind]);
+		  OPTLEVEL = atoi(optarg);
 		break;
+	  case 'i':
+		  if (strcmp(optarg, "stdin") == 0)
+			  inStreams[nbInStreams] = stdin;
+		  else
+			  inStreams[nbInStreams] = fopen(optarg, "r");
+		  nbInStreams++;
+	  break;
+	  case 'o':
+		  if (strcmp(optarg, "stdout") == 0)
+			  outStreams[nbOutStreams] = stdout;
+		  else if (strcmp(optarg, "stderr") == 0)
+			  outStreams[nbOutStreams] = stderr;
+		  else
+			  outStreams[nbOutStreams] = fopen(optarg, "w");
+		  nbOutStreams++;
+	  break;
+	  case 'f':
+		  binaryFile = optarg;
+	  break;
 	  default:
 		abort ();
 	  }
-
-	for (int index = optind; index < argc; index++)
-		FILE = argv[index];
 
 	int localArgc;
 	char** localArgv;
@@ -258,14 +290,14 @@ int main(int argc, char *argv[])
 
 		//We find size of filename
 		int charFileIndex = 0;
-		while (FILE[charFileIndex] != 0)
+		while (binaryFile[charFileIndex] != 0)
 			charFileIndex++;
 
 		charFileIndex++; //So that charFileIndex is equal to the size of the FILE name
 
 		//we build a char* containing all args and the file name
 		char* tempArg = (char*) malloc((index + charFileIndex)*sizeof(char));
-		memcpy(tempArg, FILE, charFileIndex*sizeof(char));
+		memcpy(tempArg, binaryFile, charFileIndex*sizeof(char));
 		memcpy(tempArg+charFileIndex, ARGUMENTS, index * sizeof(char));
 
 		//We build the char** localArgv
@@ -285,7 +317,7 @@ int main(int argc, char *argv[])
 	}
 
 
-	if (HELP || FILE == NULL){
+	if (HELP || binaryFile == NULL){
 		printf("Usage is %s [-v] [-On] file\n\t-v\tVerbose mode, prints all execution information\n\t-On\t Optimization level from zero to two\n", argv[0]);
 		return 1;
 	}
@@ -306,6 +338,11 @@ int main(int argc, char *argv[])
 
 	#ifndef __NIOS
 	dbtPlateform.vexSimulator = new VexSimulator(dbtPlateform.vliwBinaries);
+	dbtPlateform.vexSimulator->inStreams = inStreams;
+	dbtPlateform.vexSimulator->nbInStreams = nbInStreams;
+	dbtPlateform.vexSimulator->outStreams = outStreams;
+	dbtPlateform.vexSimulator->nbOutStreams = nbOutStreams;
+
 	#endif
 
 	unsigned char* code;
@@ -313,8 +350,16 @@ int main(int argc, char *argv[])
 	uint32 size;
 	uint32 pcStart;
 
+
 	//We read the binaries
-	readSourceBinaries(FILE, code, addressStart, size, pcStart, &dbtPlateform);
+	readSourceBinaries(binaryFile, code, addressStart, size, pcStart, &dbtPlateform);
+	fprintf(stderr, "ERROR: Size of source binaries is %d. Current implementation only accept size lower then %d\n", size, MEMORY_SIZE);
+
+	if (size > MEMORY_SIZE){
+		fprintf(stderr, "ERROR: Size of source binaries is %d. Current implementation only accept size lower then %d\n", size, MEMORY_SIZE);
+		exit(-1);
+	}
+
 
 	int numberOfSections = 1 + (size>>10);
 	IRApplication application = IRApplication(numberOfSections);
@@ -493,22 +538,7 @@ int main(int argc, char *argv[])
 
 	}
 
-	//We write back the result if needed
-	void* destinationBinariesFile = openWriteFile((void*) "./binaries");
-	unsigned int sizeBinaries = (placeCode<<4);
-//	for (int i=0;i<placeCode;i++){
-//		fprintf(stderr, "%d ", i*4);
-//		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
-//		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(32)); fprintf(stderr, " ");
-//		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(64)); fprintf(stderr, " ");
-//		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(96)); fprintf(stderr, "\n");
-//
-//	}
 
-	for (int oneBlock = 0; oneBlock<profiler.getNumberProfiledBlocks(); oneBlock++){
-		IRBlock* block = profiler.getBlock(oneBlock);
-//		fprintf(stderr, "Block from %d to %d was executed %d times\n", block->vliwStartAddress, block->vliwEndAddress, profiler.getProfilingInformation(oneBlock));
-	}
 
 	//We print profiling result
 	#ifndef __NIOS

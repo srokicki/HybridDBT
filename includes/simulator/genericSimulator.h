@@ -100,6 +100,10 @@ ac_int<64, true> ldd(ac_int<64, false> addr);
 //System calls
 
 std::map<ac_int<16, true>, FILE*> fileMap;
+FILE **inStreams, **outStreams;
+int nbInStreams, nbOutStreams;
+unsigned int heapAddress;
+
 ac_int<64, false> solveSyscall(ac_int<64, false> syscallId, ac_int<64, false> arg1, ac_int<64, false> arg2, ac_int<64, false> arg3, ac_int<64, false> arg4);
 
 ac_int<64, false> doRead(ac_int<64, false> file, ac_int<64, false> bufferAddr, ac_int<64, false> size);
@@ -109,6 +113,10 @@ ac_int<64, false> doOpenat(ac_int<64, false> dir, ac_int<64, false> name, ac_int
 ac_int<64, true> doLseek(ac_int<64, false> file, ac_int<64, false> ptr, ac_int<64, false> dir);
 ac_int<64, false> doClose(ac_int<64, false> file);
 ac_int<64, false> doStat(ac_int<64, false> filename, ac_int<64, false> ptr);
+ac_int<64, false> doSbrk(ac_int<64, false> value);
+ac_int<64, false> doGettimeofday(ac_int<64, false> timeValPtr);
+ac_int<64, false> doUnlink(ac_int<64, false> path);
+
 };
 
 #endif

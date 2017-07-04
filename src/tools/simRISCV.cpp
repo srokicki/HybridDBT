@@ -25,11 +25,16 @@ int main(int argc, char* argv[]){
 	int c;
 	int VERBOSE = 0;
 	int HELP = 0;
-	char* FILE = NULL;
+	char* binaryFile = NULL;
 	char* ARGUMENTS = NULL;
 	printf("%s\n", argv[3]);
+	FILE** inStreams = (FILE**) malloc(10*sizeof(FILE*));
+	FILE** outStreams = (FILE**) malloc(10*sizeof(FILE*));
 
-	while ((c = getopt (argc, argv, "vha:")) != -1)
+	int nbInStreams = 0;
+	int nbOutStreams = 0;
+
+	while ((c = getopt (argc, argv, "vhf:a:o:i:")) != -1)
 	switch (c)
 	  {
 	  case 'v':
@@ -41,14 +46,31 @@ int main(int argc, char* argv[]){
 	  case 'a':
 		  ARGUMENTS = optarg;
 		break;
+	  case 'f':
+		  binaryFile = optarg;
+	  break;
+	  case 'i':
+		  if (strcmp(optarg, "stdin") == 0)
+			  inStreams[nbInStreams] = stdin;
+		  else
+			  inStreams[nbInStreams] = fopen(optarg, "r");
+		  nbInStreams++;
+	  break;
+	  case 'o':
+		  if (strcmp(optarg, "stdout") == 0)
+			  outStreams[nbOutStreams] = stdout;
+		  else if (strcmp(optarg, "stderr") == 0)
+			  outStreams[nbOutStreams] = stderr;
+		  else
+			  outStreams[nbOutStreams] = fopen(optarg, "w");
+		  nbOutStreams++;
+	  break;
 	  default:
 		abort ();
 	  }
 
 	printf("%s\n", ARGUMENTS);
-	if (optind < argc){
-		FILE = argv[optind];
-	}
+
 
 	int localArgc;
 	char** localArgv;
@@ -64,7 +86,6 @@ int main(int argc, char* argv[]){
 			if (ARGUMENTS[index] == ' '){
 				ARGUMENTS[index] = 0;
 				count++;
-				printf("Arg was %s\n", ARGUMENTS);
 			}
 			index++;
 		}
@@ -73,14 +94,14 @@ int main(int argc, char* argv[]){
 
 		//We find size of filename
 		int charFileIndex = 0;
-		while (FILE[charFileIndex] != 0)
+		while (binaryFile[charFileIndex] != 0)
 			charFileIndex++;
 
 		charFileIndex++; //So that charFileIndex is equal to the size of the FILE name
 
 		//we build a char* containing all args and the file name
 		char* tempArg = (char*) malloc((index + charFileIndex)*sizeof(char));
-		memcpy(tempArg, FILE, charFileIndex*sizeof(char));
+		memcpy(tempArg, binaryFile, charFileIndex*sizeof(char));
 		memcpy(tempArg+charFileIndex, ARGUMENTS, index * sizeof(char));
 
 		//We build the char** localArgv
@@ -88,6 +109,7 @@ int main(int argc, char* argv[]){
 		index = 0;
 		for (int oneArg = 0; oneArg<count+1; oneArg++){
 			localArgv[oneArg] = &(tempArg[index]);
+			printf("Arg was %s\n", localArgv[oneArg]);
 			while (tempArg[index] != 0){
 				index++;
 			}
@@ -101,18 +123,24 @@ int main(int argc, char* argv[]){
 
 	printf("There is %d arguments passed to simulator\n", localArgc);
 
-	if (HELP || FILE == NULL){
+	if (HELP || binaryFile == NULL){
 		printf("Usage is %s [-v] file\n\t-v\tVerbose mode, prints all execution information\n", argv[0]);
 		return 1;
 	}
 
 	//******************************************************************************************
 	//Opening elf files
-	ElfFile elfFile(FILE);
+	fprintf(stderr, "Binary file is %s\n", binaryFile);
+	ElfFile elfFile(binaryFile);
 	RiscvSimulator* simulator = new RiscvSimulator();
 	simulator->initialize(localArgc, localArgv);
 	simulator->debugLevel = VERBOSE*2;
+	simulator->inStreams = inStreams;
+	simulator->nbInStreams = nbInStreams;
+	simulator->outStreams = outStreams;
+	simulator->nbOutStreams = nbOutStreams;
 
+	unsigned int heapAddress = 0;
 	for (unsigned int sectionCounter = 0; sectionCounter<elfFile.sectionTable->size(); sectionCounter++){
 		ElfSection *oneSection = elfFile.sectionTable->at(sectionCounter);
 
@@ -123,9 +151,12 @@ int main(int argc, char* argv[]){
 			for (unsigned int byteNumber = 0; byteNumber<oneSection->size; byteNumber++){
 				simulator->stb(oneSection->address + byteNumber, sectionContent[byteNumber]);
 			}
+
+			if (oneSection->address + oneSection->size > heapAddress)
+				heapAddress = oneSection->address + oneSection->size;
 		}
 	}
-
+	simulator->heapAddress = heapAddress;
 	simulator->pc = 0x10000;
 
 	for (int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++){
@@ -140,6 +171,6 @@ int main(int argc, char* argv[]){
 	}
 	fprintf(stderr, "PC start is %x\n", simulator->pc);
 
-	simulator->doSimulation(2000000000);
+	simulator->doSimulation(50000000);
 
 }

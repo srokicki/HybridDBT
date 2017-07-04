@@ -404,10 +404,10 @@ int generateInterpretationBinaries_loop(uint32 code[1024],
 				}
 				else if (funct == MULT || funct == MULTU){
 
-					binaries = assembleRInstruction(VEX_MPYLO, 34, pred2_reg, pred1_reg);
+				//	binaries = assembleRInstruction(VEX_MPYLO, 34, pred2_reg, pred1_reg);
 					stage = 2;
 
-					nextInstruction = assembleRInstruction(VEX_MPYHI, 35, pred2_reg, pred1_reg);
+				//	nextInstruction = assembleRInstruction(VEX_MPYHI, 35, pred2_reg, pred1_reg);
 					nextInstruction_stage = 2;
 					enableNextInstruction = 1;
 					isInsertion = 1;
@@ -420,7 +420,7 @@ int generateInterpretationBinaries_loop(uint32 code[1024],
 					//	previousBinaries.set_slc(32, assembleRInstruction(VEX_DIVLO, 34, pred1_reg, pred2_reg));
 						stage = 2;
 
-						binaries = assembleRInstruction(VEX_DIVHI, 35, pred1_reg, pred2_reg);
+					//	binaries = assembleRInstruction(VEX_DIVHI, 35, pred1_reg, pred2_reg);
 
 					}
 					else{
@@ -428,7 +428,7 @@ int generateInterpretationBinaries_loop(uint32 code[1024],
 						//binaries = assembleRInstruction(VEX_DIVLO, 34, pred1_reg, pred2_reg);
 						stage = 2;
 
-						nextInstruction = assembleRInstruction(VEX_DIVHI, 35, pred1_reg, pred2_reg);
+						//nextInstruction = assembleRInstruction(VEX_DIVHI, 35, pred1_reg, pred2_reg);
 						nextInstruction_stage = 2;
 						enableNextInstruction = 1;
 						isInsertion = 1;
