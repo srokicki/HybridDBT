@@ -987,9 +987,14 @@ ac_int<32, false> placeOfInstr[256]
 			}
 		}
 
+		// updates possible[] array with the [earliest_place] constraint
+		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0; windowOffset < WINDOW_SIZE; ++windowOffset) {
+			possible[windowOffset] = possible[windowOffset] && windowOffset+windowPosition >= earliest_place;
+		}
+
 		// 3 [for] loops for tree reduction over available places
 		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0; windowOffset < WINDOW_SIZE; windowOffset += 2) {
-			if (windowOffset+windowPosition+1 >= earliest_place && possible[windowOffset+1] && !possible[windowOffset]) {
+			if (possible[windowOffset+1] && !possible[windowOffset]) {
 				bestOffset[windowOffset] = bestOffset[windowOffset+1];
 				bestStage[windowOffset] = bestStage[windowOffset+1];
 				possible[windowOffset] = 1;
@@ -997,7 +1002,7 @@ ac_int<32, false> placeOfInstr[256]
 		}
 
 		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0; windowOffset < WINDOW_SIZE; windowOffset += 4) {
-			if (windowOffset+windowPosition+2 >= earliest_place && possible[windowOffset+2] && !possible[windowOffset]) {
+			if (possible[windowOffset+2] && !possible[windowOffset]) {
 				bestOffset[windowOffset] = bestOffset[windowOffset+2];
 				bestStage[windowOffset] = bestStage[windowOffset+2];
 				possible[windowOffset] = 1;
@@ -1005,7 +1010,7 @@ ac_int<32, false> placeOfInstr[256]
 		}
 
 		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0; windowOffset < WINDOW_SIZE; windowOffset += 8) {
-			if (windowOffset+windowPosition+4 >= earliest_place && possible[windowOffset+4] && !possible[windowOffset]) {
+			if (possible[windowOffset+4] && !possible[windowOffset]) {
 				bestOffset[windowOffset] = bestOffset[windowOffset+4];
 				bestStage[windowOffset] = bestStage[windowOffset+4];
 				possible[windowOffset] = 1;
@@ -1173,7 +1178,7 @@ ac_int<32, false> placeOfInstr[256]
 		binaries[jumpPlace].set_slc(96, zero32);
 	}
 
-	return (issue_width[4] ? 2 : 1)*(windowPosition+lastGap-1)-addressInBinaries;
+	return (issue_width[4] ? 2 : 1)*(windowPosition+lastGap)-addressInBinaries;
 }
 #endif
 #endif
