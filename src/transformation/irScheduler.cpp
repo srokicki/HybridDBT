@@ -843,10 +843,17 @@ ac_int<32, false> placeOfInstr[256]
 	for (ac_int<l2<64>::value+1, false> i = 0; i < 64; ++i) {
 		lastRead[i] = 0;
 	}
-	--numberFreeRegister;
 
 	while (instructionId < basicBlockSize) {
 
+		printf("*************** REG STACK AT #%d ***************\n", instructionId);
+
+		if (windowPosition == 1166)
+			printf("POSITION == %d\n", windowPosition);
+
+		for (int i = 0; i < numberFreeRegister; ++i)
+			printf("%d ", freeRegisters[i]);
+		printf("\n");
 		//**************************************************************
 		// Fetching / Decoding instruction
 		//**************************************************************
@@ -895,7 +902,7 @@ ac_int<32, false> placeOfInstr[256]
 
 		//For alloc
 		ac_int<6, false> accessPlaceOfReg = placeOfRegisters[virtualRDest];
-		ac_int<6, false> accessFreeReg = freeRegisters[numberFreeRegister];
+		ac_int<6, false> accessFreeReg = freeRegisters[numberFreeRegister-1];
 
 		//**************************************************************
 		// Allocation
@@ -905,14 +912,17 @@ ac_int<32, false> placeOfInstr[256]
 		if (alloc) {
 			// take the first free register + update register dependencies
 			if (numberFreeRegister > 0) {
-					numberFreeRegister--;
+				numberFreeRegister--;
 				dest = accessFreeReg;
 				registerDependencies[instructionId] = bytecode_word2.slc<8>(6);
 			} else {
 				// else crash
-				return basicBlockSize+1;
+				printf("FUCK YOU\n");
+				exit(-1);
+				//return basicBlockSize+1;
 			}
 		} else {
+			registerDependencies[instructionId] = 0xff;
 			dest = accessPlaceOfReg;
 		}
 
@@ -1178,6 +1188,7 @@ ac_int<32, false> placeOfInstr[256]
 		binaries[jumpPlace].set_slc(96, zero32);
 	}
 
+	printf("%d * (%d+%d) - %d == %d", (issue_width[4] ? 2 : 1), windowPosition, lastGap, addressInBinaries, (issue_width[4] ? 2 : 1)*(windowPosition+lastGap)-addressInBinaries);
 	return (issue_width[4] ? 2 : 1)*(windowPosition+lastGap)-addressInBinaries;
 }
 #endif
