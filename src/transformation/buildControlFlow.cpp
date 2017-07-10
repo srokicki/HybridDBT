@@ -132,7 +132,52 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 				}
 
 				unresolvedJumpIndex++;
+
+				//We check if the boundary was already marked
+
+				int offsetForDestination = (oneJumpInitialDestination + ((sectionStartAddress>>2) - mipsStartAddress));
+				int sectionOfDestination = offsetForDestination>>10;
+
+
+				if (sectionOfDestination < section){
+					bool isDestinationAlreadyMarked = false;
+					IRBlock *blockToSplit;
+
+					for (int oneBlockForSucc = 0; oneBlockForSucc<application->numbersBlockInSections[sectionOfDestination]; oneBlockForSucc++){
+						IRBlock* blockForSucc = application->blocksInSections[sectionOfDestination][oneBlockForSucc];
+						fprintf(stderr, "Looking in block %x\n", blockForSucc->sourceStartAddress);
+
+						if (blockForSucc->sourceStartAddress == newBlock->sourceDestination){
+							isDestinationAlreadyMarked = true;
+						}
+						if (blockForSucc->sourceStartAddress<newBlock->sourceDestination && blockForSucc->sourceEndAddress>newBlock->sourceDestination){
+							blockToSplit = blockForSucc;
+							fprintf(stderr, "Found the block\n");
+						}
+					}
+
+					if (!isDestinationAlreadyMarked){
+						fprintf(stderr, "Solving block definition for %x\n", newBlock->sourceDestination);
+
+
+						IRBlock *splittedBlock = new IRBlock(destinationInVLIWFromNewMethod, blockToSplit->vliwEndAddress, sectionOfDestination);
+						application->addBlock(splittedBlock, sectionOfDestination);
+
+						//We set metainfo for new block
+						splittedBlock->sourceStartAddress = newBlock->sourceDestination;
+						splittedBlock->sourceEndAddress = blockToSplit->sourceEndAddress;
+
+						//We set meta info for old block
+						blockToSplit->sourceEndAddress = newBlock->sourceDestination;
+						blockToSplit->sourceDestination = newBlock->sourceDestination;
+						blockToSplit->vliwEndAddress = destinationInVLIWFromNewMethod;
+					}
+
+				}
+
 			}
+
+
 
 			//If the block is big enough, we profile it
 			if (newBlock->vliwEndAddress - newBlock->vliwStartAddress > 7)
@@ -180,8 +225,6 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 		unsigned int endAddress = currentBlock->vliwEndAddress;
 		unsigned int jumpInstruction = readInt(platform->vliwBinaries, (endAddress-2)*16);
 
-		fprintf(stderr, "jump is %x\n", jumpInstruction);
-
 		if (currentBlock->nbSucc != -1)
 			continue;
 
@@ -217,22 +260,17 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 			successor1 = currentBlock->sourceDestination;
 			successor2 = currentBlock->sourceEndAddress;
 			nbSucc = 2;
-			fprintf(stderr, "Looking for %x and %x\n", successor1, successor2);
 
 		}
 		else if (isJump){
 			if (currentBlock->sourceDestination != -1){
 				successor1 = currentBlock->sourceDestination;
 				nbSucc = 1;
-				fprintf(stderr, "Looking for %x\n", successor1);
-
 			}
 		}
 		else if (isCall || isNothing){
 			successor1 = currentBlock->sourceEndAddress;
 			nbSucc = 1;
-			fprintf(stderr, "Looking for %x\n", successor1);
-
 		}
 		else{
 			nbSucc = 0;
@@ -316,7 +354,6 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 
 
 
-			fprintf(stderr, "analysis returned a block of %d instr for block from %d to %d (size %d)\n", blockSize, block->vliwStartAddress, block->vliwEndAddress, originalScheduleSize);
 			block->instructions = (uint32*) malloc(blockSize*4*sizeof(uint32));
 			for (int oneBytecodeInstr = 0; oneBytecodeInstr<blockSize; oneBytecodeInstr++){
 				block->instructions[4*oneBytecodeInstr + 0] = readInt(platform->bytecode, 16*oneBytecodeInstr + 0);
@@ -336,9 +373,8 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 		}
 	}
 
-	procedure->print();
-	fprintf(stderr, "Procedure entry point was %d\n", procedure->entryBlock->vliwStartAddress);
+	if (platform->debugLevel > 1)
+		procedure->print();
 
-	fprintf(stderr, "Analysis done ! \n");
 
 }

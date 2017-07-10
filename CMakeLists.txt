@@ -1,6 +1,7 @@
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required (VERSION 3.0.2)
 
 set(CMAKE_C_COMPILER_INIT g++)
+enable_testing()
 
 
 project (HybridDBT)
@@ -34,3 +35,8 @@ foreach(oneExecutable ${EXECUTABLE})
   endif()
 
 endforeach(oneExecutable)
+
+#include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
+#ExternalProject_Add(benchmarks SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/benchmarks BINARY_DIR ./benchmarks/bin INSTALL_COMMAND ls)
+
+add_subdirectory(benchmarks)

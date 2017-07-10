@@ -54,6 +54,7 @@ void GenericSimulator::initialize(int argc, char** argv){
 
 void GenericSimulator::stb(ac_int<64, false> addr, ac_int<8, true> value){
 	this->memory[addr] = value & 0xff;
+
 }
 
 
@@ -135,48 +136,50 @@ ac_int<64, true> GenericSimulator::ldd(ac_int<64, false> addr){
 
 
 ac_int<64, false> GenericSimulator::solveSyscall(ac_int<64, false> syscallId, ac_int<64, false> arg1, ac_int<64, false> arg2, ac_int<64, false> arg3, ac_int<64, false> arg4){
+	ac_int<64, false> result = 0;
 	switch (syscallId){
 		case SYS_exit:
 			stop = 1; //Currently we break on ECALL
 		break;
 		case SYS_read:
-			return this->doRead(arg1, arg2, arg3);
+			result = this->doRead(arg1, arg2, arg3);
 		break;
 		case SYS_write:
-			return doWrite(arg1, arg2, arg3);
+			result = doWrite(arg1, arg2, arg3);
 		break;
 		case SYS_brk:
-			return this->doSbrk(arg1);
+			result = this->doSbrk(arg1);
 		break;
 		case SYS_open:
-			return this->doOpen(arg1, arg2, arg3);
+			result = this->doOpen(arg1, arg2, arg3);
 		break;
 		case SYS_openat:
-			return this->doOpenat(arg1, arg2, arg3, arg4);
+			result = this->doOpenat(arg1, arg2, arg3, arg4);
 		break;
 		case SYS_lseek:
-			return this->doLseek(arg1, arg2, arg3);
+			result = this->doLseek(arg1, arg2, arg3);
 		break;
 		case SYS_close:
-			return this->doClose(arg1);
+			result = this->doClose(arg1);
 		break;
 		case SYS_fstat:
-			return 0;
+			result = 0;
 		break;
 		case SYS_stat:
-			return this->doStat(arg1, arg2);
+			result = this->doStat(arg1, arg2);
 		break;
 		case SYS_gettimeofday:
-			return doGettimeofday(arg1);
+			result = doGettimeofday(arg1);
 		break;
 		case SYS_unlink:
-			return this->doUnlink(arg1);
+			result = this->doUnlink(arg1);
 		break;
 		default:
 			printf("Unknown syscall with code %d\n", syscallId.slc<32>(0));
 			exit(-1);
 		break;
 		}
+	return result;
 
 }
 
@@ -200,9 +203,9 @@ ac_int<64, false> GenericSimulator::doRead(ac_int<64, false> file, ac_int<64, fa
 			return -1;
 	}
 
-	for (int i=0; i<result; i++)
+	for (int i=0; i<result; i++){
 		this->stb(bufferAddr + i, localBuffer[i]);
-
+	}
 
 	return result;
 }
@@ -215,7 +218,6 @@ ac_int<64, false> GenericSimulator::doWrite(ac_int<64, false> file, ac_int<64, f
 		localBuffer[i] = this->ldb(bufferAddr + i);
 
 	if (file < 5){
-		fwrite(localBuffer, 1, size, stderr);
 		ac_int<64, false> result = 0;
 		int streamNB = (int) file-nbInStreams;
 		if (nbOutStreams + nbInStreams > file)
@@ -277,7 +279,6 @@ ac_int<64, false> GenericSimulator::doOpen(ac_int<64, false> path, ac_int<64, fa
 
 	this->fileMap[returnedResult.slc<16>(0)] = test;
 
-	fprintf(stderr, "open returned %x %s\n", test,localPath);
 
 
 	return returnedResult;

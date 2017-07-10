@@ -221,10 +221,6 @@ void RiscvSimulator::doStep(){
 	//******************************************************************************************
 	//Treatment for: STORE INSTRUCTIONS
 	case RISCV_ST:
-		if (REG[rs1] + imm12_S_signed == 0x27fe0){
-			fprintf(stderr, "[%d;%x] test %x\n",this->n_inst, this->pc, REG[rs2]);
-
-		}
 		switch(funct3)
 		{
 		case RISCV_ST_STB:
