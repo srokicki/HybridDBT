@@ -141,43 +141,9 @@ void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressS
 #endif
 }
 int cnt = 0;
-char align[70000];
 int run(DBTPlateform *platform, int nbCycle){
 #ifndef __NIOS
 
-//	int res;
-//	for (int i=0; i<nbCycle; i++){
-//	fprintf(stderr, "Run %d  (%lx - %lx) ", cnt++,  (uint64_t) platform->vexSimulator->PC/4,(uint64_t) platform->riscvSimulator->pc);
-//	char isIns = align[platform->vexSimulator->PC >> 2];
-//	uint32 instr = platform->riscvSimulator->ldw(platform->riscvSimulator->pc);
-//	if (!isIns)
-//		platform->riscvSimulator->doSimulation(1);
-//	res = platform->vexSimulator->doStep(1);
-//
-//	std::cerr << printDecodedInstr(platform->vexSimulator->ftoDC1.instruction);
-//	std::cerr << ";";
-//	std::cerr << printDecodedInstr(platform->vexSimulator->ftoDC2.instruction);
-//	std::cerr << ";";
-//	std::cerr << printDecodedInstr(platform->vexSimulator->ftoDC3.instruction);
-//	std::cerr << ";";
-//	std::cerr << printDecodedInstr(platform->vexSimulator->ftoDC4.instruction);
-//	std::cerr << ";";
-//	std::cerr << printDecodedInstrRISCV(instr);
-//	std::cerr << ";";
-//
-//	if (!isIns)
-//		for (int oneReg=3; oneReg<31; oneReg++)
-//			if (platform->vexSimulator->REG[oneReg] != platform->riscvSimulator->REG[oneReg])
-//				fprintf(stderr, "r%d:%lx!=%lx",oneReg, (uint64_t) platform->vexSimulator->REG[oneReg], (uint64_t)  platform->riscvSimulator->REG[oneReg]);
-//
-//
-//	fprintf(stderr, "\n");
-//
-//	if (res)
-//		break;
-//	}
-//
-//	return res;
 
 	return platform->vexSimulator->doStep(nbCycle);
 
@@ -336,12 +302,16 @@ int main(int argc, char *argv[])
 	//Definition of objects used for DBT process
 	DBTPlateform dbtPlateform;
 
+	dbtPlateform.vliwInitialConfiguration = 0x9e1e;
+	dbtPlateform.vliwInitialIssueWidth = 4;
+
 	#ifndef __NIOS
 	dbtPlateform.vexSimulator = new VexSimulator(dbtPlateform.vliwBinaries);
 	dbtPlateform.vexSimulator->inStreams = inStreams;
 	dbtPlateform.vexSimulator->nbInStreams = nbInStreams;
 	dbtPlateform.vexSimulator->outStreams = outStreams;
 	dbtPlateform.vexSimulator->nbOutStreams = nbOutStreams;
+
 
 	#endif
 
@@ -387,7 +357,6 @@ int main(int argc, char *argv[])
 	initializeInsertionsMemory(size*4);
 
 	for (int oneInsertion=0; oneInsertion<placeCode; oneInsertion++){
-		align[oneInsertion] = 1;
 		if (VERBOSE)
 			fprintf(stderr, "insert;%d\n", oneInsertion);
 	}
@@ -427,8 +396,6 @@ int main(int argc, char *argv[])
 		for (int oneInsertion=0; oneInsertion<nbIns; oneInsertion++){
 			if (VERBOSE)
 				fprintf(stderr, "insert;%d\n", (*insertions)[oneInsertion]+(*insertions)[-1]);
-			align[((*insertions)[oneInsertion]+(*insertions)[-1])] = 1;
-
 		}
 	}
 
@@ -505,36 +472,46 @@ int main(int argc, char *argv[])
 		if (VERBOSE)
 			fprintf(stderr, "IPC;%f\n", dbtPlateform.vexSimulator->getAverageIPC());
 
-		//If a profiled block is executed more than 10 times we optimize it and mark it as optimized
 		for (int oneBlock = 0; oneBlock<profiler.getNumberProfiledBlocks(); oneBlock++){
 			int profileResult = profiler.getProfilingInformation(oneBlock);
 			IRBlock* block = profiler.getBlock(oneBlock);
 
-			if (OPTLEVEL >= 1 && profileResult > 10 && block->blockState < IRBLOCK_STATE_SCHEDULED){
-				optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
+			if (OPTLEVEL >= 2 && profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
+
+				fprintf(stderr, "[%d] Block from %d to %d is eligible advanced control flow building\n",dbtPlateform.vexSimulator->cycle, block->vliwStartAddress, block->vliwEndAddress);
+				buildAdvancedControlFlow(&dbtPlateform, block, &application);
+				block->blockState = IRBLOCK_PROC;
+				buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
+				if (application.procedures[application.numberProcedures-1]->nbBlock<40 && application.procedures[application.numberProcedures-1]->nbBlock>3){
+
+
+					placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
+					application.procedures[application.numberProcedures-1]->print();
+				}
+				else{
+					fprintf(stderr, "Dropping...\n");
+				}
+			}
+		}
+
+
+		//We perform aggressive level 1 optimization: if a block takes more than 8 cycle we schedule it.
+		//If it has a backward loop, we also profile it.
+		for (int oneSection = 0; oneSection<numberOfSections; oneSection++){
+			for (int oneBlock = 0; oneBlock<application.numbersBlockInSections[oneSection]; oneBlock++){
+				IRBlock* block = application.blocksInSections[oneSection][oneBlock];
+
+				if (OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress > 8  && block->blockState < IRBLOCK_STATE_SCHEDULED){
+					optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
+
+					if (block->sourceDestination < block->sourceStartAddress)
+						profiler.profileBlock(block);
+				}
+
 			}
 
-
-				if (OPTLEVEL >= 2 && profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
-
-					fprintf(stderr, "[%d] Block from %d to %d is eligible advanced control flow building\n",dbtPlateform.vexSimulator->cycle, block->vliwStartAddress, block->vliwEndAddress);
-					buildAdvancedControlFlow(&dbtPlateform, block, &application);
-					block->blockState = IRBLOCK_PROC;
-					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
-					if (application.procedures[application.numberProcedures-1]->nbBlock<40 && application.procedures[application.numberProcedures-1]->nbBlock>3){
-
-
-						placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
-	//					placeCode = reconfigureVLIW(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
-	//					dbtPlateform.vexSimulator->debugLevel = 1;
-						scheduleCounter++;
-						application.procedures[application.numberProcedures-1]->print();
-					}
-					else{
-						fprintf(stderr, "Dropping...\n");
-					}
-				}
 		}
+
 
 	}
 
