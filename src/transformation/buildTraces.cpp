@@ -315,9 +315,6 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 
 				//We add a control dependency from one of the last four cond instruction (note: this array is initialized with four times the setcond instruction)
 				if (nbLastCondInstr<4){
-					//We add a control dependencies to the jump in the second block if any
-					if (indexOfSecondJump >= 0)
-						addControlDep(result->instructions, result->nbInstr, indexOfSecondJump);
 
 					addDataDep(result->instructions, indexOfCondition, result->nbInstr);
 					nbLastCondInstr++;
@@ -366,6 +363,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 	}
 
 	if (indexOfSecondJump != -1){
+#ifndef IR_SUCC
 		result->instructions[result->nbInstr*4+0] = result->instructions[indexOfSecondJump*4+0];
 		result->instructions[result->nbInstr*4+1] = result->instructions[indexOfSecondJump*4+1];
 		result->instructions[result->nbInstr*4+2] = result->instructions[indexOfSecondJump*4+2];
@@ -376,7 +374,17 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 		result->instructions[indexOfSecondJump*4+2] = 0;
 		result->instructions[indexOfSecondJump*4+3] = 0;
 
+		indexOfSecondJump = result->nbInstr;
 		result->nbInstr++;
+
+#endif
+
+
+		for (int oneLastCond = 0; oneLastCond<nbLastCondInstr; oneLastCond++){
+			addControlDep(result->instructions, lastCondInstr[placeLastCondInstr], indexOfSecondJump);
+			placeLastCondInstr = (placeLastCondInstr - 1) & 0x3;
+		}
+
 
 	}
 
