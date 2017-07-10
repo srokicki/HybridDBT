@@ -132,7 +132,52 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 				}
 
 				unresolvedJumpIndex++;
+
+				//We check if the boundary was already marked
+
+				int offsetForDestination = (oneJumpInitialDestination + ((sectionStartAddress>>2) - mipsStartAddress));
+				int sectionOfDestination = offsetForDestination>>10;
+
+
+				if (sectionOfDestination < section){
+					bool isDestinationAlreadyMarked = false;
+					IRBlock *blockToSplit;
+
+					for (int oneBlockForSucc = 0; oneBlockForSucc<application->numbersBlockInSections[sectionOfDestination]; oneBlockForSucc++){
+						IRBlock* blockForSucc = application->blocksInSections[sectionOfDestination][oneBlockForSucc];
+						fprintf(stderr, "Looking in block %x\n", blockForSucc->sourceStartAddress);
+
+						if (blockForSucc->sourceStartAddress == newBlock->sourceDestination){
+							isDestinationAlreadyMarked = true;
+						}
+						if (blockForSucc->sourceStartAddress<newBlock->sourceDestination && blockForSucc->sourceEndAddress>newBlock->sourceDestination){
+							blockToSplit = blockForSucc;
+							fprintf(stderr, "Found the block\n");
+						}
+					}
+
+					if (!isDestinationAlreadyMarked){
+						fprintf(stderr, "Solving block definition for %x\n", newBlock->sourceDestination);
+
+
+						IRBlock *splittedBlock = new IRBlock(destinationInVLIWFromNewMethod, blockToSplit->vliwEndAddress, sectionOfDestination);
+						application->addBlock(splittedBlock, sectionOfDestination);
+
+						//We set metainfo for new block
+						splittedBlock->sourceStartAddress = newBlock->sourceDestination;
+						splittedBlock->sourceEndAddress = blockToSplit->sourceEndAddress;
+
+						//We set meta info for old block
+						blockToSplit->sourceEndAddress = newBlock->sourceDestination;
+						blockToSplit->sourceDestination = newBlock->sourceDestination;
+						blockToSplit->vliwEndAddress = destinationInVLIWFromNewMethod;
+					}
+
+				}
+
 			}
+
+
 
 			//If the block is big enough, we profile it
 			if (newBlock->vliwEndAddress - newBlock->vliwStartAddress > 7)
