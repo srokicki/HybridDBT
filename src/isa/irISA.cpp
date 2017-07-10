@@ -198,6 +198,7 @@ IRBlock::~IRBlock(){
 }
 
 IRApplication::IRApplication(int numberSections){
+
 	this->numberOfSections = numberSections;
 	this->blocksInSections = (IRBlock***) malloc(sizeof(IRBlock**) * numberOfSections);
 	this->numbersBlockInSections= (int*) malloc(sizeof(int) * numberOfSections);
@@ -212,6 +213,11 @@ IRApplication::IRApplication(int numberSections){
 }
 
 void IRApplication::addBlock(IRBlock* block, int sectionNumber){
+	if (sectionNumber>this->numberOfSections){
+		fprintf(stderr, "Error while adding a block in an application: section %d is higher than the total number of section (%d)\n", sectionNumber, this->numberOfSections);
+		exit(-1);
+	}
+
 	if (this->numbersAllocatedBlockInSections[sectionNumber] == this->numbersBlockInSections[sectionNumber]){
 		//We allocate new blocks
 		int numberBlocks = this->numbersBlockInSections[sectionNumber];
