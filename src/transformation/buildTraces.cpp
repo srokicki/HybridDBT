@@ -268,6 +268,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 	}
 	result->nbInstr = entryBlock->nbInstr + secondBlock->nbInstr;
 
+
 	//We insert a SETCOND depending on the value of the condition
 	//This instruction will depend from all previous cond instrucion (if any)
 	if (isEscape){
@@ -296,6 +297,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 		}
 
 		nbLastCondInstr = 0;
+
 
 		for (int oneReg = 1; oneReg < 64; oneReg++){
 			if (lastWriteRegForSecond[oneReg]>=0){
@@ -360,6 +362,21 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 			setOperands(result->instructions, indexOfSecondJump, operands);
 			addDataDep(result->instructions, operands[0], indexOfSecondJump);
 		}
+
+	}
+
+	if (indexOfSecondJump != -1){
+		result->instructions[result->nbInstr*4+0] = result->instructions[indexOfSecondJump*4+0];
+		result->instructions[result->nbInstr*4+1] = result->instructions[indexOfSecondJump*4+1];
+		result->instructions[result->nbInstr*4+2] = result->instructions[indexOfSecondJump*4+2];
+		result->instructions[result->nbInstr*4+3] = result->instructions[indexOfSecondJump*4+3];
+
+		result->instructions[indexOfSecondJump*4+0] = 0;
+		result->instructions[indexOfSecondJump*4+1] = 0;
+		result->instructions[indexOfSecondJump*4+2] = 0;
+		result->instructions[indexOfSecondJump*4+3] = 0;
+
+		result->nbInstr++;
 
 	}
 
