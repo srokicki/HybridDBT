@@ -17,7 +17,7 @@
  *
  ********************************************************************/
 
-#define MEMORY_SIZE 150000
+#define MEMORY_SIZE 200000
 
 
 #include <simulator/vexSimulator.h>
@@ -45,6 +45,10 @@ public:
 
 	VexSimulator* vexSimulator;
 	RiscvSimulator* riscvSimulator;
+
+	short vliwInitialConfiguration;
+	char vliwInitialIssueWidth;
+	char debugLevel;
 
 };
 #endif

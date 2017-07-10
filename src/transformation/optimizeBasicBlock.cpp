@@ -32,7 +32,8 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	int basicBlockStart = block->vliwStartAddress;
 	int basicBlockEnd = block->vliwEndAddress;
 
-	fprintf(stderr, "Block from %d to %d is eligible for scheduling\n", block->vliwStartAddress, block->vliwEndAddress);
+	if (platform->debugLevel > 0)
+		fprintf(stderr, "Block from %x to %x is eligible for scheduling\n", block->sourceStartAddress, block->sourceEndAddress);
 
 
 #ifndef __NIOS
@@ -42,7 +43,8 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 			(platform->vexSimulator->PC < basicBlockEnd*4);
 
 	if (isCurrentlyInBlock){
-		fprintf(stderr, "Currently inside block, inserting stop...\n");
+		if (platform->debugLevel > 1)
+			fprintf(stderr, "Currently inside block, inserting stop...\n");
 		writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0x2f);
 
 		platform->vexSimulator->doStep(1000);
@@ -81,36 +83,44 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		block->jumpID = blockSize-1;
 	}
 #ifndef __NIOS
-fprintf(stderr, "*************************************************************************\n");
-fprintf(stderr, "Previous version of sources:\n");
-fprintf(stderr, "*****************\n");
+
+	if (platform->debugLevel > 1){
+
+		fprintf(stderr, "*************************************************************************\n");
+		fprintf(stderr, "Previous version of sources:\n");
+		fprintf(stderr, "*****************\n");
 
 
-for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
-	fprintf(stderr, "%d ", i);
-	std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
-	std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(32)); fprintf(stderr, " ");
-	std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(64)); fprintf(stderr, " ");
-	std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)); fprintf(stderr, "\n");
+		for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
+			fprintf(stderr, "%d ", i);
+			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
+			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(32)); fprintf(stderr, " ");
+			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(64)); fprintf(stderr, " ");
+			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)); fprintf(stderr, "\n");
 
-}
+		}
+
+		for (int i=basicBlockStart;i<basicBlockEnd;i++){
+			fprintf(stderr, "schedule;%d\n",i);
+		}
+
+		fprintf(stderr, "*************************************************************************\n");
+		fprintf(stderr, "Bytecode is: \n");
+		fprintf(stderr, "\n*****************\n");
+		for (int i=0; i<blockSize; i++){
+			printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
+		}
+
+		for (int i=0; i<blockSize; i++){
+			fprintf(stderr, "0x%x, 0x%x, 0x%x, 0x%x,\n",readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
+		}
+	}
 #endif
 
-for (int i=basicBlockStart;i<basicBlockEnd;i++){
-	fprintf(stderr, "schedule;%d\n",i);
-}
 
 
-	fprintf(stderr, "*************************************************************************\n");
-	fprintf(stderr, "Bytecode is: \n");
-	fprintf(stderr, "\n*****************\n");
-	for (int i=0; i<blockSize; i++){
-		printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
-	}
 
-	for (int i=0; i<blockSize; i++){
-		fprintf(stderr, "0x%x, 0x%x, 0x%x, 0x%x,\n",readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
-	}
+
 
 
 	//Preparation of required memories
@@ -123,7 +133,7 @@ for (int i=basicBlockStart;i<basicBlockEnd;i++){
 
 
 	//Calling scheduler
-	int binaSize = irScheduler(platform, 1,blockSize, placeCode, 29, 4, 0x001e);
+	int binaSize = irScheduler(platform, 1,blockSize, placeCode, 29, platform->vliwInitialIssueWidth, platform->vliwInitialConfiguration);
 	binaSize = binaSize & 0xffff;
 
 	if (binaSize < originalScheduleSize){
@@ -169,7 +179,8 @@ for (int i=basicBlockStart;i<basicBlockEnd;i++){
 			int newOffset = destination - (basicBlockStart + binaSize-1);
 			newOffset = newOffset << 2;
 
-			fprintf(stderr, "Correction of jump at the end of the block. Original offset was %d\n From it derivated destination %d and new offset %d\n", offset, destination, newOffset);
+			if (platform->debugLevel > 1)
+				fprintf(stderr, "Correction of jump at the end of the block. Original offset was %d\n From it derivated destination %d and new offset %d\n", offset, destination, newOffset);
 			jumpInstruction = (jumpInstruction & 0xfc00007f) | ((newOffset & 0x7ffff) << 7);
 		}
 //		else if (isNoJump){
@@ -189,38 +200,47 @@ for (int i=basicBlockStart;i<basicBlockEnd;i++){
 			//In this case, we also added a block in the design
 			//We need to insert it in the set of blocks
 			IRBlock* newBlock = new IRBlock(basicBlockStart + binaSize, basicBlockStart + binaSize + 2, block->section);
+			newBlock->sourceStartAddress = -1;
+			newBlock->sourceEndAddress = -1;
 			application->addBlock(newBlock, block->section);
-			fprintf(stderr, "adding a block from %d tp %d\n", basicBlockStart + binaSize, basicBlockStart + binaSize + 2);
+
+			if (platform->debugLevel > 1)
+				fprintf(stderr, "adding a block from %d tp %d\n", basicBlockStart + binaSize, basicBlockStart + binaSize + 2);
 		}
 
 		/*****************************************************************/
 
 
 		#ifndef __NIOS
-		fprintf(stderr, "*************************************************************************\n");
-		for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
-			fprintf(stderr, "%d ", i);
-			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
-			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(32)); fprintf(stderr, " ");
-			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(64)); fprintf(stderr, " ");
-			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)); fprintf(stderr, "\n");
 
+		if (platform->debugLevel > 1){
+
+			fprintf(stderr, "*************************************************************************\n");
+			for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
+				fprintf(stderr, "%d ", i);
+				std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
+				std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(32)); fprintf(stderr, " ");
+				std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(64)); fprintf(stderr, " ");
+				std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)); fprintf(stderr, "\n");
+
+			}
+
+			for (int i=basicBlockStart;i<basicBlockEnd;i++){
+				fprintf(stderr, "schedule;%d\n",i);
+			}
+
+			fprintf(stderr, "*************************************************************************\n");
+
+			fprintf(stderr, "*************************************************************************\n");
 		}
 		#endif
-
-		for (int i=basicBlockStart;i<basicBlockEnd;i++){
-			fprintf(stderr, "schedule;%d\n",i);
-		}
-
-		fprintf(stderr, "*************************************************************************\n");
-
-		fprintf(stderr, "*************************************************************************\n");
 
 		//We modify the stored information concerning the block
 		block->vliwEndAddress = basicBlockStart + binaSize;
 	}
 	else{
-		fprintf(stderr, "Schedule is dropped (%d cycles)\n", binaSize);
+		if (platform->debugLevel > 0)
+			fprintf(stderr, "Schedule is dropped (%d cycles)\n", binaSize);
 
 	}
 
