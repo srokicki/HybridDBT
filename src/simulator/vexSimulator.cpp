@@ -1060,9 +1060,7 @@ int VexSimulator::doStep(){
 
 	// If the operation code is 0x2f then the processor stops
 	if(stop == 1){
-		#ifndef __CATAPULT
-		fprintf(stderr,"Simulation finished in %d cycles \n", cycle);
-		#endif
+
 
 		return PC;
 	}

@@ -117,7 +117,6 @@ void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressS
 		const char* name = (const char*) &(elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode()[symbol->name]);
 
 		if (strcmp(name, "_start") == 0){
-			fprintf(stderr, "%s\n", name);
 			pcStart = symbol->offset;
 
 		}
@@ -323,7 +322,6 @@ int main(int argc, char *argv[])
 
 	//We read the binaries
 	readSourceBinaries(binaryFile, code, addressStart, size, pcStart, &dbtPlateform);
-	fprintf(stderr, "ERROR: Size of source binaries is %d. Current implementation only accept size lower then %d\n", size, MEMORY_SIZE);
 
 	if (size > MEMORY_SIZE){
 		fprintf(stderr, "ERROR: Size of source binaries is %d. Current implementation only accept size lower then %d\n", size, MEMORY_SIZE);
@@ -449,19 +447,10 @@ int main(int argc, char *argv[])
 	writeInt(dbtPlateform.vliwBinaries, 0, instruction);
 
 
-	fprintf(stderr, "Vliw start is %x pc start is %x\n", addressStart, pcStart);
-//	for (int i=0;i<placeCode;i++){
-//		fprintf(stderr, "%d ", i*4);
-//		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
-//		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(32)); fprintf(stderr, " ");
-//		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(64)); fprintf(stderr, " ");
-//		std::cerr << printDecodedInstr(dbtPlateform.vliwBinaries[i].slc<32>(96)); fprintf(stderr, "\n");
-//
-//	}
-
 	int runStatus=0;
 	int abortCounter = 0;
-	int scheduleCounter = 0;
+	int blockScheduleCounter = 0;
+	int procedureOptCounter = 0;
 
 	while (runStatus == 0){
 		runStatus = run(&dbtPlateform, 1000);
@@ -483,10 +472,8 @@ int main(int argc, char *argv[])
 				block->blockState = IRBLOCK_PROC;
 				buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
 				if (application.procedures[application.numberProcedures-1]->nbBlock<40 && application.procedures[application.numberProcedures-1]->nbBlock>3){
-
-
 					placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
-					application.procedures[application.numberProcedures-1]->print();
+					procedureOptCounter++;
 				}
 				else{
 					fprintf(stderr, "Dropping...\n");
@@ -503,6 +490,7 @@ int main(int argc, char *argv[])
 
 				if (OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress > 8  && block->blockState < IRBLOCK_STATE_SCHEDULED){
 					optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
+					blockScheduleCounter++;
 
 					if (block->sourceDestination < block->sourceStartAddress)
 						profiler.profileBlock(block);
@@ -515,6 +503,9 @@ int main(int argc, char *argv[])
 
 	}
 
+
+	fprintf(stderr, "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: %ld\n\t Number of instruction executed: %ld\n\t Number of block scheduled: %d\n\t Number of procedure optimized (O2): %d\n",
+			dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, blockScheduleCounter, procedureOptCounter);
 
 
 	//We print profiling result

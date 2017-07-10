@@ -145,7 +145,6 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		}
 
 
-		fprintf(stderr, "Block is scheduled in %d cycles\n", binaSize);
 
 
 		/*****************************************************************

@@ -66,9 +66,11 @@ int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int write
 			platform->placeOfRegisters[256+onePlaceOfRegister] = onePlaceOfRegister;
 
 		//This is only for debug
-		for (int i=0; i<block->nbInstr; i++){
-			printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
-		}
+		if (platform->debugLevel > 1)
+			for (int i=0; i<block->nbInstr; i++)
+				printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
+
+
 
 		//We call the register
 		int binaSize = irScheduler(platform, 1,block->nbInstr, writePlace, 29, 4, 0x001e);
@@ -80,7 +82,6 @@ int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int write
 
 		if (block->jumpID != -1){
 			int addressOfScheduledJump = platform->placeOfInstr[block->jumpID];
-			fprintf(stderr, "Place of jump is %d (%d)\n", addressOfScheduledJump, block->jumpID);
 			block->jumpPlace = addressOfScheduledJump;
 		}
 
@@ -100,11 +101,9 @@ int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int write
 		if (block->nbSucc>1){
 			//Conditional block (br)
 			int offset = 4*(block->successor1->vliwStartAddress - block->jumpPlace);
-			fprintf(stderr, "Correcting a br jump to %d at %d. Offset is %d\n", block->successor1->vliwStartAddress,block->jumpPlace, offset);
 			unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlace);
 			writeInt(platform->vliwBinaries, 16*block->jumpPlace, (oldJump & 0xfc00007f) | ((offset & 0x7ffff) << 7));
 
-			fprintf(stderr, "Changind %x to %x\n", oldJump, readInt(platform->vliwBinaries, 16*(block->vliwEndAddress-2)));
 
 		}
 		else if (block->jumpID != -1 && block->nbSucc == 1){
@@ -125,7 +124,6 @@ int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int write
 	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
 		IRBlock *block = procedure->blocks[oneBlock];
 		int originalEntry = oldBlockStarts[oneBlock];
-		fprintf(stderr, "previous entry was %d, inserting a jump to %d\n", originalEntry,block->vliwStartAddress);
 		writeInt(platform->vliwBinaries, 16*originalEntry+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress*4, 0));
 		writeInt(platform->vliwBinaries, 16*originalEntry+4, 0);
 		writeInt(platform->vliwBinaries, 16*originalEntry+8, 0);
@@ -137,14 +135,17 @@ int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int write
 
 	}
 
-	//This is only for debug
-	for (int i=originalWritePlace;i<writePlace;i++){
-		fprintf(stderr, "%d ", i);
-		std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
-		std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(32)); fprintf(stderr, " ");
-		std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(64)); fprintf(stderr, " ");
-		std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)); fprintf(stderr, "\n");
+	if (platform->debugLevel > 1){
 
+		//This is only for debug
+		for (int i=originalWritePlace;i<writePlace;i++){
+			fprintf(stderr, "%d ", i);
+			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
+			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(32)); fprintf(stderr, " ");
+			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(64)); fprintf(stderr, " ");
+			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)); fprintf(stderr, "\n");
+
+		}
 	}
 
 	return writePlace;

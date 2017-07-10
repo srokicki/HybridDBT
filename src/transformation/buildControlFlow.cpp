@@ -225,8 +225,6 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 		unsigned int endAddress = currentBlock->vliwEndAddress;
 		unsigned int jumpInstruction = readInt(platform->vliwBinaries, (endAddress-2)*16);
 
-		fprintf(stderr, "jump is %x\n", jumpInstruction);
-
 		if (currentBlock->nbSucc != -1)
 			continue;
 
@@ -262,22 +260,17 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 			successor1 = currentBlock->sourceDestination;
 			successor2 = currentBlock->sourceEndAddress;
 			nbSucc = 2;
-			fprintf(stderr, "Looking for %x and %x\n", successor1, successor2);
 
 		}
 		else if (isJump){
 			if (currentBlock->sourceDestination != -1){
 				successor1 = currentBlock->sourceDestination;
 				nbSucc = 1;
-				fprintf(stderr, "Looking for %x\n", successor1);
-
 			}
 		}
 		else if (isCall || isNothing){
 			successor1 = currentBlock->sourceEndAddress;
 			nbSucc = 1;
-			fprintf(stderr, "Looking for %x\n", successor1);
-
 		}
 		else{
 			nbSucc = 0;
@@ -361,7 +354,6 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 
 
 
-			fprintf(stderr, "analysis returned a block of %d instr for block from %d to %d (size %d)\n", blockSize, block->vliwStartAddress, block->vliwEndAddress, originalScheduleSize);
 			block->instructions = (uint32*) malloc(blockSize*4*sizeof(uint32));
 			for (int oneBytecodeInstr = 0; oneBytecodeInstr<blockSize; oneBytecodeInstr++){
 				block->instructions[4*oneBytecodeInstr + 0] = readInt(platform->bytecode, 16*oneBytecodeInstr + 0);
@@ -381,9 +373,8 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 		}
 	}
 
-	procedure->print();
-	fprintf(stderr, "Procedure entry point was %d\n", procedure->entryBlock->vliwStartAddress);
+	if (platform->debugLevel > 1)
+		procedure->print();
 
-	fprintf(stderr, "Analysis done ! \n");
 
 }
