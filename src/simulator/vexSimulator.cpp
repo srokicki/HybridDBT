@@ -215,6 +215,7 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 
 			switch (extoMem.opCode){
 			case VEX_STD:
+/*TODO correct this and handle unaligned accesses correctly
 				byte0 = extoMem.datac.slc<8>(0);
 				byte1 = extoMem.datac.slc<8>(8);
 				byte2 = extoMem.datac.slc<8>(16);
@@ -232,8 +233,12 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 				byteEna5 = 1;
 				byteEna6 = 1;
 				byteEna7 = 1;
+				*/
+
+				this->std(address, extoMem.datac);
 				break;
 			case VEX_STW:
+/*
 				//STW
 				if (address[2]){
 					byte4 = extoMem.datac.slc<8>(0);
@@ -256,10 +261,14 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 					byteEna1 = 1;
 					byteEna2 = 1;
 					byteEna3 = 1;
-				}
+				}*/
+
+				this->stw(address, extoMem.datac.slc<32>(0));
+
 			break;
 			case VEX_STH:
 				//STH
+/*
 				if (address.slc<3>(0) == 0){
 					byte0 = extoMem.datac.slc<8>(0);
 					byte1 = extoMem.datac.slc<8>(8);
@@ -283,9 +292,12 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 					byte7 = extoMem.datac.slc<8>(8);
 					byteEna6 = 1;
 					byteEna7 = 1;
-				}
+				}*/
+				this->sth(address, extoMem.datac.slc<16>(0));
+			break;
 			case VEX_STB:
 				//STB
+				/*
 				if (address.slc<3>(0) == 0){
 					byte0 = extoMem.datac.slc<8>(0);
 					byteEna0 = 1;
@@ -317,7 +329,10 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 				else{
 					byte7 = extoMem.datac.slc<8>(0);
 					byteEna7 = 1;
-				}
+				}*/
+
+				this->stb(address, extoMem.datac.slc<8>(0));
+
 				break;
 			default:
 			break;
@@ -343,7 +358,7 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 				memory7[address>>2] = byte7;
 
 			#else
-
+/*
 			if (byteEna0)
 				this->stb((address & 0xfffffffffffffff8), byte0);
 			if (byteEna1)
@@ -360,7 +375,7 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 				this->stb((address & 0xfffffffffffffff8)+6, byte6);
 			if (byteEna7)
 				this->stb((address & 0xfffffffffffffff8)+7, byte7);
-
+*/
 			#endif
 		}
 	}
@@ -1362,6 +1377,14 @@ float VexSimulator::getAverageIPC(){
 	return result;
 }
 
+void VexSimulator::setConfiguration(char issueWidth, short specialization){
+
+	/*for (int oneUnit = 0; oneUnit < 8; oneUnit++)
+		if (oneUnit<this->issueWidth)
+			dbtPlateform.vexSimulator->unitActivation[oneUnit] = 1;
+		else
+			dbtPlateform.vexSimulator->unitActivation[oneUnit] = 0;*/
+}
 
 #endif
 #endif
