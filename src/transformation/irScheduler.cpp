@@ -406,7 +406,6 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 						readFreeRegister++;
 						numberFreeRegister--;
 						countToFail=0;
-						fprintf(stderr, "allocating %d\n", dest);
 					}
 					else {
 						countToFail++;
