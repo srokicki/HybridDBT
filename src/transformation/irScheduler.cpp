@@ -845,14 +845,6 @@ ac_int<32, false> placeOfInstr[256]
 
 	while (instructionId < basicBlockSize) {
 
-		printf("*************** REG STACK AT #%d ***************\n", instructionId);
-
-		if (windowPosition == 1166)
-			printf("POSITION == %d\n", windowPosition);
-
-		for (int i = 0; i < numberFreeRegister; ++i)
-			printf("%d ", freeRegisters[i]);
-		printf("\n");
 		//**************************************************************
 		// Fetching / Decoding instruction
 		//**************************************************************
@@ -916,7 +908,6 @@ ac_int<32, false> placeOfInstr[256]
 				registerDependencies[instructionId] = bytecode_word2.slc<8>(6);
 			} else {
 				// else crash
-				printf("FUCK YOU\n");
 				exit(-1);
 				//return basicBlockSize+1;
 			}
@@ -1050,39 +1041,39 @@ ac_int<32, false> placeOfInstr[256]
 		ac_int<6, false> placeOfRin1 = placeOfRegisters[rin1];
 		ac_int<6, false> placeOfRin2 = placeOfRegisters[rin2];
 
-		instruction.set_slc(9, placeOfRin2);
-
 		ac_int<8, false> rin1Dep = registerDependencies[rin1];
 		ac_int<8, false> rin2Dep = registerDependencies[rin2];
 
 		ac_int<1, false> useRin1 = typeCode == 0 && !isImm;
+		ac_int<1, false> useRin2 = typeCode == 0;
 
+		if (useRin2) {
+			instruction.set_slc(9, placeOfRin2);
+		}
 
 		if (useRin1) {
+			instruction.set_slc(18, placeOfRin1);
 
-				instruction.set_slc(18, rin1);
+			if (!rin1[8] && rin1 == rin2) {
+				 rin1Dep -= 2;
+			} else {
+				if (!rin1[8])
+					rin1Dep--;
 
-				if (!rin1[8] && rin1 == rin2) {
-					 rin1Dep -= 2;
-				} else {
-					if (!rin1[8])
-						rin1Dep--;
-
-					if (!rin2[8])
-						rin2Dep--;
-				}
+				if (!rin2[8])
+					rin2Dep--;
+			}
 		} else if (!rin2[8]) {
 			rin2Dep--;
 		}
+
 		registerDependencies[rin1] = rin1Dep;
 		registerDependencies[rin2] = rin2Dep;
 
 		if (useRin1 && !rin1[8] && rin1Dep == 0)
 			freeRegisters[numberFreeRegister++] = placeOfRin1;
-		if (!rin2[8] && rin2Dep == 0)
+		if (useRin2 && !rin2[8] && rin2Dep == 0)
 			freeRegisters[numberFreeRegister++] = placeOfRin2;
-
-
 
 		//***********************************************************************
 		// !Place found : Write binaries + shift the window + correct placement
@@ -1140,7 +1131,8 @@ ac_int<32, false> placeOfInstr[256]
 		lastInstructionStage = bestStageId;
 		instructionsStages[instructionId] = bestStageId;
 
-		lastRead[placeOfRin2] = lastPlaceOfInstr;
+		if (useRin2)
+			lastRead[placeOfRin2] = lastPlaceOfInstr;
 		if (useRin1)
 			lastRead[placeOfRin1] = lastPlaceOfInstr;
 
@@ -1171,7 +1163,10 @@ ac_int<32, false> placeOfInstr[256]
 		; stageId < STAGE_NUMBER; ++stageId) {
 			binariesWord.set_slc(  stageId*32
 			, available[stageId] ? zero32 : window[off][stageId]);
+
+			std::cout << printDecodedInstr(window[off][stageId]);
 		}
+		std::cout << std::endl;
 
 		if (available) {
 			lastGap = windowOffset;
