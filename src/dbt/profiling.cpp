@@ -94,9 +94,6 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 			numberProfiledBlocks++;
 		}
 
-
-		//We mark the block as being profiled
-		oneBlock->blockState = IRBLOCK_STATE_PROFILED;
 	}
 /*
 	int placeMOVI=-1, placeSLLI=-1, placeLD=-1, placeINCR=-1, placeSTW=-1, offMOVI, offSLLI, offINCR;
