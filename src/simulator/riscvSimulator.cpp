@@ -377,8 +377,8 @@ void RiscvSimulator::doStep(){
 				REG[rd] = (REG[rs1] < REG[rs2]) ? 1 : 0;
 			break;
 			case RISCV_OP_SLTU:
-				unsignedReg1.set_slc(0, REG[rs1].slc<32>(0));
-				unsignedReg2.set_slc(0, REG[rs2].slc<32>(0));
+				unsignedReg1.set_slc(0, REG[rs1].slc<64>(0));
+				unsignedReg2.set_slc(0, REG[rs2].slc<64>(0));
 
 				REG[rd] = (unsignedReg1 < unsignedReg2) ? 1 : 0;
 			break;
