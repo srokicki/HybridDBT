@@ -145,7 +145,7 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 
 					for (int oneBlockForSucc = 0; oneBlockForSucc<application->numbersBlockInSections[sectionOfDestination]; oneBlockForSucc++){
 						IRBlock* blockForSucc = application->blocksInSections[sectionOfDestination][oneBlockForSucc];
-						fprintf(stderr, "Looking in block %x\n", blockForSucc->sourceStartAddress);
+						//fprintf(stderr, "Looking in block %x\n", blockForSucc->sourceStartAddress);
 
 						if (blockForSucc->sourceStartAddress == newBlock->sourceDestination){
 							isDestinationAlreadyMarked = true;

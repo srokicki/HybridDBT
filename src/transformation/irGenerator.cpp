@@ -1179,6 +1179,7 @@ inline unsigned int writePredecessor_ac(ac_int<128, false> bytecode[1024], ac_in
 	if (isData)
 		nbDSucc++;
 
+	printf("destInstr=%d nbSucc=%d nbDSucc=%d\n", destInstr, nbSucc, nbDSucc);
 	if (srcInstr != destInstr){
 
 		//fprintf(stderr, "Adding dep from %d to %d word was %lx and become %lx\n", srcInstr, destInstr, (uint64_t) bytecode[srcInstr].slc<64>(0), (uint64_t) oneBytecodeInstruction.slc<64>(0));
@@ -1937,7 +1938,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 						writeOlderDependency++;
 					}
 					else{
-						writeDependency_ac(bytecode, olderDependency[writeOlderDependency],oneInstructionFromBlock, 0, &bytecode[jumpID]);
+						writeDependency_ac(bytecode, olderDependency[writeOlderDependency],oneInstructionFromBlock, 0, &bytecode[oneInstructionFromBlock]);
 						olderDependency[writeOlderDependency] = oneInstructionFromBlock;
 						writeOlderDependency++;
 					}
@@ -1945,7 +1946,8 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			}
 
 			for (int oneOlder=0; oneOlder<nbOlderDependency; oneOlder++){
-				writeDependency_ac(bytecode, olderDependency[oneOlder],jumpID, 0, &bytecode[jumpID]);
+				writeOlderDependency--;
+				writeDependency_ac(bytecode, olderDependency[writeOlderDependency],jumpID, 0, &bytecode[jumpID]);
 			}
 		#endif
 

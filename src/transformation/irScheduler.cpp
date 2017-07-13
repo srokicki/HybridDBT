@@ -1041,8 +1041,8 @@ ac_int<32, false> placeOfInstr[256]
 		ac_int<6, false> placeOfRin1 = placeOfRegisters[rin1];
 		ac_int<6, false> placeOfRin2 = placeOfRegisters[rin2];
 
-		ac_int<8, false> rin1Dep = registerDependencies[rin1];
-		ac_int<8, false> rin2Dep = registerDependencies[rin2];
+		ac_int<8, false> rin1Dep = registerDependencies[rin1.slc<8>(0)];
+		ac_int<8, false> rin2Dep = registerDependencies[rin2.slc<8>(0)];
 
 		ac_int<1, false> useRin1 = typeCode == 0 && !isImm;
 		ac_int<1, false> useRin2 = typeCode == 0;
@@ -1067,8 +1067,8 @@ ac_int<32, false> placeOfInstr[256]
 			rin2Dep--;
 		}
 
-		registerDependencies[rin1] = rin1Dep;
-		registerDependencies[rin2] = rin2Dep;
+		registerDependencies[rin1.slc<8>(0)] = rin1Dep;
+		registerDependencies[rin2.slc<8>(0)] = rin2Dep;
 
 		if (useRin1 && !rin1[8] && rin1Dep == 0)
 			freeRegisters[numberFreeRegister++] = placeOfRin1;
