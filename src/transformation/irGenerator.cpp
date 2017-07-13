@@ -1907,6 +1907,8 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			ac_int<128, false> jumpBytecodeWord = bytecode[jumpID];
 			ac_int<8, false> numberDependencies = jumpBytecodeWord.slc<8>(64+6);
 
+			#ifdef IR_SUCC
+
 			for (int oneInstructionFromBlock = 0; oneInstructionFromBlock < indexInCurrentBlock; oneInstructionFromBlock++){
 
 				ac_int<128, false> bytecodeWord = bytecode[oneInstructionFromBlock];
@@ -1916,6 +1918,37 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 					writeDependency_ac(bytecode, oneInstructionFromBlock,jumpID, 0, &bytecode[jumpID]);
 				}
 			}
+
+			#else
+
+			ac_int<8, false> olderDependency[4];
+			ac_int<3, false> nbOlderDependency = 0;
+			ac_int<2, false> writeOlderDependency = 0;
+
+			for (int oneInstructionFromBlock = 0; oneInstructionFromBlock < indexInCurrentBlock; oneInstructionFromBlock++){
+
+				ac_int<128, false> bytecodeWord = bytecode[oneInstructionFromBlock];
+				ac_int<3, false> nbSucc = bytecodeWord.slc<3>(64);
+
+				if (nbSucc == 0 && oneInstructionFromBlock != jumpID){
+					if (nbOlderDependency < 4){
+						olderDependency[writeOlderDependency] = oneInstructionFromBlock;
+						nbOlderDependency++;
+						writeOlderDependency++;
+					}
+					else{
+						writeDependency_ac(bytecode, olderDependency[writeOlderDependency],oneInstructionFromBlock, 0, &bytecode[jumpID]);
+						olderDependency[writeOlderDependency] = oneInstructionFromBlock;
+						writeOlderDependency++;
+					}
+				}
+			}
+
+			for (int oneOlder=0; oneOlder<nbOlderDependency; oneOlder++){
+				writeDependency_ac(bytecode, olderDependency[oneOlder],jumpID, 0, &bytecode[jumpID]);
+			}
+		#endif
+
 		}
 
 		//Modification of last writer on renamed registers
