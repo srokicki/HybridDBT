@@ -54,7 +54,7 @@ using namespace std;
 //Declaration of different structs
 
 
-
+char incrementInstrMem = 2;
 // 64 bits registers
 
 
@@ -933,12 +933,12 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 				break;	// GOTO1
 
 			case VEX_CALL:
-				dctoEx->dataa = PC + 4;
+				dctoEx->dataa = PC + 4*incrementInstrMem;
 				NEXT_PC = IMM19_u;
 				break; // CALL
 
 			case VEX_CALLR :
-				dctoEx->dataa = PC + 4;
+				dctoEx->dataa = PC + 4*incrementInstrMem;
 				NEXT_PC = regValueA + IMM19_s;
 				break; // ICALL
 
@@ -950,13 +950,13 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 			case VEX_BR :
 				dctoEx->opCode = 0;
 				if(regValueA)
-					NEXT_PC = PC + dctoEx->dataa -4;
+					NEXT_PC = PC + dctoEx->dataa -4*incrementInstrMem;
 				break;	// BR
 
 			case VEX_BRF :
 				dctoEx->opCode = 0;
 				if(!regValueA)
-					NEXT_PC = PC + dctoEx->dataa -4;
+					NEXT_PC = PC + dctoEx->dataa -4*incrementInstrMem;
 				break;	// BRF
 
 			case VEX_RETURN :
@@ -1030,6 +1030,9 @@ int VexSimulator::doStep(){
 
 	doWB(memtoWB3);
 	doWB(memtoWB2);
+	doWB(memtoWB5);
+	doWB(memtoWB8);
+
 
 	///////////////////////////////////////////////////////
 	//													 //
@@ -1042,10 +1045,10 @@ int VexSimulator::doStep(){
 	doEx(dctoEx1, &extoMem1);
 	doExMult(dctoEx3, &extoMem3);
 	doEx(dctoEx2, &extoMem2);
-//		doEx(dctoEx5, &extoMem5);
-//		doExMem(dctoEx6, &extoMem6);
-//		doEx(dctoEx7, &extoMem7);
-//		doExMult(dctoEx8, &extoMem8);
+	doEx(dctoEx5, &extoMem5);
+	doEx(dctoEx6, &extoMem6);
+	doEx(dctoEx7, &extoMem7);
+	doExMult(dctoEx8, &extoMem8);
 
 
 
@@ -1069,14 +1072,17 @@ int VexSimulator::doStep(){
 	doMemNoMem(extoMem1, &memtoWB1);
 	doMemNoMem(extoMem3, &memtoWB3);
 	doMemNoMem(extoMem4, &memtoWB4);
-//		doMemNoMem(extoMem5, &memtoWB5);
-//		doMemNoMem(extoMem7, &memtoWB7);
-//		doMemNoMem(extoMem8, &memtoWB8);
+	doMemNoMem(extoMem6, &memtoWB6);
+	doMemNoMem(extoMem7, &memtoWB7);
+	doMemNoMem(extoMem8, &memtoWB8);
 
 #ifdef __CATAPULT
 	doMem(extoMem2, &memtoWB2, memory0, memory1, memory2, memory3, memory4, memory5, memory6, memory7);
+	doMem(extoMem5, &memtoWB5, memory0, memory1, memory2, memory3, memory4, memory5, memory6, memory7);
+
 #else
 	doMem(extoMem2, &memtoWB2);
+	doMem(extoMem5, &memtoWB5);
 #endif
 
 	//		doMem(extoMem6, &memtoWB6, DATA0, DATA1, DATA2, DATA3);
@@ -1091,10 +1097,9 @@ int VexSimulator::doStep(){
 
 	doWB(memtoWB1);
 	doWB(memtoWB4);
-//		doWB(memtoWB5);
-//		doWB(memtoWB6);
-//		doWB(memtoWB7);
-//		doWB(memtoWB8);
+	doWB(memtoWB6);
+	doWB(memtoWB7);
+
 
 	///////////////////////////////////////////////////////
 	//													 //
@@ -1103,6 +1108,9 @@ int VexSimulator::doStep(){
 	///////////////////////////////////////////////////////
 
 	NEXT_PC = PC+4;
+	if (this->issueWidth > 4)
+		NEXT_PC += 4;
+
 	doDCBr(ftoDC1, &dctoEx1);
 
 #ifdef __CATAPULT
@@ -1112,10 +1120,16 @@ int VexSimulator::doStep(){
 #endif
 	doDC(ftoDC3, &dctoEx3);
 	doDC(ftoDC4, &dctoEx4);
-//		doDC(ftoDC5, &dctoEx5);
-//		doDC(ftoDC6, &dctoEx6);
-//		doDC(ftoDC7, &dctoEx7);
-//		doDC(ftoDC8, &dctoEx8);
+
+#ifdef __CATAPULT
+	doDCMem(ftoDC5, &dctoEx5, memory0, memory1, memory2, memory3, memory4, memory5, memory6, memory7);
+#else
+	doDCMem(ftoDC5, &dctoEx5);
+#endif
+	doDC(ftoDC6, &dctoEx6);
+
+	doDC(ftoDC7, &dctoEx7);
+	doDC(ftoDC8, &dctoEx8);
 
 	ac_int<7, false> OP1 = ftoDC1.instruction.slc<7>(0);
 
@@ -1212,6 +1226,7 @@ int VexSimulator::doStep(){
 	PC = NEXT_PC;
 	cycle++;
 
+
 	// DISPLAY
 
 
@@ -1219,17 +1234,27 @@ int VexSimulator::doStep(){
 #ifndef __CATAPULT
 	if (debugLevel >= 1){
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
-		std::cerr << printDecodedInstr(ftoDC1.instruction);
-		std::cerr << ";";
-		std::cerr << printDecodedInstr(ftoDC2.instruction);
-		std::cerr << ";";
-		std::cerr << printDecodedInstr(ftoDC3.instruction);
-		std::cerr << ";";
-		std::cerr << printDecodedInstr(ftoDC4.instruction);
-		std::cerr << ";";
+		if (this->issueWidth>0)
+			std::cerr << printDecodedInstr(ftoDC1.instruction) << ";";
+		if (this->issueWidth>1)
+			std::cerr << printDecodedInstr(ftoDC2.instruction) << ";";
+		if (this->issueWidth>2)
+			std::cerr << printDecodedInstr(ftoDC3.instruction) << ";";
+		if (this->issueWidth>3)
+			std::cerr << printDecodedInstr(ftoDC4.instruction) << ";";
+		if (this->issueWidth>4)
+			std::cerr << printDecodedInstr(ftoDC5.instruction) << ";";
+		if (this->issueWidth>5)
+			std::cerr << printDecodedInstr(ftoDC6.instruction) << ";";
+		if (this->issueWidth>6)
+			std::cerr << printDecodedInstr(ftoDC7.instruction) << ";";
+		if (this->issueWidth>7)
+			std::cerr << printDecodedInstr(ftoDC8.instruction) << ";";
 
 
-		for (int oneRegister = 0; oneRegister<36; oneRegister++){
+
+
+		for (int oneRegister =0; oneRegister<36; oneRegister++){
 			fprintf(stderr, "%lx;", (long) REG[oneRegister]);
 		}
 		fprintf(stderr, ";;%lx;", (long) REG[63]);
@@ -1254,6 +1279,10 @@ int run(int mainPc, ac_int<8, false> memory0[65536], ac_int<8, false> memory1[65
 int VexSimulator::initializeRun(int mainPc, int argc, char* argv[]){
 #endif
 
+	if (this->issueWidth>4)
+		incrementInstrMem = 2;
+	else
+		incrementInstrMem = 1;
 
 	#ifndef __CATAPULT
 	//We clear IPC counter
@@ -1365,11 +1394,11 @@ int VexSimulator::doStep(int numberCycles){
 
 
 float VexSimulator::getAverageIPC(){
-	double localNBInstr = this->nbInstr;
+	double localNBInstr = this->nbInstr - this->lastNbInstr;
 	double nbCycle = this->cycle - this->lastNbCycle;
 	float result = localNBInstr / nbCycle;
 
-	this->nbInstr = 0;
+	this->lastNbInstr = this->nbInstr;
 	this->lastNbCycle = this->cycle;
 
 	return result;

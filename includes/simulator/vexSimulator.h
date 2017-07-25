@@ -62,7 +62,7 @@ class VexSimulator : public GenericSimulator {
 	ac_int<8, false> profileResult[8192];
 
 	//Tools for printing average IPC
-	uint64_t nbInstr;
+	uint64_t nbInstr, lastNbInstr;
 	uint64_t lastNbCycle;
 	float getAverageIPC();
 
