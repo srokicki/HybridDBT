@@ -22,7 +22,7 @@ extern int unresolvedJumpsTypeArray[65536];
 extern int unresolvedJumpsSourceArray[65536];
 
 void addInsertions(uint32 blockStartAddressInSources, uint32 blockStartAddressInVLIW, uint32* insertionsToInsert, uint32 numberInsertions);
-unsigned int solveUnresolvedJump(unsigned int initialDestination);
+unsigned int solveUnresolvedJump(DBTPlateform *platform, unsigned int initialDestination);
 unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned int startAddress);
 void initializeInsertionsMemory(int sizeSourceCode);
 int getInsertionList(int mipsStartAddress, int** result);
