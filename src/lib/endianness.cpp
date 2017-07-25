@@ -8,9 +8,10 @@
  * The input memory can be uint8*, uint32* or uint128*
  ***********************************************************************/
 
+
 void writeInt(uint8* bytecode, int place, unsigned int value){
 	unsigned int *bytecodeAsInt = (unsigned int *) bytecode;
-	//bytecodeAsInt[place>>2] = value;
+	place = place >> 2;
 
 	//FIXME endianness
 	bytecode[place+3] = (value >> 24) & 0xff;
