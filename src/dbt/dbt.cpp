@@ -59,12 +59,6 @@ int translateOneSection(DBTPlateform &dbtPlateform, uint32 placeCode, int source
 			placeCode);
 
 
-	//	debugFirstPassResult(dbtPlateform, previousPlaceCode+1, placeCode, addressStart);
-
-
-		//We write back the result if needed
-		void* destinationBinariesFile = openWriteFile((void*) "./binaries");
-		unsigned int sizeBinaries = (placeCode<<4);
 
 		return placeCode;
 }
@@ -301,8 +295,9 @@ int main(int argc, char *argv[])
 	//Definition of objects used for DBT process
 	DBTPlateform dbtPlateform;
 
-	dbtPlateform.vliwInitialConfiguration = 0x9e1e;
-	dbtPlateform.vliwInitialIssueWidth = 4;
+	dbtPlateform.vliwInitialConfiguration = 0x6b1e;
+	dbtPlateform.vliwInitialIssueWidth = 8;
+
 
 	#ifndef __NIOS
 	dbtPlateform.vexSimulator = new VexSimulator(dbtPlateform.vliwBinaries);
@@ -311,6 +306,11 @@ int main(int argc, char *argv[])
 	dbtPlateform.vexSimulator->outStreams = outStreams;
 	dbtPlateform.vexSimulator->nbOutStreams = nbOutStreams;
 
+	dbtPlateform.vexSimulator->issueWidth = dbtPlateform.vliwInitialIssueWidth;
+
+	for (int oneIssue=0; oneIssue<8; oneIssue++){
+		dbtPlateform.vexSimulator->unitActivation[oneIssue] = 1;
+	}
 
 	#endif
 
@@ -403,7 +403,7 @@ int main(int argc, char *argv[])
 		unsigned int type = unresolvedJumpsTypeArray[oneUnresolvedJump+1];
 
 		unsigned char isAbsolute = ((type & 0x7f) != VEX_BR) && ((type & 0x7f) != VEX_BRF);
-		unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(initialDestination);
+		unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(&dbtPlateform, initialDestination);
 
 		if (destinationInVLIWFromNewMethod == -1){
 			printf("A jump from %d to %x is still unresolved... (%d insertions)\n", source, initialDestination, insertionsArray[(initialDestination>>10)<<11]);
@@ -425,7 +425,7 @@ int main(int argc, char *argv[])
 	if (VERBOSE)
 		dbtPlateform.vexSimulator->debugLevel = 2;
 	#endif
-
+//dbtPlateform.debugLevel = 2;
 
 
 	//We also add information on insertions
@@ -442,8 +442,8 @@ int main(int argc, char *argv[])
 	#endif
 
 	//We change the init code to jump at the correct place
-	uint32 translatedStartPC = solveUnresolvedJump((pcStart-addressStart)>>2);
-	unsigned int instruction = assembleIInstruction(VEX_CALL, translatedStartPC<<2, 0);
+	uint32 translatedStartPC = solveUnresolvedJump(&dbtPlateform, (pcStart-addressStart)>>2);
+	unsigned int instruction = assembleIInstruction(VEX_CALL, translatedStartPC<<2, 63);
 	writeInt(dbtPlateform.vliwBinaries, 0, instruction);
 
 
@@ -492,7 +492,7 @@ int main(int argc, char *argv[])
 					optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
 					blockScheduleCounter++;
 
-					if (block->sourceDestination < block->sourceStartAddress)
+					if (block->sourceDestination != -1 && block->sourceDestination < block->sourceStartAddress)
 						profiler.profileBlock(block);
 				}
 
@@ -504,8 +504,8 @@ int main(int argc, char *argv[])
 	}
 
 
-	fprintf(stderr, "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: %ld\n\t Number of instruction executed: %ld\n\t Number of block scheduled: %d\n\t Number of procedure optimized (O2): %d\n",
-			dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, blockScheduleCounter, procedureOptCounter);
+	fprintf(stderr, "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: %ld\n\t Number of instruction executed: %ld\n\t Average IPC: %f\n\t Number of block scheduled: %d\n\t Number of procedure optimized (O2): %d\n",
+			dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
 
 
 	//We print profiling result
