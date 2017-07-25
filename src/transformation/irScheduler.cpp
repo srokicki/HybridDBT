@@ -665,9 +665,13 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 			if (binaries[writeInBinaries-2].slc<32>(96) != 0 || binaries[writeInBinaries-1].slc<32>(64) != 0 || binaries[writeInBinaries-1].slc<32>(32) != 0){
 				//binaries[writeInBinaries].set_slc(96, binaries[jumpPlace].slc<32>(96));
 				writeInBinaries++;
+				binaries[writeInBinaries] = 0;
+
 
 				if (issue_width > 4){
 					writeInBinaries++;
+					binaries[writeInBinaries] = 0;
+
 				}
 
 			}
@@ -675,9 +679,11 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 
 		}
 		else{
+			binaries[writeInBinaries] = 0;
 			writeInBinaries++;
 
 			if (issue_width > 4){
+				binaries[writeInBinaries] = 0;
 				writeInBinaries++;
 			}
 		}
