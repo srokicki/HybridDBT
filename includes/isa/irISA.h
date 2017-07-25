@@ -179,4 +179,18 @@ void addDataDep(uint32 *bytecode, char index, char successor);
 void addControlDep(uint32 *bytecode, char index, char successor);
 void addOffsetToDep(uint32 *bytecode, char index, char offset);
 
+/********************************************************************
+ * Declaration of stage codes
+ * ******************************************************************
+ *
+ * Stage code are used to define the kind of instruction used
+ *
+ *******************************************************************/
+
+#define STAGE_CODE_CONTROL 0
+#define STAGE_CODE_MEMORY 1
+#define STAGE_CODE_ARITH 2
+#define STAGE_CODE_MULT 3
+
+
 #endif /* INCLUDES_ISA_IRISA_H_ */
