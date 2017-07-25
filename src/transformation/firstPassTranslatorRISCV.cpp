@@ -40,6 +40,7 @@ using namespace std;
 #ifndef __NIOS
 int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		uint32 size,
+		uint8 issueWidth,
 		uint32 addressStart,
 		uint32 codeSectionStart,
 		uint128 destinationBinaries[1024],
@@ -73,6 +74,7 @@ uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
 	#ifndef __NIOS
 	int returnedValue = firstPassTranslatorRISCV_hw(platform->mipsBinaries,
 			size,
+			platform->vliwInitialIssueWidth,
 			sourceStartAddress,
 			sectionStartAddress,
 			platform->vliwBinaries,
@@ -186,6 +188,7 @@ uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
 
 int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		uint32 size,
+		uint8 issueWidth,
 		uint32 addressStart,
 		uint32 codeSectionStart,
 		uint128 destinationBinaries[1024],
@@ -275,13 +278,13 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 	ac_int<3, false> lastLatency = 0;
 	ac_int<3, false> previousLatency = 0;
 
+	char incrementInDest = (issueWidth>4) ? 2:1;
 
 
 	while (indexInSourceBinaries < size || nextInstructionNop || enableNextInstruction){
 
 		ac_int<1, false> setBoundaries1 = 0, setBoundaries2 = 0, setUnresolvedJump = 0;
 		ac_int<32, true> boundary1, boundary2, unresolved_jump_src, unresolved_jump_type;
-
 
 		ac_int<1, false> isInsertion = 0;
 
@@ -661,7 +664,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					//FIXME should be able to add two instr at the same cycle... This would remove an insertion
 					binaries = assembleRiInstruction(VEX_ADDi, 33, rs1, imm12_I_signed);
 
-					nextInstruction = assembleIInstruction((rd == 63) ? VEX_CALL : VEX_GOTO, 16, rd);
+					nextInstruction = assembleIInstruction((rd == 63) ? VEX_CALL : VEX_GOTO, 16*incrementInDest, rd);
 					enableNextInstruction = 1;
 					nextInstruction_rd = 0;
 					nextInstruction_rs1 = rd;
@@ -718,7 +721,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					nextInstruction_rs1 = 32;
 					nextInstruction_rs2 = 0;
 
-					unresolved_jump_src = indexInDestinationBinaries+1;
+					unresolved_jump_src = indexInDestinationBinaries+incrementInDest;
 					unresolved_jump_type = nextInstruction;
 					setUnresolvedJump = 1;
 
@@ -906,7 +909,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 			indexInSourceBinaries++;
 
 		if (!droppedInstruction)
-			indexInDestinationBinaries++;
+			indexInDestinationBinaries+=incrementInDest;
 
 		if (lastLatency != 0)
 			lastLatency--;

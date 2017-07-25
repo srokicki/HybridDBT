@@ -32,6 +32,7 @@
 
 int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int writePlace){
 
+	char incrementInBinaries = (platform->vliwInitialIssueWidth>4) ? 2 : 1;
 	int originalWritePlace = writePlace;
 	int originalEntry = procedure->entryBlock->vliwStartAddress;
 	int *oldBlockStarts = (int*) malloc(procedure->nbBlock * sizeof(int));
@@ -73,9 +74,24 @@ int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int write
 
 
 		//We call the register
-		int binaSize = irScheduler(platform, 1,block->nbInstr, writePlace, 29, 4, 0x001e);
-		if (block->jumpID == -1)
-			binaSize++;
+		int binaSize = irScheduler(platform, 1,block->nbInstr, writePlace, 29, platform->vliwInitialIssueWidth, platform->vliwInitialConfiguration);
+		if (block->jumpID == -1){
+			fprintf(stderr, "test %d\n", writePlace+binaSize);
+			writeInt(platform->vliwBinaries, 16*(writePlace+binaSize), 0);
+			writeInt(platform->vliwBinaries, 16*(writePlace+binaSize)+4, 0);
+			writeInt(platform->vliwBinaries, 16*(writePlace+binaSize)+8, 0);
+			writeInt(platform->vliwBinaries, 16*(writePlace+binaSize)+12, 0);
+
+			if (platform->vliwInitialIssueWidth){
+				writeInt(platform->vliwBinaries, 16*(writePlace + binaSize+1), 0);
+				writeInt(platform->vliwBinaries, 16*(writePlace + binaSize+1)+4, 0);
+				writeInt(platform->vliwBinaries, 16*(writePlace + binaSize+1)+8, 0);
+				writeInt(platform->vliwBinaries, 16*(writePlace + binaSize+1)+12, 0);
+
+			}
+
+			binaSize += incrementInBinaries;
+		}
 
 		block->vliwEndAddress = writePlace + binaSize;
 		block->vliwStartAddress = writePlace;
@@ -86,6 +102,7 @@ int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int write
 		}
 
 		writePlace+=binaSize;
+
 	}
 
 	/******************************************************************************************
@@ -143,9 +160,19 @@ int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int write
 			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
 			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(32)); fprintf(stderr, " ");
 			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(64)); fprintf(stderr, " ");
-			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)); fprintf(stderr, "\n");
+			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)); fprintf(stderr, " ");
+
+			if (platform->vliwInitialIssueWidth>4){
+				std::cerr << printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(0)); fprintf(stderr, " ");
+				std::cerr << printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(32)); fprintf(stderr, " ");
+				std::cerr << printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(64)); fprintf(stderr, " ");
+				std::cerr << printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(96)); fprintf(stderr, " ");
+				i++;
+			}
+			fprintf(stderr, "\n");
 
 		}
+
 	}
 
 	return writePlace;

@@ -28,7 +28,8 @@
 
 void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStartAddress, int sectionStartAddress, int startAddress, int endAddress, IRApplication *application, Profiler *profiler){
 
-	int sizeNewlyTranslated = endAddress-startAddress;
+	char offsetInBinaries = (dbtPlateform->vliwInitialIssueWidth > 4) ? 2 : 1;
+	int sizeNewlyTranslated = (endAddress-startAddress)/offsetInBinaries;
 	mipsStartAddress = mipsStartAddress>>2;
 
 
@@ -42,7 +43,7 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 	int numberInsertions = getInsertionList((sectionStartAddress>>2) - mipsStartAddress, insertions); //TODO
 	for (int oneInsertion = 0; oneInsertion < numberInsertions; oneInsertion++){
 		//We mark the destination as an insertion
-		int index = (*insertions)[oneInsertion];
+		int index = (*insertions)[oneInsertion] / offsetInBinaries;
 		insertionMap[index] = 1;
 	}
 	free(insertions);
@@ -69,7 +70,6 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 		if (oneInstruction != sizeNewlyTranslated)
 			blockBoundary = (dbtPlateform->blockBoundaries[offset]);
 		char isInsertion = (oneInstruction == sizeNewlyTranslated) ? 0 : insertionMap[oneInstruction];
-
 		if (blockBoundary && !isInsertion & previousBlockStart<indexInVLIWBinaries){
 
 
@@ -103,13 +103,12 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 			unsigned int oneJumpInitialDestination = dbtPlateform->unresolvedJumps[unresolvedJumpIndex];
 			unsigned int oneJumpType = dbtPlateform->unresolvedJumps_type[unresolvedJumpIndex];
 
-			if (newBlock->vliwEndAddress - 2 == oneJumpSource){
-
+			if (newBlock->vliwEndAddress - 2*offsetInBinaries == oneJumpSource){
 				//We save the destination
 				newBlock->sourceDestination = oneJumpInitialDestination+(sectionStartAddress>>2);
 
 				unsigned char isAbsolute = ((oneJumpType & 0x7f) != VEX_BR) && ((oneJumpType & 0x7f) != VEX_BRF);
-				unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(oneJumpInitialDestination+((sectionStartAddress>>2)-mipsStartAddress));
+				unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(dbtPlateform, oneJumpInitialDestination+((sectionStartAddress>>2)-mipsStartAddress));
 				if (destinationInVLIWFromNewMethod == -1){
 					//In this case, the jump cannot be resolved because the destination block is not translated yet.
 					//We store information concerning the destination and it will be resolved later
@@ -128,7 +127,7 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 
 					unsigned int instructionBeforePreviousDestination = readInt(dbtPlateform->vliwBinaries, 16*(destinationInVLIWFromNewMethod-1)+12);
 					if (instructionBeforePreviousDestination != 0)
-						writeInt(dbtPlateform->vliwBinaries, 16*(oneJumpSource+1)+12, instructionBeforePreviousDestination);
+						writeInt(dbtPlateform->vliwBinaries, 16*(oneJumpSource+1*offsetInBinaries)+12, instructionBeforePreviousDestination);
 				}
 
 				unresolvedJumpIndex++;
@@ -152,13 +151,10 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 						}
 						if (blockForSucc->sourceStartAddress<newBlock->sourceDestination && blockForSucc->sourceEndAddress>newBlock->sourceDestination){
 							blockToSplit = blockForSucc;
-							fprintf(stderr, "Found the block\n");
 						}
 					}
 
 					if (!isDestinationAlreadyMarked){
-						fprintf(stderr, "Solving block definition for %x\n", newBlock->sourceDestination);
-
 
 						IRBlock *splittedBlock = new IRBlock(destinationInVLIWFromNewMethod, blockToSplit->vliwEndAddress, sectionOfDestination);
 						application->addBlock(splittedBlock, sectionOfDestination);
@@ -193,7 +189,7 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 
 
 		//We increase counters: both if we are not in an insertion, only the VLIW if we are
-		indexInVLIWBinaries++;
+		indexInVLIWBinaries+=offsetInBinaries;
 		if (!isInsertion)
 			indexInMipsBinaries++;
 	}
@@ -206,6 +202,7 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 
 void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApplication *application){
 
+	char incrementInBinaries = (platform->vliwInitialIssueWidth > 4) ? 2 : 1;
 	IRBlock *blocksToStudy[50];
 	int numberBlockToStudy = 1;
 	blocksToStudy[0] = startBlock;
@@ -216,14 +213,13 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 	int numberBlockInProcedure = 0;
 
 
-
 	while (numberBlockToStudy != 0){
 
 		IRBlock *currentBlock = blocksToStudy[numberBlockToStudy-1];
 		numberBlockToStudy--;
 
 		unsigned int endAddress = currentBlock->vliwEndAddress;
-		unsigned int jumpInstruction = readInt(platform->vliwBinaries, (endAddress-2)*16);
+		unsigned int jumpInstruction = readInt(platform->vliwBinaries, (endAddress-2*incrementInBinaries)*16);
 
 		if (currentBlock->nbSucc != -1)
 			continue;

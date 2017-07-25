@@ -28,7 +28,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	 * vliw binaries.
 	 *
 	 *********************************************************************************/
-
+	char incrementInBinaries = (platform->vliwInitialIssueWidth>4) ? 2 : 1;
 	int basicBlockStart = block->vliwStartAddress;
 	int basicBlockEnd = block->vliwEndAddress;
 
@@ -55,7 +55,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 #endif
 
 	//We store old jump instruction. Its places is known from the basicBlockEnd value
-	uint32 jumpInstruction = readInt(platform->vliwBinaries, (basicBlockEnd-2)*16 + 0);
+	uint32 jumpInstruction = readInt(platform->vliwBinaries, (basicBlockEnd-2*incrementInBinaries)*16 + 0);
 
 
 	int globalVariableCounter = 288;
@@ -96,7 +96,16 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
 			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(32)); fprintf(stderr, " ");
 			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(64)); fprintf(stderr, " ");
-			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)); fprintf(stderr, "\n");
+			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)); fprintf(stderr, " ");
+
+			if (platform->vliwInitialIssueWidth>4){
+				std::cerr << printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(0)); fprintf(stderr, " ");
+				std::cerr << printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(32)); fprintf(stderr, " ");
+				std::cerr << printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(64)); fprintf(stderr, " ");
+				std::cerr << printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(96)); fprintf(stderr, " ");
+				i++;
+			}
+			fprintf(stderr, "\n");
 
 		}
 
@@ -172,10 +181,10 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 				offset = offset - 0x80000;
 
 			//We compute the original destination
-			int destination = basicBlockEnd - 1 + (offset>>2);
+			int destination = basicBlockEnd - 1*incrementInBinaries + (offset>>2);
 
 			//We compute the new offset, considering the new destination
-			int newOffset = destination - (basicBlockStart + binaSize-1);
+			int newOffset = destination - (basicBlockStart + binaSize-1*incrementInBinaries);
 			newOffset = newOffset << 2;
 
 			if (platform->debugLevel > 1)
@@ -187,7 +196,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 //		}
 
 		//Insertion of jump instruction
-		writeInt(platform->vliwBinaries, (basicBlockStart+binaSize-2)*16 + 0, jumpInstruction);
+		writeInt(platform->vliwBinaries, (basicBlockStart+binaSize-2*incrementInBinaries)*16 + 0, jumpInstruction);
 
 		//Insertion of the new block with the goto instruction
 		if (isPassthroughJump && basicBlockStart+binaSize+1 < basicBlockEnd){
@@ -220,8 +229,16 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 				std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
 				std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(32)); fprintf(stderr, " ");
 				std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(64)); fprintf(stderr, " ");
-				std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)); fprintf(stderr, "\n");
+				std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)); fprintf(stderr, " ");
 
+				if (platform->vliwInitialIssueWidth>4){
+					std::cerr << printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(0)); fprintf(stderr, " ");
+					std::cerr << printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(32)); fprintf(stderr, " ");
+					std::cerr << printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(64)); fprintf(stderr, " ");
+					std::cerr << printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(96)); fprintf(stderr, " ");
+					i++;
+				}
+				fprintf(stderr, "\n");
 			}
 
 			for (int i=basicBlockStart;i<basicBlockEnd;i++){
