@@ -981,6 +981,18 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 #ifndef __CATAPULT
 			case VEX_RECONFFS:
 				dctoEx->opCode = 0;
+
+				//If the issue width change, we may have to correct the next PC value
+				if (this->issueWidth <= 4 && dctoEx->dest >4)
+					NEXT_PC += 4;
+				else if (this->issueWidth > 4 && dctoEx->dest <= 4)
+					NEXT_PC -= 4;
+
+				if (dctoEx->dest >4)
+					incrementInstrMem = 2;
+				else
+					incrementInstrMem = 1;
+
 				this->issueWidth = dctoEx->dest;
 				this->unitActivation[0] = IMM19_u[0];
 				this->unitActivation[1] = IMM19_u[1];
