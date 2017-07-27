@@ -296,7 +296,7 @@ int main(int argc, char *argv[])
 	DBTPlateform dbtPlateform;
 
 	dbtPlateform.vliwInitialConfiguration = 0x6b1e;
-	dbtPlateform.vliwInitialIssueWidth = 8;
+	dbtPlateform.vliwInitialIssueWidth = 4;
 
 
 	#ifndef __NIOS
@@ -308,7 +308,7 @@ int main(int argc, char *argv[])
 
 	dbtPlateform.vexSimulator->issueWidth = dbtPlateform.vliwInitialIssueWidth;
 
-	for (int oneIssue=0; oneIssue<8; oneIssue++){
+	for (int oneIssue=0; oneIssue<dbtPlateform.vliwInitialIssueWidth; oneIssue++){
 		dbtPlateform.vexSimulator->unitActivation[oneIssue] = 1;
 	}
 
@@ -332,7 +332,6 @@ int main(int argc, char *argv[])
 	int numberOfSections = 1 + (size>>10);
 	IRApplication application = IRApplication(numberOfSections);
 	Profiler profiler = Profiler(&dbtPlateform);
-
 
 
 
@@ -422,8 +421,10 @@ int main(int argc, char *argv[])
 
 	//We initialize the VLIW processor with binaries and data from elf file
 	#ifndef __NIOS
-	if (VERBOSE)
+	if (VERBOSE){
 		dbtPlateform.vexSimulator->debugLevel = 2;
+		dbtPlateform.debugLevel = 2;
+	}
 	#endif
 //dbtPlateform.debugLevel = 2;
 
