@@ -128,8 +128,10 @@ unsigned int solveUnresolvedJump(DBTPlateform *platform, unsigned int initialDes
 	unsigned int init = (initialDestination % 1024);
 	int start = 0;
 
+//	fprintf(stderr, "Section has %d insertions, base address is %d\n", nbInsertion, VLIWBase);
 
 	while (size != 1){
+//		fprintf(stderr, "\t Dichotomie: start = %d, size=%d, value = %d\n", start, size, loadWordFromInsertionMemory(offset + 2 + start + size/2));
 		size = size / 2;
 
 		int value = loadWordFromInsertionMemory(offset + 2 + start + size);
@@ -213,9 +215,9 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	nbInstr++;
 	platform->bytecode[nbInstr] =  assembleRBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_SUB,  8, 256+33, 256+33, 0); //9
 	nbInstr++;
-	platform->bytecode[nbInstr] =  assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_SRAi, 9, 10, 256+offset_start, 0); //10
+	platform->bytecode[nbInstr] =  assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_SRAi, 9, 12, 256+offset_start, 0); //10
 	nbInstr++;
-	platform->bytecode[nbInstr] =  assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_SLLi, 10, SHIFT_FOR_INSERTION_SECTION-2, 256+offset_start, 0); //11
+	platform->bytecode[nbInstr] =  assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_SLLi, 10, SHIFT_FOR_INSERTION_SECTION, 256+offset_start, 0); //11
 	nbInstr++;
 	platform->bytecode[nbInstr] =  assembleIBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_MOVI, 256+size, 0x7, 0); //12
 	nbInstr++;
@@ -223,7 +225,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	nbInstr++;
 	platform->bytecode[nbInstr] =  assembleRBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_ADD, 13, 11, 256+offset_start, 0); //14
 	nbInstr++;
-	platform->bytecode[nbInstr] =  assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_ANDi, 9, 1023, 256+init_start, 0); //15
+	platform->bytecode[nbInstr] =  assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_ANDi, 9, 4095, 256+init_start, 0); //15
 	nbInstr++;
 	platform->bytecode[nbInstr] =  assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDW, 14, 4, 256+33, 0); //16
 	nbInstr++;
@@ -265,6 +267,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	addDataDep(startBytecode, 11, 14);
 	addControlDep(startBytecode, 14,17);
 	addDataDep(startBytecode, 15, 20);
+	addControlDep(startBytecode, 3, 12);
 
 
 
@@ -288,7 +291,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	platform->bytecode[nbInstr] =  assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDW, 256+value, 8, 256+value, 0); //0
 	nbInstr++;
 
-	platform->bytecode[nbInstr] =  assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_SRAi, 0, 1, 256+value, 0); //1
+	platform->bytecode[nbInstr] =  assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_SRAi, 0, increment == 2 ? 1 : 0, 256+value, 0); //1
 	nbInstr++;
 
 	platform->bytecode[nbInstr] =  assembleRBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_SH2ADD, 256+offset_start, 256+size, 256+tmp1, 0); //2
@@ -446,6 +449,186 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 		}
 
 	return start;
+
+
+//	char offset = (platform->vliwInitialIssueWidth>4) ? 2:1;
+//	//		| init = startAddress| stw r4 -4(sp)		|					| r33 = r33 >> 2
+//	int cycle = start;
+//	writeInt(platform->vliwBinaries, cycle*16+0, assembleIInstruction(VEX_MOVI, startAddress & 0x7ffff, 4));
+//	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 4, 2, -8));
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, 0);
+//
+//	//		| r33 = r33 - init	 | stw r5 -8(sp)		| 				|
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, assembleRInstruction(VEX_SUB, 33, 33, 4));
+//	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 5, 2, -16));
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, 0);
+//
+//	//		| 				 | 					| r33 = r33 & -4096	| init = r33 & 0xfff
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+4, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+8, assembleRiInstruction(VEX_ANDi, 33, 33, -4096));
+//	writeInt(platform->vliwBinaries, cycle*16+12, assembleRiInstruction(VEX_ANDi, 4, 33, 0xfff));
+//
+//	//		| init -= startAddr	 | stw r6 -12(sp)		|					| offset = 7
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0 /*assembleRiInstruction(VEX_SUBi, 4, 4, startAddress & 0xfff)*/);
+//	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 6, 2, -24));
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, assembleIInstruction(VEX_MOVI, 7, 5));
+//
+//	//		|init = init>>2		 | stw r7 -16(sp)		|					| offset = offset<<24
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, assembleRiInstruction(VEX_SRLi, 4, 4, 2));
+//	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 7, 2, -32));
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, assembleRiInstruction(VEX_SLLi, 5, 5, 24));
+//
+//	//		| offset offset + r33<<1| stw r8 -20(sp)		|					| start = MAXNB*2
+//	cycle+=offset;
+//	char operation = (MAX_INSERTION_PER_SECTION == 2048) ? VEX_SH3ADD : (MAX_INSERTION_PER_SECTION == 1024) ? VEX_SH2ADD : (MAX_INSERTION_PER_SECTION == 512) ? VEX_SH1ADD :  VEX_ADD;
+//	writeInt(platform->vliwBinaries, cycle*16+0, assembleRInstruction(VEX_SH1ADD, 5, 33, 5));
+//	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 8, 2, -40));
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, assembleIInstruction(VEX_MOVI,2*MAX_INSERTION_PER_SECTION, 7));
+//
+//	//		| v1 = offset + start  | stw r9 -24(sp)		|					| size = 256
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, assembleRInstruction(VEX_ADD, 6, 5, 7));
+//	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_STD, 9, 2, -48));
+//	writeInt(platform->vliwBinaries, cycle*16+8, assembleIInstruction(VEX_MOVI,0, 7));
+//	writeInt(platform->vliwBinaries, cycle*16+12, assembleRiInstruction(VEX_ADDi, 8, 0, MAX_INSERTION_PER_SECTION/2));
+//
+//	// bcl: | 				     | r33 = ldw 8(v1)     	|	start = 0				| init = init + size
+//	cycle+=offset;
+//	int bcl = cycle;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDW, 33, 6, 8));
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, assembleRInstruction(VEX_ADD, 4, 4, 8));
+//
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+4, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, 0);
+//
+//	// 		| 					 |						| 					| t1 = cmple r33 init
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+4, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, assembleRInstruction(VEX_CMPLE, 9, 33, 4));
+//
+//	// 		|					 |						| v1 = t1 * size	| init = init - size
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+4, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+8, assembleRInstruction(VEX_MPY, 6, 9, 8));
+//	writeInt(platform->vliwBinaries, cycle*16+12, assembleRInstruction(VEX_SUB, 4, 4, 8));
+//
+//	// 		| t1 = cmpeqi size 1 |						|					| size = size >>1
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, assembleRiInstruction(VEX_CMPNEi, 9, 8, 1));
+//	writeInt(platform->vliwBinaries, cycle*16+4, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12,  assembleRiInstruction(VEX_SRLi, 8, 8, 1));
+//
+//	// 		| 				 | start += v1			| init = init + v1	| v1 = offset + size<<2
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+4, assembleRInstruction(VEX_ADD, 7, 7, 6));
+//	writeInt(platform->vliwBinaries, cycle*16+8, assembleRInstruction(VEX_ADD, 4, 4, 6));
+//	writeInt(platform->vliwBinaries, cycle*16+12, assembleRInstruction(VEX_SH2ADD, 6, 8, 5));
+//
+//	// 		| 				 | 					 	|					|
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+4, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, 0);
+//
+//	// 		| br t1	 | 					| 					| v1 = (start<<2) + v1
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, assembleIInstruction(VEX_BR, (bcl-cycle)<<2, 9));
+//	writeInt(platform->vliwBinaries, cycle*16+4, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, assembleRInstruction(VEX_SH2ADD, 6, 7, 6));
+//
+//	// 		|					 | 					 	|					|
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+4, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, 0);
+//
+//	//		|					 | ldw v1 4(offset)		|					|
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDW, 6, 5, 4));
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, 0);
+//
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+4, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, 0);
+//
+//
+//	//		|					 | ldw r4 -4(sp)		| r8 = init + v1	|
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDD, 4, 2, -8));
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, assembleRInstruction(VEX_ADD, 8, 4, 6));
+//
+//	//		|					 | ldw r5 -8(sp)		|					| r8 ++
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDD, 5, 2, -16));
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, assembleRiInstruction(VEX_ADDi, 8, 8, 1));
+//
+//	//		|					 | ldw r6 -12(sp)		|					|
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDD, 6, 2, -24));
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, 0);
+//
+//	//		| 					| ldw r7 -16(sp)		|					| r8 = r8<<2
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDD, 7, 2, -32));
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, assembleRiInstruction(VEX_SLLi, 8, 8, platform->vliwInitialIssueWidth>4 ? 3 : 2));
+//
+//	//		| gotor r8			 | ldw r9 -24(sp)		|					|
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDD, 9, 2, -48));
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, 0);
+//
+//	//		|					 | ldw r8 -20(sp)		|					|
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, assembleIInstruction(VEX_GOTOR, 0, 8));
+//	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction(VEX_LDD, 8, 2, -40));
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, 0);
+//
+//	cycle+=offset;
+//	writeInt(platform->vliwBinaries, cycle*16+0, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+4, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+8, 0);
+//	writeInt(platform->vliwBinaries, cycle*16+12, 0);
+//
+//	cycle+=offset;
+//	return cycle;
 }
 
 int getInsertionList(int mipsStartAddress, int** result){
