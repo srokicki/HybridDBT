@@ -511,18 +511,23 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 				}
 				else{
-					previousBinaries.set_slc(0, assembleIInstruction(VEX_MOVI, value.slc<19>(12), 33));
-					binaries = assembleRiInstruction(VEX_SLLi, rd, 33, 12);
-					nextInstruction = assembleRiInstruction(VEX_ADDi, rd, rd, value.slc<12>(0));
+					binaries = assembleIInstruction(VEX_MOVI, value.slc<19>(12), rd);
+					nextInstruction = assembleRiInstruction(VEX_SLLi, rd, rd, 12);
+					secondNextInstruction = assembleRiInstruction(VEX_ADDi, rd, rd, value.slc<12>(0));
 
 					//Mark the insertion
 					nextInstruction_rd = rd;
 					nextInstruction_rs1 = rd;
 					nextInstruction_rs2 = 0;
 
+					secondNextInstruction_rd = rd;
+					secondNextInstruction_rs1 = rd;
+					secondNextInstuction_rs2 = 0;
+
 					nextInstruction_stage = 0;
 					enableNextInstruction = 1;
-
+					enableSecondNextInstruction = 1;
+					secondNextInstruction_stage = 0;
 				}
 
 			}
@@ -551,8 +556,8 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				ac_int<19, false> immediateValue = keepHigher ? imm31_12.slc<19>(13): imm31_12.slc<19>(12);
 				ac_int<5, false> shiftValue = keepHigher ? 13 : 12;
 
-				ac_int<32, false> instr1 = assembleIInstruction(VEX_MOVI, immediateValue, 33);
-				ac_int<32, false> instr2 = assembleRiInstruction(VEX_SLLi, rd, 33, shiftValue);
+				ac_int<32, false> instr1 = assembleIInstruction(VEX_MOVI, immediateValue, rd);
+				ac_int<32, false> instr2 = assembleRiInstruction(VEX_SLLi, rd, rd, shiftValue);
 				ac_int<32, false> instr3 = assembleRiInstruction(VEX_ADDi, rd, rd, 0x1000);
 
 
@@ -562,7 +567,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 					//Mark the insertion
 					nextInstruction_rd = rd;
-					nextInstruction_rs1 = 33;
+					nextInstruction_rs1 = rd;
 					nextInstruction_rs2 = 0;
 
 					nextInstruction_stage = 0;
@@ -580,17 +585,25 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 				}
 				else{
-					previousBinaries.set_slc(0, instr1);
-					binaries = instr2;
+					binaries = instr1;
+					nextInstruction = instr2;
+
+					//Mark the insertion
+					nextInstruction_rd = rd;
+					nextInstruction_rs1 = rd;
+					nextInstruction_rs2 = 0;
+
+					nextInstruction_stage = 0;
+					enableNextInstruction = 1;
 
 					if (keepBoth){
-						nextInstruction_rd = rd;
-						nextInstruction_rs1 = rd;
-						nextInstruction_rs2 = 0;
+						secondNextInstruction_rd = rd;
+						secondNextInstruction_rs1 = rd;
+						secondNextInstuction_rs2 = 0;
 
-						nextInstruction = instr3;
-						enableNextInstruction = 1;
-						nextInstruction_stage = 0;
+						secondNextInstruction = instr3;
+						enableSecondNextInstruction = 1;
+						secondNextInstruction_stage = 0;
 					}
 				}
 
@@ -702,7 +715,10 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				}
 				else{
 
-
+					previousLatency = lastLatency;
+					previousWrittenRegister = lastWrittenRegister;
+					lastWrittenRegister = 32;
+					lastLatency = 2;
 
 					setBoundaries1 = 1;
 					boundary1 = ((imm13_signed>>2)+indexInSourceBinaries);
@@ -721,7 +737,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					nextInstruction_rs1 = 32;
 					nextInstruction_rs2 = 0;
 
-					unresolved_jump_src = indexInDestinationBinaries+incrementInDest;
+					unresolved_jump_src = indexInDestinationBinaries+2*incrementInDest;
 					unresolved_jump_type = nextInstruction;
 					setUnresolvedJump = 1;
 
