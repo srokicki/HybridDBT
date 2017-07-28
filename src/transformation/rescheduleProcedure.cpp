@@ -9,6 +9,7 @@
 #include <isa/irISA.h>
 #include <transformation/irScheduler.h>
 #include <lib/endianness.h>
+#include <transformation/reconfigureVLIW.h>
 
 /******************************************************************************************
  ******************************  Reschedule Procedure
@@ -32,8 +33,9 @@
 
 int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int writePlace){
 
-	procedure->issueWidth = 8;
-	char incrementInBinaries = (procedure->issueWidth>4) ? 2 : 1;
+	procedure->configuration = 0x1d;
+	char issueWidth = getIssueWidth(procedure->configuration);
+	char incrementInBinaries = (getIssueWidth(procedure->configuration)>4) ? 2 : 1;
 	int originalWritePlace = writePlace;
 	int originalEntry = procedure->entryBlock->vliwStartAddress;
 	int *oldBlockStarts = (int*) malloc(procedure->nbBlock * sizeof(int));
@@ -75,7 +77,7 @@ int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int write
 
 
 		//We call the register
-		int binaSize = irScheduler(platform, 1,block->nbInstr, writePlace, 29, procedure->issueWidth, platform->vliwInitialConfiguration);
+		int binaSize = irScheduler(platform, 1,block->nbInstr, writePlace, 29, procedure->configuration);
 		if (block->jumpID == -1){
 			fprintf(stderr, "test %d\n", writePlace+binaSize);
 			writeInt(platform->vliwBinaries, 16*(writePlace+binaSize), 0);
@@ -83,7 +85,7 @@ int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int write
 			writeInt(platform->vliwBinaries, 16*(writePlace+binaSize)+8, 0);
 			writeInt(platform->vliwBinaries, 16*(writePlace+binaSize)+12, 0);
 
-			if (procedure->issueWidth){
+			if (issueWidth>4){
 				writeInt(platform->vliwBinaries, 16*(writePlace + binaSize+1), 0);
 				writeInt(platform->vliwBinaries, 16*(writePlace + binaSize+1)+4, 0);
 				writeInt(platform->vliwBinaries, 16*(writePlace + binaSize+1)+8, 0);
@@ -146,13 +148,13 @@ int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int write
 		writeInt(platform->vliwBinaries, 16*originalEntry+4, 0);
 		writeInt(platform->vliwBinaries, 16*originalEntry+8, 0);
 		writeInt(platform->vliwBinaries, 16*originalEntry+12, 0);
-		writeInt(platform->vliwBinaries, 16*originalEntry+16, assembleIInstruction(VEX_RECONFFS, -1, procedure->issueWidth));
+		writeInt(platform->vliwBinaries, 16*originalEntry+16, getReconfigurationInstruction(procedure->configuration));
 		writeInt(platform->vliwBinaries, 16*originalEntry+20, 0);
 		writeInt(platform->vliwBinaries, 16*originalEntry+24, 0);
 		writeInt(platform->vliwBinaries, 16*originalEntry+28, 0);
 
 		if (block->nbSucc == 0){
-			writeInt(platform->vliwBinaries, 16*block->vliwEndAddress-16*incrementInBinaries, assembleIInstruction(VEX_RECONFFS, 0xf, 4));
+			writeInt(platform->vliwBinaries, 16*block->vliwEndAddress-16*incrementInBinaries, getReconfigurationInstruction(platform->vliwInitialConfiguration));
 		}
 
 	}
@@ -167,7 +169,7 @@ int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int write
 			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(64)); fprintf(stderr, " ");
 			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)); fprintf(stderr, " ");
 
-			if (procedure->issueWidth>4){
+			if (issueWidth>4){
 				std::cerr << printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(0)); fprintf(stderr, " ");
 				std::cerr << printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(32)); fprintf(stderr, " ");
 				std::cerr << printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(64)); fprintf(stderr, " ");

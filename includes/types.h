@@ -13,7 +13,7 @@
 #endif
 using namespace ac_intN;
 
-typedef ac_int<MAX_ISSUE_WIDTH * 2, false> uintIW;
+typedef ac_int<MAX_ISSUE_WIDTH * 4, false> uintIW;
 typedef ac_int<128, false> uint128;
 typedef ac_int<64, false> uint64;
 
@@ -91,7 +91,7 @@ typedef char int2;
 typedef char int1;
 
 
-typedef unsigned short uintIW;
+typedef unsigned int uintIW;
 #endif
 
 #endif

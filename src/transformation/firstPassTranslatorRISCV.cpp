@@ -455,7 +455,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				if (funct7 == RISCV_OP_M){
 					//We are in the part dedicated to RV32M extension
 					binaries =  assembleRInstruction(functBindingMULT[funct3], rd, rs1, rs2);
-					stage = 2;
+					stage = 1;
 
 					//nextInstructionNop = 1;
 					//TODO: should certainly insert a nop
@@ -788,7 +788,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				if (funct7 == RISCV_OP_M){
 					//We are in the part dedicated to RV64M extension
 					binaries =  assembleRInstruction(functBindingMULTW[funct3], rd, rs1, rs2);
-					stage = 2;
+					stage = 1;
 
 					nextInstructionNop = 1;
 

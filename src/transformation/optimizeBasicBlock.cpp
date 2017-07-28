@@ -16,6 +16,7 @@
 #include <transformation/irScheduler.h>
 #include <transformation/irGenerator.h>
 #include <types.h>
+#include <transformation/reconfigureVLIW.h>
 
 void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *application, uint32 placeCode){
 
@@ -45,11 +46,27 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	if (isCurrentlyInBlock){
 		if (platform->debugLevel > 1)
 			fprintf(stderr, "Currently inside block, inserting stop...\n");
-		writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0x2f);
 
-		platform->vexSimulator->doStep(1000);
-		writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0);
+		unsigned int instructionInEnd = readInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16);
+		if (instructionInEnd == 0){
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0x2f);
 
+			platform->vexSimulator->doStep(1000);
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0);
+		}
+		else if (readInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4) == 0){
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0x2f);
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4, instructionInEnd);
+
+			platform->vexSimulator->doStep(1000);
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, instructionInEnd);
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4, 0);
+
+		}
+		else{
+			fprintf(stderr, "In optimize basic block, execution is in the middle of a block and programm cannot stop it...\n exiting...\n");
+			exit(-1);
+		}
 
 	}
 #endif
@@ -142,7 +159,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 
 	//Calling scheduler
-	int binaSize = irScheduler(platform, 1,blockSize, placeCode, 29, platform->vliwInitialIssueWidth, platform->vliwInitialConfiguration);
+	int binaSize = irScheduler(platform, 1,blockSize, placeCode, 29, platform->vliwInitialConfiguration);
 	binaSize = binaSize & 0xffff;
 
 	if (binaSize < originalScheduleSize){

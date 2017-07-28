@@ -11,6 +11,8 @@
 #include <dbt/dbtPlateform.h>
 #include <isa/irISA.h>
 #include <transformation/irScheduler.h>
+#include <transformation/reconfigureVLIW.h>
+
 
 	/* Version 1.1 : TODO
 	 * Will add support for multiple code areas. The idea is to start with an allocation table. Considering the address of the
@@ -279,7 +281,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 		writeInt(platform->bytecode, 16*oneBytecodeInstr + 12, startBytecode[4*oneBytecodeInstr + 3]);
 	}
 
-	int binaSize = irScheduler(platform, 1, nbInstr, start, 32, platform->vliwInitialIssueWidth, platform->vliwInitialConfiguration);
+	int binaSize = irScheduler(platform, 1, nbInstr, start, 32, platform->vliwInitialConfiguration);
 	start += binaSize;
 
 	start += increment;
@@ -358,7 +360,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 		writeInt(platform->bytecode, 16*oneBytecodeInstr + 12, loopBytecode[4*oneBytecodeInstr + 3]);
 	}
 
-	binaSize = irScheduler(platform, 1, nbInstr, start, 32, platform->vliwInitialIssueWidth, platform->vliwInitialConfiguration);
+	binaSize = irScheduler(platform, 1, nbInstr, start, 32, platform->vliwInitialConfiguration);
 	start += binaSize ;
 
 	writeInt(platform->vliwBinaries, (start-2*increment)*16, assembleIInstruction(VEX_BR, (-(binaSize-2*increment))*4, test2));
@@ -425,11 +427,11 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 		writeInt(platform->bytecode, 16*oneBytecodeInstr + 12, endBytecode[4*oneBytecodeInstr + 3]);
 	}
 
-	binaSize = irScheduler(platform, 1, nbInstr, start, 32, platform->vliwInitialIssueWidth, platform->vliwInitialConfiguration);
+	binaSize = irScheduler(platform, 1, nbInstr, start, 32, platform->vliwInitialConfiguration);
 	start += binaSize;
 
 	//This is only for debug
-	if (platform->debugLevel > 2)
+	if (platform->debugLevel > 2 || 1)
 		for (int i=0;i<start;i++){
 			fprintf(stderr, "%d ", i);
 			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");

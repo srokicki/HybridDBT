@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include <dbt/dbtPlateform.h>
+#include <transformation/reconfigureVLIW.h>
 #endif
 
 #ifdef __CATAPULT
@@ -238,6 +239,50 @@ void getFirstInstruction(int type){
 		}
 }
 
+void getFirstInstructionComplexType(ac_int<4, false> complexeType){
+
+	ac_int<2, false> subType1, subType2;
+	subType1 = (complexeType[0]) ? 0 : ((complexeType[1]) ? 1 : ((complexeType[3]) ? 3 : 2));
+	subType2 = (complexeType[1] && complexeType[3]) ? 3 : 2;
+
+	if (complexeType == 0){
+		returnGetFirstEnable = 0;
+	}
+	else if (readyNumber[subType1] > 0){
+			returnGetFirstNumber = readyList[first[subType1]].slc<8>(0);
+				returnGetFirstEnable = 1;
+				readyList[first[subType1]][8] = 0;
+				writePlace[writePlaceWrite] = first[subType1];
+				firstPriorities[subType1] = readyListNext[first[subType1]].slc<8>(0);
+				first[subType1] = readyListNext[first[subType1]].slc<8>(8);
+				readyNumber[subType1]--;
+				writePlaceWrite++;
+		}
+	else if (readyNumber[subType2] > 0){
+		returnGetFirstNumber = readyList[first[subType2]].slc<8>(0);
+		returnGetFirstEnable = 1;
+		readyList[first[subType2]][8] = 0;
+		writePlace[writePlaceWrite] = first[subType2];
+		firstPriorities[subType2] = readyListNext[first[subType2]].slc<8>(0);
+		first[subType2] = readyListNext[first[subType2]].slc<8>(8);
+		readyNumber[subType2]--;
+		writePlaceWrite++;
+		}
+	else if (readyNumber[2] > 0){
+		returnGetFirstNumber = readyList[first[2]].slc<8>(0);
+		returnGetFirstEnable = 1;
+		readyList[first[2]][8] = 0;
+		writePlace[writePlaceWrite] = first[2];
+		firstPriorities[2] = readyListNext[first[2]].slc<8>(0);
+		first[2] = readyListNext[first[2]].slc<8>(8);
+		readyNumber[2]--;
+		writePlaceWrite++;
+		}
+	else {
+			returnGetFirstEnable = 0;
+		}
+}
+
 /*
  * FIXME: current implementation only works for 4-issue VLIW: need to increase size of vliw binaries and of the binaries word
  * used to write in it.
@@ -245,7 +290,7 @@ void getFirstInstruction(int type){
  */
 
 //The argument optLevel is here to set the difficulty of the scheduling : 0 mean that there is just a binary priority and 1 mean that we'll consider the entire priority value
-ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBlockSize, ac_int<128, false> bytecode[256], ac_int<128, false> binaries[65536],ac_int<16, false> addressInBinaries,  ac_int<6, false> placeOfRegisters[512], ac_int<6, false> numberFreeRegister, ac_int<6, false> freeRegisters[64],ac_int<4, false> issue_width, ac_int<MAX_ISSUE_WIDTH * 2, false> way_specialisation, ac_int<32, false> placeOfInstr[256]){
+ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBlockSize, ac_int<128, false> bytecode[256], ac_int<128, false> binaries[65536],ac_int<16, false> addressInBinaries,  ac_int<6, false> placeOfRegisters[512], ac_int<6, false> numberFreeRegister, ac_int<6, false> freeRegisters[64],ac_int<4, false> issue_width, ac_int<MAX_ISSUE_WIDTH * 4, false> way_specialisation, ac_int<32, false> placeOfInstr[256]){
 	ac_int<32, false> cycleNumber = 0; //This is the current cycle
 		ac_int<2, false> lineNumber = 0;
 		ac_int<32,false> writeInBinaries =addressInBinaries;
@@ -349,8 +394,8 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 						ac_int<6, false> stage = stages[stageIndex];
 
 					//We read functional unit configuration
-					ac_int<2, false> type = way_specialisation.slc<2>(stage<<1);
-					getFirstInstruction(type);
+					ac_int<4, false> complexType = way_specialisation.slc<4>(stage<<2);
+					getFirstInstructionComplexType(complexType);
 
 				//Depending on the stage type we find the lineNumber
 				//  -> For normal instructions, this number correspond to current line number ('lineNumber')
@@ -358,7 +403,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 
 				ac_int<2, false> nextLineNumber = lineNumber + 1;
 				ac_int<2, false> secondNextLineNumber = lineNumber + 2;
-				ac_int<2, false> lineNumberForStage = (type == 3 | type == 1) ?  secondNextLineNumber : nextLineNumber; //Note : the modulo is useless but here to remind that it is a 1 bit variable
+				ac_int<2, false> lineNumberForStage = (complexType[1] || complexType[3]) ?  secondNextLineNumber : nextLineNumber; //Note : the modulo is useless but here to remind that it is a 1 bit variable
 
 
 			ac_int<32, false> generatedInstruction = 0;
@@ -828,7 +873,7 @@ ac_int<6, false> placeOfRegisters[512],
 ac_int<6, false> numberFreeRegister,
 ac_int<6, false> freeRegisters[64],
 ac_int<8, false> issue_width, // TODO: change to 1 boolean per issue
-ac_int<MAX_ISSUE_WIDTH * 2, false> way_specialisation,
+ac_int<MAX_ISSUE_WIDTH * 4, false> way_specialisation,
 ac_int<32, false> placeOfInstr[256]
 ){
 	//**************************************************************
@@ -1200,11 +1245,12 @@ ac_int<32, false> placeOfInstr[256]
 #endif
 
 int irScheduler(DBTPlateform *platform, uint1 optLevel, uint8 basicBlockSize, uint16 addressInBinaries,
-int6 numberFreeRegister, uint4 issue_width,
-uintIW way_specialisation){
+int6 numberFreeRegister, char configuration){
 
+	char issue_width = getIssueWidth(configuration)>4 ?8 :4;
+	unsigned int way_specialisation = getConfigurationForScheduler(configuration);
 	//TODO clean it
-
+	fprintf(stdout, "Scheduler received configuration %d : spacialization is %x and IW %d\n", configuration, way_specialisation, issue_width);
 #ifndef IR_SUCC
 #ifndef __SCOREBOARD
 	fprintf(stderr, "Error: trying to schedule backward IR: this is not handled yet\nExiting...\n");
