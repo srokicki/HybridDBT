@@ -46,7 +46,7 @@ public:
 	VexSimulator* vexSimulator;
 	RiscvSimulator* riscvSimulator;
 
-	short vliwInitialConfiguration;
+	int vliwInitialConfiguration;
 	char vliwInitialIssueWidth;
 	char debugLevel;
 

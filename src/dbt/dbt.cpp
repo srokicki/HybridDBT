@@ -18,7 +18,6 @@
 #include <transformation/reconfigureVLIW.h>
 #include <transformation/buildTraces.h>
 #include <transformation/rescheduleProcedure.h>
-
 #include <lib/debugFunctions.h>
 
 #include <isa/vexISA.h>
@@ -176,6 +175,7 @@ int main(int argc, char *argv[])
 	 */
 
 	int c;
+	int CONFIGURATION = 2;
 	int VERBOSE = 0;
 	int OPTLEVEL = 1;
 	int HELP = 0;
@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
 	int nbInStreams = 0;
 	int nbOutStreams = 0;
 
-	while ((c = getopt (argc, argv, "vO:ha:o:i:f:")) != -1)
+	while ((c = getopt (argc, argv, "vO:ha:o:i:f:c:")) != -1)
 	switch (c)
 	  {
 	  case 'v':
@@ -202,6 +202,9 @@ int main(int argc, char *argv[])
 	  break;
 	  case 'O':
 		  OPTLEVEL = atoi(optarg);
+		break;
+	  case 'c':
+		  CONFIGURATION = atoi(optarg);
 		break;
 	  case 'i':
 		  if (strcmp(optarg, "stdin") == 0)
@@ -295,8 +298,9 @@ int main(int argc, char *argv[])
 	//Definition of objects used for DBT process
 	DBTPlateform dbtPlateform;
 
-	dbtPlateform.vliwInitialConfiguration = 0x6b1e;
-	dbtPlateform.vliwInitialIssueWidth = 4;
+//	dbtPlateform.vliwInitialConfiguration = 0x24481284;
+	dbtPlateform.vliwInitialConfiguration = CONFIGURATION;
+	dbtPlateform.vliwInitialIssueWidth = getIssueWidth(dbtPlateform.vliwInitialConfiguration);
 
 
 	#ifndef __NIOS
@@ -306,11 +310,7 @@ int main(int argc, char *argv[])
 	dbtPlateform.vexSimulator->outStreams = outStreams;
 	dbtPlateform.vexSimulator->nbOutStreams = nbOutStreams;
 
-	dbtPlateform.vexSimulator->issueWidth = dbtPlateform.vliwInitialIssueWidth;
-
-	for (int oneIssue=0; oneIssue<dbtPlateform.vliwInitialIssueWidth; oneIssue++){
-		dbtPlateform.vexSimulator->unitActivation[oneIssue] = 1;
-	}
+	setVLIWConfiguration(dbtPlateform.vexSimulator, dbtPlateform.vliwInitialConfiguration);
 
 	#endif
 
