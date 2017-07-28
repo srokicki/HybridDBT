@@ -892,7 +892,7 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 
 	ac_int<6, false> secondRegAccess = RB;
 
-
+	char newIssueWidth;
 	ac_int<64, true> regValueA = REG[RA];
 	ac_int<64, true> regValueB = REG[secondRegAccess];
 
@@ -965,35 +965,24 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 				NEXT_PC = REG[63];
 
 				break; // RETURN
-			case VEX_SETCOND:
-				if(regValueA)
-					cond=1;
-				else
-					cond=0;
-			break;
-			case VEX_SETCONDF:
-				if(!regValueA)
-					cond=1;
-				else
-					cond=0;
-			break;
 
 #ifndef __CATAPULT
 			case VEX_RECONFFS:
 				dctoEx->opCode = 0;
 
+				newIssueWidth = IMM19_u.slc<4>(11);
 				//If the issue width change, we may have to correct the next PC value
-				if (this->issueWidth <= 4 && dctoEx->dest >4)
+				if (this->issueWidth <= 4 && newIssueWidth >4)
 					NEXT_PC += 4;
-				else if (this->issueWidth > 4 && dctoEx->dest <= 4)
+				else if (this->issueWidth > 4 && newIssueWidth <= 4)
 					NEXT_PC -= 4;
 
-				if (dctoEx->dest >4)
+				if (newIssueWidth >4)
 					incrementInstrMem = 2;
 				else
 					incrementInstrMem = 1;
 
-				this->issueWidth = dctoEx->dest;
+				this->issueWidth = newIssueWidth;
 				this->unitActivation[0] = IMM19_u[0];
 				this->unitActivation[1] = IMM19_u[1];
 				this->unitActivation[2] = IMM19_u[2];
@@ -1002,6 +991,12 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 				this->unitActivation[5] = IMM19_u[5];
 				this->unitActivation[6] = IMM19_u[6];
 				this->unitActivation[7] = IMM19_u[7];
+
+				this->muxValues[0] = IMM19_u[8];
+				this->muxValues[1] = IMM19_u[9];
+				this->muxValues[2] = IMM19_u[10];
+
+				//TODO: handle reg file
 				//TODO: add some code to check/wait if an execution unit is disabled
 
 				break;
@@ -1040,9 +1035,9 @@ int VexSimulator::doStep(){
 #endif
 
 
-	doWB(memtoWB3);
 	doWB(memtoWB2);
-	doWB(memtoWB5);
+	doWB(memtoWB3);
+	doWB(memtoWB7);
 	doWB(memtoWB8);
 
 
@@ -1054,7 +1049,7 @@ int VexSimulator::doStep(){
 
 
 	doEx(dctoEx4, &extoMem4);
-	doEx(dctoEx1, &extoMem1);
+	doExMult(dctoEx1, &extoMem1);
 	doExMult(dctoEx3, &extoMem3);
 	doEx(dctoEx2, &extoMem2);
 	doEx(dctoEx5, &extoMem5);
@@ -1084,17 +1079,17 @@ int VexSimulator::doStep(){
 	doMemNoMem(extoMem1, &memtoWB1);
 	doMemNoMem(extoMem3, &memtoWB3);
 	doMemNoMem(extoMem4, &memtoWB4);
+	doMemNoMem(extoMem5, &memtoWB5);
 	doMemNoMem(extoMem6, &memtoWB6);
-	doMemNoMem(extoMem7, &memtoWB7);
 	doMemNoMem(extoMem8, &memtoWB8);
 
 #ifdef __CATAPULT
 	doMem(extoMem2, &memtoWB2, memory0, memory1, memory2, memory3, memory4, memory5, memory6, memory7);
-	doMem(extoMem5, &memtoWB5, memory0, memory1, memory2, memory3, memory4, memory5, memory6, memory7);
+	doMem(extoMem7, &memtoWB7, memory0, memory1, memory2, memory3, memory4, memory5, memory6, memory7);
 
 #else
 	doMem(extoMem2, &memtoWB2);
-	doMem(extoMem5, &memtoWB5);
+	doMem(extoMem7, &memtoWB7);
 #endif
 
 	//		doMem(extoMem6, &memtoWB6, DATA0, DATA1, DATA2, DATA3);
@@ -1109,8 +1104,8 @@ int VexSimulator::doStep(){
 
 	doWB(memtoWB1);
 	doWB(memtoWB4);
+	doWB(memtoWB5);
 	doWB(memtoWB6);
-	doWB(memtoWB7);
 
 
 	///////////////////////////////////////////////////////
@@ -1133,14 +1128,14 @@ int VexSimulator::doStep(){
 	doDC(ftoDC3, &dctoEx3);
 	doDC(ftoDC4, &dctoEx4);
 
-#ifdef __CATAPULT
-	doDCMem(ftoDC5, &dctoEx5, memory0, memory1, memory2, memory3, memory4, memory5, memory6, memory7);
-#else
-	doDCMem(ftoDC5, &dctoEx5);
-#endif
+	doDC(ftoDC5, &dctoEx5);
 	doDC(ftoDC6, &dctoEx6);
 
-	doDC(ftoDC7, &dctoEx7);
+#ifdef __CATAPULT
+	doDCMem(ftoDC7, &dctoEx7, memory0, memory1, memory2, memory3, memory4, memory5, memory6, memory7);
+#else
+	doDCMem(ftoDC7, &dctoEx7);
+#endif
 	doDC(ftoDC8, &dctoEx8);
 
 	ac_int<7, false> OP1 = ftoDC1.instruction.slc<7>(0);
@@ -1179,30 +1174,14 @@ int VexSimulator::doStep(){
 	#ifndef __CATAPULT
 
 	ftoDC1.instruction = instructions[0];
-	ftoDC2.instruction = instructions[1];
+	ftoDC2.instruction = this->unitActivation[1] ? instructions[1] : nopInstr;
 	ftoDC3.instruction = this->unitActivation[2] ? instructions[2] : nopInstr;
-	ftoDC4.instruction = !this->unitActivation[3] ? nopInstr :
-						 this->unitActivation[2] ? instructions[3] : instructions[2];
+	ftoDC4.instruction = this->unitActivation[3] ? instructions[3] : nopInstr;
 
-	ftoDC5.instruction = !this->unitActivation[4] ? nopInstr :
-			 this->unitActivation[2] & this->unitActivation[3] ? instructions[4] :
-			 this->unitActivation[2] | this->unitActivation[3] ? instructions[3] :
-			 instructions[2];
-
-
-	ftoDC6.instruction = !this->unitActivation[5] ? nopInstr :
-			 this->unitActivation[3] & this->unitActivation[4] ? instructions[5] :
-			 this->unitActivation[3] | this->unitActivation[4] ? instructions[4] :
-			 instructions[3];
-
-
-	ftoDC7.instruction = !this->unitActivation[6] ? nopInstr :
-			 this->unitActivation[3] &  this->unitActivation[4] & this->unitActivation[5] ? instructions[6] :
-			 (this->unitActivation[3] |  this->unitActivation[4]) &	(this->unitActivation[3] |  this->unitActivation[5]) & (this->unitActivation[5] |  this->unitActivation[4]) ? instructions[5] :
-			 this->unitActivation[3] |  this->unitActivation[4] | this->unitActivation[5] ? instructions[4] :
-			 instructions[3];
-
-	ftoDC8.instruction = !this->unitActivation[7] ? nopInstr : instructions[7];
+	ftoDC5.instruction = this->unitActivation[4] ? instructions[4] : nopInstr;
+	ftoDC6.instruction = this->unitActivation[5] ? (this->muxValues[0] ? instructions[1] : instructions[5]) : nopInstr;
+	ftoDC7.instruction = this->unitActivation[6] ? (this->muxValues[1] ? instructions[2] : instructions[6]) : nopInstr;
+	ftoDC8.instruction = this->unitActivation[7] ? (this->muxValues[2] ? instructions[3] : instructions[7]) : nopInstr;
 
 	//We increment IPc counters
 	if (ftoDC1.instruction != 0)
@@ -1246,22 +1225,22 @@ int VexSimulator::doStep(){
 #ifndef __CATAPULT
 	if (debugLevel >= 1){
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
-		if (this->issueWidth>0)
-			std::cerr << printDecodedInstr(ftoDC1.instruction) << ";";
-		if (this->issueWidth>1)
-			std::cerr << printDecodedInstr(ftoDC2.instruction) << ";";
-		if (this->issueWidth>2)
-			std::cerr << printDecodedInstr(ftoDC3.instruction) << ";";
-		if (this->issueWidth>3)
-			std::cerr << printDecodedInstr(ftoDC4.instruction) << ";";
-		if (this->issueWidth>4)
-			std::cerr << printDecodedInstr(ftoDC5.instruction) << ";";
-		if (this->issueWidth>5)
-			std::cerr << printDecodedInstr(ftoDC6.instruction) << ";";
-		if (this->issueWidth>6)
-			std::cerr << printDecodedInstr(ftoDC7.instruction) << ";";
-		if (this->issueWidth>7)
-			std::cerr << printDecodedInstr(ftoDC8.instruction) << ";";
+		if (this->unitActivation[0])
+			std::cerr << "\033[1;31m" << printDecodedInstr(ftoDC1.instruction) << "\033[0m;";
+		if (this->unitActivation[1])
+			std::cerr << "\033[1;35m" << printDecodedInstr(ftoDC2.instruction) << "\033[0m;";
+		if (this->unitActivation[2])
+			std::cerr << "\033[1;34m" << printDecodedInstr(ftoDC3.instruction) << "\033[0m;";
+		if (this->unitActivation[3])
+			std::cerr << "\033[1;33m" << printDecodedInstr(ftoDC4.instruction) << "\033[0m;";
+		if (this->unitActivation[4])
+			std::cerr << "\033[1;33m" << printDecodedInstr(ftoDC5.instruction) << "\033[0m;";
+		if (this->unitActivation[5])
+			std::cerr << "\033[1;33m" << printDecodedInstr(ftoDC6.instruction) << "\033[0m;";
+		if (this->unitActivation[6])
+			std::cerr << "\033[1;32m" << printDecodedInstr(ftoDC7.instruction) << "\033[0m;";
+		if (this->unitActivation[7])
+			std::cerr << "\033[1;34m" << printDecodedInstr(ftoDC8.instruction) << "\033[0m;";
 
 
 
@@ -1372,13 +1351,6 @@ void VexSimulator::initializeDataMemory(unsigned char* content, unsigned int siz
 	}
 }
 
-void VexSimulator::initializeDataMemory(ac_int<64, false>* content, unsigned int size, unsigned int start){
-	for (int i = 0; i<size; i+=4){
-		stw(i+start, content[i>>2]);
-	}
-}
-
-
 
 
 
@@ -1416,14 +1388,7 @@ float VexSimulator::getAverageIPC(){
 	return result;
 }
 
-void VexSimulator::setConfiguration(char issueWidth, short specialization){
 
-	/*for (int oneUnit = 0; oneUnit < 8; oneUnit++)
-		if (oneUnit<this->issueWidth)
-			dbtPlateform.vexSimulator->unitActivation[oneUnit] = 1;
-		else
-			dbtPlateform.vexSimulator->unitActivation[oneUnit] = 0;*/
-}
 
 #endif
 #endif

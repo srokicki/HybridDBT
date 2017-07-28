@@ -18,6 +18,28 @@
 #include <isa/vexISA.h>
 #include <simulator/genericSimulator.h>
 
+/****************************************************************************
+ * Header file for VEX Simulator
+ *************************************
+ * This file is the header file for VEX simulator.
+ * It has the specificity to be compatible with Catapult HLS tool so that
+ * hardware can be generated from its functional description.
+ *
+ * Vex processor is a dynamically adaptable VLIW core. It can run at different
+ * configurations, ranging from a 2-issue up to a 8-issue VLIW core.
+ * It can also modify the size of its register file between 32 and 64 registers.
+ * This reconfiguration is triggered by the custom instruction RECONFFS.
+ *
+ * The simulator in itself extends our Generic simulator which give access to initialization function
+ * and methods to solve system calls (open/close/read/write file).
+ *
+ *****************************************************************************/
+
+
+/****************************************************************************
+ * Definition of structs for the different pipeline stages
+ ***************************************************************************/
+
 struct FtoDC {
 	ac_int<64, false> instruction; //Instruction to execute
 };
@@ -47,26 +69,37 @@ struct MemtoWB {
 	ac_int<1, false> WBena;		//Is a WB is needed ?
 };
 
+
+/****************************************************************************
+ * Definition of the class for VEXSimulator
+ ***************************************************************************/
+
+
 #ifndef __CATAPULT
 
 class VexSimulator : public GenericSimulator {
 	public:
 
+	//Instruction memory is a 128-bit memory
 	ac_int<128, false> *RI;
 
-	int cycle = 0;
+	//Definition of PC and NEXT_PC
 	ac_int<64, false> PC, NEXT_PC;
-	ac_int<4, false> issueWidth;
-	ac_int<1, false> cond;
-	ac_int<1, false> unitActivation[8];
+
+	//Small memory containing profile information and accessed using dedicated instructions
 	ac_int<8, false> profileResult[8192];
 
-	//Tools for printing average IPC
+	//Definition of the dynamic configuration of the VLIW
+	ac_int<4, false> issueWidth;
+	ac_int<1, false> unitActivation[8];
+	ac_int<1, false> muxValues[3];
+
+
+	//Tools for statistics
 	uint64_t nbInstr, lastNbInstr;
-	uint64_t lastNbCycle;
-	float getAverageIPC();
+	uint64_t cycle, lastNbCycle;
 
-
+	//Object constructor
 	VexSimulator(ac_int<128, false> *instructionMemory): GenericSimulator() {
 		cycle=0;
 		issueWidth = 4;
@@ -83,19 +116,26 @@ class VexSimulator : public GenericSimulator {
 
 	};
 
+	//Objet destructor
 	~VexSimulator(void) {
 		memory.clear();
 	}
 
+
+	//Tools for initialization/execution
 	void initializeDataMemory(unsigned char* content, unsigned int size, unsigned int start);
-	void initializeDataMemory(ac_int<64, false>* content, unsigned int size, unsigned int start);
-
-
 	int initializeRun(int mainPc, int argc, char* argv[]);
 	int doStep();
 	int doStep(int nbStep);
 
+	//Statistics
+	float getAverageIPC();
 
+
+
+	private:
+
+	//Different parts of the execution
 	void doWB(struct MemtoWB memtoWB);
 	void doMemNoMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB);
 	void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB);
@@ -113,7 +153,6 @@ class VexSimulator : public GenericSimulator {
 	struct FtoDC ftoDC1;	struct FtoDC ftoDC2;	struct FtoDC ftoDC3;	struct FtoDC ftoDC4;	struct FtoDC ftoDC5;	struct FtoDC ftoDC6;	struct FtoDC ftoDC7;	struct FtoDC ftoDC8;
 
 
-	void setConfiguration(char issueWidth, short specialization);
 };
 
 
