@@ -6,154 +6,113 @@
  */
 
 
-#include <isa/irISA.h>
-#include <dbt/dbtPlateform.h>
-#include <lib/endianness.h>
-#include <types.h>
+#include <isa/vexISA.h>
+#include <transformation/reconfigureVLIW.h>
 
+unsigned int schedulerConfigurations[16] = {0x00001a00,0x00001428,0x00001a84,0x04281084,0x00001a88,0x04081a84,0,0,
+											0x00001a24,0x44201a04,0x00001a28,0x40201a84,0x00281a84,0x44281a84,0,0};
 
-#include <transformation/irGenerator.h>
-#include <transformation/irScheduler.h>
+char getIssueWidth(char configuration){
+	//This function returns the issue width of each configuration code
 
-uint32 reconfigureVLIW(DBTPlateform *platform, IRProcedure *procedure, uint32 placeCode){
-	uint128 result[65536];
-	int placeInResult = 0;
-	int oldPlaceCode = placeCode;
+	//We extract variables
+	char regCode = (configuration >> 4) & 0x1;
+	char memCode = (configuration >> 3) & 0x1;
+	char multCode = (configuration >> 1) & 0x3;
+	char boostCode = configuration & 0x1;
 
-	fprintf(stderr, "*************************************************************************\n");
-	fprintf(stderr, "Optimizing a procedure : \n");
-	fprintf(stderr, "\n*****************\n");
+	//Sum resources of mem and mult and round to the upper even number (this is the or)
+	char issueWidth = (memCode + multCode + 2);
 
+	if (issueWidth & 0x1)
+		issueWidth++;
 
-	for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++){
+	//If boost code then it is the version with increased issue width
+	if (boostCode)
+		issueWidth += 2;
 
-		IRBlock *block = procedure->blocks[oneBlock];
+	fprintf(stdout, "conf %x, memcode %d, multcode %d, boostCode %d\n", configuration, memCode, multCode, boostCode);
 
-		int basicBlockStart = block->vliwStartAddress;
-		int basicBlockEnd = block->vliwEndAddress;
-		int blockSize;
-
-		if (block->blockState >= IRBLOCK_STATE_SCHEDULED){
-
-
-			memcpy(platform->bytecode, block->instructions, block->nbInstr*sizeof(uint128)); //TODO this is not correct...
-			blockSize = block->nbInstr;
-
-		}
-		else{
-
-
-
-
-			//We store old jump instruction. Its places is known from the basicBlockEnd value
-			uint32 jumpInstruction = readInt(platform->vliwBinaries, (basicBlockEnd-2)*16 + 0);
-
-
-			int globalVariableCounter = 288;
-
-			for (int oneGlobalVariable = 0; oneGlobalVariable < 64; oneGlobalVariable++)
-				platform->globalVariables[oneGlobalVariable] = 256 + oneGlobalVariable;
-
-			blockSize = basicBlockEnd - basicBlockStart - 1;
-			fprintf(stderr, "Building IR for block from %d to %d size (%d: \n", basicBlockStart, basicBlockEnd, blockSize);
-
-
-			blockSize = irGenerator(platform, basicBlockStart, blockSize, globalVariableCounter);
-
-			fprintf(stderr, "Optimizing a block of size %d : \n", blockSize);
-
-
-		}
-		//First try to reduce the false dependencies
-//		int registerUsing[64];
-//		for (int oneReg = 0; oneReg<64; oneReg++){
-//			registerUsing[oneReg] = -1;
-//		}
-//		for (int oneIRInstruction = 0; oneIRInstruction<blockSize; oneIRInstruction++){
-//			uint128 instruction = platform->bytecode[oneIRInstruction];
-//			short registerWritten = instruction.slc<9>(64+14) - 256;
-//			unsigned char opcode = instruction.slc<7>(96+19);
-//			fprintf(stderr, "opcode %x dest %d\n", opcode, registerWritten);
-//
-//			if (opcode != VEX_STB && opcode != VEX_STH && opcode != VEX_STW && registerWritten != 0){
-//				if (registerUsing[registerWritten] != -1){
-//					fprintf(stderr, "changed alloc on %d\n", oneIRInstruction);
-//
-//					platform->bytecode[oneIRInstruction][96+27] = 1;
-//
-//				}
-//				registerUsing[registerWritten] = oneIRInstruction;
-//
-//			}
-//		}
-//
-//		//We restore last write on each register
-//		for (int oneReg = 0; oneReg<64; oneReg++){
-//			if (registerUsing[oneReg] != -1){
-//				fprintf(stderr, "restored alloc on %d\n", registerUsing[oneReg]);
-//				platform->bytecode[registerUsing[oneReg]][96+27] = 0;
-//			}
-//		}
-
-		for (int i=0; i<blockSize; i++)
-			printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
-
-		//Preparation of required memories
-		for (int oneFreeRegister = 36; oneFreeRegister<63; oneFreeRegister++)
-			platform->freeRegisters[oneFreeRegister-36] = oneFreeRegister;
-
-		for (int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
-			platform->placeOfRegisters[256+onePlaceOfRegister] = onePlaceOfRegister;
-
-
-		int binaSize = irScheduler(platform, 1,blockSize, placeCode, 27, 4, 0x1c1e);
-		binaSize = binaSize & 0xffff;
-		//TODO make it cleaner : we need to ensure binaSize is even...
-		if (binaSize & 0x1)
-			binaSize = binaSize+1;
-
-		for (int oneCycle = 0; oneCycle<binaSize + 1; oneCycle++){
-			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + oneCycle].slc<32>(0));
-			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + oneCycle].slc<32>(32));
-			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + oneCycle].slc<32>(64));
-			fprintf(stderr, " - ");
-			std::cerr << printDecodedInstr(platform->vliwBinaries[placeCode + oneCycle].slc<32>(96));
-			fprintf(stderr, " - ");
-			fprintf(stderr, "\n");
-
-		}
-
-		fprintf(stderr, "Block is scheduled in %d cycles\n", binaSize);
-
-		//We increase placeCode
-		placeCode += (binaSize+4);
-	}
-	fprintf(stderr, "Recap:\n");
-
-
-	for (int oneCycle = 0; oneCycle<placeCode-oldPlaceCode; oneCycle++){
-		std::cerr << printDecodedInstr(platform->vliwBinaries[oldPlaceCode + 2*oneCycle].slc<32>(0));
-		fprintf(stderr, " - ");
-		std::cerr << printDecodedInstr(platform->vliwBinaries[oldPlaceCode + 2*oneCycle].slc<32>(32));
-		fprintf(stderr, " - ");
-		std::cerr << printDecodedInstr(platform->vliwBinaries[oldPlaceCode + 2*oneCycle].slc<32>(64));
-		fprintf(stderr, " - ");
-		std::cerr << printDecodedInstr(platform->vliwBinaries[oldPlaceCode + 2*oneCycle].slc<32>(96));
-		fprintf(stderr, " - ");
-		std::cerr << printDecodedInstr(platform->vliwBinaries[oldPlaceCode + 2*oneCycle+1].slc<32>(0));
-		fprintf(stderr, " - ");
-		std::cerr << printDecodedInstr(platform->vliwBinaries[oldPlaceCode + 2*oneCycle+1].slc<32>(32));
-		fprintf(stderr, " - ");
-		std::cerr << printDecodedInstr(platform->vliwBinaries[oldPlaceCode + 2*oneCycle+1].slc<32>(64));
-		fprintf(stderr, " - ");
-		std::cerr << printDecodedInstr(platform->vliwBinaries[oldPlaceCode + 2*oneCycle+1].slc<32>(96));
-		fprintf(stderr, "\n");
-
-	}
-
-	return placeCode;
+	return issueWidth;
 
 }
 
+unsigned int getConfigurationForScheduler(char configuration){
+	return schedulerConfigurations[configuration & 0xf];
+}
+
+unsigned int getReconfigurationInstruction(char configuration){
+	unsigned int schedulerConf = getConfigurationForScheduler(configuration);
+
+	char mux6 = ((schedulerConf>>8) & 0xf) == 4;
+	char mux7 = ((schedulerConf>>4) & 0xf) == 2;
+	char mux8 = ((schedulerConf>>0) & 0xf) == 8;
+
+	char activations[8];
+	activations[0] = ((schedulerConf>>(4*3)) & 0xf) != 0;
+	activations[1] = ((schedulerConf>>(4*2)) & 0xf) != 0 && !mux6;
+	activations[2] = ((schedulerConf>>(4*1)) & 0xf) != 0 && !mux7;
+	activations[3] = ((schedulerConf>>(4*0)) & 0xf) != 0 && !mux8;
+	activations[4] = ((schedulerConf>>(4*7)) & 0xf) != 0;
+	activations[5] = ((schedulerConf>>(4*6)) & 0xf) != 0 || mux6;
+	activations[6] = ((schedulerConf>>(4*5)) & 0xf) != 0 || mux7;
+	activations[7] = ((schedulerConf>>(4*7)) & 0xf) != 0 || mux8;
+
+	char issueWidth = getIssueWidth(configuration);
+	char regFileControlBit = configuration>>4;
+
+	unsigned int immediateValue = activations[0]
+								+ (activations[1]<<1)
+								+ (activations[2]<<2)
+								+ (activations[3]<<3)
+								+ (activations[4]<<4)
+								+ (activations[5]<<5)
+								+ (activations[6]<<6)
+								+ (activations[7]<<7)
+
+								+ (mux6<<8)
+								+ (mux7<<9)
+								+ (mux8<<10)
+
+								+ (issueWidth<<11)
+								+ (regFileControlBit<<15);
+
+
+	return assembleIInstruction(VEX_RECONFFS, immediateValue, 0);
+}
+
+char getNbMem(char configuration){
+	char memCode = (configuration >> 3) & 0x1;
+	return memCode + 1;
+}
+
+char getNbMult(char configuration){
+	char multCode = (configuration >> 1) & 0x3;
+	return multCode + 1;
+}
+
+float getPowerConsumption(char configuration){
+	//TODO
+	return 0;
+}
+
+void setVLIWConfiguration(VexSimulator *simulator, char configuration){
+	unsigned int schedulerConf = getConfigurationForScheduler(configuration);
+
+	simulator->muxValues[0] = ((schedulerConf>>8) & 0xf) == 4;
+	simulator->muxValues[1] = ((schedulerConf>>4) & 0xf) == 2;
+	simulator->muxValues[2] = ((schedulerConf>>0) & 0xf) == 8;
+
+	simulator->unitActivation[0] = ((schedulerConf>>(4*3)) & 0xf) != 0;
+	simulator->unitActivation[1] = ((schedulerConf>>(4*2)) & 0xf) != 0 && !simulator->muxValues[0];
+	simulator->unitActivation[2] = ((schedulerConf>>(4*1)) & 0xf) != 0 && !simulator->muxValues[1];
+	simulator->unitActivation[3] = ((schedulerConf>>(4*0)) & 0xf) != 0 && !simulator->muxValues[2];
+	simulator->unitActivation[4] = ((schedulerConf>>(4*7)) & 0xf) != 0;
+	simulator->unitActivation[5] = ((schedulerConf>>(4*6)) & 0xf) != 0 || simulator->muxValues[0];
+	simulator->unitActivation[6] = ((schedulerConf>>(4*5)) & 0xf) != 0 || simulator->muxValues[1];
+	simulator->unitActivation[7] = ((schedulerConf>>(4*7)) & 0xf) != 0 || simulator->muxValues[2];
+
+	simulator->issueWidth = getIssueWidth(configuration);
+	char regFileControlBit = configuration>>4;
+
+}
