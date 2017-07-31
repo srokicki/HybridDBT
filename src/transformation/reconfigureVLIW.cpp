@@ -31,8 +31,6 @@ char getIssueWidth(char configuration){
 	if (boostCode)
 		issueWidth += 2;
 
-	fprintf(stdout, "conf %x, memcode %d, multcode %d, boostCode %d\n", configuration, memCode, multCode, boostCode);
-
 	return issueWidth;
 
 }
@@ -56,7 +54,7 @@ unsigned int getReconfigurationInstruction(char configuration){
 	activations[4] = ((schedulerConf>>(4*7)) & 0xf) != 0;
 	activations[5] = ((schedulerConf>>(4*6)) & 0xf) != 0 || mux6;
 	activations[6] = ((schedulerConf>>(4*5)) & 0xf) != 0 || mux7;
-	activations[7] = ((schedulerConf>>(4*7)) & 0xf) != 0 || mux8;
+	activations[7] = ((schedulerConf>>(4*4)) & 0xf) != 0 || mux8;
 
 	char issueWidth = getIssueWidth(configuration);
 	char regFileControlBit = configuration>>4;
@@ -78,7 +76,8 @@ unsigned int getReconfigurationInstruction(char configuration){
 								+ (regFileControlBit<<15);
 
 
-	return assembleIInstruction(VEX_RECONFFS, immediateValue, 0);
+
+	return assembleIInstruction(VEX_RECONFFS, immediateValue, configuration);
 }
 
 char getNbMem(char configuration){
@@ -92,8 +91,18 @@ char getNbMult(char configuration){
 }
 
 float getPowerConsumption(char configuration){
-	//TODO
-	return 0;
+
+	char nbMem = getNbMem(configuration);
+	char nbMult = getNbMult(configuration);
+	char issueWidh = getIssueWidth(configuration);
+
+	float coef = 1;
+	if (configuration>16)
+		coef = 1.5;
+	float powerConsumption = coef*issueWidh + (nbMem*2) + (nbMult);
+
+
+	return powerConsumption;
 }
 
 void setVLIWConfiguration(VexSimulator *simulator, char configuration){
@@ -110,9 +119,11 @@ void setVLIWConfiguration(VexSimulator *simulator, char configuration){
 	simulator->unitActivation[4] = ((schedulerConf>>(4*7)) & 0xf) != 0;
 	simulator->unitActivation[5] = ((schedulerConf>>(4*6)) & 0xf) != 0 || simulator->muxValues[0];
 	simulator->unitActivation[6] = ((schedulerConf>>(4*5)) & 0xf) != 0 || simulator->muxValues[1];
-	simulator->unitActivation[7] = ((schedulerConf>>(4*7)) & 0xf) != 0 || simulator->muxValues[2];
+	simulator->unitActivation[7] = ((schedulerConf>>(4*4)) & 0xf) != 0 || simulator->muxValues[2];
 
 	simulator->issueWidth = getIssueWidth(configuration);
 	char regFileControlBit = configuration>>4;
+
+	simulator->currentConfig = configuration;
 
 }
