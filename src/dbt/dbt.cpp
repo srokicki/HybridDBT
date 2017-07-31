@@ -504,9 +504,33 @@ int main(int argc, char *argv[])
 
 	}
 
+	//We clean the last performance counters
+	dbtPlateform.vexSimulator->timeInConfig[dbtPlateform.vexSimulator->currentConfig] += (dbtPlateform.vexSimulator->cycle - dbtPlateform.vexSimulator->lastReconf);
 
-	fprintf(stderr, "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: %ld\n\t Number of instruction executed: %ld\n\t Average IPC: %f\n\t Number of block scheduled: %d\n\t Number of procedure optimized (O2): %d\n",
+	fprintf(stdout, "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: %ld\n\t Number of instruction executed: %ld\n\t Average IPC: %f\n\t Number of block scheduled: %d\n\t Number of procedure optimized (O2): %d\n",
 			dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
+
+	float energyConsumption = 0;
+	float period = 1.4/1000000000;
+	const int lineSize = 100;
+	for (int oneConfig = 0; oneConfig<32; oneConfig++){
+		float timeInConfig = dbtPlateform.vexSimulator->timeInConfig[oneConfig];
+		timeInConfig = timeInConfig / dbtPlateform.vexSimulator->cycle;
+/*		fprintf(stdout, "Conf %x\t[", oneConfig);
+		int convertToPercent = timeInConfig * lineSize;
+		for (int oneChar = 0; oneChar < convertToPercent; oneChar++){
+			fprintf(stdout, "|");
+		}
+		for (int oneChar = convertToPercent; oneChar < lineSize; oneChar++){
+			fprintf(stdout, " ");
+		}
+		fprintf(stdout, "] %f  Power consumption : %f\n", timeInConfig*100, getPowerConsumption(oneConfig));*/
+		energyConsumption += dbtPlateform.vexSimulator->timeInConfig[oneConfig] * period * getPowerConsumption(oneConfig) / 1000;
+	}
+
+	fprintf(stdout, "Energy consumed %f\n", energyConsumption);
+
+
 
 
 	//We print profiling result

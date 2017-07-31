@@ -1250,7 +1250,6 @@ int6 numberFreeRegister, char configuration){
 	char issue_width = getIssueWidth(configuration)>4 ?8 :4;
 	unsigned int way_specialisation = getConfigurationForScheduler(configuration);
 	//TODO clean it
-	fprintf(stdout, "Scheduler received configuration %d : spacialization is %x and IW %d\n", configuration, way_specialisation, issue_width);
 #ifndef IR_SUCC
 #ifndef __SCOREBOARD
 	fprintf(stderr, "Error: trying to schedule backward IR: this is not handled yet\nExiting...\n");

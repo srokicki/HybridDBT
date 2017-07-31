@@ -98,6 +98,9 @@ class VexSimulator : public GenericSimulator {
 	//Tools for statistics
 	uint64_t nbInstr, lastNbInstr;
 	uint64_t cycle, lastNbCycle;
+	uint64_t lastReconf;
+	char currentConfig;
+	uint64_t timeInConfig[32];
 
 	//Object constructor
 	VexSimulator(ac_int<128, false> *instructionMemory): GenericSimulator() {

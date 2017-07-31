@@ -64,7 +64,6 @@ uint32 readInt(uint32* bytecode, int place){
 }
 
 uint8 readChar(uint32* bytecode, int place){
-	fprintf(stderr, "reading char : %x %d -> %u\n", bytecode[place>>2], 8*(3-(place & 0x3)), bytecode[(place>>2)].slc<8>(8*(3-(place & 0x3))));
 	return bytecode[(place>>2)].slc<8>(8*(3-(place & 0x3)));
 }
 

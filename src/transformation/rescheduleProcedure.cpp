@@ -33,7 +33,7 @@
 
 int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int writePlace){
 
-	procedure->configuration = 0x1d;
+	procedure->configuration = platform->vliwInitialConfiguration;
 	char issueWidth = getIssueWidth(procedure->configuration);
 	char incrementInBinaries = (getIssueWidth(procedure->configuration)>4) ? 2 : 1;
 	int originalWritePlace = writePlace;
@@ -79,7 +79,6 @@ int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int write
 		//We call the register
 		int binaSize = irScheduler(platform, 1,block->nbInstr, writePlace, 29, procedure->configuration);
 		if (block->jumpID == -1){
-			fprintf(stderr, "test %d\n", writePlace+binaSize);
 			writeInt(platform->vliwBinaries, 16*(writePlace+binaSize), 0);
 			writeInt(platform->vliwBinaries, 16*(writePlace+binaSize)+4, 0);
 			writeInt(platform->vliwBinaries, 16*(writePlace+binaSize)+8, 0);

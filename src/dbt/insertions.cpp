@@ -431,7 +431,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	start += binaSize;
 
 	//This is only for debug
-	if (platform->debugLevel > 2 || 1)
+	if (platform->debugLevel > 2)
 		for (int i=0;i<start;i++){
 			fprintf(stderr, "%d ", i);
 			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");

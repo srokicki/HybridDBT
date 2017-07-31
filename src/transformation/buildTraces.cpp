@@ -11,7 +11,7 @@
 IRBlock* ifConversion(IRBlock *entryBlock, IRBlock *thenBlock, IRBlock *elseBlock){
 
 }
-
+bool VERBOSE = 0;
 IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 
 	/*****
@@ -63,14 +63,15 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 
 	char isEscape = (entryBlock->nbSucc == 2);
 
-	fprintf(stderr, "***********Merging blocks*******************\n");
-	for (int i=0; i<entryBlock->nbInstr; i++){
-		printBytecodeInstruction(i, readInt(entryBlock->instructions, i*16+0), readInt(entryBlock->instructions, i*16+4), readInt(entryBlock->instructions, i*16+8), readInt(entryBlock->instructions, i*16+12));
-	}
+	if (VERBOSE){
+		fprintf(stderr, "***********Merging blocks*******************\n");
+		for (int i=0; i<entryBlock->nbInstr; i++){
+			printBytecodeInstruction(i, readInt(entryBlock->instructions, i*16+0), readInt(entryBlock->instructions, i*16+4), readInt(entryBlock->instructions, i*16+8), readInt(entryBlock->instructions, i*16+12));
+		}
 
-	fprintf(stderr, "\n\n\n\n\n");
-	for (int i=0; i<secondBlock->nbInstr; i++){
-		printBytecodeInstruction(i, readInt(secondBlock->instructions, i*16+0), readInt(secondBlock->instructions, i*16+4), readInt(secondBlock->instructions, i*16+8), readInt(secondBlock->instructions, i*16+12));
+		for (int i=0; i<secondBlock->nbInstr; i++){
+			printBytecodeInstruction(i, readInt(secondBlock->instructions, i*16+0), readInt(secondBlock->instructions, i*16+4), readInt(secondBlock->instructions, i*16+8), readInt(secondBlock->instructions, i*16+12));
+		}
 	}
 
 	short sizeofEntryBlock = entryBlock->nbInstr;
@@ -159,12 +160,12 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 	result->nbInstr = entryBlock->nbInstr;
 
 	//Prints for debug
-	fprintf(stderr, "\n\n\n\n\n");
-	for (int i=0; i<result->nbInstr; i++){
-		printBytecodeInstruction(i, readInt(result->instructions, i*16+0), readInt(result->instructions, i*16+4), readInt(result->instructions, i*16+8), readInt(result->instructions, i*16+12));
+	if (VERBOSE){
+		fprintf(stderr, "\n\n\n\n\n");
+		for (int i=0; i<result->nbInstr; i++){
+			printBytecodeInstruction(i, readInt(result->instructions, i*16+0), readInt(result->instructions, i*16+4), readInt(result->instructions, i*16+8), readInt(result->instructions, i*16+12));
+		}
 	}
-
-	fprintf(stderr, "Analyzed that jump is %d and condition is %d\n", indexOfJump, indexOfCondition);
 
 	//****************************************************************************************************
 	//We insert instructions from second block
@@ -197,11 +198,9 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 		for (int oneOperand = 0; oneOperand<nbOperand; oneOperand++){
 			if (lastWriteReg[operands[oneOperand]] < sizeofEntryBlock){
 				if (operands[oneOperand] < 256){
-					fprintf(stderr, "Changed operand %d to %d\n", operands[oneOperand], operands[oneOperand] + sizeofEntryBlock);
 					operands[oneOperand] += sizeofEntryBlock;
 				}
 				else if (lastWriteReg[operands[oneOperand]-256] != -1){
-					fprintf(stderr, "Changed global operand %d to %d\n", operands[oneOperand], lastWriteReg[operands[oneOperand]-256]);
 					addDataDep(result->instructions, lastWriteReg[operands[oneOperand]-256], sizeofEntryBlock+oneInstr);
 					operands[oneOperand] = lastWriteReg[operands[oneOperand]-256];
 				}
@@ -247,9 +246,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 		 */
 
 		if (nbLastCondInstr > 0 && (opcode == VEX_SETCOND || opcode == VEX_SETCONDF)){
-			fprintf(stderr, "Found a setcond. There is %d last cond : %d %d %d %d \n", nbLastCondInstr, lastCondInstr[0], lastCondInstr[1], lastCondInstr[2], lastCondInstr[3]);
 			for (int onePreviousCond = 0; onePreviousCond<nbLastCondInstr; onePreviousCond++){
-				fprintf(stderr, "Adding %d \n", lastCondInstr[placeLastCondInstr]);
 				placeLastCondInstr = (placeLastCondInstr-1) & 0x3;
 				addControlDep(result->instructions, lastCondInstr[placeLastCondInstr], sizeofEntryBlock+oneInstr);
 			}
@@ -282,7 +279,6 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 			result->instructions[(result->nbInstr)*4+3] = bytecodeInstr.slc<32>(0);
 
 			addDataDep(result->instructions, indexOfCondition, result->nbInstr);
-			fprintf(stderr, "While adding dep: there are %d pred %d %d %d %d", nbLastCondInstr, lastCondInstr[0], lastCondInstr[1], lastCondInstr[2], lastCondInstr[3]);
 			for (int onePreviousCond = 0; onePreviousCond<nbLastCondInstr; onePreviousCond++)
 				addControlDep(result->instructions, lastCondInstr[onePreviousCond], result->nbInstr);
 
@@ -302,7 +298,6 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 		for (int oneReg = 1; oneReg < 64; oneReg++){
 			if (lastWriteRegForSecond[oneReg]>=0){
 
-				fprintf(stderr, "Adding cond for %d\n", oneReg);
 
 				uint128 bytecodeInstr = assembleRBytecodeInstruction(2, 0, VEX_SETc, indexOfCondition, lastWriteRegForSecond[oneReg], oneReg+256, 0);
 				result->instructions[(result->nbInstr)*4+0] = bytecodeInstr.slc<32>(96);
@@ -330,24 +325,18 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 				lastWriteRegForSecond[oneReg] = result->nbInstr;
 
 				result->nbInstr++;
-				fprintf(stderr, "test %d\n", result->nbInstr);
 			}
 		}
-		fprintf(stderr, "testa %d\n", result->nbInstr);
 
 		//If there is a jump in the second block, we add dependencies with the setcond
 		if (indexOfSecondJump != -1){
 			for (int oneLastSet = 0; oneLastSet < nbLastCondInstr; oneLastSet++){
 				placeLastCondInstr = (placeLastCondInstr - 1) & 0x3;
 
-				fprintf(stderr, "Addign control dep between %d and %d\n", lastCondInstr[placeLastCondInstr], indexOfSecondJump);
-
-
 				addControlDep(result->instructions, lastCondInstr[placeLastCondInstr], indexOfSecondJump);
 			}
 			nbLastCondInstr = 0;
 		}
-		fprintf(stderr, "testb %d\n", result->nbInstr);
 
 		//We correct the jump register if any
 		char jumpopcode = getOpcode(result->instructions, indexOfSecondJump);
@@ -403,11 +392,12 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 	else {
 		result->jumpID = indexOfJump;
 	}
-	fprintf(stderr, "test %d %d\n", result->nbInstr, indexOfJump);
 
-	fprintf(stderr, "\n\n\n\n\n");
-	for (int i=0; i<result->nbInstr; i++){
-		printBytecodeInstruction(i, readInt(result->instructions, i*16+0), readInt(result->instructions, i*16+4), readInt(result->instructions, i*16+8), readInt(result->instructions, i*16+12));
+	if (VERBOSE){
+		fprintf(stderr, "\n\n\n\n\n");
+		for (int i=0; i<result->nbInstr; i++){
+			printBytecodeInstruction(i, readInt(result->instructions, i*16+0), readInt(result->instructions, i*16+4), readInt(result->instructions, i*16+8), readInt(result->instructions, i*16+12));
+		}
 	}
 
 	result->vliwStartAddress = entryBlock->vliwStartAddress;
@@ -462,7 +452,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 
 				if (block->blockState < IRBLOCK_UNROLLED && block->nbSucc == 2 && block->successor1 == block){
 					block->blockState = IRBLOCK_UNROLLED;
-					fprintf(stderr, "UNROLLING !!!\n");
 					IRBlock *oneSuperBlock = superBlock(block, block->successor1);
 
 					block->nbInstr = oneSuperBlock->nbInstr;
@@ -530,6 +519,5 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 	}
 	procedure->blocks = newBlocks;
 	procedure->nbBlock = nbBlock;
-	procedure->print();
 }
 

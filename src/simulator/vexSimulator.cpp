@@ -996,6 +996,9 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 				this->muxValues[1] = IMM19_u[9];
 				this->muxValues[2] = IMM19_u[10];
 
+				timeInConfig[currentConfig] += (cycle - lastReconf);
+				lastReconf = cycle;
+				currentConfig = RA;
 				//TODO: handle reg file
 				//TODO: add some code to check/wait if an execution unit is disabled
 
@@ -1279,6 +1282,12 @@ int VexSimulator::initializeRun(int mainPc, int argc, char* argv[]){
 	//We clear IPC counter
 	this->nbInstr = 0;
 	this->lastNbCycle = 0;
+	this->lastNbInstr = 0;
+	this->cycle = 0;
+	for (int oneConfig = 0; oneConfig<32; oneConfig++){
+		this->timeInConfig[oneConfig] = 0;
+	}
+	this->lastReconf = 0;
 	#endif
 
 	// Initialise program counter
