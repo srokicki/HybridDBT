@@ -69,7 +69,7 @@ uint32 assembleRiInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint13 imm
 
 #ifndef __NIOS
 const char* opcodeNames[128] = {
-		"NOP", "MPYLL", "MPYLLU", "MPYLH", "MPYLHU", "MPYHH", "MPYHHU", "MPYL", "DIVW", "MPYW", "MPYHU", "MPYHS", "MPYLO", "MPYHI", "DIVLO", "DIVHI",
+		"NOP", "-", "-", "MPYW", "DIVW", "DIVUW", "REMW", "REMUW", "MPYH", "MPYHSU", "MPYHU", "MPY", "DIV", "DIVU", "REM", "REMU",
 		"LDD", "LDW", "LDH", "LDHU", "LDB", "LDBU","LDWU", "?", "STB", "STH", "STW", "STD", "?", "?", "?", "?",
 		"?", "GOTO", "IGOTO", "CALL", "ICALL", "BR", "BRF", "RETURN", "MOVI", "AUIPC", "RECONFFS", "RECONFEXECUNIT", "SETCOND", "SETCONDF", "?", "STOP",
 		"SETc", "SETFc", "?", "?", "?", "?", "?", "?", "SLCT", "?", "?", "?", "?", "?", "?", "?",
