@@ -173,13 +173,6 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 
 			}
 
-
-
-			//If the block is big enough, we profile it
-			if (newBlock->vliwEndAddress - newBlock->vliwStartAddress > 7)
-				profiler->profileBlock(application->blocksInSections[section][application->numbersBlockInSections[section] - 1]);
-
-
 			/******************************************************************************************/
 			// We update interLoop values
 			previousBlockStart = indexInVLIWBinaries;
@@ -296,6 +289,40 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 		}
 		numberBlockToStudy += nbSucc;
 
+		//We search for blowk which may jump to this one
+		for (int oneSection = 0; oneSection<application->numberOfSections; oneSection++){
+			for (int oneBlock = 0; oneBlock < application->numbersBlockInSections[oneSection]; oneBlock++){
+				//We determine the kind of jump we face
+
+				unsigned int jumpInstruction = readInt(platform->vliwBinaries, (application->blocksInSections[oneSection][oneBlock]->vliwEndAddress-2*incrementInBinaries)*16);
+
+				bool isConditionalBranch = ((jumpInstruction & 0x7f) == VEX_BR) || ((jumpInstruction & 0x7f) == VEX_BRF);
+				bool isJump = (jumpInstruction & 0x7f) == VEX_GOTO;
+				bool isCall = (jumpInstruction & 0x7f) == VEX_CALL;
+				bool isReturn = (jumpInstruction & 0x7f) == VEX_RETURN;
+				bool isNothing = ((jumpInstruction & 0x7f) != VEX_CALL) && ((jumpInstruction & 0x7f) != VEX_CALLR) && ((jumpInstruction & 0x7f) != VEX_GOTOR) && ((jumpInstruction & 0x7f) != VEX_STOP);
+
+
+				//We determine the name of successor(s)
+				int successor1, successor2, nbSucc;
+				if (isConditionalBranch && (application->blocksInSections[oneSection][oneBlock]->sourceDestination == currentBlock->sourceStartAddress || application->blocksInSections[oneSection][oneBlock]->sourceEndAddress == currentBlock->sourceStartAddress)){
+					blocksToStudy[numberBlockToStudy] = application->blocksInSections[oneSection][oneBlock];
+					numberBlockToStudy++;
+				}
+				else if (isJump){
+					if (application->blocksInSections[oneSection][oneBlock]->sourceDestination == currentBlock->sourceStartAddress){
+						blocksToStudy[numberBlockToStudy] = application->blocksInSections[oneSection][oneBlock];
+						numberBlockToStudy++;
+					}
+				}
+				else if (isCall || isNothing){
+					if (application->blocksInSections[oneSection][oneBlock]->sourceEndAddress == currentBlock->sourceStartAddress){
+						blocksToStudy[numberBlockToStudy] = application->blocksInSections[oneSection][oneBlock];
+						numberBlockToStudy++;
+					}
+				}
+			}
+		}
 
 		//We actualize if needed the entryBlock TODO:check this
 		if (entryBlock->vliwStartAddress > currentBlock->vliwStartAddress){
@@ -309,6 +336,7 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 	//We instanciate the procedure
 	IRProcedure *procedure = new IRProcedure(entryBlock, numberBlockInProcedure);
 	procedure->blocks = (IRBlock**) malloc(numberBlockInProcedure * sizeof(IRBlock*));
+	procedure->configuration = platform->vliwInitialConfiguration;
 
 	//TODO code a better sort function
 	int previousIndex = 0;
@@ -365,8 +393,8 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 			}
 
 			block->nbInstr = blockSize;
-			block->blockState = IRBLOCK_PROC;
 		}
+		block->blockState = IRBLOCK_PROC;
 	}
 
 	if (platform->debugLevel > 1)
