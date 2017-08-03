@@ -11,6 +11,7 @@
 
 unsigned int schedulerConfigurations[16] = {0x00001a00,0x00001428,0x00001a84,0x04281084,0x00001a88,0x04081a84,0,0,
 											0x00001a24,0x44201a04,0x00001a28,0x40201a84,0x00281a84,0x44281a84,0,0};
+char validConfigurations[12] = {0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12 ,13};
 
 char getIssueWidth(char configuration){
 	//This function returns the issue width of each configuration code
@@ -36,7 +37,7 @@ char getIssueWidth(char configuration){
 }
 
 unsigned int getConfigurationForScheduler(char configuration){
-	return schedulerConfigurations[configuration & 0xf];
+	return schedulerConfigurations[configuration % 16];
 }
 
 unsigned int getReconfigurationInstruction(char configuration){
@@ -75,8 +76,6 @@ unsigned int getReconfigurationInstruction(char configuration){
 								+ (issueWidth<<11)
 								+ (regFileControlBit<<15);
 
-
-
 	return assembleIInstruction(VEX_RECONFFS, immediateValue, configuration);
 }
 
@@ -97,7 +96,7 @@ float getPowerConsumption(char configuration){
 	char issueWidh = getIssueWidth(configuration);
 
 	float coef = 1;
-	if (configuration>16)
+	if (configuration>=16)
 		coef = 1.5;
 	float powerConsumption = coef*issueWidh + (nbMem*2) + (nbMult);
 
@@ -126,4 +125,36 @@ void setVLIWConfiguration(VexSimulator *simulator, char configuration){
 
 	simulator->currentConfig = configuration;
 
+}
+
+void changeConfiguration(IRProcedure *procedure){
+
+
+	for (int oneValidConfiguration = 0; oneValidConfiguration < 12; oneValidConfiguration++){
+		char oneConfiguration = validConfigurations[oneValidConfiguration];
+		if (procedure->configurationScores[oneConfiguration] == 0){
+			fprintf(stderr, "Changing configuration from %d to %d\n", procedure->configuration, oneConfiguration);
+			procedure->previousConfiguration = procedure->configuration;
+			procedure->configuration = oneConfiguration;
+			return;
+		}
+	}
+
+	procedure->state = 1;
+
+}
+
+int computeScore(IRProcedure *procedure){
+	float result = 0;
+	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
+		IRBlock *block = procedure->blocks[oneBlock];
+		result += block->vliwEndAddress - block->vliwStartAddress;
+	}
+	if (getIssueWidth(procedure->configuration) > 4)
+		result = result/2;
+
+	result = 100000 / (result * getPowerConsumption(procedure->configuration));
+
+	fprintf(stderr, "Configuration with %x is %f\n", procedure->configuration, result);
+	return (int) result;
 }

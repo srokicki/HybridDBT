@@ -48,6 +48,9 @@ char getNbMem(char configuration);
 char getNbMult(char configuration);
 float getPowerConsumption(char configuration);
 void setVLIWConfiguration(VexSimulator *simulator, char configuration);
+void changeConfiguration(IRProcedure *procedure);
+int computeScore(IRProcedure *procedure);
+
 
 
 #endif /* INCLUDES_TRANSFORMATION_RECONFIGUREVLIW_H_ */
