@@ -1267,7 +1267,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 		int isCallBlock = 0;
 		ac_int<1, false> haveJump = 0;
 		ac_int<8, false> jumpID = 0;
-		ac_int<8, false> indexInSourceBinaries = 0;
+		ac_int<16, false> indexInSourceBinaries = 0;
 		ac_int<128, false> previousVLIWSyllabus = 0;
 		ac_int<2, false> instructionTranslatedFromPreviousSyllabus = 0;
 
@@ -1306,7 +1306,6 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			 * c-1/instr3 is taken if takeCm1_instr3 && !takeCm1_instr2 && !takeCm2_instr1
 			 *
 			 */
-
 			ac_int<128, false> oneVLIWSyllabus = srcBinaries[indexInSourceBinaries+addressInBinaries];
 			ac_int<32, false> oneInstruction = 0;
 
@@ -1336,7 +1335,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 					3;
 
 			previousVLIWSyllabus = (takeCm1_instr1 || takeCm1_instr2 || takeCm1_instr3) ? previousVLIWSyllabus : oneVLIWSyllabus;
-			ac_int<8, false> tempIndex = indexInSourceBinaries + 1;
+			ac_int<16, false> tempIndex = indexInSourceBinaries + 1;
 			indexInSourceBinaries = (takeCm1_instr1 || takeCm1_instr2 || takeCm1_instr3) ? indexInSourceBinaries : tempIndex;
 
 
