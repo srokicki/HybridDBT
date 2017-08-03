@@ -462,16 +462,38 @@ int main(int argc, char *argv[])
 		if (VERBOSE)
 			fprintf(stderr, "IPC;%f\n", dbtPlateform.vexSimulator->getAverageIPC());
 
+		if (OPTLEVEL >= 3){
+			for (int oneProcedure = 0; oneProcedure < application.numberProcedures; oneProcedure++){
+				IRProcedure *procedure = application.procedures[oneProcedure];
+				if (procedure->state == 0){
+					changeConfiguration(procedure);
+					IRProcedure *scheduledProcedure = rescheduleProcedure_schedule(&dbtPlateform, procedure, placeCode);
+					int score = computeScore(scheduledProcedure);
+					procedure->configurationScores[procedure->configuration] = score;
+					if (score > procedure->configurationScores[procedure->previousConfiguration]){
+						fprintf(stderr, "Score %d is greater than %d, changing to %d\n", score, procedure->configurationScores[procedure->previousConfiguration], procedure->configuration);
+						placeCode = rescheduleProcedure_commit(&dbtPlateform, procedure, placeCode, scheduledProcedure);
+					}
+					else{
+						procedure->configuration = procedure->previousConfiguration;
+					}
+
+					break;
+				}
+			}
+		}
+
 		for (int oneBlock = 0; oneBlock<profiler.getNumberProfiledBlocks(); oneBlock++){
 			int profileResult = profiler.getProfilingInformation(oneBlock);
 			IRBlock* block = profiler.getBlock(oneBlock);
 
 			if (OPTLEVEL >= 2 && profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
 
-				fprintf(stderr, "[%d] Block from %d to %d is eligible advanced control flow building\n",dbtPlateform.vexSimulator->cycle, block->vliwStartAddress, block->vliwEndAddress);
+				fprintf(stderr, "Analyzis of %x to %x (%d to %d) for procedure building   %d \n", block->sourceStartAddress, block->sourceEndAddress, block->vliwStartAddress, block->vliwEndAddress, block->blockState);
 				buildAdvancedControlFlow(&dbtPlateform, block, &application);
 				block->blockState = IRBLOCK_PROC;
-				buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
+//				buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
+				application.procedures[application.numberProcedures-1]->print();
 				if (application.procedures[application.numberProcedures-1]->nbBlock<40 && application.procedures[application.numberProcedures-1]->nbBlock>3){
 					placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
 					procedureOptCounter++;
@@ -480,6 +502,8 @@ int main(int argc, char *argv[])
 					fprintf(stderr, "Dropping...\n");
 				}
 			}
+
+
 		}
 
 
@@ -489,7 +513,7 @@ int main(int argc, char *argv[])
 			for (int oneBlock = 0; oneBlock<application.numbersBlockInSections[oneSection]; oneBlock++){
 				IRBlock* block = application.blocksInSections[oneSection][oneBlock];
 
-				if (OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress > 8  && block->blockState < IRBLOCK_STATE_SCHEDULED){
+				if (blockScheduleCounter < 0 && OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress > 8  && block->blockState < IRBLOCK_STATE_SCHEDULED){
 					optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
 					blockScheduleCounter++;
 
@@ -507,8 +531,11 @@ int main(int argc, char *argv[])
 	//We clean the last performance counters
 	dbtPlateform.vexSimulator->timeInConfig[dbtPlateform.vexSimulator->currentConfig] += (dbtPlateform.vexSimulator->cycle - dbtPlateform.vexSimulator->lastReconf);
 
-	fprintf(stdout, "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: %ld\n\t Number of instruction executed: %ld\n\t Average IPC: %f\n\t Number of block scheduled: %d\n\t Number of procedure optimized (O2): %d\n",
+//	fprintf(stdout, "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: %ld\n\t Number of instruction executed: %ld\n\t Average IPC: %f\n\t Number of block scheduled: %d\n\t Number of procedure optimized (O2): %d\n",
+//			dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
+	fprintf(stdout, "%ld;%ld;%f;%d;%d;",
 			dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
+
 
 	float energyConsumption = 0;
 	float period = 1.4/1000000000;
@@ -528,7 +555,10 @@ int main(int argc, char *argv[])
 		energyConsumption += dbtPlateform.vexSimulator->timeInConfig[oneConfig] * period * getPowerConsumption(oneConfig) / 1000;
 	}
 
-	fprintf(stdout, "Energy consumed %f\n", energyConsumption);
+//	fprintf(stdout, "\tConfiguration used: %d\n", CONFIGURATION);
+//	fprintf(stdout, "\tEnergy consumed: %f\n", energyConsumption);
+	fprintf(stdout, "%d;", CONFIGURATION);
+	fprintf(stdout, "%f\n", energyConsumption);
 
 
 
