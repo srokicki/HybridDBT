@@ -159,6 +159,11 @@ void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instr
 IRProcedure::IRProcedure(IRBlock *entryBlock, int nbBlock){
 	this->entryBlock = entryBlock;
 	this->nbBlock = nbBlock;
+
+	for (int oneConfiguration = 0; oneConfiguration < 32; oneConfiguration++){
+		configurationScores[oneConfiguration] = 0;
+	}
+	this->state = 0;
 }
 
 
@@ -170,14 +175,14 @@ void IRProcedure::print(){
 
 	fprintf(stderr, "digraph{\n");
 	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
-		fprintf(stderr, "node_%d[label=\"node %d - size %d\"];\n",this->blocks[oneBlockInProcedure]->vliwStartAddress,  this->blocks[oneBlockInProcedure]->vliwStartAddress, this->blocks[oneBlockInProcedure]->vliwEndAddress - this->blocks[oneBlockInProcedure]->vliwStartAddress);
+		fprintf(stderr, "node_%d[label=\"node %x - size %d\"];\n",this->blocks[oneBlockInProcedure]->sourceStartAddress,  this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->vliwEndAddress - this->blocks[oneBlockInProcedure]->vliwStartAddress);
 	}
 	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
 
 		if (this->blocks[oneBlockInProcedure]->nbSucc >= 1)
-			fprintf(stderr, "node_%d -> node_%d;\n", this->blocks[oneBlockInProcedure]->vliwStartAddress, this->blocks[oneBlockInProcedure]->successor1->vliwStartAddress);
+			fprintf(stderr, "node_%d -> node_%d;\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->successor1->sourceStartAddress);
 		if (this->blocks[oneBlockInProcedure]->nbSucc >= 2)
-			fprintf(stderr, "node_%d -> node_%d;\n", this->blocks[oneBlockInProcedure]->vliwStartAddress, this->blocks[oneBlockInProcedure]->successor2->vliwStartAddress);
+			fprintf(stderr, "node_%d -> node_%d;\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->successor2->sourceStartAddress);
 
 	}
 	fprintf(stderr, "}\n");
@@ -210,6 +215,7 @@ IRApplication::IRApplication(int numberSections){
 	}
 
 	this->numberAllocatedProcedures = 0;
+
 }
 
 void IRApplication::addBlock(IRBlock* block, int sectionNumber){

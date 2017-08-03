@@ -46,7 +46,9 @@ public:
 	IRBlock *entryBlock;			//pointer to the entry block of the procedure
 	IRBlock **blocks;				//A pointer to an array of blocks
 	int nbBlock;
-	char configuration;
+	char configuration, previousConfiguration;
+	int configurationScores[32];
+	char state;
 
 	unsigned int procedureState;	//A value to store its state (optimized/translated or other things like that)
 
