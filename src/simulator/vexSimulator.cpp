@@ -588,7 +588,7 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 	ac_int<64, true> remu_result = 0;
 #else
 	ac_int<64, true> div_result = !dctoEx.datab ? const0 : dctoEx.dataa / dctoEx.datab;
-	ac_int<64, true> rem_result = !dctoEx.datab ? dctoEx.datab : dctoEx.dataa % dctoEx.datab;
+	ac_int<64, true> rem_result = !dctoEx.datab ? dctoEx.datab : dctoEx.datab <0 ? dctoEx.dataa % -dctoEx.datab :dctoEx.dataa % dctoEx.datab;
 	ac_int<64, true> divu_result = !unsigned_datab ? constu0 : unsigned_dataa / unsigned_datab;
 	ac_int<64, true> remu_result = !unsigned_datab ? unsigned_datab : unsigned_dataa % unsigned_datab;
 #endif
@@ -641,10 +641,24 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 	ac_int<32, true> div_result_32 = 0; //Currently catapult version do not do division
 	ac_int<32, true> remu_result_32 = 0;
 #else
-	ac_int<32, true> div_result_32 = !datab32 ? const0_32 : dataa32 / datab32;
-	ac_int<32, true> rem_result_32 = !datab32 ? datab32 : dataa32 % datab32;
-	ac_int<32, true> divu_result_32 = !unsigned_datab32 ? constu0_32 : unsigned_dataa32 / unsigned_datab32;
-	ac_int<32, true> remu_result_32 = !unsigned_datab32 ? unsigned_datab32 : unsigned_dataa32 % unsigned_datab32;
+	ac_int<1, false> overflow = dataa32 == 0x80000000 & datab32 == -1;
+	ac_int<1, false> divideByZero = datab32 == 0;
+	ac_int<33, true> minValue = 0x80000000;
+	ac_int<32, false> minValueU = 0x80000000;
+	ac_int<33, true> minusOne = -1;
+	ac_int<32, true> zero = 0;
+	ac_int<32, true> div_result_32 = 0;
+	ac_int<32, true> rem_result_32 = 0;
+	ac_int<32, true> divu_result_32 = 0;
+	ac_int<32, true> remu_result_32 = 0;
+
+	if (selectDiv32 || selectDivu32 || selectRem32 || selectRemu32){
+
+		div_result_32 = divideByZero ? minusOne : overflow ? minValue : dataa32 / datab32;
+		rem_result_32 = divideByZero ? (dataa32 % 1) : overflow ? zero : dataa32 % datab32;
+		divu_result_32 = divideByZero ? minValueU : overflow ? minValueU : unsigned_dataa32 / unsigned_datab32;
+		remu_result_32 = divideByZero ? unsigned_dataa32 : overflow ? minValueU: unsigned_dataa32 % unsigned_datab32;
+	}
 #endif
 
 	ac_int<64, true> result32 = selectAdd32 ? add_result_32 :
@@ -689,6 +703,8 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 	extoMem->datac = dctoEx.datac;
 	extoMem->dest = dctoEx.dest;
 	extoMem->opCode = dctoEx.opCode;
+	extoMem->memValue = dctoEx.memValue;
+
 }
 
 #ifdef __CATAPULT
@@ -1050,11 +1066,10 @@ int VexSimulator::doStep(){
 	//													 //
 	///////////////////////////////////////////////////////
 
-
-	doEx(dctoEx4, &extoMem4);
-	doExMult(dctoEx1, &extoMem1);
+	doEx(dctoEx1, &extoMem1);
+	doExMult(dctoEx2, &extoMem2);
 	doExMult(dctoEx3, &extoMem3);
-	doEx(dctoEx2, &extoMem2);
+	doEx(dctoEx4, &extoMem4);
 	doEx(dctoEx5, &extoMem5);
 	doEx(dctoEx6, &extoMem6);
 	doEx(dctoEx7, &extoMem7);
@@ -1204,8 +1219,6 @@ int VexSimulator::doStep(){
 	if (ftoDC8.instruction != 0)
 		nbInstr++;
 
-
-
 	#else
 	ftoDC1.instruction = instructions[0];
 	ftoDC2.instruction = instructions[1];
@@ -1226,6 +1239,7 @@ int VexSimulator::doStep(){
 
 
 #ifndef __CATAPULT
+
 	if (debugLevel >= 1){
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
 		if (this->unitActivation[0])
