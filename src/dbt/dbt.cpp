@@ -513,7 +513,7 @@ int main(int argc, char *argv[])
 			for (int oneBlock = 0; oneBlock<application.numbersBlockInSections[oneSection]; oneBlock++){
 				IRBlock* block = application.blocksInSections[oneSection][oneBlock];
 
-				if (blockScheduleCounter < 0 && OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress > 8  && block->blockState < IRBLOCK_STATE_SCHEDULED){
+				if (OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress > 8  && block->blockState < IRBLOCK_STATE_SCHEDULED){
 					optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
 					blockScheduleCounter++;
 
