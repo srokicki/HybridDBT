@@ -531,10 +531,10 @@ int main(int argc, char *argv[])
 	//We clean the last performance counters
 	dbtPlateform.vexSimulator->timeInConfig[dbtPlateform.vexSimulator->currentConfig] += (dbtPlateform.vexSimulator->cycle - dbtPlateform.vexSimulator->lastReconf);
 
-//	fprintf(stdout, "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: %ld\n\t Number of instruction executed: %ld\n\t Average IPC: %f\n\t Number of block scheduled: %d\n\t Number of procedure optimized (O2): %d\n",
-//			dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
-	fprintf(stdout, "%ld;%ld;%f;%d;%d;",
+	fprintf(stdout, "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: %ld\n\t Number of instruction executed: %ld\n\t Average IPC: %f\n\t Number of block scheduled: %d\n\t Number of procedure optimized (O2): %d\n",
 			dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
+//	fprintf(stdout, "%ld;%ld;%f;%d;%d;",
+//			dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
 
 
 	float energyConsumption = 0;
@@ -555,10 +555,10 @@ int main(int argc, char *argv[])
 		energyConsumption += dbtPlateform.vexSimulator->timeInConfig[oneConfig] * period * getPowerConsumption(oneConfig) / 1000;
 	}
 
-//	fprintf(stdout, "\tConfiguration used: %d\n", CONFIGURATION);
-//	fprintf(stdout, "\tEnergy consumed: %f\n", energyConsumption);
-	fprintf(stdout, "%d;", CONFIGURATION);
-	fprintf(stdout, "%f\n", energyConsumption);
+	fprintf(stdout, "\tConfiguration used: %d\n", CONFIGURATION);
+	fprintf(stdout, "\tEnergy consumed: %f\n", energyConsumption);
+//	fprintf(stdout, "%d;", CONFIGURATION);
+//	fprintf(stdout, "%f\n", energyConsumption);
 
 
 
