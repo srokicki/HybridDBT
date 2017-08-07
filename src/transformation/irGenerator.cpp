@@ -1211,7 +1211,7 @@ inline unsigned int writeDependency_ac(ac_int<128, false> bytecode[1024], ac_int
 }
 
 
-unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries, uint32 blockSize,
+unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries, uint32 blockSize,
 		uint128 bytecode[1024], int32 globalVariables[64],
 		uint32 globalVariableCounter){
 
@@ -1812,7 +1812,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 				oneBytecode = assembleRiBytecodeInstruction(1, alloc, opcode, pred1, imm13, destination, 0);
 			}
 			else if (isMultType){
-				oneBytecode = assembleRBytecodeInstruction(3, alloc, opcode, pred1, pred2, destination, 0);
+				oneBytecode = assembleRBytecodeInstruction(3, alloc, opcode, pred2, pred1, destination, 0);
 			}
 			else if (isArith1 || isArithImm){
 				oneBytecode = assembleRiBytecodeInstruction(2, alloc, opcode, pred1, imm13, destination, 0);
@@ -1825,7 +1825,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 			}
 			else{
 				#ifndef __CATAPULT
-				printf("While generating IR, this case should never happen...\n");
+				printf("While generating IR, this case should never happen... %x\n", oneInstruction);
 				#endif
 			}
 
@@ -2001,7 +2001,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint16 addressInBinaries,
 #ifndef __CATAPULT
 
 unsigned int irGenerator(DBTPlateform *platform,
-		uint16 addressInBinaries,
+		uint32 addressInBinaries,
 		uint32 blockSize,
 		uint32 globalVariableCounter){
 

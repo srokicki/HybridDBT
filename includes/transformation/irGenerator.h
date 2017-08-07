@@ -11,7 +11,7 @@
 #include <types.h>
 
 unsigned int irGenerator(DBTPlateform *platform,
-		uint16 addressInBinaries,
+		uint32 addressInBinaries,
 		uint32 blockSize,
 		uint32 globalVariableCounter);
 
