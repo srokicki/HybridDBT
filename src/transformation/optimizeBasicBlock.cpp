@@ -186,7 +186,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		 *****************************************************************/
 
 		char isRelativeJump = (jumpInstruction & 0x7f) == VEX_BR || (jumpInstruction & 0x7f) == VEX_BRF;
-		char isNoJump = (jumpInstruction & 0x70) != (VEX_CALL>>4);
+		char isNoJump = (jumpInstruction & 0x70) != (VEX_CALL&0x70);
 		char isPassthroughJump = isRelativeJump || (jumpInstruction & 0x7f) == VEX_CALL || (jumpInstruction & 0x7f) == VEX_CALLR ;
 
 		//Ofset correction
@@ -213,7 +213,8 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 //		}
 
 		//Insertion of jump instruction
-		writeInt(platform->vliwBinaries, (basicBlockStart+binaSize-2*incrementInBinaries)*16 + 0, jumpInstruction);
+		if (!isNoJump)
+			writeInt(platform->vliwBinaries, (basicBlockStart+binaSize-2*incrementInBinaries)*16 + 0, jumpInstruction);
 
 		//Insertion of the new block with the goto instruction
 		if (isPassthroughJump && basicBlockStart+binaSize+1 < basicBlockEnd){
