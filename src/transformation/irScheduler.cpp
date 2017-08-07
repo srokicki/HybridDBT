@@ -290,7 +290,7 @@ void getFirstInstructionComplexType(ac_int<4, false> complexeType){
  */
 
 //The argument optLevel is here to set the difficulty of the scheduling : 0 mean that there is just a binary priority and 1 mean that we'll consider the entire priority value
-ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBlockSize, ac_int<128, false> bytecode[256], ac_int<128, false> binaries[65536],ac_int<16, false> addressInBinaries,  ac_int<6, false> placeOfRegisters[512], ac_int<6, false> numberFreeRegister, ac_int<6, false> freeRegisters[64],ac_int<4, false> issue_width, ac_int<MAX_ISSUE_WIDTH * 4, false> way_specialisation, ac_int<32, false> placeOfInstr[256]){
+ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBlockSize, ac_int<128, false> bytecode[256], ac_int<128, false> binaries[65536],ac_int<32, false> addressInBinaries,  ac_int<6, false> placeOfRegisters[512], ac_int<6, false> numberFreeRegister, ac_int<6, false> freeRegisters[64],ac_int<4, false> issue_width, ac_int<MAX_ISSUE_WIDTH * 4, false> way_specialisation, ac_int<32, false> placeOfInstr[256]){
 	ac_int<32, false> cycleNumber = 0; //This is the current cycle
 		ac_int<2, false> lineNumber = 0;
 		ac_int<32,false> writeInBinaries =addressInBinaries;
@@ -868,7 +868,7 @@ ac_int<1, false> optLevel,
 ac_int<8, false> basicBlockSize,
 ac_int<128, false> bytecode[256],
 ac_int<128, false> binaries[1024],
-ac_int<16, false> addressInBinaries,
+ac_int<32, false> addressInBinaries,
 ac_int<6, false> placeOfRegisters[512],
 ac_int<6, false> numberFreeRegister,
 ac_int<6, false> freeRegisters[64],
@@ -1244,7 +1244,7 @@ ac_int<32, false> placeOfInstr[256]
 #endif
 #endif
 
-int irScheduler(DBTPlateform *platform, uint1 optLevel, uint8 basicBlockSize, uint16 addressInBinaries,
+int irScheduler(DBTPlateform *platform, uint1 optLevel, uint8 basicBlockSize, uint32 addressInBinaries,
 int6 numberFreeRegister, char configuration){
 
 	char issue_width = getIssueWidth(configuration)>4 ?8 :4;
