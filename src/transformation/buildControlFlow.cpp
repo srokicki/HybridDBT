@@ -89,6 +89,7 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 			newBlock->sourceDestination = -1;
 
 
+
 			application->addBlock(newBlock, section);
 
 
@@ -162,6 +163,7 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 						//We set metainfo for new block
 						splittedBlock->sourceStartAddress = newBlock->sourceDestination;
 						splittedBlock->sourceEndAddress = blockToSplit->sourceEndAddress;
+						splittedBlock->sourceDestination = blockToSplit->sourceDestination;
 
 						//We set meta info for old block
 						blockToSplit->sourceEndAddress = newBlock->sourceDestination;
@@ -206,10 +208,12 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 	int numberBlockInProcedure = 0;
 
 
+
 	while (numberBlockToStudy != 0){
 
 		IRBlock *currentBlock = blocksToStudy[numberBlockToStudy-1];
 		numberBlockToStudy--;
+
 
 		unsigned int endAddress = currentBlock->vliwEndAddress;
 		unsigned int jumpInstruction = readInt(platform->vliwBinaries, (endAddress-2*incrementInBinaries)*16);
@@ -257,7 +261,12 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 				nbSucc = 1;
 			}
 		}
-		else if (isCall || isNothing){
+		else if (isCall){
+			successor1 = currentBlock->sourceEndAddress;
+			nbSucc = 1;
+			fprintf(stderr, "Call block in procedure...\n");
+		}
+		else if (isNothing){
 			successor1 = currentBlock->sourceEndAddress;
 			nbSucc = 1;
 		}

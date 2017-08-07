@@ -1243,22 +1243,23 @@ int VexSimulator::doStep(){
 	if (debugLevel >= 1){
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
 		if (this->unitActivation[0])
-			std::cerr << "\033[1;31m" << printDecodedInstr(ftoDC1.instruction) << "\033[0m;";
+			std::cerr /*<< "\033[1;31m"*/ << printDecodedInstr(ftoDC1.instruction)/* << "\033[0m;"*/;
 		if (this->unitActivation[1])
-			std::cerr << "\033[1;35m" << printDecodedInstr(ftoDC2.instruction) << "\033[0m;";
+			std::cerr /*<< "\033[1;35m"*/ << printDecodedInstr(ftoDC2.instruction)/* << "\033[0m;"*/;
 		if (this->unitActivation[2])
-			std::cerr << "\033[1;34m" << printDecodedInstr(ftoDC3.instruction) << "\033[0m;";
+			std::cerr /*<< "\033[1;34m"*/ << printDecodedInstr(ftoDC3.instruction)/* << "\033[0m;"*/;
 		if (this->unitActivation[3])
-			std::cerr << "\033[1;33m" << printDecodedInstr(ftoDC4.instruction) << "\033[0m;";
+			std::cerr /*<< "\033[1;33m"*/ << printDecodedInstr(ftoDC4.instruction)/* << "\033[0m;"*/;
 		if (this->unitActivation[4])
-			std::cerr << "\033[1;33m" << printDecodedInstr(ftoDC5.instruction) << "\033[0m;";
+			std::cerr /*<< "\033[1;33m"*/ << printDecodedInstr(ftoDC5.instruction)/* << "\033[0m;"*/;
 		if (this->unitActivation[5])
-			std::cerr << "\033[1;33m" << printDecodedInstr(ftoDC6.instruction) << "\033[0m;";
+			std::cerr /*<< "\033[1;33m"*/ << printDecodedInstr(ftoDC6.instruction)/* << "\033[0m;"*/;
 		if (this->unitActivation[6])
-			std::cerr << "\033[1;32m" << printDecodedInstr(ftoDC7.instruction) << "\033[0m;";
+			std::cerr /*<< "\033[1;32m"*/ << printDecodedInstr(ftoDC7.instruction)/* << "\033[0m;"*/;
 		if (this->unitActivation[7])
-			std::cerr << "\033[1;34m" << printDecodedInstr(ftoDC8.instruction) << "\033[0m;";
+			std::cerr /*<< "\033[1;34m"*/ << printDecodedInstr(ftoDC8.instruction)/* << "\033[0m;"*/;
 
+		fprintf(stderr, ";");
 
 
 

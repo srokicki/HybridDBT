@@ -154,6 +154,7 @@ unsigned int solveUnresolvedJump(DBTPlateform *platform, unsigned int initialDes
 	unsigned int result = VLIWBase + start +  (initialDestination % 1024);
 	if (platform->vliwInitialIssueWidth>4)
 		result = VLIWBase + (start +  (initialDestination % 1024))*2;
+
 	return result;
 }
 

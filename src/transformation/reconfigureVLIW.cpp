@@ -153,7 +153,7 @@ int computeScore(IRProcedure *procedure){
 	if (getIssueWidth(procedure->configuration) > 4)
 		result = result/2;
 
-	result = 100000 / (result * getPowerConsumption(procedure->configuration));
+	result = 100000 / result;
 
 	fprintf(stderr, "Configuration with %x is %f\n", procedure->configuration, result);
 	return (int) result;
