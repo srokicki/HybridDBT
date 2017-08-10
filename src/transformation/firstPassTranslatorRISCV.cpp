@@ -856,6 +856,14 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					#endif
 				}
 			}
+			else if (opcode == 0){
+
+							previousLatency = lastLatency;
+							previousWrittenRegister = lastWrittenRegister;
+							lastWrittenRegister = 0;
+							lastLatency = 1;
+							binaries = 0;
+			}
 			else{
 				#ifndef __CATAPULT
 				printf("In first pass translator, instr %x is not handled yet...\n", oneInstruction);
