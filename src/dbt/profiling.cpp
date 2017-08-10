@@ -67,10 +67,11 @@ unsigned int Profiler::insertProfilingProcedure(int start, unsigned int startAdd
 
 void Profiler::profileBlock(IRBlock *oneBlock){
 	if (numberProfiledBlocks < 64){
+
 		int start = oneBlock->vliwStartAddress;
 		char successfullInsertion = 0;
 
-		for (int oneInstruction = start; oneInstruction<oneBlock->vliwEndAddress; oneInstruction++){
+		for (int oneInstruction = start; oneInstruction<oneBlock->vliwEndAddress; oneInstruction+=2){
 			uint32 instr64 = readInt(this->platform->vliwBinaries, oneInstruction*16+4);
 
 			//We now place the profile instr

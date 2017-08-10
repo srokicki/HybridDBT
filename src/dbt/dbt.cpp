@@ -349,7 +349,7 @@ int main(int argc, char *argv[])
 	placeCode = insertCodeForInsertions(&dbtPlateform, placeCode, addressStart);
 
 	//We modify the initialization call
-	writeInt(dbtPlateform.vliwBinaries, 0*16, assembleIInstruction(VEX_CALL, placeCode<<2, 63));
+	writeInt(dbtPlateform.vliwBinaries, 0*16, assembleIInstruction(VEX_CALL, placeCode, 63));
 
 	initializeInsertionsMemory(size*4);
 
@@ -409,7 +409,7 @@ int main(int argc, char *argv[])
 			printf("A jump from %d to %x is still unresolved... (%d insertions)\n", source, initialDestination, insertionsArray[(initialDestination>>10)<<11]);
 		}
 		else{
-			int immediateValue = (isAbsolute) ? (destinationInVLIWFromNewMethod << 2) : ((destinationInVLIWFromNewMethod  - source)<<2);
+			int immediateValue = (isAbsolute) ? (destinationInVLIWFromNewMethod) : ((destinationInVLIWFromNewMethod  - source));
 			writeInt(dbtPlateform.vliwBinaries, 16*(source), type + ((immediateValue & 0x7ffff)<<7));
 
 			if (immediateValue > 0x7ffff)
@@ -448,7 +448,7 @@ int main(int argc, char *argv[])
 
 	//We change the init code to jump at the correct place
 	uint32 translatedStartPC = solveUnresolvedJump(&dbtPlateform, (pcStart-addressStart)>>2);
-	unsigned int instruction = assembleIInstruction(VEX_CALL, translatedStartPC<<2, 63);
+	unsigned int instruction = assembleIInstruction(VEX_CALL, translatedStartPC, 63);
 	writeInt(dbtPlateform.vliwBinaries, 0, instruction);
 
 
@@ -471,18 +471,28 @@ int main(int argc, char *argv[])
 		if (OPTLEVEL >= 3){
 			for (int oneProcedure = 0; oneProcedure < application.numberProcedures; oneProcedure++){
 				IRProcedure *procedure = application.procedures[oneProcedure];
-				if (procedure->state == 0 && application.procedures[application.numberProcedures-1]->nbBlock<40){
+				if (procedure->state == 0){
+					fprintf(stderr, "at entry procedure conf is %d, previous is %d\n", procedure->configuration, procedure->previousConfiguration);
+					char oldPrevious = procedure->previousConfiguration;
+					char oldConf = procedure->configuration;
+
 					changeConfiguration(procedure);
-					IRProcedure *scheduledProcedure = rescheduleProcedure_schedule(&dbtPlateform, procedure, placeCode);
-					int score = computeScore(scheduledProcedure);
-					procedure->configurationScores[procedure->configuration] = score;
-					if (score > procedure->configurationScores[procedure->previousConfiguration]){
-						fprintf(stderr, "Score %d is greater than %d, changing to %d\n", score, procedure->configurationScores[procedure->previousConfiguration], procedure->configuration);
-						placeCode = rescheduleProcedure_commit(&dbtPlateform, procedure, placeCode, scheduledProcedure);
+
+					if (procedure->configuration != oldConf || procedure->configurationScores[procedure->configuration] == 0){
+						IRProcedure *scheduledProcedure = rescheduleProcedure_schedule(&dbtPlateform, procedure, placeCode);
+						fprintf(stderr, "test\n");
+						int score = computeScore(scheduledProcedure);
+						procedure->configurationScores[procedure->configuration] = score;
+						if (score > procedure->configurationScores[procedure->previousConfiguration]){
+							fprintf(stderr, "Score %d is greater than %d, changing to %d\n", score, procedure->configurationScores[procedure->previousConfiguration], procedure->configuration);
+							placeCode = rescheduleProcedure_commit(&dbtPlateform, procedure, placeCode, scheduledProcedure);
+						}
+						else{
+							procedure->configuration = procedure->previousConfiguration;
+							procedure->previousConfiguration = oldPrevious;
+						}
 					}
-					else{
-						procedure->configuration = procedure->previousConfiguration;
-					}
+					fprintf(stderr, "at exit procedure conf is %d, previous is %d\n", procedure->configuration, procedure->previousConfiguration);
 
 					break;
 				}
@@ -500,13 +510,8 @@ int main(int argc, char *argv[])
 				block->blockState = IRBLOCK_PROC;
 //				buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
 				application.procedures[application.numberProcedures-1]->print();
-				if (application.procedures[application.numberProcedures-1]->nbBlock<40 && application.procedures[application.numberProcedures-1]->nbBlock>3){
-					placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
-					procedureOptCounter++;
-				}
-				else{
-					fprintf(stderr, "Dropping...\n");
-				}
+				placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
+				procedureOptCounter++;
 			}
 
 
@@ -523,7 +528,7 @@ int main(int argc, char *argv[])
 					optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
 					blockScheduleCounter++;
 
-					if (block->sourceDestination != -1 && block->sourceDestination < block->sourceStartAddress)
+					if (block->sourceDestination != -1 && block->sourceDestination <= block->sourceStartAddress)
 						profiler.profileBlock(block);
 				}
 

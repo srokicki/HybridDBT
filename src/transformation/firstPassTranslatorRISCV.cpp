@@ -677,7 +677,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					//FIXME should be able to add two instr at the same cycle... This would remove an insertion
 					binaries = assembleRiInstruction(VEX_ADDi, 33, rs1, imm12_I_signed);
 
-					nextInstruction = assembleIInstruction((rd == 63) ? VEX_CALL : VEX_GOTO, 16*incrementInDest, rd);
+					nextInstruction = assembleIInstruction((rd == 63) ? VEX_CALL : VEX_GOTO, 4*incrementInDest, rd);
 					enableNextInstruction = 1;
 					nextInstruction_rd = 0;
 					nextInstruction_rs1 = rd;

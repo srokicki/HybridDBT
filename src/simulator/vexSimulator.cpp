@@ -945,12 +945,17 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	switch(OP){ // Select the right operation and place the right values into the right operands
 			case VEX_GOTO:
 				dctoEx->opCode = 0;
-				NEXT_PC = IMM19_u;
+				NEXT_PC = 4*IMM19_u;
 				break;	// GOTO1
 
 			case VEX_CALL:
+
 				dctoEx->dataa = PC + 4*incrementInstrMem;
 				NEXT_PC = IMM19_u;
+				NEXT_PC = NEXT_PC << 2;
+				if (IMM19_u > 0x1ffff)
+					fprintf(stderr, "%x and %x\n", 4*IMM19_u, IMM19_u);
+				NEXT_PC = 4*IMM19_u;
 				break; // CALL
 
 			case VEX_CALLR :
@@ -966,13 +971,13 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 			case VEX_BR :
 				dctoEx->opCode = 0;
 				if(regValueA)
-					NEXT_PC = PC + dctoEx->dataa -4*incrementInstrMem;
+					NEXT_PC = PC + 4*dctoEx->dataa -4*incrementInstrMem;
 				break;	// BR
 
 			case VEX_BRF :
 				dctoEx->opCode = 0;
 				if(!regValueA)
-					NEXT_PC = PC + dctoEx->dataa -4*incrementInstrMem;
+					NEXT_PC = PC + 4*dctoEx->dataa -4*incrementInstrMem;
 				break;	// BRF
 
 			case VEX_RETURN :
@@ -1243,21 +1248,21 @@ int VexSimulator::doStep(){
 	if (debugLevel >= 1){
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
 		if (this->unitActivation[0])
-			std::cerr /*<< "\033[1;31m"*/ << printDecodedInstr(ftoDC1.instruction)/* << "\033[0m;"*/;
+			std::cerr << "\033[1;31m" << printDecodedInstr(ftoDC1.instruction) << "\033[0m;";
 		if (this->unitActivation[1])
-			std::cerr /*<< "\033[1;35m"*/ << printDecodedInstr(ftoDC2.instruction)/* << "\033[0m;"*/;
+			std::cerr << "\033[1;35m" << printDecodedInstr(ftoDC2.instruction) << "\033[0m;";
 		if (this->unitActivation[2])
-			std::cerr /*<< "\033[1;34m"*/ << printDecodedInstr(ftoDC3.instruction)/* << "\033[0m;"*/;
+			std::cerr << "\033[1;34m" << printDecodedInstr(ftoDC3.instruction) << "\033[0m;";
 		if (this->unitActivation[3])
-			std::cerr /*<< "\033[1;33m"*/ << printDecodedInstr(ftoDC4.instruction)/* << "\033[0m;"*/;
+			std::cerr << "\033[1;33m" << printDecodedInstr(ftoDC4.instruction) << "\033[0m;";
 		if (this->unitActivation[4])
-			std::cerr /*<< "\033[1;33m"*/ << printDecodedInstr(ftoDC5.instruction)/* << "\033[0m;"*/;
+			std::cerr << "\033[1;33m" << printDecodedInstr(ftoDC5.instruction) << "\033[0m;";
 		if (this->unitActivation[5])
-			std::cerr /*<< "\033[1;33m"*/ << printDecodedInstr(ftoDC6.instruction)/* << "\033[0m;"*/;
+			std::cerr << "\033[1;33m" << printDecodedInstr(ftoDC6.instruction) << "\033[0m;";
 		if (this->unitActivation[6])
-			std::cerr /*<< "\033[1;32m"*/ << printDecodedInstr(ftoDC7.instruction)/* << "\033[0m;"*/;
+			std::cerr << "\033[1;32m" << printDecodedInstr(ftoDC7.instruction) << "\033[0m;";
 		if (this->unitActivation[7])
-			std::cerr /*<< "\033[1;34m"*/ << printDecodedInstr(ftoDC8.instruction)/* << "\033[0m;"*/;
+			std::cerr << "\033[1;34m" << printDecodedInstr(ftoDC8.instruction) << "\033[0m;";
 
 		fprintf(stderr, ";");
 

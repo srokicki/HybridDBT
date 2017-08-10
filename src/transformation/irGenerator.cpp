@@ -1381,7 +1381,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 			ac_int<1, false> isProfile = opcode == VEX_PROFILE;
 
 			uint1 pred1_ena = 0, pred2_ena = 0, dest_ena = 0;
-			uint6 pred1_reg = reg26, pred2_reg = reg20, dest_reg;
+			uint6 pred1_reg = reg26, pred2_reg = reg20, dest_reg=0;
 
 			//Solving accessed register 1
 			if (!isBranchWithNoReg && !isMovi && !isProfile)
@@ -1397,7 +1397,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 				dest_ena = 1;
 				dest_reg = reg20;
 			}
-			else if (isMovi){
+			else if (isMovi || opcode == VEX_CALL || opcode == VEX_CALLR){
 				dest_ena = 1;
 				dest_reg = reg26;
 			}
@@ -1707,6 +1707,11 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 
 			if (isStoreType){
 
+				if (lastReaderOnMemoryCounter == 0 && lastWriterOnMemory != -1){
+					global_succ_ena_1 = 1;
+					global_succ_src_1 = lastWriterOnMemory;
+				}
+
 				if (lastReaderOnMemoryCounter >= 1){
 					global_succ_ena_1 = 1;
 					global_succ_src_1 = lastReaderOnMemory[0];
@@ -1794,6 +1799,8 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 					isCallBlock = 1;
 					numberSuccessors = 1;
 					successor1 = imm19;
+
+					pred1 = destination;
 				}
 
 				oneBytecode = assembleIBytecodeInstruction(0, 0, opcode, pred1, imm19, 0);

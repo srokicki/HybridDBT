@@ -123,7 +123,7 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 				}
 				else{
 					//The jump can be resolved
-					int immediateValue = (isAbsolute) ? (destinationInVLIWFromNewMethod << 2) : ((destinationInVLIWFromNewMethod  - oneJumpSource)<<2);
+					int immediateValue = (isAbsolute) ? (destinationInVLIWFromNewMethod) : ((destinationInVLIWFromNewMethod  - oneJumpSource));
 					writeInt(dbtPlateform->vliwBinaries, 16*(oneJumpSource), oneJumpType + ((immediateValue & 0x7ffff)<<7));
 
 					unsigned int instructionBeforePreviousDestination = readInt(dbtPlateform->vliwBinaries, 16*(destinationInVLIWFromNewMethod-1)+12);
@@ -167,7 +167,7 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 
 						//We set meta info for old block
 						blockToSplit->sourceEndAddress = newBlock->sourceDestination;
-						blockToSplit->sourceDestination = newBlock->sourceDestination;
+						blockToSplit->sourceDestination = -1;
 						blockToSplit->vliwEndAddress = destinationInVLIWFromNewMethod;
 					}
 
@@ -195,10 +195,19 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 
 }
 
+int
+compare_blocks (const void *a, const void *b)
+{
+  const IRBlock **blocka = (const IRBlock **) a;
+  const IRBlock **blockb = (const IRBlock **) b;
+
+  return ((*blocka)->sourceStartAddress > (*blockb)->sourceStartAddress) - ((*blocka)->sourceStartAddress < (*blockb)->sourceStartAddress);
+}
+
 void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApplication *application){
 
 	char incrementInBinaries = (platform->vliwInitialIssueWidth > 4) ? 2 : 1;
-	IRBlock *blocksToStudy[50];
+	IRBlock *blocksToStudy[100];
 	int numberBlockToStudy = 1;
 	blocksToStudy[0] = startBlock;
 	IRBlock *entryBlock = startBlock;
@@ -214,9 +223,10 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 		IRBlock *currentBlock = blocksToStudy[numberBlockToStudy-1];
 		numberBlockToStudy--;
 
-
 		unsigned int endAddress = currentBlock->vliwEndAddress;
 		unsigned int jumpInstruction = readInt(platform->vliwBinaries, (endAddress-2*incrementInBinaries)*16);
+		if ((endAddress-2*incrementInBinaries) < currentBlock->vliwStartAddress)
+			jumpInstruction = 0;
 
 		if (currentBlock->nbSucc != -1)
 			continue;
@@ -225,10 +235,10 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 			fprintf(stderr, "Error while building advanced control flow: temporary storage size for blocks is too small and nothing has been implemented to handle this...\n");
 			exit(0);
 		}
-
+		fprintf(stderr, "adding %d - %lx   numberBlock %d\n", currentBlock->sourceStartAddress, currentBlock,numberBlockInProcedure);
 		blockInProcedure[numberBlockInProcedure] = currentBlock;
 		numberBlockInProcedure++;
-
+		currentBlock->nbSucc = 0;
 
 		/******************************************************************************************
 		 ******************************  Successor resolution
@@ -264,7 +274,7 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 		else if (isCall){
 			successor1 = currentBlock->sourceEndAddress;
 			nbSucc = 1;
-			fprintf(stderr, "Call block in procedure...\n");
+			fprintf(stderr, "Call block to %x in procedure...\n", currentBlock->sourceDestination);
 		}
 		else if (isNothing){
 			successor1 = currentBlock->sourceEndAddress;
@@ -342,13 +352,25 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 	}
 
 
+	for (int oneBlock = 0; oneBlock<numberBlockInProcedure; oneBlock++){
+		fprintf(stderr, "block %x -- %lx\n", blockInProcedure[oneBlock]->sourceStartAddress, blockInProcedure[oneBlock]);
+	}
+
 	//We instanciate the procedure
 	IRProcedure *procedure = new IRProcedure(entryBlock, numberBlockInProcedure);
 	procedure->blocks = (IRBlock**) malloc(numberBlockInProcedure * sizeof(IRBlock*));
 	procedure->configuration = platform->vliwInitialConfiguration;
+	procedure->previousConfiguration = procedure->configuration;
+
+	memcpy(procedure->blocks, blockInProcedure, numberBlockInProcedure*sizeof(struct IRBlock*));
+	qsort(procedure->blocks, numberBlockInProcedure, sizeof(IRBlock *), compare_blocks);
+
+	for (int oneBlock = 0; oneBlock<numberBlockInProcedure; oneBlock++){
+		fprintf(stderr, "block %x -- %lx\n", procedure->blocks[oneBlock]->sourceStartAddress, procedure->blocks[oneBlock]);
+	}
 
 	//TODO code a better sort function
-	int previousIndex = 0;
+/*	int previousIndex = 0;
 	for (int oneBlock = 0; oneBlock<numberBlockInProcedure; oneBlock++){
 		int minBlock = 0x1000000;
 		int minBlockIndex = 0;
@@ -361,7 +383,7 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 		}
 		procedure->blocks[oneBlock] = blockInProcedure[minBlockIndex];
 		previousIndex = minBlock;
-	}
+	}*/
 
 	procedure->entryBlock = procedure->blocks[0];
 	application->addProcedure(procedure);

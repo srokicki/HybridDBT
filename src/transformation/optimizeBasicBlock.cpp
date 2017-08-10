@@ -34,7 +34,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	int basicBlockEnd = block->vliwEndAddress;
 
 	if (platform->debugLevel > 0)
-		fprintf(stderr, "Block from %x to %x is eligible for scheduling\n", block->sourceStartAddress, block->sourceEndAddress);
+		fprintf(stderr, "Block from %x to %x is eligible for scheduling (dest %x) \n", block->sourceStartAddress, block->sourceEndAddress, block->sourceDestination);
 
 
 #ifndef __NIOS
@@ -184,7 +184,6 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		 * 		to prevent the execution of a large area of nop instruction (which would remove the interest of the schedule
 		 *
 		 *****************************************************************/
-
 		char isRelativeJump = (jumpInstruction & 0x7f) == VEX_BR || (jumpInstruction & 0x7f) == VEX_BRF;
 		char isNoJump = (jumpInstruction & 0x70) != (VEX_CALL&0x70);
 		char isPassthroughJump = isRelativeJump || (jumpInstruction & 0x7f) == VEX_CALL || (jumpInstruction & 0x7f) == VEX_CALLR ;
@@ -198,11 +197,11 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 				offset = offset - 0x80000;
 
 			//We compute the original destination
-			int destination = basicBlockEnd - 1*incrementInBinaries + (offset>>2);
+			int destination = basicBlockEnd - 1*incrementInBinaries + (offset);
 
 			//We compute the new offset, considering the new destination
 			int newOffset = destination - (basicBlockStart + binaSize-1*incrementInBinaries);
-			newOffset = newOffset << 2;
+			newOffset = newOffset;
 
 			if (platform->debugLevel > 1)
 				fprintf(stderr, "Correction of jump at the end of the block. Original offset was %d\n From it derivated destination %d and new offset %d\n", offset, destination, newOffset);
@@ -217,10 +216,10 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 			writeInt(platform->vliwBinaries, (basicBlockStart+binaSize-2*incrementInBinaries)*16 + 0, jumpInstruction);
 
 		//Insertion of the new block with the goto instruction
-		if (isPassthroughJump && basicBlockStart+binaSize+1 < basicBlockEnd){
+		if (isPassthroughJump && basicBlockStart+binaSize+1*incrementInBinaries < basicBlockEnd){
 			//We need to add a jump to correct the shortening of the block.
 
-			uint32 insertedJump = VEX_GOTO + (basicBlockEnd<<9); // Note added the *4 to handle the new PC encoding
+			uint32 insertedJump = VEX_GOTO + (basicBlockEnd<<7); // Note added the *4 to handle the new PC encoding
 			writeInt(platform->vliwBinaries, (basicBlockStart+binaSize)*16, insertedJump);
 
 			//In this case, we also added a block in the design

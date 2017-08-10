@@ -364,7 +364,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	binaSize = irScheduler(platform, 1, nbInstr, start, 32, platform->vliwInitialConfiguration);
 	start += binaSize ;
 
-	writeInt(platform->vliwBinaries, (start-2*increment)*16, assembleIInstruction(VEX_BR, (-(binaSize-2*increment))*4, test2));
+	writeInt(platform->vliwBinaries, (start-2*increment)*16, assembleIInstruction(VEX_BR, (-(binaSize-2*increment)), test2));
 
 
 	/*********************************************************************************************************
