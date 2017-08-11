@@ -47,7 +47,6 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		uint32 placeCode,
 		uint32 insertions[256],
 		uint1 blocksBoundaries[65536],
-		int16 proceduresBoundaries[65536],
 		uint32 unresolvedJumps_src[512],
 		uint32 unresolvedJumps_type[512],
 		int32 unresolvedJumps[512]);
@@ -81,7 +80,6 @@ uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
 			placeCode,
 			platform->insertions,
 			platform->blockBoundaries,
-			platform->procedureBoundaries,
 			platform->unresolvedJumps_src,
 			platform->unresolvedJumps_type,
 			platform->unresolvedJumps);
@@ -195,7 +193,6 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		uint32 placeCode,
 		uint32 insertions[256],
 		uint1 blocksBoundaries[65536],
-		int16 proceduresBoundaries[65536],
 		uint32 unresolvedJumps_src[512],
 		uint32 unresolvedJumps_type[512],
 		int32 unresolvedJumps[512]){
@@ -261,7 +258,6 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 
 	blocksBoundaries[(codeSectionStart-addressStart)>>2] = 1;
-	proceduresBoundaries[0] = 1;
 
 	ac_int<128,false> previousBinaries = 0;
 	uint32 previousIndex = 0;
@@ -647,12 +643,6 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				unresolved_jump_src = indexInDestinationBinaries;
 				unresolved_jump_type = binaries;
 				setUnresolvedJump = 1;
-
-				//We also fill information on procedure boundaries
-				if (rd==63){
-					proceduresBoundaries[indexInSourceBinaries + (imm21_1_signed>>2)] = 1;
-				}
-
 
 
 				//In order to deal with the fact that RISCV do not execute the isntruction following a branch,

@@ -17,7 +17,7 @@
  *
  ********************************************************************/
 
-#define MEMORY_SIZE 200000
+#define MEMORY_SIZE 190000
 
 
 #include <simulator/vexSimulator.h>
@@ -33,7 +33,6 @@ public:
 	ac_int<32, false> mipsBinaries[MEMORY_SIZE];
 	ac_int<32, false> insertions[2048];
 	ac_int<1, false> blockBoundaries[MEMORY_SIZE];
-	ac_int<16, true> procedureBoundaries[MEMORY_SIZE];
 	ac_int<128, false> bytecode[256];
 	ac_int<32, true> globalVariables[64];
 	ac_int<32, false> unresolvedJumps_src[512];
