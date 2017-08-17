@@ -11,7 +11,7 @@
 IRBlock* ifConversion(IRBlock *entryBlock, IRBlock *thenBlock, IRBlock *elseBlock){
 
 }
-bool VERBOSE = 0;
+bool VERBOSE = 1;
 IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 
 	/*****
@@ -91,12 +91,12 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 	}
 
 	//Last conditional instr
-	char lastCondInstr[4];
+	short lastCondInstr[4];
 	char nbLastCondInstr = 0;
 	char placeLastCondInstr = 0;
 
 	//Last memory accesses
-	char lastMemInstr[4];
+	short lastMemInstr[4];
 	char nbLastMemInstr = 0;
 	char placeLastMemInstr = 0;
 
@@ -104,11 +104,14 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 	//We go through the first block to find all written register
 	//Because of this we will be able to build dependencies correctly
 	unsigned char indexOfJump = -1;
-	unsigned char indexOfCondition = -1;
+	unsigned short indexOfCondition = -1;
 	for (int oneInstr = 0; oneInstr<sizeofEntryBlock; oneInstr++){
 		short writtenReg = getDestinationRegister(entryBlock->instructions, oneInstr);
 		if (writtenReg >= 0)
 			lastWriteReg[writtenReg-256] = oneInstr;
+
+		fprintf(stderr, "writtenreg %d\n", writtenReg);
+
 
 		result->instructions[4*oneInstr+0] = entryBlock->instructions[4*oneInstr+0];
 		result->instructions[4*oneInstr+1] = entryBlock->instructions[4*oneInstr+1];
@@ -120,11 +123,18 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 			indexOfJump = oneInstr;
 			short operands[2];
 			char nbOperands = getOperands(entryBlock->instructions, oneInstr, operands);
-			if (operands[0] >= 256)
-				indexOfCondition = lastWriteReg[operands[0]];
+			fprintf(stderr, "operand is is %d, last written %d\n", operands[0],lastWriteReg[operands[0]-256]);
+
+			if (operands[0] >= 256){
+				if (lastWriteReg[operands[0]-256] != -1)
+					indexOfCondition = lastWriteReg[operands[0]-256];
+				else
+					indexOfCondition = operands[0];
+			}
 			else
 				indexOfCondition = operands[0];
 		}
+		fprintf(stderr, "Indeox of condition is %d\n", indexOfCondition);
 
 		//We keep track of last cond instruction
 		if (opcode == VEX_STDc || opcode == VEX_STWc || opcode == VEX_STHc || opcode == VEX_STBc || opcode == VEX_SETFc || opcode == VEX_SETc){
@@ -161,6 +171,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 
 	//Prints for debug
 	if (VERBOSE){
+		fprintf(stderr, "Indeox of condition is %d\n", indexOfCondition);
 		fprintf(stderr, "\n\n\n\n\n");
 		for (int i=0; i<result->nbInstr; i++){
 			printBytecodeInstruction(i, readInt(result->instructions, i*16+0), readInt(result->instructions, i*16+4), readInt(result->instructions, i*16+8), readInt(result->instructions, i*16+12));
@@ -271,6 +282,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 	if (isEscape){
 
 		if (hasStores){
+			return NULL;
 			char indexOfSETCOND = result->nbInstr;
 			uint128 bytecodeInstr = assembleIBytecodeInstruction(0, 0, VEX_SETCONDF, indexOfCondition, 0, 0);
 			result->instructions[(result->nbInstr)*4+0] = bytecodeInstr.slc<32>(96);
@@ -309,19 +321,20 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 					addControlDep(result->instructions, lastWriteReg[oneReg], result->nbInstr);
 
 				//We add a control dependency from one of the last four cond instruction (note: this array is initialized with four times the setcond instruction)
-				if (nbLastCondInstr<4){
+				if (indexOfCondition<256){
+					if (nbLastCondInstr<4){
 
-					addDataDep(result->instructions, indexOfCondition, result->nbInstr);
-					nbLastCondInstr++;
-					lastCondInstr[placeLastCondInstr] = result->nbInstr;
-					placeLastCondInstr = (placeLastCondInstr+1) & 0x3;
+						addDataDep(result->instructions, indexOfCondition, result->nbInstr);
+						nbLastCondInstr++;
+						lastCondInstr[placeLastCondInstr] = result->nbInstr;
+						placeLastCondInstr = (placeLastCondInstr+1) & 0x3;
+					}
+					else{
+						addControlDep(result->instructions, lastCondInstr[placeLastCondInstr], result->nbInstr);
+						lastCondInstr[placeLastCondInstr] = result->nbInstr;
+						placeLastCondInstr = (placeLastCondInstr + 1) & 0x3;
+					}
 				}
-				else{
-					addControlDep(result->instructions, lastCondInstr[placeLastCondInstr], result->nbInstr);
-					lastCondInstr[placeLastCondInstr] = result->nbInstr;
-					placeLastCondInstr = (placeLastCondInstr + 1) & 0x3;
-				}
-
 				lastWriteRegForSecond[oneReg] = result->nbInstr;
 
 				result->nbInstr++;
@@ -383,12 +396,13 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 			result->instructions[indexOfJump*4+0] = 0;
 	}
 	else if (isEscape && entryBlock->successor1 == secondBlock->successor1){
+		result->jumpID = indexOfSecondJump;
 		result->instructions[indexOfJump*4+0] = 0;
 	}
 	else if (!isEscape && indexOfJump != -1){
+		result->jumpID = indexOfSecondJump;
 		result->instructions[indexOfJump*4+0] = 0;
 	}
-
 	else {
 		result->jumpID = indexOfJump;
 	}
@@ -427,19 +441,31 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 	 */
 
 	int nbBlock = procedure->nbBlock;
-
+platform->debugLevel = 3;
 	char changeMade = 1;
 	while (changeMade){
 		changeMade = 0;
 		for (int oneBlock=0; oneBlock<procedure->nbBlock; oneBlock++){
+			fprintf(stderr, "%d\n", oneBlock);
 			IRBlock *block = procedure->blocks[oneBlock];
 			if (block->nbSucc >= 1){
 
 				IRBlock *secondBlock = (block->nbSucc == 1) ? block->successor1 : block->successor2;
+				char opcode = getOpcode(block->instructions, block->jumpID);
+				char secondOpcode = getOpcode(secondBlock->instructions, secondBlock->jumpID);
+
+fprintf(stderr, "Jump opcopde is %x\n", opcode);
 
 
 				char isElligible = 1;
+				if (secondBlock->blockState ==IRBLOCK_UNROLLED)
+					isElligible = 0;
+				else if (secondBlock->nbSucc>=1 && secondBlock->successor1 != block->successor1)
+					isElligible = 0;
+
 				if (procedure->entryBlock == secondBlock)
+					isElligible = 0;
+				else if (opcode == VEX_CALL || opcode == VEX_CALLR || secondOpcode == VEX_CALL || secondOpcode == VEX_CALLR)
 					isElligible = 0;
 				else
 					for (int oneOtherBlock = 0; oneOtherBlock<procedure->nbBlock; oneOtherBlock++){
@@ -453,6 +479,10 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 				if (block->blockState < IRBLOCK_UNROLLED && block->nbSucc == 2 && block->successor1 == block){
 					block->blockState = IRBLOCK_UNROLLED;
 					IRBlock *oneSuperBlock = superBlock(block, block->successor1);
+					if (oneSuperBlock == NULL){
+						fprintf(stderr, "Missed one possibility for unrolling a block of size %d because of presence of std\n", block->nbInstr);
+						break;
+					}
 
 					block->nbInstr = oneSuperBlock->nbInstr;
 
@@ -463,21 +493,35 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 					block->jumpID = oneSuperBlock->jumpID;
 
 					delete oneSuperBlock;
-
+					changeMade=1;
+					break;
 
 				}
-				else if (isElligible && secondBlock->nbSucc == 1 && secondBlock->nbInstr<8){
+				else if (isElligible && secondBlock->nbSucc == 1 && (block->nbSucc == 1 || secondBlock->nbInstr<8)){
 					IRBlock *oneSuperBlock = superBlock(block, secondBlock);
+					if (oneSuperBlock == NULL){
+						secondBlock->blockState = IRBLOCK_UNROLLED;
+						break;
+					}
+
+
+					fprintf(stderr, "merged %d and %d\n", oneBlock, oneBlock);
 
 					if (block->successor1 == secondBlock->successor1 || block->nbSucc == 1){
 						oneSuperBlock->nbSucc = 1;
 						oneSuperBlock->successor1 = secondBlock->successor1;
+						oneSuperBlock->sourceDestination = -1;
 					}
 					else{
 						oneSuperBlock->nbSucc = 2;
 						oneSuperBlock->successor1 = block->successor1;
 						oneSuperBlock->successor2 = secondBlock->successor1;
+						oneSuperBlock->sourceDestination = block->sourceDestination;
 					}
+					oneSuperBlock->sourceStartAddress = block->sourceStartAddress;
+					oneSuperBlock->sourceEndAddress = secondBlock->sourceEndAddress;
+
+
 					secondBlock->nbSucc = 0;
 					secondBlock->nbInstr = 0;
 					nbBlock--;
@@ -498,7 +542,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 					if (procedure->entryBlock == block)
 						procedure->entryBlock = oneSuperBlock;
 
-//					delete block;
+					delete block;
 //					continue;
 					changeMade=1;
 					break;

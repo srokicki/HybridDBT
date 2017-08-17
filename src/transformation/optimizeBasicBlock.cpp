@@ -98,6 +98,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	char opcodeOfLastInstr = getOpcode(block->instructions, blockSize-1);
 	if ((opcodeOfLastInstr >> 4) == 2 && opcodeOfLastInstr != VEX_MOVI && opcodeOfLastInstr != VEX_SETCOND && opcodeOfLastInstr != VEX_SETCONDF){
 		block->jumpID = blockSize-1;
+		block->addJump(blockSize-1, 0);
 	}
 #ifndef __NIOS
 

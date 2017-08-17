@@ -73,10 +73,15 @@ public:
 
 	//Control flow graph
 	char nbSucc;					//Number of successors
+	IRBlock* successors;
 	IRBlock* successor1;			//pointer to first successor
 	IRBlock* successor2;			//pointer to second successor
 	short jumpID;					//Index of the jump instruction in the block's list of instruction
-	unsigned int jumpPlace;			//Address of the jump instruction in the VLIW memory
+	unsigned int jumpPlace; 		//Address of the jump instruction in the VLIW memory
+
+	char nbJumps;
+	unsigned char *jumpIds;
+	unsigned int *jumpPlaces;
 
 	uint32 *instructions;			//A pointer to an array of uint128 describing the instructions
 	int nbInstr;					//The number of instructions
@@ -84,8 +89,9 @@ public:
 	unsigned int blockState;		//A value to store its state (optimized/translated or other things like that)
 
 	int section;
+	IRBlock** placeInProfiler;
 
-
+	void addJump(unsigned char jumpID, unsigned int jumpPlace);
 
 	IRBlock(int startAddress, int endAddress, int section);
 	~IRBlock();

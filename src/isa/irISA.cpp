@@ -188,6 +188,21 @@ void IRProcedure::print(){
 	fprintf(stderr, "}\n");
 }
 
+void IRBlock::addJump(unsigned char jumpID, unsigned int jumpPlace){
+	unsigned char* tempJumpIds = (unsigned char*) malloc(sizeof(unsigned char) * (this->nbJumps+1));
+	unsigned int* tempJumpPlaces = (unsigned int*) malloc(sizeof(unsigned int) * (this->nbJumps+1));
+
+	memcpy(tempJumpIds, this->jumpIds, sizeof(unsigned char) * this->nbJumps);
+	memcpy(tempJumpPlaces, this->jumpPlaces, sizeof(unsigned int) * this->nbJumps);
+
+	tempJumpIds[this->nbJumps] = jumpID;
+	tempJumpPlaces[this->nbJumps] = jumpPlace;
+
+	this->nbJumps++;
+	this->jumpIds = tempJumpIds;
+	this->jumpPlaces = tempJumpPlaces;
+}
+
 IRBlock::IRBlock(int startAddress, int endAddress, int section){
 	this->vliwEndAddress = endAddress;
 	this->vliwStartAddress = startAddress;
@@ -196,9 +211,13 @@ IRBlock::IRBlock(int startAddress, int endAddress, int section){
 	this->section = section;
 	this->nbInstr = 0;
 	this->jumpID=-1;
+	this->nbJumps = 0;
+	this->placeInProfiler = NULL;
 }
 
 IRBlock::~IRBlock(){
+	if (placeInProfiler != 0)
+		*placeInProfiler = 0;
 	free(this->instructions);
 }
 
@@ -284,6 +303,7 @@ short getDestinationRegister(uint32 *bytecode, char index){
 	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
 
 	unsigned char opcode = (bytecodeWord96>>19) & 0x7f;
+	fprintf(stderr, "opcode %x\n", opcode);
 	if ((opcode != 0) //not a nop
 			&&((opcode>>4) != 2 || opcode == VEX_MOVI) //if I-type then movi
 			&& ((opcode>>3) != 0x3)) //not a store
@@ -406,23 +426,26 @@ void addDataDep(uint32 *bytecode, char index, char successor){
 	char nbSucc = ((bytecodeWord64>>0) & 7);
 
 	int extendedSuccessor = successor;
-	if (nbSucc<7){
-		bytecodeWord64 += 0x9; //plus one at both fields with no offset and fields with offset of 3
-		if (nbDSucc<3){
-			bytecodeWord32 |= (extendedSuccessor<<((2-nbDSucc)*8));
-			writeInt(bytecode, index*16+8, bytecodeWord32);
-		}
-		else{
-			bytecodeWord0 |= (extendedSuccessor<<((6-(nbDSucc))*8));
-			writeInt(bytecode, index*16+12, bytecodeWord0);
-		}
-		writeInt(bytecode, index*16+4, bytecodeWord64);
+	if (index != successor){
 
+		if (nbSucc<7){
+			bytecodeWord64 += 0x9; //plus one at both fields with no offset and fields with offset of 3
+			if (nbDSucc<3){
+				bytecodeWord32 |= (extendedSuccessor<<((2-nbDSucc)*8));
+				writeInt(bytecode, index*16+8, bytecodeWord32);
+			}
+			else{
+				bytecodeWord0 |= (extendedSuccessor<<((6-(nbDSucc))*8));
+				writeInt(bytecode, index*16+12, bytecodeWord0);
+			}
+			writeInt(bytecode, index*16+4, bytecodeWord64);
+
+		}
+		//We add one to the number of dep
+		unsigned int succBytecodeWord64 = readInt(bytecode, successor*16+4);
+		succBytecodeWord64 += 0x40; //Plus one at the field located at an offset of 6 bits
+		writeInt(bytecode, successor*16+4, succBytecodeWord64);
 	}
-	//We add one to the number of dep
-	unsigned int succBytecodeWord64 = readInt(bytecode, successor*16+4);
-	succBytecodeWord64 += 0x40; //Plus one at the field located at an offset of 6 bits
-	writeInt(bytecode, successor*16+4, succBytecodeWord64);
 }
 
 void addControlDep(uint32 *bytecode, char index, char successor){
@@ -435,23 +458,26 @@ void addControlDep(uint32 *bytecode, char index, char successor){
 	char nbCSucc = nbSucc - nbDSucc;
 
 	int extendedSuccessor = successor;
-	if (nbSucc<7){
-		bytecodeWord64 += 0x1; //plus one at fields with no offset (eg nbSucc)
-		if (nbCSucc>3){
-			bytecodeWord32 |= (extendedSuccessor<<((nbCSucc-4)*8));
-			writeInt(bytecode, index*16+8, bytecodeWord32);
-		}
-		else{
-			bytecodeWord0 |= (extendedSuccessor<<((nbCSucc)*8));
-			writeInt(bytecode, index*16+12, bytecodeWord0);
-		}
-		writeInt(bytecode, index*16+4, bytecodeWord64);
+	if (index != successor){
 
+		if (nbSucc<7){
+			bytecodeWord64 += 0x1; //plus one at fields with no offset (eg nbSucc)
+			if (nbCSucc>3){
+				bytecodeWord32 |= (extendedSuccessor<<((nbCSucc-4)*8));
+				writeInt(bytecode, index*16+8, bytecodeWord32);
+			}
+			else{
+				bytecodeWord0 |= (extendedSuccessor<<((nbCSucc)*8));
+				writeInt(bytecode, index*16+12, bytecodeWord0);
+			}
+			writeInt(bytecode, index*16+4, bytecodeWord64);
+
+		}
+		//We add one to the number of dep
+		unsigned int succBytecodeWord64 = readInt(bytecode, successor*16+4);
+		succBytecodeWord64 += 0x40; //Plus one at the field located at an offset of 6 bits
+		writeInt(bytecode, successor*16+4, succBytecodeWord64);
 	}
-	//We add one to the number of dep
-	unsigned int succBytecodeWord64 = readInt(bytecode, successor*16+4);
-	succBytecodeWord64 += 0x40; //Plus one at the field located at an offset of 6 bits
-	writeInt(bytecode, successor*16+4, succBytecodeWord64);
 }
 #else
 
@@ -464,23 +490,26 @@ void addDataDep(uint32 *bytecode, char index, char successor){
 	char nbSucc = ((bytecodeWord64>>0) & 7);
 
 	int extendedDepName = index;
-	if (nbSucc<7){
-		bytecodeWord64 += 0x9; //plus one at both fields with no offset and fields with offset of 3
-		if (nbDSucc<3){
-			bytecodeWord32 |= (extendedDepName<<((2-nbDSucc)*8));
-			writeInt(bytecode, successor*16+8, bytecodeWord32);
-		}
-		else{
-			bytecodeWord0 |= (extendedDepName<<((6-(nbDSucc))*8));
-			writeInt(bytecode, successor*16+12, bytecodeWord0);
-		}
-		writeInt(bytecode, successor*16+4, bytecodeWord64);
+	if (index != successor){
 
+		if (nbSucc<7){
+			bytecodeWord64 += 0x9; //plus one at both fields with no offset and fields with offset of 3
+			if (nbDSucc<3){
+				bytecodeWord32 |= (extendedDepName<<((2-nbDSucc)*8));
+				writeInt(bytecode, successor*16+8, bytecodeWord32);
+			}
+			else{
+				bytecodeWord0 |= (extendedDepName<<((6-(nbDSucc))*8));
+				writeInt(bytecode, successor*16+12, bytecodeWord0);
+			}
+			writeInt(bytecode, successor*16+4, bytecodeWord64);
+
+		}
+		//We add one to the number of dep
+		unsigned int otherBytecodeWord64 = readInt(bytecode, index*16+4);
+		otherBytecodeWord64 += 0x40; //Plus one at the field located at an offset of 6 bits
+		writeInt(bytecode, index*16+4, otherBytecodeWord64);
 	}
-	//We add one to the number of dep
-	unsigned int otherBytecodeWord64 = readInt(bytecode, index*16+4);
-	otherBytecodeWord64 += 0x40; //Plus one at the field located at an offset of 6 bits
-	writeInt(bytecode, index*16+4, otherBytecodeWord64);
 }
 
 void addControlDep(uint32 *bytecode, char index, char successor){
@@ -493,18 +522,20 @@ void addControlDep(uint32 *bytecode, char index, char successor){
 	char nbCSucc = nbSucc - nbDSucc;
 
 	int extendedDepName = index;
-	if (nbSucc<7){
-		bytecodeWord64 += 0x1; //plus one at fields with no offset (eg nbSucc)
-		if (nbCSucc>3){
-			bytecodeWord32 |= (extendedDepName<<((nbCSucc-4)*8));
-			writeInt(bytecode, successor*16+8, bytecodeWord32);
-		}
-		else{
-			bytecodeWord0 |= (extendedDepName<<((nbCSucc)*8));
-			writeInt(bytecode, successor*16+12, bytecodeWord0);
-		}
-		writeInt(bytecode, successor*16+4, bytecodeWord64);
+	if (index != successor){
+		if (nbSucc<7){
+			bytecodeWord64 += 0x1; //plus one at fields with no offset (eg nbSucc)
+			if (nbCSucc>3){
+				bytecodeWord32 |= (extendedDepName<<((nbCSucc-4)*8));
+				writeInt(bytecode, successor*16+8, bytecodeWord32);
+			}
+			else{
+				bytecodeWord0 |= (extendedDepName<<((nbCSucc)*8));
+				writeInt(bytecode, successor*16+12, bytecodeWord0);
+			}
+			writeInt(bytecode, successor*16+4, bytecodeWord64);
 
+		}
 	}
 	//We do not need to increment the number of dep...
 }
