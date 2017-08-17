@@ -941,6 +941,11 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 	char remainingLatency = max(lastLatency, previousLatency);
 	indexInDestinationBinaries += remainingLatency * incrementInDest;
+	for (int oneRemainingLatency = 0; oneRemainingLatency<remainingLatency; oneRemainingLatency++){
+		insertions[1+localNumberInsertions++] = indexInDestinationBinaries;
+		indexInDestinationBinaries += incrementInDest;
+	}
+
 
 
 	destinationBinaries[previousIndex] = previousBinaries;
