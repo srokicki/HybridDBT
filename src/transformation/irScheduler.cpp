@@ -403,7 +403,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 
 				ac_int<2, false> nextLineNumber = lineNumber + 1;
 				ac_int<2, false> secondNextLineNumber = lineNumber + 2;
-				ac_int<2, false> lineNumberForStage = (complexType[1] || complexType[3]) ?  secondNextLineNumber : nextLineNumber; //Note : the modulo is useless but here to remind that it is a 1 bit variable
+				ac_int<2, false> lineNumberForStage = (complexType[1] || complexType[3]) ?  nextLineNumber : lineNumber; //Note : the modulo is useless but here to remind that it is a 1 bit variable
 
 
 			ac_int<32, false> generatedInstruction = 0;
@@ -879,7 +879,7 @@ ac_int<32, false> placeOfInstr[256]
 	//**************************************************************
 	// Setup scheduler state
 	//**************************************************************
-
+fprintf(stderr, "%x\n", way_specialisation);
 	haveJump = 0;
 	instructionId = 0;
 	windowPosition = addressInBinaries;
@@ -982,7 +982,7 @@ ac_int<32, false> placeOfInstr[256]
 			if (i < nbDataDeps) {
 				ac_int<8, false> stg = (deps[i] != instructionId-1)
 				? instructionsStages[deps[i]] : lastInstructionStage;
-				ac_int<2, false> gap = (stg == 0 || stg == 3) ? 2 : 3;
+				ac_int<2, false> gap = (stg == 0 || stg == 3) ? 1 : 2;
 				earliest_place = max(earliest_place, (ac_int<32,false>(place+gap)));
 			}
 			// WAW
@@ -1008,11 +1008,11 @@ ac_int<32, false> placeOfInstr[256]
 
 		// available places search
 		for (ac_int<STAGE_NUMBER_L2+1, false> stageId = 0
-		; stageId < STAGE_NUMBER; stageId += 2)
+		; stageId < STAGE_NUMBER; stageId += 1)
 		{
 			// loop unrolled by hand to ease synthesis
-			ac_int<2, false> stageType = way_specialisation.slc<2>(stageId << 1);
-			if (issue_width[stageId] && (unitType == stageType || unitType == 2)) {
+			ac_int<4, false> stageType = way_specialisation.slc<4>(stageId << 2);
+			if (stageType && stageType[unitType]) {
 				for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
 				; windowOffset < WINDOW_SIZE; ++windowOffset)
 				{
@@ -1025,7 +1025,7 @@ ac_int<32, false> placeOfInstr[256]
 				}
 			}
 
-			stageType = way_specialisation.slc<2>((stageId << 1) + 2);
+		/*	stageType = way_specialisation.slc<2>((stageId << 1) + 2);
 			if (issue_width[stageId] && (unitType == stageType || unitType == 2)) {
 				for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
 				; windowOffset < WINDOW_SIZE; ++windowOffset)
@@ -1037,7 +1037,7 @@ ac_int<32, false> placeOfInstr[256]
 						possible[windowOffset] = 1;
 					}
 				}
-			}
+			}*/
 		}
 
 		// updates possible[] array with the [earliest_place] constraint
@@ -1145,12 +1145,16 @@ ac_int<32, false> placeOfInstr[256]
 				; stageId < STAGE_NUMBER; ++stageId) {
 					binariesWord.set_slc(  stageId*32
 					, available[stageId] ? zero32 : window[off][stageId]);
+
+					std::cout << printDecodedInstr(available[stageId] ? zero32 : window[off][stageId]);
+
 				}
+				std::cout << "\n";
 
 				if (windowOffset < advance)
 					freeSlot[off] = 0xFF;
 
-				if (!issue_width[4]) {
+				if (issue_width<=4) {
 					binaries[windowPosition+windowOffset] = binariesWord.slc<128>(0);
 				} else {
 					binaries[2*(windowPosition+windowOffset)] = binariesWord.slc<128>(0);
@@ -1163,8 +1167,8 @@ ac_int<32, false> placeOfInstr[256]
 
 			for (ac_int<STAGE_NUMBER_L2+1, false> stageId = 0
 			; stageId < STAGE_NUMBER; ++stageId) {
-				ac_int<2, false> stageType = way_specialisation.slc<2>(stageId << 1);
-				if ((unitType == 2 || stageType == unitType) && issue_width[stageId]) {
+				ac_int<4, false> stageType = way_specialisation.slc<4>(stageId << 2);
+				if (stageType && stageType[unitType]) {
 					bestStageId = stageId;
 				}
 			}
@@ -1215,16 +1219,16 @@ ac_int<32, false> placeOfInstr[256]
 			binariesWord.set_slc(  stageId*32
 			, available[stageId] ? zero32 : window[off][stageId]);
 
-			std::cout << printDecodedInstr(window[off][stageId]);
+			std::cout << printDecodedInstr(available[stageId] ? zero32 : window[off][stageId]);
 		}
 		std::cout << std::endl;
 
-		if (available) {
+		if (available != 0xff) {
 			lastGap = windowOffset;
 		}
 
 		freeSlot[off] = 0xFF;
-		if (!issue_width[4]) {
+		if (issue_width <= 4) {
 			binaries[windowPosition+windowOffset] = binariesWord.slc<128>(0);
 		} else {
 			binaries[2*(windowPosition+windowOffset)] = binariesWord.slc<128>(0);
@@ -1232,8 +1236,20 @@ ac_int<32, false> placeOfInstr[256]
 		}
 	}
 
-	ac_int<32, false> newEnd = (issue_width[4] ? 2 : 1)*(windowPosition+lastGap+1);
+
+	ac_int<32, false> newEnd = (issue_width>4 ? 2 : 1)*(windowPosition+lastGap+3);
 	ac_int<32, false> newSize = newEnd-addressInBinaries;
+	fprintf(stderr, "%d %d %d\n", newEnd, windowPosition, lastGap);
+
+	if (issue_width <= 4) {
+		binaries[newEnd-1] = 0;
+		binaries[newEnd-2] = 0;
+	} else {
+		binaries[newEnd-2] = 0;
+		binaries[newEnd-3] = 0;
+		binaries[newEnd-4] = 0;
+		binaries[newEnd-5] = 0;
+	}
 
 	if (haveJump) {
 		binaries[jumpPlace].set_slc(96, zero32);
@@ -1259,7 +1275,7 @@ int6 numberFreeRegister, char configuration){
 #ifndef __NIOS
 	// TODO: Differentiate List and Scoreboard issue_width representation
 	return scheduling(optLevel, basicBlockSize, platform->bytecode, platform->vliwBinaries, addressInBinaries, platform->placeOfRegisters,
-	numberFreeRegister, platform->freeRegisters, 0b1111, way_specialisation, platform->placeOfInstr);
+	numberFreeRegister, platform->freeRegisters, issue_width, way_specialisation, platform->placeOfInstr);
 #else
 	unsigned int argA = optLevel + (basicBlockSize << 1) + (addressInBinaries << 16);
 	unsigned int argB = issue_width + (way_specialisation << 4);
