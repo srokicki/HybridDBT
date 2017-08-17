@@ -431,6 +431,8 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	binaSize = irScheduler(platform, 1, nbInstr, start, 32, platform->vliwInitialConfiguration);
 	start += binaSize;
 
+	writeInt(platform->vliwBinaries, (start-2*increment)*16, assembleIInstruction(VEX_GOTOR, 0, 33));
+
 	//This is only for debug
 	if (platform->debugLevel > 2)
 		for (int i=0;i<start;i++){
