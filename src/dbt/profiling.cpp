@@ -92,6 +92,8 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 		else{
 			this->platform->vexSimulator->profileResult[numberProfiledBlocks] = 0;
 			profiledBlocks[numberProfiledBlocks] = oneBlock;
+			oneBlock->placeInProfiler = &(profiledBlocks[numberProfiledBlocks]);
+			fprintf(stderr, "Value assigned is %lx\n", oneBlock->placeInProfiler);
 			numberProfiledBlocks++;
 		}
 
