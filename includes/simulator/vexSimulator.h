@@ -94,6 +94,8 @@ class VexSimulator : public GenericSimulator {
 	ac_int<1, false> unitActivation[8];
 	ac_int<1, false> muxValues[3];
 
+	//Speculation
+	ac_int<1, false> enable;
 
 	//Tools for statistics
 	uint64_t nbInstr, lastNbInstr;

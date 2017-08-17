@@ -176,7 +176,7 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 				memtoWB->result = signedWord;
 				break;
 			case VEX_LDHU:
-				//ldhu
+				//ldhuextoMem.opcode
 				unsignedHalf.set_slc(0, extoMem.memValue.slc<16>(offset));
 				memtoWB->result = unsignedHalf;
 				break;
@@ -211,131 +211,38 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 			//We are on a store instruction
 			ac_int<1, false> byteEna0=0, byteEna1=0, byteEna2=0, byteEna3=0, byteEna4=0, byteEna5=0, byteEna6=0, byteEna7=0;
 			ac_int<8, false> byte0, byte1, byte2, byte3, byte4, byte5, byte6, byte7;
+			ac_int<7, false> opcodeToSwitch = extoMem.opCode;
+			ac_int<1, false> enableStore = 1;
 
+			if (opcodeToSwitch > VEX_STD){
+				opcodeToSwitch -= 4;
+				enableStore = this->enable;
+			}
 
-			switch (extoMem.opCode){
-			case VEX_STD:
-/*TODO correct this and handle unaligned accesses correctly
-				byte0 = extoMem.datac.slc<8>(0);
-				byte1 = extoMem.datac.slc<8>(8);
-				byte2 = extoMem.datac.slc<8>(16);
-				byte3 = extoMem.datac.slc<8>(24);
-				byte4 = extoMem.datac.slc<8>(32);
-				byte5 = extoMem.datac.slc<8>(40);
-				byte6 = extoMem.datac.slc<8>(48);
-				byte7 = extoMem.datac.slc<8>(56);
+			if (enableStore){
+				switch (extoMem.opCode){
+				case VEX_STD:
 
-				byteEna0 = 1;
-				byteEna1 = 1;
-				byteEna2 = 1;
-				byteEna3 = 1;
-				byteEna4 = 1;
-				byteEna5 = 1;
-				byteEna6 = 1;
-				byteEna7 = 1;
-				*/
+					this->std(address, extoMem.datac);
+					break;
+				case VEX_STW:
 
-				this->std(address, extoMem.datac);
-				break;
-			case VEX_STW:
-/*
-				//STW
-				if (address[2]){
-					byte4 = extoMem.datac.slc<8>(0);
-					byte5 = extoMem.datac.slc<8>(8);
-					byte6 = extoMem.datac.slc<8>(16);
-					byte7 = extoMem.datac.slc<8>(24);
-
-					byteEna4 = 1;
-					byteEna5 = 1;
-					byteEna6 = 1;
-					byteEna7 = 1;
-				}
-				else{
-					byte0 = extoMem.datac.slc<8>(0);
-					byte1 = extoMem.datac.slc<8>(8);
-					byte2 = extoMem.datac.slc<8>(16);
-					byte3 = extoMem.datac.slc<8>(24);
-
-					byteEna0 = 1;
-					byteEna1 = 1;
-					byteEna2 = 1;
-					byteEna3 = 1;
-				}*/
-
-				this->stw(address, extoMem.datac.slc<32>(0));
-
-			break;
-			case VEX_STH:
-				//STH
-/*
-				if (address.slc<3>(0) == 0){
-					byte0 = extoMem.datac.slc<8>(0);
-					byte1 = extoMem.datac.slc<8>(8);
-					byteEna0 = 1;
-					byteEna1 = 1;
-				}
-				else if (address.slc<3>(0) == 2){
-					byte2 = extoMem.datac.slc<8>(0);
-					byte3 = extoMem.datac.slc<8>(8);
-					byteEna2 = 1;
-					byteEna3 = 1;
-				}
-				else if (address.slc<3>(0) == 4){
-					byte4 = extoMem.datac.slc<8>(0);
-					byte5 = extoMem.datac.slc<8>(8);
-					byteEna4 = 1;
-					byteEna5 = 1;
-				}
-				else {
-					byte6 = extoMem.datac.slc<8>(0);
-					byte7 = extoMem.datac.slc<8>(8);
-					byteEna6 = 1;
-					byteEna7 = 1;
-				}*/
-				this->sth(address, extoMem.datac.slc<16>(0));
-			break;
-			case VEX_STB:
-				//STB
-				/*
-				if (address.slc<3>(0) == 0){
-					byte0 = extoMem.datac.slc<8>(0);
-					byteEna0 = 1;
-				}
-				else if (address.slc<3>(0) == 1){
-					byte1 = extoMem.datac.slc<8>(0);
-					byteEna1 = 1;
-				}
-				else if (address.slc<3>(0) == 2){
-					byte2 = extoMem.datac.slc<8>(0);
-					byteEna2 = 1;
-				}
-				else if (address.slc<3>(0) == 3){
-					byte3 = extoMem.datac.slc<8>(0);
-					byteEna3 = 1;
-				}
-				else if (address.slc<3>(0) == 4){
-					byte4 = extoMem.datac.slc<8>(0);
-					byteEna4 = 1;
-				}
-				else if (address.slc<3>(0) == 5){
-					byte5 = extoMem.datac.slc<8>(0);
-					byteEna5 = 1;
-				}
-				else if (address.slc<3>(0) == 6){
-					byte6 = extoMem.datac.slc<8>(0);
-					byteEna6 = 1;
-				}
-				else{
-					byte7 = extoMem.datac.slc<8>(0);
-					byteEna7 = 1;
-				}*/
-
-				this->stb(address, extoMem.datac.slc<8>(0));
+					this->stw(address, extoMem.datac.slc<32>(0));
 
 				break;
-			default:
-			break;
+				case VEX_STH:
+					//STH
+
+					this->sth(address, extoMem.datac.slc<16>(0));
+				break;
+				case VEX_STB:
+
+					this->stb(address, extoMem.datac.slc<8>(0));
+
+					break;
+				default:
+				break;
+				}
 			}
 
 			#ifdef __CATAPULT
@@ -1041,9 +948,16 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 				dctoEx->dataa = this->solveSyscall(REG[17], REG[10], REG[11], REG[12], REG[13]);
 				dctoEx->dest = 10;
 				dctoEx->opCode = VEX_MOVI;
-
-
 			break;
+
+			case VEX_SETCOND:
+				this->enable = regValueA;
+			break;
+			case VEX_SETCONDF:
+				this->enable = !regValueA;
+			break;
+
+
 #endif
 			default:
 				break;
@@ -1091,12 +1005,7 @@ int VexSimulator::doStep(){
 
 
 
-	// If the operation code is 0x2f then the processor stops
-	if(stop == 1){
 
-
-		return PC;
-	}
 
 
 	doMemNoMem(extoMem1, &memtoWB1);
@@ -1168,7 +1077,12 @@ int VexSimulator::doStep(){
 		stop = 1;
 		NEXT_PC = PC;
 	}
+	// If the operation code is 0x2f then the processor stops
+	if(stop == 1){
 
+
+		return PC;
+	}
 
 	///////////////////////////////////////////////////////
 	//                       F                           //
@@ -1245,24 +1159,41 @@ int VexSimulator::doStep(){
 
 #ifndef __CATAPULT
 
-	if (debugLevel >= 1){
+	if (debugLevel >= 1 /*|| (ftoDC1.instruction & 0x7f) == VEX_GOTOR || cycle>4424794*/){
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
+//		if (this->unitActivation[0])
+//			std::cerr << "\033[1;31m" << printDecodedInstr(ftoDC1.instruction) << "\033[0m;";
+//		if (this->unitActivation[1])
+//			std::cerr << "\033[1;35m" << printDecodedInstr(ftoDC2.instruction) << "\033[0m;";
+//		if (this->unitActivation[2])
+//			std::cerr << "\033[1;34m" << printDecodedInstr(ftoDC3.instruction) << "\033[0m;";
+//		if (this->unitActivation[3])
+//			std::cerr << "\033[1;33m" << printDecodedInstr(ftoDC4.instruction) << "\033[0m;";
+//		if (this->unitActivation[4])
+//			std::cerr << "\033[1;33m" << printDecodedInstr(ftoDC5.instruction) << "\033[0m;";
+//		if (this->unitActivation[5])
+//			std::cerr << "\033[1;33m" << printDecodedInstr(ftoDC6.instruction) << "\033[0m;";
+//		if (this->unitActivation[6])
+//			std::cerr << "\033[1;32m" << printDecodedInstr(ftoDC7.instruction) << "\033[0m;";
+//		if (this->unitActivation[7])
+//			std::cerr << "\033[1;34m" << printDecodedInstr(ftoDC8.instruction) << "\033[0m;";
+
 		if (this->unitActivation[0])
-			std::cerr << "\033[1;31m" << printDecodedInstr(ftoDC1.instruction) << "\033[0m;";
+			std::cerr << printDecodedInstr(ftoDC1.instruction);
 		if (this->unitActivation[1])
-			std::cerr << "\033[1;35m" << printDecodedInstr(ftoDC2.instruction) << "\033[0m;";
+			std::cerr << printDecodedInstr(ftoDC2.instruction);
 		if (this->unitActivation[2])
-			std::cerr << "\033[1;34m" << printDecodedInstr(ftoDC3.instruction) << "\033[0m;";
+			std::cerr << printDecodedInstr(ftoDC3.instruction);
 		if (this->unitActivation[3])
-			std::cerr << "\033[1;33m" << printDecodedInstr(ftoDC4.instruction) << "\033[0m;";
+			std::cerr << printDecodedInstr(ftoDC4.instruction);
 		if (this->unitActivation[4])
-			std::cerr << "\033[1;33m" << printDecodedInstr(ftoDC5.instruction) << "\033[0m;";
+			std::cerr << printDecodedInstr(ftoDC5.instruction);
 		if (this->unitActivation[5])
-			std::cerr << "\033[1;33m" << printDecodedInstr(ftoDC6.instruction) << "\033[0m;";
+			std::cerr << printDecodedInstr(ftoDC6.instruction);
 		if (this->unitActivation[6])
-			std::cerr << "\033[1;32m" << printDecodedInstr(ftoDC7.instruction) << "\033[0m;";
+			std::cerr << printDecodedInstr(ftoDC7.instruction);
 		if (this->unitActivation[7])
-			std::cerr << "\033[1;34m" << printDecodedInstr(ftoDC8.instruction) << "\033[0m;";
+			std::cerr << printDecodedInstr(ftoDC8.instruction);
 
 		fprintf(stderr, ";");
 
