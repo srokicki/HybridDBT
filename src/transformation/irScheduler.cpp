@@ -1162,8 +1162,7 @@ fprintf(stderr, "place of %d is %d\n", instructionId, dest);
 				}
 			}
 
-			if (advance)
-				windowPosition += issue_width <= 4 ? 1 : 2;
+			windowPosition += advance;
 			windowShift = (windowShift+(advance))%WINDOW_SIZE;
 
 			for (ac_int<STAGE_NUMBER_L2+1, false> stageId = 0
