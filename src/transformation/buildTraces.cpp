@@ -11,7 +11,7 @@
 IRBlock* ifConversion(IRBlock *entryBlock, IRBlock *thenBlock, IRBlock *elseBlock){
 
 }
-bool VERBOSE = 1;
+bool VERBOSE = 0;
 IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 
 	/*****
@@ -393,18 +393,25 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 	//If the successor of the two blocks are the same, we can remove the br
 	if (entryBlock == secondBlock){
 			result->jumpID = indexOfSecondJump;
+			result->addJump(indexOfSecondJump, -1);
 			result->instructions[indexOfJump*4+0] = 0;
 	}
 	else if (isEscape && entryBlock->successor1 == secondBlock->successor1){
 		result->jumpID = indexOfSecondJump;
+		result->addJump(indexOfSecondJump, -1);
+
 		result->instructions[indexOfJump*4+0] = 0;
 	}
 	else if (!isEscape && indexOfJump != -1){
 		result->jumpID = indexOfSecondJump;
+		result->addJump(indexOfSecondJump, -1);
+
 		result->instructions[indexOfJump*4+0] = 0;
 	}
 	else {
 		result->jumpID = indexOfJump;
+		result->addJump(indexOfJump, -1);
+
 	}
 
 	if (VERBOSE){
@@ -441,7 +448,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 	 */
 
 	int nbBlock = procedure->nbBlock;
-platform->debugLevel = 3;
 	char changeMade = 1;
 	while (changeMade){
 		changeMade = 0;
@@ -491,6 +497,15 @@ fprintf(stderr, "Jump opcopde is %x\n", opcode);
 					oneSuperBlock->instructions = oldInstruction;
 
 					block->jumpID = oneSuperBlock->jumpID;
+					if (block->jumpIds != NULL){
+						free(block->jumpIds);
+						free(block->jumpPlaces);
+					}
+					block->nbJumps = 0;
+					for (int oneJump=0; oneJump<oneSuperBlock->nbJumps; oneJump++){
+						block->addJump(oneSuperBlock->jumpIds[oneJump], oneSuperBlock->jumpPlaces[oneJump]);
+					}
+
 
 					delete oneSuperBlock;
 					changeMade=1;

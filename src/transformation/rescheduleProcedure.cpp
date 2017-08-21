@@ -355,24 +355,32 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
 		IRBlock *block = procedure->blocks[oneBlock];
 
-		bool isCallBlock = false;
-		if (block->nbJumps == 1){
-			char opcode = getOpcode(block->instructions, block->jumpIds[0]);
-			isCallBlock = opcode == VEX_CALL || opcode == VEX_CALLR;
-		}
+		if (block->nbJumps != 0){
 
-		if (block->nbSucc>1){
-			//Conditional block (br)
-			int offset = (block->successor1->vliwStartAddress - block->jumpPlaces[0]);
-			unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[0]);
-			writeInt(platform->vliwBinaries, 16*block->jumpPlaces[0], (oldJump & 0xfc00007f) | ((offset & 0x7ffff) << 7));
+			bool isCallBlock = false;
+			if (block->nbJumps == 1){
+				char opcode = getOpcode(block->instructions, block->jumpIds[0]);
+				isCallBlock = opcode == VEX_CALL || opcode == VEX_CALLR;
+			}
 
+			if (block->nbSucc>1){
+				//Conditional block (br)
+				int offset = (block->successor1->vliwStartAddress - block->jumpPlaces[0]);
+				unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[0]);
+				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[0], (oldJump & 0xfc00007f) | ((offset & 0x7ffff) << 7));
+				fprintf(stderr, "Modified jump at %d\n", block->jumpPlaces[0]);
 
-		}
-		else if (!isCallBlock && block->nbJumps != 0 && block->nbSucc == 1){
-			int dest = block->successor1->vliwStartAddress;
-			unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[0]);
-			writeInt(platform->vliwBinaries, 16*block->jumpPlaces[0], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
+			}
+			else if (!isCallBlock && block->nbJumps && block->nbSucc == 1){
+
+				int dest = block->successor1->vliwStartAddress;
+				fprintf(stderr, "%aa d\n", !isCallBlock && block->nbJumps && block->nbSucc == 1);
+
+				unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[0]);
+				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[0], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
+				fprintf(stderr, "Modified jump at %d\n", block->jumpPlaces[0]);
+
+			}
 		}
 	}
 

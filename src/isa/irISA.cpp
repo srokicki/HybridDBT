@@ -562,3 +562,28 @@ void addOffsetToDep(uint32 *bytecode, char index, char offset){
 	}
 }
 
+char getStageCode(uint32 *bytecode, char index){
+
+	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
+	return (bytecodeWord96>>30) & 0x3;
+}
+
+
+int getNbInstr(IRProcedure *procedure){
+	int result = 0;
+	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
+		result += procedure->blocks[oneBlock]->nbInstr;
+	}
+	return result;
+}
+
+int getNbInstr(IRProcedure *procedure, int type){
+	int result = 0;
+	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++)
+		for (int oneInstruction = 0; oneInstruction<procedure->blocks[oneBlock]->nbInstr; oneInstruction++)
+			if (getStageCode(procedure->blocks[oneBlock]->instructions, oneInstruction) == type)
+				result++;
+
+
+	return result;
+}

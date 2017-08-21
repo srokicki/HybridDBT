@@ -187,6 +187,10 @@ void setAlloc(uint32 *bytecode, char index, char newAlloc);
 void addDataDep(uint32 *bytecode, char index, char successor);
 void addControlDep(uint32 *bytecode, char index, char successor);
 void addOffsetToDep(uint32 *bytecode, char index, char offset);
+char getStageCode(uint32 *bytecode, char index);
+
+int getNbInstr(IRProcedure *procedure);
+int getNbInstr(IRProcedure *procedure, int type);
 
 /********************************************************************
  * Declaration of stage codes

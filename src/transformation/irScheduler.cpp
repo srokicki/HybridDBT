@@ -1146,7 +1146,7 @@ fprintf(stderr, "place of %d is %d\n", instructionId, dest);
 					binariesWord.set_slc(  stageId*32
 					, available[stageId] ? zero32 : window[off][stageId]);
 
-					std::cout << printDecodedInstr(available[stageId] ? zero32 : window[off][stageId]);
+					std::cout <<windowPosition+windowOffset<< "  "<< printDecodedInstr(available[stageId] ? zero32 : window[off][stageId]);
 
 				}
 				std::cout << "\n";
@@ -1157,12 +1157,13 @@ fprintf(stderr, "place of %d is %d\n", instructionId, dest);
 				if (issue_width<=4) {
 					binaries[windowPosition+windowOffset] = binariesWord.slc<128>(0);
 				} else {
-					binaries[2*(windowPosition+windowOffset)] = binariesWord.slc<128>(0);
-					binaries[2*(windowPosition+windowOffset)+1] = binariesWord.slc<128>(128);
+					binaries[windowPosition+windowOffset] = binariesWord.slc<128>(0);
+					binaries[windowPosition+windowOffset+1] = binariesWord.slc<128>(128);
 				}
 			}
 
-			windowPosition += advance;
+			if (advance)
+				windowPosition += issue_width <= 4 ? 1 : 2;
 			windowShift = (windowShift+(advance))%WINDOW_SIZE;
 
 			for (ac_int<STAGE_NUMBER_L2+1, false> stageId = 0
@@ -1219,7 +1220,7 @@ fprintf(stderr, "place of %d is %d\n", instructionId, dest);
 			binariesWord.set_slc(  stageId*32
 			, available[stageId] ? zero32 : window[off][stageId]);
 
-			std::cout << printDecodedInstr(available[stageId] ? zero32 : window[off][stageId]);
+			std::cout <<windowPosition+windowOffset<< "  "<< printDecodedInstr(available[stageId] ? zero32 : window[off][stageId]);
 		}
 		std::cout << std::endl;
 
@@ -1231,13 +1232,13 @@ fprintf(stderr, "place of %d is %d\n", instructionId, dest);
 		if (issue_width <= 4) {
 			binaries[windowPosition+windowOffset] = binariesWord.slc<128>(0);
 		} else {
-			binaries[2*(windowPosition+windowOffset)] = binariesWord.slc<128>(0);
-			binaries[2*(windowPosition+windowOffset)+1] = binariesWord.slc<128>(128);
+			binaries[windowPosition+windowOffset] = binariesWord.slc<128>(0);
+			binaries[windowPosition+windowOffset+1] = binariesWord.slc<128>(128);
 		}
 	}
 
 
-	ac_int<32, false> newEnd = (issue_width>4 ? 2 : 1)*(windowPosition+lastGap+2);
+	ac_int<32, false> newEnd = windowPosition + (issue_width>4 ? 2 : 1)*(lastGap+2);
 	ac_int<32, false> newSize = newEnd-addressInBinaries;
 	fprintf(stderr, "%d %d %d\n", newEnd, windowPosition, lastGap);
 

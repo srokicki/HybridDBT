@@ -9,8 +9,8 @@
 #include <isa/vexISA.h>
 #include <transformation/reconfigureVLIW.h>
 
-unsigned int schedulerConfigurations[16] = {0x00001a00,0x00001428,0x00005ec4,0x04281084,0x00001a88,0x04081a84,0,0,
-											0x00001a24,0x44201a04,0x00001a28,0x40201a84,0x00281a84,0x44281a84,0,0};
+unsigned int schedulerConfigurations[16] = {0x00005e00,0x0000546c,0x00005ec4,0x046c50c4,0x00005ecc,0x040c5ec4,0,0,
+											0x00005e64,0x44605e04,0x00005e6c,0x40605ce4,0x006c5ec4,0x446c5ec4,0,0};
 char validConfigurations[12] = {0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12 ,13};
 
 char getIssueWidth(char configuration){
@@ -158,3 +158,5 @@ int computeScore(IRProcedure *procedure){
 	fprintf(stderr, "Configuration with %x is %f\n", procedure->configuration, result);
 	return (int) result;
 }
+
+
