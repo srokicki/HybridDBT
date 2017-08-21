@@ -1935,7 +1935,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 			for (int oneInstructionFromBlock = 0; oneInstructionFromBlock < indexInCurrentBlock; oneInstructionFromBlock++){
 
 				ac_int<128, false> bytecodeWord = bytecode[oneInstructionFromBlock];
-				ac_int<3, false> nbSucc = bytecodeWord.slc<3>(64);
+				ac_int<8, false> nbSucc = bytecodeWord.slc<8>(64+6);
 
 				if (nbSucc == 0 && oneInstructionFromBlock != jumpID){
 					if (nbOlderDependency < 4){
@@ -1946,6 +1946,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 					else{
 						writeDependency_ac(bytecode, olderDependency[writeOlderDependency],oneInstructionFromBlock, 0, &bytecode[oneInstructionFromBlock]);
 						olderDependency[writeOlderDependency] = oneInstructionFromBlock;
+
 						writeOlderDependency++;
 					}
 				}
