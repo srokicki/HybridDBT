@@ -188,9 +188,14 @@ int main(int argc, char *argv[])
 	int nbInStreams = 0;
 	int nbOutStreams = 0;
 
-	while ((c = getopt (argc, argv, "vO:ha:o:i:f:c:")) != -1)
+	int MAX_SCHEDULE_COUNT = -1;
+
+	while ((c = getopt (argc, argv, "m:vO:ha:o:i:f:c:")) != -1)
 	switch (c)
 	  {
+		case 'm':
+			MAX_SCHEDULE_COUNT = atoi(optarg);
+		break;
 	  case 'v':
 		VERBOSE = 1;
 		break;
@@ -524,7 +529,7 @@ int main(int argc, char *argv[])
 			for (int oneBlock = 0; oneBlock<application.numbersBlockInSections[oneSection]; oneBlock++){
 				IRBlock* block = application.blocksInSections[oneSection][oneBlock];
 
-				if (OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress > 8  && block->blockState < IRBLOCK_STATE_SCHEDULED){
+				if ((MAX_SCHEDULE_COUNT==-1 || blockScheduleCounter < MAX_SCHEDULE_COUNT) && OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress > 8  && block->blockState < IRBLOCK_STATE_SCHEDULED){
 					optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
 					blockScheduleCounter++;
 

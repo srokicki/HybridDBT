@@ -434,7 +434,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	writeInt(platform->vliwBinaries, (start-2*increment)*16, assembleIInstruction(VEX_GOTOR, 0, 33));
 
 	//This is only for debug
-	if (platform->debugLevel > 2)
+	if (platform->debugLevel > 2 || 1)
 		for (int i=0;i<start;i++){
 			fprintf(stderr, "%d ", i);
 			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
