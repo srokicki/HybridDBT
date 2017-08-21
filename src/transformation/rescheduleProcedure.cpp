@@ -309,7 +309,7 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 		for (int oneJump=0; oneJump<block->nbJumps; oneJump++){
 			result->blocks[oneBlock]->jumpIds[oneJump] = block->jumpIds[oneJump];
-			result->blocks[oneBlock]->jumpPlaces[oneJump] = platform->placeOfInstr[block->jumpIds[oneJump]];
+			result->blocks[oneBlock]->jumpPlaces[oneJump] = platform->placeOfInstr[block->jumpIds[oneJump]]+writePlace;
 		}
 
 
@@ -403,7 +403,6 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 		if (platform->vexSimulator->PC == originalEntry || platform->vexSimulator->PC == originalEntry+1)
 			platform->vexSimulator->doStep(2);
 
-		fprintf(stderr, "Inserting jump from %d to %d\n", originalEntry, block->vliwStartAddress);
 
 		if (getIssueWidth(procedure->previousConfiguration) <= 4){
 			writeInt(platform->vliwBinaries, 16*originalEntry+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
@@ -469,7 +468,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 	}
 
-	if (platform->debugLevel > 1){
+	if (platform->debugLevel > 1 || 1){
 
 		//This is only for debug
 		for (int i=originalWritePlace;i<writePlace;i++){

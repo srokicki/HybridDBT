@@ -550,7 +550,7 @@ ac_int<32, false> scheduling(ac_int<1, false> optLevel, ac_int<8, false> basicBl
 
 					//***************************************
 					//We store the place
-					placeOfInstr[returnGetFirstNumber] = writeInBinaries;
+					placeOfInstr[returnGetFirstNumber] = writeInBinaries-addressInBinaries;
 
 					//***************************************
 					//We generate the instruction
