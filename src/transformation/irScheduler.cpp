@@ -855,7 +855,7 @@ ac_int<32, false> createInstruction(ac_int<50, false> instruction) {
 			generatedInstruction.set_slc(26, ac_int<6>(virtualRDest));
 		}
 		else{
-			generatedInstruction.set_slc(26, ac_int<6>(virtualRDest));
+			generatedInstruction.set_slc(26, ac_int<6>(virtualRIn2));
 		}
 		generatedInstruction.set_slc(7, imm19);
 	}
@@ -1024,6 +1024,20 @@ fprintf(stderr, "%x\n", way_specialisation);
 					}
 				}
 			}
+
+		/*	stageType = way_specialisation.slc<2>((stageId << 1) + 2);
+			if (issue_width[stageId] && (unitType == stageType || unitType == 2)) {
+				for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
+				; windowOffset < WINDOW_SIZE; ++windowOffset)
+				{
+					if (freeSlot[offset(windowOffset)][stageId+1]
+					&& !possible[windowOffset]) {
+						bestStage[windowOffset] = stageId+1;
+						bestOffset[windowOffset] = windowOffset;
+						possible[windowOffset] = 1;
+					}
+				}
+			}*/
 		}
 
 		// updates possible[] array with the [earliest_place] constraint
@@ -1071,9 +1085,9 @@ fprintf(stderr, "%x\n", way_specialisation);
 
 		instruction.set_slc(0, ac_int<9, false>(dest));
 		placeOfRegisters[instructionId] = dest;
-
+fprintf(stderr, "place of %d is %d\n", instructionId, dest);
 		ac_int<9, false> rin1 = virtualRIn1_imm9;
-		ac_int<9, false> rin2 = virtualRIn2;
+		ac_int<9, false> rin2 = typeCode == 2 ? virtualRDest : virtualRIn2;
 
 		ac_int<6, false> placeOfRin1 = placeOfRegisters[rin1];
 		ac_int<6, false> placeOfRin2 = placeOfRegisters[rin2];
@@ -1082,7 +1096,7 @@ fprintf(stderr, "%x\n", way_specialisation);
 		ac_int<8, false> rin2Dep = registerDependencies[rin2.slc<8>(0)];
 
 		ac_int<1, false> useRin1 = typeCode == 0 && !isImm;
-		ac_int<1, false> useRin2 = typeCode == 0;
+		ac_int<1, false> useRin2 = typeCode == 0 || (typeCode == 2 && opCode != VEX_MOVI);
 
 		if (useRin2) {
 			instruction.set_slc(9, placeOfRin2);
@@ -1223,23 +1237,17 @@ fprintf(stderr, "%x\n", way_specialisation);
 	}
 
 
-	ac_int<32, false> newEnd = (issue_width>4 ? 2 : 1)*(windowPosition+lastGap+3);
+	ac_int<32, false> newEnd = (issue_width>4 ? 2 : 1)*(windowPosition+lastGap+2);
 	ac_int<32, false> newSize = newEnd-addressInBinaries;
 	fprintf(stderr, "%d %d %d\n", newEnd, windowPosition, lastGap);
 
 	if (issue_width <= 4) {
 		binaries[newEnd-1] = 0;
-		binaries[newEnd-2] = 0;
 	} else {
-//		binaries[newEnd-2] = 0;
-//		binaries[newEnd-3] = 0;
-//		binaries[newEnd-4] = 0;
-//		binaries[newEnd-5] = 0;
+		binaries[newEnd-2] = 0;
+		binaries[newEnd-3] = 0;
 	}
 
-	if (haveJump) {
-		binaries[jumpPlace].set_slc(96, zero32);
-	}
 
 	return newSize;
 }
