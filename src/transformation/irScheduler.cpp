@@ -1024,20 +1024,6 @@ fprintf(stderr, "%x\n", way_specialisation);
 					}
 				}
 			}
-
-		/*	stageType = way_specialisation.slc<2>((stageId << 1) + 2);
-			if (issue_width[stageId] && (unitType == stageType || unitType == 2)) {
-				for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
-				; windowOffset < WINDOW_SIZE; ++windowOffset)
-				{
-					if (freeSlot[offset(windowOffset)][stageId+1]
-					&& !possible[windowOffset]) {
-						bestStage[windowOffset] = stageId+1;
-						bestOffset[windowOffset] = windowOffset;
-						possible[windowOffset] = 1;
-					}
-				}
-			}*/
 		}
 
 		// updates possible[] array with the [earliest_place] constraint
@@ -1245,10 +1231,10 @@ fprintf(stderr, "%x\n", way_specialisation);
 		binaries[newEnd-1] = 0;
 		binaries[newEnd-2] = 0;
 	} else {
-		binaries[newEnd-2] = 0;
-		binaries[newEnd-3] = 0;
-		binaries[newEnd-4] = 0;
-		binaries[newEnd-5] = 0;
+//		binaries[newEnd-2] = 0;
+//		binaries[newEnd-3] = 0;
+//		binaries[newEnd-4] = 0;
+//		binaries[newEnd-5] = 0;
 	}
 
 	if (haveJump) {
