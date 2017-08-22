@@ -482,10 +482,11 @@ int main(int argc, char *argv[])
 					char oldConf = procedure->configuration;
 
 					changeConfiguration(procedure);
-
 					if (procedure->configuration != oldConf || procedure->configurationScores[procedure->configuration] == 0){
 						IRProcedure *scheduledProcedure = rescheduleProcedure_schedule(&dbtPlateform, procedure, placeCode);
 						fprintf(stderr, "test\n");
+						suggestConfiguration(procedure, scheduledProcedure);
+
 						int score = computeScore(scheduledProcedure);
 						procedure->configurationScores[procedure->configuration] = score;
 						if (score > procedure->configurationScores[procedure->previousConfiguration]){
