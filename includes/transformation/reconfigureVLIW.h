@@ -50,7 +50,7 @@ float getPowerConsumption(char configuration);
 void setVLIWConfiguration(VexSimulator *simulator, char configuration);
 void changeConfiguration(IRProcedure *procedure);
 int computeScore(IRProcedure *procedure);
-
+int suggestConfiguration(IRProcedure *originalProc, IRProcedure *newlyScheduledProc);
 
 
 #endif /* INCLUDES_TRANSFORMATION_RECONFIGUREVLIW_H_ */

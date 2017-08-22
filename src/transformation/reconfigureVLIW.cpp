@@ -10,7 +10,7 @@
 #include <transformation/reconfigureVLIW.h>
 
 unsigned int schedulerConfigurations[16] = {0x00005e00,0x0000546c,0x00005ec4,0x046c50c4,0x00005ecc,0x040c5ec4,0,0,
-											0x00005e64,0x44605e04,0x00005e6c,0x40605ce4,0x006c5ec4,0x446c5ec4,0,0};
+											0x00005e64,0x44605e04,0x00005e6c,0x40605ec4,0x006c5ec4,0x446c5ec4,0,0};
 char validConfigurations[12] = {0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12 ,13};
 
 char getIssueWidth(char configuration){
@@ -153,10 +153,37 @@ int computeScore(IRProcedure *procedure){
 	if (getIssueWidth(procedure->configuration) > 4)
 		result = result/2;
 
-	result = 100000 / result;
+	result = 100000 / (result*getPowerConsumption(procedure->configuration));
 
 	fprintf(stderr, "Configuration with %x is %f\n", procedure->configuration, result);
 	return (int) result;
+}
+
+int suggestConfiguration(IRProcedure *originalProc, IRProcedure *newlyScheduledProc){
+	int nbInstr = getNbInstr(originalProc);
+	int nbMult = getNbInstr(originalProc, 3);
+	int nbMem = getNbInstr(originalProc, 1);
+
+
+	int size = 0;
+	for (int oneBlock = 0; oneBlock<newlyScheduledProc->nbBlock; oneBlock++){
+		IRBlock *block = newlyScheduledProc->blocks[oneBlock];
+		size += block->vliwEndAddress - block->vliwStartAddress;
+	}
+	if (getIssueWidth(newlyScheduledProc->configuration) > 4)
+		size = size / 2;
+
+	int ressourceMult = getNbMult(newlyScheduledProc->configuration);
+	int ressourceMem = getNbMult(newlyScheduledProc->configuration);
+	int ressourceInstr = getIssueWidth(newlyScheduledProc->configuration);
+
+	fprintf(stderr, "schedule size is %d procedure has %d insructions, %d mem, %d mult\n", size, nbInstr,nbMem, nbMult);
+	float scoreMult = 1.0 * nbMult / (size * ressourceMult);
+	float scoreMem = 1.0 * nbMem / (size * ressourceMem);
+	float scoreSimple = 1.0 * nbInstr / (size * ressourceInstr);
+
+	fprintf(stderr, "Scores for suggestion are %f %f %f\n", scoreMult, scoreMem, scoreSimple);
+
 }
 
 
