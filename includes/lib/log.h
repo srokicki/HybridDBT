@@ -15,7 +15,7 @@ public:
   }
 
   template<class ... Ts>
-  static void printf(char verbose_level, const char * format, Ts ... args)
+  static void printf(char verbose, const char * format, Ts ... args)
   {
     if (_verbose_level >= verbose)
       std::printf(format, args ...);

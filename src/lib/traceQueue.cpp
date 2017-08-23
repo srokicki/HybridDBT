@@ -3,12 +3,12 @@
 TraceQueue::TraceQueue() {}
 TraceQueue::~TraceQueue() {}
 
-inline bool pushSignal(const Entry& e)
+inline bool pushSignal(const TraceQueue::Entry& e)
 {
   return !(e.pc % 100);
 }
 
-void TraceQueue::trace(const Entry& e)
+void TraceQueue::trace(const TraceQueue::Entry& e)
 {
   std::unique_lock<std::mutex> lck(_mtx_current);
 
@@ -40,7 +40,7 @@ std::vector<TraceQueue::Entry> TraceQueue::nextChunk()
   std::unique_lock<std::mutex> lck(_mtx_queue);
   while (_trace_queue.empty()) _cv.wait(lck);
 
-  std::vector<T> ret = _trace_queue.back();
+  std::vector<TraceQueue::Entry> ret = _trace_queue.back();
   _trace_queue.pop();
 
   return ret;

@@ -1,5 +1,3 @@
-add_subdirectory(log)
-
 set(SOURCE
    ${SOURCE}
    ${CMAKE_CURRENT_SOURCE_DIR}/elfFile.cpp
