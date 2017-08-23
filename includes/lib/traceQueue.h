@@ -5,10 +5,17 @@
 #include <mutex>
 #include <condition_variable>
 
+/**
+ * @brief This class represents a concurrency-safe queue used to register execution
+ * traces chunks. It is useful for threaded multi-simulators applications.
+ */
 class TraceQueue
 {
 public:
 
+  /**
+   * @brief Entry represent an execution trace line
+   */
   typedef struct _Entry
   {
     uint32_t instructions[8];
@@ -19,7 +26,14 @@ public:
   TraceQueue();
   ~TraceQueue();
 
-  void trace(const Entry& t);
+  /**
+   * @brief Registers a trace in the current chunk being executed
+   */
+  void trace(const Entry& e);
+
+  /**
+   * @brief Read and pops the next readable trace chunk.
+   */
   std::vector<Entry> nextChunk();
 
 private:
