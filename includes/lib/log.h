@@ -1,8 +1,7 @@
 #ifndef LOG_H
 #define LOG_H
 
-#include <lib/logger.h>
-#include <cstdarg>
+#include <cstdio>
 
 class Log
 {
@@ -10,18 +9,22 @@ public:
 	Log() = delete;
 	Log(const Log&) = delete;
 
-	static void Init(Logger * logger);
+  static void Init(char verbose_level)
+  {
+    _verbose_level = verbose_level;
+  }
 
-	static void printf(const char * format, ...)
-	{
-		va_list args;
-		va_start(args, format);
-		_logger->printf(format, args);
-		va_end(args);
-	}
-
+  template<class ... Ts>
+  static void printf(char verbose_level, const char * format, Ts ... args)
+  {
+    if (_verbose_level >= verbose)
+      std::printf(format, args ...);
+  }
+  
 private:
-	static Logger * _logger;
+  static char _verbose_level;
 };
+
+char Log::_verbose_level = 0;
 
 #endif // LOG_H
