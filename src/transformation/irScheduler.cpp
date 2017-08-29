@@ -913,7 +913,7 @@ ac_int<32, false> placeOfInstr[256]
   std::cout << "PRIORITY = ";
   for (int i = 0; i < 8; ++i)
     std::cout << " " << priority[i];
-  std::cout << '\n';
+  std::cout << " AT " << addressInBinaries << '\n';
   fprintf(stderr, "%x\n", way_specialisation);
 	haveJump = 0;
 	instructionId = 0;
@@ -1130,11 +1130,23 @@ ac_int<32, false> placeOfInstr[256]
 		// Generation + pre-placement of instruction
 		//**************************************************************
 
+    if (addressInBinaries == 2394)
+    {
+
+      printf("we're debugging \n");
+    }
+
 		instruction.set_slc(0, ac_int<9, false>(dest));
 		placeOfRegisters[instructionId] = dest;
 
 		ac_int<9, false> rin1 = virtualRIn1_imm9;
 		ac_int<9, false> rin2 = typeCode == 2 ? virtualRDest : virtualRIn2;
+
+    if (addressInBinaries == 2394)
+    {
+
+      printf("%d, %d\n", rin1, rin2);
+    }
 
 		ac_int<6, false> placeOfRin1 = placeOfRegisters[rin1];
 		ac_int<6, false> placeOfRin2 = placeOfRegisters[rin2];
