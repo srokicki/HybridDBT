@@ -6,5 +6,7 @@ set(SOURCE
    ${CMAKE_CURRENT_SOURCE_DIR}/JIT-Tools_multiarch.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/config.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/traceQueue.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/threadedDebug.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/log.cpp
    PARENT_SCOPE
 )

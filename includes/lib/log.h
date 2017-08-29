@@ -6,13 +6,12 @@
 //Definition of debug level symbols
 #define LOG_SCHEDULE_BLOCK 2
 
-
 /**
  * @brief This static class is used to encapsulate logging functions. To change
  * logging behaviour, just change this class members.
  */
 class Log
-{
+{ 
 public:
 	Log() = delete;
 	Log(const Log&) = delete;
@@ -34,11 +33,21 @@ public:
     if (_verbose_level >= verbose)
       std::printf(format, args ...);
   }
-  
+
+  /**
+   * @brief This method encapsulates the standard fprintf() function.
+   */
+  template<class ... Ts>
+  static void fprintf(char verbose, FILE * f, const char * format, Ts ... args)
+  {
+    if (_verbose_level >= verbose)
+      std::fprintf(f, format, args ...);
+  }
+ 
 private:
+
   static char _verbose_level;
 };
 
-char Log::_verbose_level = 0;
 
 #endif // LOG_H

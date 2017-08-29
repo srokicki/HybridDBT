@@ -9,6 +9,7 @@
 #include <lib/endianness.h>
 #include <lib/tools.h>
 #include <simulator/vexSimulator.h>
+#include <simulator/vexTraceSimulator.h>
 #include <simulator/riscvSimulator.h>
 
 #include <transformation/firstPassTranslator.h>
@@ -22,6 +23,11 @@
 
 #include <isa/vexISA.h>
 #include <isa/riscvISA.h>
+
+#include <lib/config.h>
+#include <lib/log.h>
+#include <lib/traceQueue.h>
+#include <lib/threadedDebug.h>
 
 
 #ifndef __NIOS
@@ -40,10 +46,10 @@ void printStats(unsigned int size, short* blockBoundaries){
 			numberBlocks++;
 	}
 
-	printf("\n* Statistics on used binaries:\n");
-	printf("* \tThere is %d instructions.\n", size);
-	printf("* \tThere is %d blocks.\n", (int) numberBlocks);
-	printf("* \tBlocks mean size is %f.\n\n", size/numberBlocks);
+  Log::printf(0, "\n* Statistics on used binaries:\n");
+  Log::printf(0, "* \tThere is %d instructions.\n", size);
+  Log::printf(0, "* \tThere is %d blocks.\n", (int) numberBlocks);
+  Log::printf(0, "* \tBlocks mean size is %f.\n\n", size/numberBlocks);
 
 }
 
@@ -81,7 +87,7 @@ void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressS
 			size = section->size/4 - 0;
 
 			if (size > MEMORY_SIZE){
-				fprintf(stderr, "Error: binary file has %d instructions, we currently handle a maximum size of %d\n", size, MEMORY_SIZE);
+				Log::fprintf(0, stderr, "Error: binary file has %d instructions, we currently handle a maximum size of %d\n", size, MEMORY_SIZE);
 				exit(-1);
 			}
 
@@ -140,7 +146,7 @@ int run(DBTPlateform *platform, int nbCycle){
 	return platform->vexSimulator->doStep(nbCycle);
 
 #else
-	printf("starting run\n");
+  Log::printf(0, "starting run\n");
 
 //#define ALT_CI_COMPONENT_RUN_0(A,B) __builtin_custom_inii(ALT_CI_COMPONENT_RUN_0_N,(A),(B))
 //#define ALT_CI_COMPONENT_RUN_0_1(A,B) __builtin_custom_inii(ALT_CI_COMPONENT_RUN_0_1_N,(A),(B))
@@ -165,8 +171,6 @@ int run(DBTPlateform *platform, int nbCycle){
 
 
 
-
-
 int main(int argc, char *argv[])
 {
 
@@ -174,65 +178,100 @@ int main(int argc, char *argv[])
 	 *
 	 */
 
-	int c;
-	int CONFIGURATION = 2;
-	int VERBOSE = 0;
-	int OPTLEVEL = 1;
-	int HELP = 0;
-	char* binaryFile = NULL;
+	static std::map<std::string, FILE*> ios =
+	{
+	{ "stdin", stdin },
+	{ "stdout", stdout },
+	{ "stderr", stderr }
+	};
 
-	char* ARGUMENTS = NULL;
+	Config cfg(argc, argv);
+
+	int CONFIGURATION = cfg.has("c") ? std::stoi(cfg["c"]) : 2;
+
+	int VERBOSE = cfg.has("v") ? std::stoi(cfg["v"]) : 0;
+
+	Log::Init(VERBOSE);
+
+	int OPTLEVEL = cfg.has("O") ? std::stoi(cfg["O"]) : 1;
+	int HELP = cfg.has("h");
+	char* binaryFile = cfg.has("f") && !cfg["f"].empty() ? (char*)cfg["f"].c_str() : NULL;
+
+	char* ARGUMENTS = cfg.has("a") && !cfg["a"].empty() ? (char*)cfg["a"].c_str() : NULL;
+
 	FILE** inStreams = (FILE**) malloc(10*sizeof(FILE*));
 	FILE** outStreams = (FILE**) malloc(10*sizeof(FILE*));
 
 	int nbInStreams = 0;
 	int nbOutStreams = 0;
 
-	int MAX_SCHEDULE_COUNT = -1;
+	int MAX_SCHEDULE_COUNT = cfg.has("m") ? std::stoi(cfg["m"]) : -1;
 
-	while ((c = getopt (argc, argv, "m:vO:ha:o:i:f:c:")) != -1)
-	switch (c)
-	  {
-		case 'm':
-			MAX_SCHEDULE_COUNT = atoi(optarg);
-		break;
-	  case 'v':
-		VERBOSE = 1;
-		break;
-	  case 'h':
-		HELP = 1;
-		break;
-	  case 'a':
-		  ARGUMENTS = optarg;
-	  break;
-	  case 'O':
-		  OPTLEVEL = atoi(optarg);
-		break;
-	  case 'c':
-		  CONFIGURATION = atoi(optarg);
-		break;
-	  case 'i':
-		  if (strcmp(optarg, "stdin") == 0)
-			  inStreams[nbInStreams] = stdin;
-		  else
-			  inStreams[nbInStreams] = fopen(optarg, "r");
-		  nbInStreams++;
-	  break;
-	  case 'o':
-		  if (strcmp(optarg, "stdout") == 0)
-			  outStreams[nbOutStreams] = stdout;
-		  else if (strcmp(optarg, "stderr") == 0)
-			  outStreams[nbOutStreams] = stderr;
-		  else
-			  outStreams[nbOutStreams] = fopen(optarg, "w");
-		  nbOutStreams++;
-	  break;
-	  case 'f':
-		  binaryFile = optarg;
-	  break;
-	  default:
-		abort ();
-	  }
+	if (cfg.has("i"))
+	{
+		for (auto filename : cfg.argsOf("i"))
+		{
+			FILE* fp = ios[filename];
+			if (!fp)
+				fp = fopen(filename.c_str(), "r");
+			inStreams[nbInStreams++] = fp;
+		}
+	}
+
+	if (cfg.has("o"))
+	{
+		for (auto filename : cfg.argsOf("o"))
+		{
+			FILE* fp = ios[filename];
+			if (!fp)
+				fp = fopen(filename.c_str(), "w");
+			outStreams[nbOutStreams++] = fp;
+		}
+	}
+
+//	while ((c = getopt (argc, argv, "m:vO:ha:o:i:f:c:")) != -1)
+//	switch (c)
+//	  {
+//		case 'm':
+//			MAX_SCHEDULE_COUNT = atoi(optarg);
+//		break;
+//	  case 'v':
+//		VERBOSE = 1;
+//		break;
+//	  case 'h':
+//		HELP = 1;
+//		break;
+//	  case 'a':
+//		  ARGUMENTS = optarg;
+//	  break;
+//	  case 'O':
+//		  OPTLEVEL = atoi(optarg);
+//		break;
+//	  case 'c':
+//		  CONFIGURATION = atoi(optarg);
+//		break;
+//	  case 'i':
+//		  if (strcmp(optarg, "stdin") == 0)
+//			  inStreams[nbInStreams] = stdin;
+//		  else
+//			  inStreams[nbInStreams] = fopen(optarg, "r");
+//		  nbInStreams++;
+//	  break;
+//	  case 'o':
+//		  if (strcmp(optarg, "stdout") == 0)
+//			  outStreams[nbOutStreams] = stdout;
+//		  else if (strcmp(optarg, "stderr") == 0)
+//			  outStreams[nbOutStreams] = stderr;
+//		  else
+//			  outStreams[nbOutStreams] = fopen(optarg, "w");
+//		  nbOutStreams++;
+//	  break;
+//	  case 'f':
+//		  binaryFile = optarg;
+//	  break;
+//	  default:
+//		abort ();
+//	  }
 
 	int localArgc;
 	char** localArgv;
@@ -248,7 +287,7 @@ int main(int argc, char *argv[])
 			if (ARGUMENTS[index] == ' '){
 				ARGUMENTS[index] = 0;
 				count++;
-				printf("Arg was %s\n", ARGUMENTS);
+				Log::printf(0, "Arg was %s\n", ARGUMENTS);
 			}
 			index++;
 		}
@@ -285,7 +324,7 @@ int main(int argc, char *argv[])
 
 
 	if (HELP || binaryFile == NULL){
-		printf("Usage is %s [-v] [-On] file\n\t-v\tVerbose mode, prints all execution information\n\t-On\t Optimization level from zero to two\n", argv[0]);
+    Log::printf(0, "Usage is %s [-v] [-On] file\n\t-v\tVerbose mode, prints all execution information\n\t-On\t Optimization level from zero to two\n", argv[0]);
 		return 1;
 	}
 
@@ -309,7 +348,20 @@ int main(int argc, char *argv[])
 
 
 	#ifndef __NIOS
-	dbtPlateform.vexSimulator = new VexSimulator(dbtPlateform.vliwBinaries);
+
+  ThreadedDebug * dbg = nullptr;
+  TraceQueue * tracer = nullptr;
+  if (cfg.has("trace")) {
+    TraceQueue * tracer = new TraceQueue();
+
+    dbg = new ThreadedDebug(tracer);
+    dbg->run();
+
+  	dbtPlateform.vexSimulator = new VexTraceSimulator(dbtPlateform.vliwBinaries, tracer);
+  }
+  else
+  	dbtPlateform.vexSimulator = new VexSimulator(dbtPlateform.vliwBinaries);
+
 	dbtPlateform.vexSimulator->inStreams = inStreams;
 	dbtPlateform.vexSimulator->nbInStreams = nbInStreams;
 	dbtPlateform.vexSimulator->outStreams = outStreams;
@@ -329,7 +381,7 @@ int main(int argc, char *argv[])
 	readSourceBinaries(binaryFile, code, addressStart, size, pcStart, &dbtPlateform);
 
 	if (size > MEMORY_SIZE){
-		fprintf(stderr, "ERROR: Size of source binaries is %d. Current implementation only accept size lower then %d\n", size, MEMORY_SIZE);
+		Log::fprintf(0, stderr, "ERROR: Size of source binaries is %d. Current implementation only accept size lower then %d\n", size, MEMORY_SIZE);
 		exit(-1);
 	}
 
@@ -360,7 +412,7 @@ int main(int argc, char *argv[])
 
 	for (int oneInsertion=0; oneInsertion<placeCode; oneInsertion++){
 		if (VERBOSE)
-			fprintf(stderr, "insert;%d\n", oneInsertion);
+			Log::fprintf(0, stderr, "insert;%d\n", oneInsertion);
 	}
 
 
@@ -397,7 +449,7 @@ int main(int argc, char *argv[])
 		int nbIns = getInsertionList(oneSection*1024, insertions);
 		for (int oneInsertion=0; oneInsertion<nbIns; oneInsertion++){
 			if (VERBOSE)
-				fprintf(stderr, "insert;%d\n", (*insertions)[oneInsertion]+(*insertions)[-1]);
+				Log::fprintf(0, stderr, "insert;%d\n", (*insertions)[oneInsertion]+(*insertions)[-1]);
 		}
 
 	}
@@ -411,14 +463,14 @@ int main(int argc, char *argv[])
 		unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(&dbtPlateform, initialDestination);
 
 		if (destinationInVLIWFromNewMethod == -1){
-			printf("A jump from %d to %x is still unresolved... (%d insertions)\n", source, initialDestination, insertionsArray[(initialDestination>>10)<<11]);
+      Log::printf(0, "A jump from %d to %x is still unresolved... (%d insertions)\n", source, initialDestination, insertionsArray[(initialDestination>>10)<<11]);
 		}
 		else{
 			int immediateValue = (isAbsolute) ? (destinationInVLIWFromNewMethod) : ((destinationInVLIWFromNewMethod  - source));
 			writeInt(dbtPlateform.vliwBinaries, 16*(source), type + ((immediateValue & 0x7ffff)<<7));
 
 			if (immediateValue > 0x7ffff)
-				fprintf(stderr, "error in immediate size...\n");
+				Log::fprintf(0, stderr, "error in immediate size...\n");
 
 			unsigned int instructionBeforePreviousDestination = readInt(dbtPlateform.vliwBinaries, 16*(destinationInVLIWFromNewMethod-1)+12);
 			if (instructionBeforePreviousDestination != 0)
@@ -471,26 +523,26 @@ int main(int argc, char *argv[])
 			break;
 
 		if (VERBOSE)
-			fprintf(stderr, "IPC;%f\n", dbtPlateform.vexSimulator->getAverageIPC());
+			Log::fprintf(0, stderr, "IPC;%f\n", dbtPlateform.vexSimulator->getAverageIPC());
 
 		if (OPTLEVEL >= 3){
 			for (int oneProcedure = 0; oneProcedure < application.numberProcedures; oneProcedure++){
 				IRProcedure *procedure = application.procedures[oneProcedure];
 				if (procedure->state == 0){
-					fprintf(stderr, "at entry procedure conf is %d, previous is %d\n", procedure->configuration, procedure->previousConfiguration);
+					Log::fprintf(0, stderr, "at entry procedure conf is %d, previous is %d\n", procedure->configuration, procedure->previousConfiguration);
 					char oldPrevious = procedure->previousConfiguration;
 					char oldConf = procedure->configuration;
 
 					changeConfiguration(procedure);
 					if (procedure->configuration != oldConf || procedure->configurationScores[procedure->configuration] == 0){
 						IRProcedure *scheduledProcedure = rescheduleProcedure_schedule(&dbtPlateform, procedure, placeCode);
-						fprintf(stderr, "test\n");
+						Log::fprintf(0, stderr, "test\n");
 						suggestConfiguration(procedure, scheduledProcedure);
 
 						int score = computeScore(scheduledProcedure);
 						procedure->configurationScores[procedure->configuration] = score;
 						if (score > procedure->configurationScores[procedure->previousConfiguration]){
-							fprintf(stderr, "Score %d is greater than %d, changing to %d\n", score, procedure->configurationScores[procedure->previousConfiguration], procedure->configuration);
+							Log::fprintf(0, stderr, "Score %d is greater than %d, changing to %d\n", score, procedure->configurationScores[procedure->previousConfiguration], procedure->configuration);
 							placeCode = rescheduleProcedure_commit(&dbtPlateform, procedure, placeCode, scheduledProcedure);
 						}
 						else{
@@ -498,7 +550,7 @@ int main(int argc, char *argv[])
 							procedure->previousConfiguration = oldPrevious;
 						}
 					}
-					fprintf(stderr, "at exit procedure conf is %d, previous is %d\n", procedure->configuration, procedure->previousConfiguration);
+					Log::fprintf(0, stderr, "at exit procedure conf is %d, previous is %d\n", procedure->configuration, procedure->previousConfiguration);
 
 					break;
 				}
@@ -511,6 +563,7 @@ int main(int argc, char *argv[])
 
 			if (block != NULL && OPTLEVEL >= 2 && profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
 
+				Log::fprintf(0, stderr, "Analyzis of %x to %x (%d to %d) for procedure building   %d \n", block->sourceStartAddress, block->sourceEndAddress, block->vliwStartAddress, block->vliwEndAddress, block->blockState);
 				buildAdvancedControlFlow(&dbtPlateform, block, &application);
 				block->blockState = IRBLOCK_PROC;
 				buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
@@ -557,26 +610,26 @@ int main(int argc, char *argv[])
 	for (int oneConfig = 0; oneConfig<32; oneConfig++){
 		float timeInConfig = dbtPlateform.vexSimulator->timeInConfig[oneConfig];
 		timeInConfig = timeInConfig / dbtPlateform.vexSimulator->cycle;
-//		fprintf(stdout, "Conf %x\t[", oneConfig);
-//		int convertToPercent = timeInConfig * lineSize;
-//		for (int oneChar = 0; oneChar < convertToPercent; oneChar++){
-//			fprintf(stdout, "|");
-//		}
-//		for (int oneChar = convertToPercent; oneChar < lineSize; oneChar++){
-//			fprintf(stdout, " ");
-//		}
-//		fprintf(stdout, "] %f  Power consumption : %f\n", timeInConfig*100, getPowerConsumption(oneConfig));
+		Log::fprintf(0, stdout, "Conf %x\t[", oneConfig);
+		int convertToPercent = timeInConfig * lineSize;
+		for (int oneChar = 0; oneChar < convertToPercent; oneChar++){
+			Log::fprintf(0, stdout, "|");
+		}
+		for (int oneChar = convertToPercent; oneChar < lineSize; oneChar++){
+			Log::fprintf(0, stdout, " ");
+		}
+		Log::fprintf(0, stdout, "] %f  Power consumption : %f\n", timeInConfig*100, getPowerConsumption(oneConfig));
 		energyConsumption += dbtPlateform.vexSimulator->timeInConfig[oneConfig] * period * getPowerConsumption(oneConfig) / 1000;
 	}
 
-	//	fprintf(stdout, "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: %ld\n\t Number of instruction executed: %ld\n\t Average IPC: %f\n\t Number of block scheduled: %d\n\t Number of procedure optimized (O2): %d\n",
+	//	Log::fprintf(0, stdout, "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: %ld\n\t Number of instruction executed: %ld\n\t Average IPC: %f\n\t Number of block scheduled: %d\n\t Number of procedure optimized (O2): %d\n",
 	//			dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
-	//	fprintf(stdout, "\tConfiguration used: %d\n", CONFIGURATION);
-	//	fprintf(stdout, "\tEnergy consumed: %f\n", energyConsumption);
+	//	Log::fprintf(0, stdout, "\tConfiguration used: %d\n", CONFIGURATION);
+	//	Log::fprintf(0, stdout, "\tEnergy consumed: %f\n", energyConsumption);
 
-	fprintf(stdout, "%ld;%ld;%f;%d;%d;",	dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
-	fprintf(stdout, "%d;", CONFIGURATION);
-	fprintf(stdout, "%f\n", energyConsumption);
+	Log::fprintf(0, stdout, "%ld;%ld;%f;%d;%d;",	dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
+	Log::fprintf(0, stdout, "%d;", CONFIGURATION);
+	Log::fprintf(0, stdout, "%f\n", energyConsumption);
 
 
 
@@ -584,9 +637,15 @@ int main(int argc, char *argv[])
 	//We print profiling result
 	#ifndef __NIOS
 	delete dbtPlateform.vexSimulator;
+  
+  if (dbg)
+    delete dbg;
+
+  if (tracer)
+    delete tracer;
+
 	free(code);
 	#endif
-
 
 }
 
