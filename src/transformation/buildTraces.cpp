@@ -390,19 +390,19 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 	if (entryBlock == secondBlock){
 			result->jumpID = indexOfSecondJump;
 			result->addJump(indexOfSecondJump, -1);
-			result->instructions[indexOfJump*4+0] = 0;
+			result->instructions[indexOfJump*4+0] &= 0xfc07ffff; //Set the opcode to zero (mask)
 	}
 	else if (isEscape && entryBlock->successor1 == secondBlock->successor1){
 		result->jumpID = indexOfSecondJump;
 		result->addJump(indexOfSecondJump, -1);
 
-		result->instructions[indexOfJump*4+0] = 0;
+		result->instructions[indexOfJump*4+0] &= 0xfc07ffff; //Set the opcode to zero (mask)
 	}
 	else if (!isEscape && indexOfJump != -1){
 		result->jumpID = indexOfSecondJump;
 		result->addJump(indexOfSecondJump, -1);
 
-		result->instructions[indexOfJump*4+0] = 0;
+		result->instructions[indexOfJump*4+0] &= 0xfc07ffff; //Set the opcode to zero (mask)
 	}
 	else {
 		result->jumpID = indexOfJump;
