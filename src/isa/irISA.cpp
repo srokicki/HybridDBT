@@ -303,7 +303,6 @@ short getDestinationRegister(uint32 *bytecode, char index){
 	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
 
 	unsigned char opcode = (bytecodeWord96>>19) & 0x7f;
-	fprintf(stderr, "opcode %x\n", opcode);
 	if ((opcode != 0) //not a nop
 			&&((opcode>>4) != 2 || opcode == VEX_MOVI) //if I-type then movi
 			&& ((opcode>>3) != 0x3)) //not a store

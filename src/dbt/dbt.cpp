@@ -511,11 +511,9 @@ int main(int argc, char *argv[])
 
 			if (block != NULL && OPTLEVEL >= 2 && profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
 
-				fprintf(stderr, "Analyzis of %x to %x (%d to %d) for procedure building   %d \n", block->sourceStartAddress, block->sourceEndAddress, block->vliwStartAddress, block->vliwEndAddress, block->blockState);
 				buildAdvancedControlFlow(&dbtPlateform, block, &application);
 				block->blockState = IRBLOCK_PROC;
 				buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
-				application.procedures[application.numberProcedures-1]->print();
 				placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
 				procedureOptCounter++;
 			}
@@ -559,15 +557,15 @@ int main(int argc, char *argv[])
 	for (int oneConfig = 0; oneConfig<32; oneConfig++){
 		float timeInConfig = dbtPlateform.vexSimulator->timeInConfig[oneConfig];
 		timeInConfig = timeInConfig / dbtPlateform.vexSimulator->cycle;
-		fprintf(stdout, "Conf %x\t[", oneConfig);
-		int convertToPercent = timeInConfig * lineSize;
-		for (int oneChar = 0; oneChar < convertToPercent; oneChar++){
-			fprintf(stdout, "|");
-		}
-		for (int oneChar = convertToPercent; oneChar < lineSize; oneChar++){
-			fprintf(stdout, " ");
-		}
-		fprintf(stdout, "] %f  Power consumption : %f\n", timeInConfig*100, getPowerConsumption(oneConfig));
+//		fprintf(stdout, "Conf %x\t[", oneConfig);
+//		int convertToPercent = timeInConfig * lineSize;
+//		for (int oneChar = 0; oneChar < convertToPercent; oneChar++){
+//			fprintf(stdout, "|");
+//		}
+//		for (int oneChar = convertToPercent; oneChar < lineSize; oneChar++){
+//			fprintf(stdout, " ");
+//		}
+//		fprintf(stdout, "] %f  Power consumption : %f\n", timeInConfig*100, getPowerConsumption(oneConfig));
 		energyConsumption += dbtPlateform.vexSimulator->timeInConfig[oneConfig] * period * getPowerConsumption(oneConfig) / 1000;
 	}
 

@@ -28,8 +28,12 @@
 #include <types.h>
 
 #include <dbt/dbtPlateform.h>
+#include <transformation/reconfigureVLIW.h>
 
-
+//Parameters:
+#define MEMORY_LATENCY 3
+#define MULT_LATENCY 3
+#define SIMPLE_LATENCY 2
 
 const unsigned int debugLevel = 0;
 
@@ -40,7 +44,7 @@ using namespace std;
 #ifndef __NIOS
 int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		uint32 size,
-		uint8 issueWidth,
+		uint8 conf,
 		uint32 addressStart,
 		uint32 codeSectionStart,
 		uint128 destinationBinaries[1024],
@@ -73,7 +77,7 @@ uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
 	#ifndef __NIOS
 	int returnedValue = firstPassTranslatorRISCV_hw(platform->mipsBinaries,
 			size,
-			platform->vliwInitialIssueWidth,
+			platform->vliwInitialConfiguration,
 			sourceStartAddress,
 			sectionStartAddress,
 			platform->vliwBinaries,
@@ -186,7 +190,7 @@ uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
 
 int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		uint32 size,
-		uint8 issueWidth,
+		uint8 conf,
 		uint32 addressStart,
 		uint32 codeSectionStart,
 		uint128 destinationBinaries[1024],
@@ -235,6 +239,11 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 	 *
 	 */
 	unsigned int numberUnresolvedJumps = 0;
+	char issueWidth = getIssueWidth(conf);
+
+	char stageMem = ((conf & 0xf) == 1) ? 2 : ((conf & 0xf) == 3) ? 6 : 1;
+	char stageMult = ((conf & 0xf) == 1) ? 3 : ((conf & 0xf) == 3) ? 2 : 1;
+
 
 	int indexInSourceBinaries = 0;
 	int indexInDestinationBinaries = placeCode;
@@ -259,7 +268,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 	blocksBoundaries[(codeSectionStart-addressStart)>>2] = 1;
 
-	ac_int<128,false> previousBinaries = 0;
+	ac_int<256,false> previousBinaries = 0;
 	uint32 previousIndex = 0;
 	char previousStage = 0;
 	ac_int<32, false> localNumberInsertions = 0;
@@ -317,7 +326,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				isInsertion = 1;
 
 				lastWrittenRegister = nextInstruction_rd;
-				lastLatency = 2;
+				lastLatency = SIMPLE_LATENCY;
 
 				nextInstruction_rd = 0;
 				nextInstruction_rs1 = 0;
@@ -451,11 +460,11 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				if (funct7 == RISCV_OP_M){
 					//We are in the part dedicated to RV32M extension
 					binaries =  assembleRInstruction(functBindingMULT[funct3], rd, rs1, rs2);
-					stage = 1;
+					stage = stageMult;
 
 					//nextInstructionNop = 1;
 					//TODO: should certainly insert a nop
-					lastLatency = 3;
+					lastLatency = MULT_LATENCY;
 				}
 				else if (funct3 == RISCV_OP_SLL || funct3 == RISCV_OP_SR){
 					//Shift instruction. Careful if we are on SR, we need to use funct7 to determine which instruction we
@@ -465,13 +474,13 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 							(funct7==RISCV_OP_SR_SRA) ? VEX_SRA : VEX_SRL;
 
 					binaries = assembleRInstruction(vexOpcode, rd, rs1, rs2);
-					lastLatency = 2;
+					lastLatency = SIMPLE_LATENCY;
 				}
 				else {
 					ac_int<7, false> subOpcode = VEX_SUB;
 					ac_int<7, false> vexOpcode = (funct7==RISCV_OP_ADD_SUB) ? subOpcode : functBindingOP[funct3];
 					binaries =  assembleRInstruction(vexOpcode, rd, rs1, rs2);
-					lastLatency = 2;
+					lastLatency = SIMPLE_LATENCY;
 				}
 
 
@@ -481,7 +490,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				previousLatency = lastLatency;
 				previousWrittenRegister = lastWrittenRegister;
 				lastWrittenRegister = rd;
-				lastLatency = 2;
+				lastLatency = SIMPLE_LATENCY;
 
 				ac_int<32, false> value = codeSectionStart + (indexInSourceBinaries<<2) + imm31_12_signed;
 
@@ -537,7 +546,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				previousLatency = lastLatency;
 				previousWrittenRegister = lastWrittenRegister;
 				lastWrittenRegister = rd;
-				lastLatency = 2;
+				lastLatency = SIMPLE_LATENCY;
 
 				ac_int<1, false> keepHigher = 0;
 				ac_int<1, false> keepBoth = 0;
@@ -609,11 +618,11 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				previousLatency = lastLatency;
 				previousWrittenRegister = lastWrittenRegister;
 				lastWrittenRegister = rd;
-				lastLatency = 3;
+				lastLatency = MEMORY_LATENCY;
 
 				//Memory access operations.
 				binaries = assembleRiInstruction(functBindingLD[funct3], rd, rs1, imm12_I_signed);
-				stage = 1;
+				stage = stageMem;
 
 
 			}
@@ -625,7 +634,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				lastLatency = 0;
 
 				binaries = assembleRiInstruction(functBindingST[funct3], rs2, rs1, imm12_S_signed);
-				stage = 1;
+				stage = stageMem;
 			}
 			else if (opcode == RISCV_JAL){
 
@@ -708,7 +717,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 					previousLatency = lastLatency;
 					previousWrittenRegister = lastWrittenRegister;
 					lastWrittenRegister = 32;
-					lastLatency = 2;
+					lastLatency = SIMPLE_LATENCY;
 
 					setBoundaries1 = 1;
 					boundary1 = ((imm13_signed>>2)+indexInSourceBinaries);
@@ -745,7 +754,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				previousLatency = lastLatency;
 				previousWrittenRegister = lastWrittenRegister;
 				lastWrittenRegister = rd;
-				lastLatency = 2;
+				lastLatency = SIMPLE_LATENCY;
 
 				ac_int<13, true> extendedImm = imm12_I_signed;
 				if (funct3 == RISCV_OPI_SLTIU)
@@ -773,12 +782,12 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				previousLatency = lastLatency;
 				previousWrittenRegister = lastWrittenRegister;
 				lastWrittenRegister = rd;
-				lastLatency = 2;
+				lastLatency = SIMPLE_LATENCY;
 
 				if (funct7 == RISCV_OP_M){
 					//We are in the part dedicated to RV64M extension
 					binaries =  assembleRInstruction(functBindingMULTW[funct3], rd, rs1, rs2);
-					stage = 1;
+					stage = stageMult;
 
 					nextInstructionNop = 1;
 
@@ -805,7 +814,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				previousLatency = lastLatency;
 				previousWrittenRegister = lastWrittenRegister;
 				lastWrittenRegister = rd;
-				lastLatency = 2;
+				lastLatency = SIMPLE_LATENCY;
 
 				ac_int<13, true> extendedImm = imm12_I_signed;
 				if (funct3 == RISCV_OPI_SLTIU)
@@ -833,7 +842,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				previousLatency = lastLatency;
 				previousWrittenRegister = lastWrittenRegister;
 				lastWrittenRegister = 10;
-				lastLatency = 2;
+				lastLatency = SIMPLE_LATENCY;
 
 				if (funct3 == RISCV_SYSTEM_ENV){
 					binaries = assembleIInstruction(VEX_ECALL, 0,0);
@@ -851,7 +860,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 							previousLatency = lastLatency;
 							previousWrittenRegister = lastWrittenRegister;
 							lastWrittenRegister = 0;
-							lastLatency = 1;
+							lastLatency = 0;
 							binaries = 0;
 			}
 			else{
@@ -866,15 +875,18 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 
 		if (indexInSourceBinaries != 0){
-			destinationBinaries[previousIndex] = previousBinaries;
+			destinationBinaries[previousIndex] = previousBinaries.slc<128>(0);
+			destinationBinaries[previousIndex+1] = previousBinaries.slc<128>(128);
+
 		}
 
-		ac_int<128, false> result = 0;
 		ac_int<32, false> const0_long = 0;
 		previousBinaries = 0;
 		previousBinaries.set_slc(96, (stage == 0) ? binaries : const0_long);
 		previousBinaries.set_slc(64, (stage == 1) ? binaries : const0_long);
 		previousBinaries.set_slc(32, (stage == 2) ? binaries : const0_long);
+		previousBinaries.set_slc(0, (stage == 3) ? binaries : const0_long);
+		previousBinaries.set_slc(32+128, (stage == 6) ? binaries : const0_long);
 
 		previousIndex = indexInDestinationBinaries;
 		previousStage = stage;
@@ -948,7 +960,8 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 
 
-	destinationBinaries[previousIndex] = previousBinaries;
+	destinationBinaries[previousIndex] = previousBinaries.slc<128>(0);
+	destinationBinaries[previousIndex+1] = previousBinaries.slc<128>(128);
 
 	insertions[0] = localNumberInsertions;
 	return (indexInDestinationBinaries-placeCode) + (numberUnresolvedJumps<<18);

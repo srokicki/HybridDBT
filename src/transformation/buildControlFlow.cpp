@@ -235,7 +235,6 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 			fprintf(stderr, "Error while building advanced control flow: temporary storage size for blocks is too small and nothing has been implemented to handle this...\n");
 			exit(0);
 		}
-		fprintf(stderr, "adding %x - %lx   numberBlock %d -- still %d block to study \n", currentBlock->sourceStartAddress, currentBlock,numberBlockInProcedure, numberBlockToStudy);
 		blockInProcedure[numberBlockInProcedure] = currentBlock;
 		numberBlockInProcedure++;
 		currentBlock->nbSucc = 0;
@@ -263,26 +262,21 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 			successor1 = currentBlock->sourceDestination;
 			successor2 = currentBlock->sourceEndAddress;
 			nbSucc = 2;
-			fprintf(stderr, "looking for %x and%x\n", currentBlock->sourceDestination, currentBlock->sourceEndAddress);
 		}
 		else if (isJump){
 			if (currentBlock->sourceDestination != -1){
 				successor1 = currentBlock->sourceDestination;
 				nbSucc = 1;
-				fprintf(stderr, "jump looking for %x \n", currentBlock->sourceDestination);
 
 			}
 		}
 		else if (isCall){
 			successor1 = currentBlock->sourceEndAddress;
 			nbSucc = 1;
-			fprintf(stderr, "Call block to %x in procedure...\n", currentBlock->sourceDestination);
 		}
 		else if (isNothing){
 			successor1 = currentBlock->sourceEndAddress;
 			nbSucc = 1;
-			fprintf(stderr, "Block is %x %x %x\n", currentBlock->sourceStartAddress, currentBlock->sourceEndAddress, currentBlock->sourceDestination);
-			fprintf(stderr, "nothing looking for %x \n", currentBlock->sourceEndAddress);
 
 		}
 		else{
@@ -307,11 +301,9 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 
 		if (nbSucc > 0){
 			blocksToStudy[numberBlockToStudy] = currentBlock->successor1;
-			fprintf(stderr, "addint %lx to study\n",  currentBlock->successor1);
 		}
 		if (nbSucc > 1){
 			blocksToStudy[numberBlockToStudy+1] = currentBlock->successor2;
-			fprintf(stderr, "addint %lx to study\n",  currentBlock->successor2);
 
 		}
 		numberBlockToStudy += nbSucc;
@@ -360,9 +352,7 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 	}
 
 
-	for (int oneBlock = 0; oneBlock<numberBlockInProcedure; oneBlock++){
-		fprintf(stderr, "block %x -- %lx\n", blockInProcedure[oneBlock]->sourceStartAddress, blockInProcedure[oneBlock]);
-	}
+
 
 	//We instanciate the procedure
 	IRProcedure *procedure = new IRProcedure(entryBlock, numberBlockInProcedure);
@@ -373,9 +363,7 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 	memcpy(procedure->blocks, blockInProcedure, numberBlockInProcedure*sizeof(struct IRBlock*));
 	qsort(procedure->blocks, numberBlockInProcedure, sizeof(IRBlock *), compare_blocks);
 
-	for (int oneBlock = 0; oneBlock<numberBlockInProcedure; oneBlock++){
-		fprintf(stderr, "block %x -- %lx\n", procedure->blocks[oneBlock]->sourceStartAddress, procedure->blocks[oneBlock]);
-	}
+
 
 	//TODO code a better sort function
 /*	int previousIndex = 0;

@@ -43,9 +43,9 @@ unsigned int getConfigurationForScheduler(char configuration){
 unsigned int getReconfigurationInstruction(char configuration){
 	unsigned int schedulerConf = getConfigurationForScheduler(configuration);
 
-	char mux6 = ((schedulerConf>>8) & 0xf) == 4;
-	char mux7 = ((schedulerConf>>4) & 0xf) == 2;
-	char mux8 = ((schedulerConf>>0) & 0xf) == 8;
+	char mux6 = (((schedulerConf>>8) & 0xf) & 4) == 0;
+	char mux7 = (((schedulerConf>>4) & 0xf) & 2) != 0;
+	char mux8 = (((schedulerConf>>0) & 0xf) & 8) != 0;
 
 	char activations[8];
 	activations[0] = ((schedulerConf>>(4*3)) & 0xf) != 0;
@@ -107,9 +107,9 @@ float getPowerConsumption(char configuration){
 void setVLIWConfiguration(VexSimulator *simulator, char configuration){
 	unsigned int schedulerConf = getConfigurationForScheduler(configuration);
 
-	simulator->muxValues[0] = ((schedulerConf>>8) & 0xf) == 4;
-	simulator->muxValues[1] = ((schedulerConf>>4) & 0xf) == 2;
-	simulator->muxValues[2] = ((schedulerConf>>0) & 0xf) == 8;
+	simulator->muxValues[0] = (((schedulerConf>>8) & 0xf) & 2) == 0;
+	simulator->muxValues[1] = (((schedulerConf>>4) & 0xf) & 2) != 0;
+	simulator->muxValues[2] = (((schedulerConf>>0) & 0xf) & 8) != 0;
 
 	simulator->unitActivation[0] = ((schedulerConf>>(4*3)) & 0xf) != 0;
 	simulator->unitActivation[1] = ((schedulerConf>>(4*2)) & 0xf) != 0 && !simulator->muxValues[0];
@@ -160,9 +160,14 @@ int computeScore(IRProcedure *procedure){
 }
 
 int suggestConfiguration(IRProcedure *originalProc, IRProcedure *newlyScheduledProc){
+
+	char currentConf = newlyScheduledProc->configuration;
+
 	int nbInstr = getNbInstr(originalProc);
 	int nbMult = getNbInstr(originalProc, 3);
 	int nbMem = getNbInstr(originalProc, 1);
+
+	fprintf(stderr, "\n\nConfiguration with %x \n", newlyScheduledProc->configuration);
 
 
 	int size = 0;
@@ -184,6 +189,40 @@ int suggestConfiguration(IRProcedure *originalProc, IRProcedure *newlyScheduledP
 
 	fprintf(stderr, "Scores for suggestion are %f %f %f\n", scoreMult, scoreMem, scoreSimple);
 
+	char confLowerPerf = -1, confHigherPerf = -1;
+	if (scoreMult < scoreMem && scoreMult < scoreSimple){
+		//score mult is the minimal
+		if (nbMult > 1)
+			confLowerPerf = currentConf - 2;
+		else if (scoreMem < scoreSimple){
+			if (nbMem > 1)
+				confLowerPerf = currentConf - 8;
+		}
+		else{
+			if (currentConf & 0x1)
+				confLowerPerf = currentConf & 0x1e;
+		}
+	}
+	else if (scoreMem < scoreMult && scoreMem < scoreSimple){
+		//score mem is the minimal
+		if (nbMem > 1)
+			confLowerPerf = currentConf - 8;
+		else if (scoreMult < scoreSimple){
+			if (nbMult > 1)
+				confLowerPerf = currentConf - 2;
+		}
+		else{
+			if (currentConf & 0x1)
+				confLowerPerf = currentConf & 0x1e;
+		}
+	}
+	else {
+		//Score simple is the minimal
+		if (currentConf & 0x1)
+			confLowerPerf = currentConf & 0x1e;
+	}
+
+	fprintf(stderr, "Conf %x goes to %x\n", currentConf, confLowerPerf);
 }
 
 

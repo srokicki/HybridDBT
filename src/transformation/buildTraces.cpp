@@ -110,8 +110,6 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 		if (writtenReg >= 0)
 			lastWriteReg[writtenReg-256] = oneInstr;
 
-		fprintf(stderr, "writtenreg %d\n", writtenReg);
-
 
 		result->instructions[4*oneInstr+0] = entryBlock->instructions[4*oneInstr+0];
 		result->instructions[4*oneInstr+1] = entryBlock->instructions[4*oneInstr+1];
@@ -123,7 +121,6 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 			indexOfJump = oneInstr;
 			short operands[2];
 			char nbOperands = getOperands(entryBlock->instructions, oneInstr, operands);
-			fprintf(stderr, "operand is is %d, last written %d\n", operands[0],lastWriteReg[operands[0]-256]);
 
 			if (operands[0] >= 256){
 				if (lastWriteReg[operands[0]-256] != -1)
@@ -134,7 +131,6 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 			else
 				indexOfCondition = operands[0];
 		}
-		fprintf(stderr, "Indeox of condition is %d\n", indexOfCondition);
 
 		//We keep track of last cond instruction
 		if (opcode == VEX_STDc || opcode == VEX_STWc || opcode == VEX_STHc || opcode == VEX_STBc || opcode == VEX_SETFc || opcode == VEX_SETc){
@@ -452,7 +448,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 	while (changeMade){
 		changeMade = 0;
 		for (int oneBlock=0; oneBlock<procedure->nbBlock; oneBlock++){
-			fprintf(stderr, "%d\n", oneBlock);
 			IRBlock *block = procedure->blocks[oneBlock];
 			if (block->nbSucc >= 1){
 
@@ -460,7 +455,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 				char opcode = getOpcode(block->instructions, block->jumpID);
 				char secondOpcode = getOpcode(secondBlock->instructions, secondBlock->jumpID);
 
-fprintf(stderr, "Jump opcopde is %x\n", opcode);
 
 
 				char isElligible = 1;
@@ -520,7 +514,6 @@ fprintf(stderr, "Jump opcopde is %x\n", opcode);
 					}
 
 
-					fprintf(stderr, "merged %d and %d\n", oneBlock, oneBlock);
 
 					if (block->successor1 == secondBlock->successor1 || block->nbSucc == 1){
 						oneSuperBlock->nbSucc = 1;

@@ -18,6 +18,8 @@
 #include <types.h>
 #include <transformation/reconfigureVLIW.h>
 
+#include <lib/log.h>
+
 void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *application, uint32 placeCode){
 
 	/*********************************************************************************
@@ -73,8 +75,16 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 	//We store old jump instruction. Its places is known from the basicBlockEnd value
 	uint32 jumpInstruction = readInt(platform->vliwBinaries, (basicBlockEnd-2*incrementInBinaries)*16 + 0);
+	char isRelativeJump = (jumpInstruction & 0x7f) == VEX_BR || (jumpInstruction & 0x7f) == VEX_BRF;
+	char isNoJump = (jumpInstruction & 0x70) != (VEX_CALL&0x70);
+	char isPassthroughJump = isRelativeJump || (jumpInstruction & 0x7f) == VEX_CALL || (jumpInstruction & 0x7f) == VEX_CALLR ;
 
-
+	/*****************************************************************
+	 *	Building the IR
+	 ************
+	 * In this step we call the IRGenerator to generate the IR of the block we want to schedule
+	 *
+	 *****************************************************************/
 	int globalVariableCounter = 288;
 
 	for (int oneGlobalVariable = 0; oneGlobalVariable < 64; oneGlobalVariable++)
@@ -100,17 +110,16 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		block->jumpID = blockSize-1;
 		block->addJump(blockSize-1, 0);
 	}
-#ifndef __NIOS
 
-	if (platform->debugLevel > 1){
+	if (platform->debugLevel > 1 || 1){
 
-		fprintf(stderr, "*************************************************************************\n");
-		fprintf(stderr, "Previous version of sources:\n");
-		fprintf(stderr, "*****************\n");
+		Log::printf(LOG_SCHEDULE_BLOCK, "*************************************************************************\n");
+		Log::printf(LOG_SCHEDULE_BLOCK, "Previous version of sources:\n");
+		Log::printf(LOG_SCHEDULE_BLOCK, "*****************\n");
 
 
 		for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
-			fprintf(stderr, "%d ", i);
+			Log::printf(LOG_SCHEDULE_BLOCK, "%d ", i);
 			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)); fprintf(stderr, " ");
 			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(32)); fprintf(stderr, " ");
 			std::cerr << printDecodedInstr(platform->vliwBinaries[i].slc<32>(64)); fprintf(stderr, " ");
@@ -123,31 +132,30 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 				std::cerr << printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(96)); fprintf(stderr, " ");
 				i++;
 			}
-			fprintf(stderr, "\n");
+			Log::printf(LOG_SCHEDULE_BLOCK, "\n");
 
 		}
 
-		for (int i=basicBlockStart;i<basicBlockEnd;i++){
-			fprintf(stderr, "schedule;%d\n",i);
-		}
 
-		fprintf(stderr, "*************************************************************************\n");
-		fprintf(stderr, "Bytecode is: \n");
-		fprintf(stderr, "\n*****************\n");
+		Log::printf(LOG_SCHEDULE_BLOCK, "*************************************************************************\n");
+		Log::printf(LOG_SCHEDULE_BLOCK, "Bytecode is: \n");
+		Log::printf(LOG_SCHEDULE_BLOCK, "\n*****************\n");
 		for (int i=0; i<blockSize; i++){
 			printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
 		}
 
 		for (int i=0; i<blockSize; i++){
-			fprintf(stderr, "0x%x, 0x%x, 0x%x, 0x%x,\n",readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
+			Log::printf(LOG_SCHEDULE_BLOCK, "0x%x, 0x%x, 0x%x, 0x%x,\n",readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
 		}
 	}
-#endif
 
 
-
-
-
+	/*****************************************************************
+	 *	Scheduling the IR
+	 ************
+	 * In this step we call the IRScheduler to perform the instruction scheduling on the IR we just generated.
+	 *
+	 *****************************************************************/
 
 
 	//Preparation of required memories
@@ -163,6 +171,8 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	int binaSize = irScheduler(platform, 1,blockSize, placeCode, 29, platform->vliwInitialConfiguration);
 	binaSize = binaSize & 0xffff;
 
+
+
 	if (binaSize < originalScheduleSize){
 
 		memcpy(&platform->vliwBinaries[basicBlockStart], &platform->vliwBinaries[placeCode], (binaSize+1)*sizeof(uint128));
@@ -171,6 +181,14 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 			platform->vliwBinaries[i] = 0;
 		}
 
+		//We gather jump places
+		for (int oneJump = 0; oneJump<block->nbJumps; oneJump++){
+			#ifdef IR_SUCC
+			block->jumpPlaces[oneJump] = ((int) platform->placeOfInstr[block->jumpIds[oneJump]])+basicBlockStart;
+			#else
+			block->jumpPlaces[oneJump] = incrementInBinaries*((int) platform->placeOfInstr[block->jumpIds[oneJump]])+basicBlockStart;
+			#endif
+		}
 
 
 
@@ -185,9 +203,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		 * 		to prevent the execution of a large area of nop instruction (which would remove the interest of the schedule
 		 *
 		 *****************************************************************/
-		char isRelativeJump = (jumpInstruction & 0x7f) == VEX_BR || (jumpInstruction & 0x7f) == VEX_BRF;
-		char isNoJump = (jumpInstruction & 0x70) != (VEX_CALL&0x70);
-		char isPassthroughJump = isRelativeJump || (jumpInstruction & 0x7f) == VEX_CALL || (jumpInstruction & 0x7f) == VEX_CALLR ;
+
 
 		//Ofset correction
 		if (isRelativeJump){
@@ -204,18 +220,20 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 			int newOffset = destination - (basicBlockStart + binaSize-1*incrementInBinaries);
 			newOffset = newOffset;
 
-			if (platform->debugLevel > 1)
-				fprintf(stderr, "Correction of jump at the end of the block. Original offset was %d\n From it derivated destination %d and new offset %d\n", offset, destination, newOffset);
+			if (platform->debugLevel > 1 || 1)
+				fprintf(stderr, "Correction of jump at end of block. Original offset was %d\n From it derivated destination %d and new offset %d\n", offset, destination, newOffset);
 			jumpInstruction = (jumpInstruction & 0xfc00007f) | ((newOffset & 0x7ffff) << 7);
 		}
 //		else if (isNoJump){
 //			jumpInstruction = assembleIInstruction(VEX_GOTO, basicBlockEnd<<2, 0);
 //		}
-
+fprintf(stderr, "nb jump is %d, place is %d\n", block->nbJumps, block->nbJumps);
 		//Insertion of jump instruction
-		if (!isNoJump)
-			writeInt(platform->vliwBinaries, (basicBlockStart+binaSize-2*incrementInBinaries)*16 + 0, jumpInstruction);
+		if (!isNoJump){
+			for (int oneJump = 0; oneJump<block->nbJumps; oneJump++)
+				writeInt(platform->vliwBinaries, block->jumpPlaces[oneJump]*16 + 0, jumpInstruction);
 
+		}
 		//Insertion of the new block with the goto instruction
 		if (isPassthroughJump && basicBlockStart+binaSize+1*incrementInBinaries < basicBlockEnd){
 			//We need to add a jump to correct the shortening of the block.
@@ -230,7 +248,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 			newBlock->sourceEndAddress = -1;
 			application->addBlock(newBlock, block->section);
 
-			if (platform->debugLevel > 1)
+			if (platform->debugLevel > 1 || 1)
 				fprintf(stderr, "adding a block from %d tp %d\n", basicBlockStart + binaSize, basicBlockStart + binaSize + 2);
 		}
 
@@ -239,7 +257,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 		#ifndef __NIOS
 
-		if (platform->debugLevel > 1){
+		if (platform->debugLevel > 1 || 1){
 
 			fprintf(stderr, "*************************************************************************\n");
 			for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){

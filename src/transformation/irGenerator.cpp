@@ -1179,7 +1179,6 @@ inline unsigned int writePredecessor_ac(ac_int<128, false> bytecode[1024], ac_in
 	if (isData)
 		nbDSucc++;
 
-	printf("destInstr=%d nbSucc=%d nbDSucc=%d\n", destInstr, nbSucc, nbDSucc);
 	if (srcInstr != destInstr){
 
 		//fprintf(stderr, "Adding dep from %d to %d word was %lx and become %lx\n", srcInstr, destInstr, (uint64_t) bytecode[srcInstr].slc<64>(0), (uint64_t) oneBytecodeInstruction.slc<64>(0));

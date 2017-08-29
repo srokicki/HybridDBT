@@ -309,7 +309,11 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 		for (int oneJump=0; oneJump<block->nbJumps; oneJump++){
 			result->blocks[oneBlock]->jumpIds[oneJump] = block->jumpIds[oneJump];
-			result->blocks[oneBlock]->jumpPlaces[oneJump] = platform->placeOfInstr[block->jumpIds[oneJump]]+writePlace;
+#ifdef IR_SUCC
+			result->blocks[oneBlock]->jumpPlaces[oneJump] = ((int) platform->placeOfInstr[block->jumpIds[oneJump]])+writePlace;
+#else
+			result->blocks[oneBlock]->jumpPlaces[oneJump] = incrementInBinaries*((int) platform->placeOfInstr[block->jumpIds[oneJump]])+writePlace;
+#endif
 		}
 
 
@@ -368,17 +372,14 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 				int offset = (block->successor1->vliwStartAddress - block->jumpPlaces[0]);
 				unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[0]);
 				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[0], (oldJump & 0xfc00007f) | ((offset & 0x7ffff) << 7));
-				fprintf(stderr, "Modified jump at %d\n", block->jumpPlaces[0]);
 
 			}
 			else if (!isCallBlock && block->nbJumps && block->nbSucc == 1){
 
 				int dest = block->successor1->vliwStartAddress;
-				fprintf(stderr, "%aa d\n", !isCallBlock && block->nbJumps && block->nbSucc == 1);
 
 				unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[0]);
 				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[0], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
-				fprintf(stderr, "Modified jump at %d\n", block->jumpPlaces[0]);
 
 			}
 		}
@@ -468,7 +469,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 	}
 
-	if (platform->debugLevel > 1 || 1){
+	if (platform->debugLevel > 1){
 
 		//This is only for debug
 		for (int i=originalWritePlace;i<writePlace;i++){

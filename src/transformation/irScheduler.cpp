@@ -879,7 +879,6 @@ ac_int<32, false> placeOfInstr[256]
 	//**************************************************************
 	// Setup scheduler state
 	//**************************************************************
-fprintf(stderr, "%x\n", way_specialisation);
 	haveJump = 0;
 	instructionId = 0;
 	windowPosition = 0;//addressInBinaries;
@@ -987,7 +986,16 @@ fprintf(stderr, "%x\n", way_specialisation);
 			}
 			// WAW
 			else if (6-i < nbNonDataDeps) {
-				earliest_place = max(earliest_place, (ac_int<32,false>(place+1)));
+				if (unitType == 0){
+					ac_int<8, false> stg = (deps[i] != instructionId-1)
+					? instructionsStages[deps[i]] : lastInstructionStage;
+					ac_int<2, true> gap = (stg == 0 || stg == 3) ? -1 : 0;
+					ac_int<32, false> test = max(windowPosition, (ac_int<32,false>(place+gap)));
+					earliest_place = max(earliest_place, test);
+				}
+				else
+					earliest_place = max(earliest_place, (ac_int<32,false>(place+1)));
+
 			}
 		}
 
@@ -1085,7 +1093,7 @@ fprintf(stderr, "%x\n", way_specialisation);
 
 		instruction.set_slc(0, ac_int<9, false>(dest));
 		placeOfRegisters[instructionId] = dest;
-fprintf(stderr, "place of %d is %d\n", instructionId, dest);
+
 		ac_int<9, false> rin1 = virtualRIn1_imm9;
 		ac_int<9, false> rin2 = typeCode == 2 ? virtualRDest : virtualRIn2;
 
@@ -1146,10 +1154,8 @@ fprintf(stderr, "place of %d is %d\n", instructionId, dest);
 					binariesWord.set_slc(  stageId*32
 					, available[stageId] ? zero32 : window[off][stageId]);
 
-					std::cout << printDecodedInstr(available[stageId] ? zero32 : window[off][stageId]);
 
 				}
-				std::cout << "\n";
 
 				if (windowOffset < advance)
 					freeSlot[off] = 0xFF;
@@ -1219,9 +1225,7 @@ fprintf(stderr, "place of %d is %d\n", instructionId, dest);
 			binariesWord.set_slc(  stageId*32
 			, available[stageId] ? zero32 : window[off][stageId]);
 
-			std::cout << printDecodedInstr(available[stageId] ? zero32 : window[off][stageId]);
 		}
-		std::cout << std::endl;
 
 		if (available != 0xff) {
 			lastGap = windowOffset;

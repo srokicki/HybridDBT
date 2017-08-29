@@ -3,6 +3,10 @@
 
 #include <cstdio>
 
+//Definition of debug level symbols
+#define LOG_SCHEDULE_BLOCK 2
+
+
 /**
  * @brief This static class is used to encapsulate logging functions. To change
  * logging behaviour, just change this class members.
