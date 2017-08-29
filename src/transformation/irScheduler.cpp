@@ -909,6 +909,11 @@ ac_int<32, false> placeOfInstr[256]
 	//**************************************************************
   
   sort_ways(way_specialisation);
+
+  std::cout << "PRIORITY = ";
+  for (int i = 0; i < 8; ++i)
+    std::cout << " " << priority[i];
+  std::cout << '\n';
   fprintf(stderr, "%x\n", way_specialisation);
 	haveJump = 0;
 	instructionId = 0;
