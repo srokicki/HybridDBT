@@ -1,6 +1,13 @@
 #include <lib/traceQueue.h>
 
-TraceQueue::TraceQueue() {}
+TraceQueue::TraceQueue(unsigned int max_size)
+  : _max_size(max_size)
+  , _trace_queue(new std::vector<TraceQueue::Entry>[max_size])
+  , _written_trace(0)
+  , _read_trace(0)
+{
+}
+
 TraceQueue::~TraceQueue() {}
 
 inline bool pushSignal(const TraceQueue::Entry& e)
@@ -10,15 +17,14 @@ inline bool pushSignal(const TraceQueue::Entry& e)
 
 void TraceQueue::trace(const TraceQueue::Entry& e)
 {
-  std::unique_lock<std::mutex> lck(_mtx_current);
-
-  _current_trace.push_back(e);
+  _trace_queue[_written_trace].push_back(e);
 
   if (pushSignal(e))
   {
-    std::unique_lock<std::mutex> lck_queue(_mtx_queue);
-    _trace_queue.push(_current_trace);
-    _current_trace.clear();
+    std::unique_lock<std::mutex> lck(_mtx);
+    while ((_written_trace+1)%_max_size == _read_trace) _cv.wait(lck);
+
+    _written_trace = (_written_trace+1)%_max_size;
 
     _cv.notify_one();
   }
@@ -37,13 +43,21 @@ void TraceQueue::trace(const TraceQueue::Entry& e)
 
 std::vector<TraceQueue::Entry> TraceQueue::nextChunk()
 {
-  std::unique_lock<std::mutex> lck(_mtx_queue);
-  while (_trace_queue.empty()) _cv.wait(lck);
+  std::unique_lock<std::mutex> lck(_mtx);
+  while (_read_trace == _written_trace) _cv.wait(lck);
 
-  std::vector<TraceQueue::Entry> ret = _trace_queue.back();
-  _trace_queue.pop();
+  std::vector<TraceQueue::Entry> ret = _trace_queue[_read_trace];
+  _trace_queue[_read_trace].clear();
 
+  _read_trace = (_read_trace+1)%_max_size;
+
+  _cv.notify_one();
   return ret;
 }
 
+bool TraceQueue::hasNext()
+{
+  std::unique_lock<std::mutex> lck(_mtx);
+  return _read_trace != _written_trace;
+}
 

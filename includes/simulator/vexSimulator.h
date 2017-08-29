@@ -130,7 +130,7 @@ class VexSimulator : public GenericSimulator {
 	//Tools for initialization/execution
 	void initializeDataMemory(unsigned char* content, unsigned int size, unsigned int start);
 	int initializeRun(int mainPc, int argc, char* argv[]);
-	int doStep();
+	virtual int doStep();
 	int doStep(int nbStep);
 
 	//Statistics

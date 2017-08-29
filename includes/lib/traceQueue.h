@@ -1,6 +1,5 @@
 #pragma once
 
-#include <queue>
 #include <vector>
 #include <mutex>
 #include <condition_variable>
@@ -23,7 +22,7 @@ public:
     uint64_t pc;
   } Entry;
 
-  TraceQueue();
+  TraceQueue(unsigned int max_size = 2);
   ~TraceQueue();
 
   /**
@@ -36,13 +35,20 @@ public:
    */
   std::vector<Entry> nextChunk();
 
-private:
-  std::vector<Entry> _current_trace;
-  std::queue< std::vector<Entry> > _trace_queue;
+  /**
+   * @brief Verify if a chunk is ready to read
+   */
+  bool hasNext();
 
-  std::mutex _mtx_current;
+private:
+  std::vector<Entry> * _trace_queue;
+
+  unsigned int _max_size;
+  unsigned int _written_trace;
+  unsigned int _read_trace;
+
 
   std::condition_variable _cv;
-  std::mutex _mtx_queue;
+  std::mutex _mtx;
 };
 

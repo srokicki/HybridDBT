@@ -10,7 +10,7 @@ project (HybridDBT)
 # add the binary tree to the search path for include files
 include_directories(./includes)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ggdb -std=c++11 -D__LINUX_API -D__USE_AC -D AC_NOT_USING_INTN")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ggdb -std=c++11 -D__LINUX_API -D__USE_AC -D AC_NOT_USING_INTN -pthread")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 set (EXECUTABLE  "")
 

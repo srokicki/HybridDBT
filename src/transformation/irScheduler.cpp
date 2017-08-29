@@ -862,6 +862,34 @@ ac_int<32, false> createInstruction(ac_int<50, false> instruction) {
 
 	return generatedInstruction;
 }
+
+int priority[MAX_ISSUE_WIDTH];
+void sort_ways(ac_int<MAX_ISSUE_WIDTH * 4, false> ways)
+{
+  static int sorted = 0;
+  if (!sorted)
+  {
+    int ns[16] = { 0 };
+    int classeur[16][MAX_ISSUE_WIDTH];
+    sorted = 1;
+
+    for (int i = 0; i < MAX_ISSUE_WIDTH; ++i)
+    {
+      int id = ways.slc<4>(i * 4);
+      classeur[id][ns[id]++] = i;
+    }
+
+    int * it = priority;
+    for (int i = 0; i < 16; ++i)
+    {
+      for (int j = 0; j < ns[i]; ++j)
+      {
+        *(it++) = classeur[i][j];
+      }
+    }
+  }
+}
+
 #pragma hls_design top
 ac_int<32, false> scheduling(
 ac_int<1, false> optLevel,
@@ -879,6 +907,14 @@ ac_int<32, false> placeOfInstr[256]
 	//**************************************************************
 	// Setup scheduler state
 	//**************************************************************
+  
+  sort_ways(way_specialisation);
+
+  std::cout << "PRIORITY = ";
+  for (int i = 0; i < 8; ++i)
+    std::cout << " " << priority[i];
+  std::cout << '\n';
+  fprintf(stderr, "%x\n", way_specialisation);
 	haveJump = 0;
 	instructionId = 0;
 	windowPosition = 0;//addressInBinaries;
@@ -1016,9 +1052,11 @@ ac_int<32, false> placeOfInstr[256]
 		ac_int<WINDOW_SIZE_L2, false> bestOffset[WINDOW_SIZE];
 
 		// available places search
-		for (ac_int<STAGE_NUMBER_L2+1, false> stageId = 0
-		; stageId < STAGE_NUMBER; stageId += 1)
+		for (ac_int<STAGE_NUMBER_L2+1, false> stageId_ = 0
+		; stageId_ < STAGE_NUMBER; stageId_ += 1)
 		{
+      int stageId = priority[stageId_];
+
 			// loop unrolled by hand to ease synthesis
 			ac_int<4, false> stageType = way_specialisation.slc<4>(stageId << 2);
 			if (stageType && stageType[unitType]) {
