@@ -170,7 +170,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	//Calling scheduler
 	int binaSize = irScheduler(platform, 1,blockSize, placeCode, 29, platform->vliwInitialConfiguration);
 	binaSize = binaSize & 0xffff;
-
+fprintf(stderr, "Schedule sier is %d\n", binaSize);
 
 
 	if (binaSize < originalScheduleSize){

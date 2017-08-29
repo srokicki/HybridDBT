@@ -974,7 +974,7 @@ ac_int<32, false> placeOfInstr[256]
 
 		// here, ternary conditions are for forwarding purpose
 		for (ac_int<3, false> i = 0; i < 7; ++i) {
-			ac_int<32, false> place = (deps[i] != instructionId-1)
+			ac_int<32, true> place = (deps[i] != instructionId-1)
 			? placeOfInstr[deps[i]] : lastPlaceOfInstr;
 
 			// RAW (gap depends on the type of stage because of pipeline length diffs)
@@ -990,7 +990,8 @@ ac_int<32, false> placeOfInstr[256]
 					ac_int<8, false> stg = (deps[i] != instructionId-1)
 					? instructionsStages[deps[i]] : lastInstructionStage;
 					ac_int<2, true> gap = (stg == 0 || stg == 3) ? -1 : 0;
-					ac_int<32, false> test = max(windowPosition, (ac_int<32,false>(place+gap)));
+					ac_int<32, true> test = place+gap;
+					test = (stg == 0 || stg == 3) && place == 0 ? ac_int<32, true>(windowPosition) : test;
 					earliest_place = max(earliest_place, test);
 				}
 				else
@@ -1142,7 +1143,6 @@ ac_int<32, false> placeOfInstr[256]
 
 			ac_int<32, false> advance = (earliest_place > windowPosition+WINDOW_SIZE)
 			? earliest_place-windowPosition-WINDOW_SIZE+1 : ac_int<35,true>(1);
-
 			for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
 			; windowOffset < 3; ++windowOffset) {
 				ac_int<256, false> binariesWord;
@@ -1226,8 +1226,7 @@ ac_int<32, false> placeOfInstr[256]
 			, available[stageId] ? zero32 : window[off][stageId]);
 
 		}
-
-		if (available != 0xff) {
+			if (available != 0xff) {
 			lastGap = windowOffset;
 		}
 
@@ -1243,7 +1242,6 @@ ac_int<32, false> placeOfInstr[256]
 
 	ac_int<32, false> newSize = (issue_width>4 ? 2 : 1)*(windowPosition+lastGap+2);
 	ac_int<32, false> newEnd = addressInBinaries+newSize;
-
 	if (issue_width <= 4) {
 		binaries[newEnd-1] = 0;
 	} else {
