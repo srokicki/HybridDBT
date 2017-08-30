@@ -749,7 +749,7 @@ template<> struct l2<1> { enum { value = 1 }; };
 // window constants
 const int STAGE_NUMBER = 8;
 const int STAGE_NUMBER_L2 = l2<STAGE_NUMBER>::value;
-const int WINDOW_SIZE  = 8;
+const int WINDOW_SIZE  = 16;
 const int WINDOW_SIZE_L2  = l2<WINDOW_SIZE>::value;
 
 // useful constants
@@ -910,11 +910,7 @@ ac_int<32, false> placeOfInstr[256]
   
   sort_ways(way_specialisation);
 
-  std::cout << "PRIORITY = ";
-  for (int i = 0; i < 8; ++i)
-    std::cout << " " << priority[i];
-  std::cout << " AT " << addressInBinaries << '\n';
-  fprintf(stderr, "%x\n", way_specialisation);
+
 	haveJump = 0;
 	instructionId = 0;
 	windowPosition = 0;//addressInBinaries;
@@ -1090,8 +1086,10 @@ ac_int<32, false> placeOfInstr[256]
 		// updates possible[] array with the [earliest_place] constraint
 		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
 		; windowOffset < WINDOW_SIZE; ++windowOffset) {
+
 			possible[windowOffset] = possible[windowOffset] &&
 			windowOffset+windowPosition >= earliest_place;
+
 		}
 
 		// 3 [for] loops for tree reduction over available places
@@ -1121,6 +1119,16 @@ ac_int<32, false> placeOfInstr[256]
 				possible[windowOffset] = 1;
 			}
 		}
+		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
+		; windowOffset < WINDOW_SIZE; windowOffset += 16) {
+			if (possible[windowOffset+8] && !possible[windowOffset]) {
+				bestOffset[windowOffset] = bestOffset[windowOffset+8];
+				bestStage[windowOffset] = bestStage[windowOffset+8];
+				possible[windowOffset] = 1;
+			}
+		}
+
+
 
 		bestWindowOffset = bestOffset[0];
 		bestStageId = bestStage[0];
@@ -1130,23 +1138,12 @@ ac_int<32, false> placeOfInstr[256]
 		// Generation + pre-placement of instruction
 		//**************************************************************
 
-    if (addressInBinaries == 2394)
-    {
-
-      printf("we're debugging \n");
-    }
 
 		instruction.set_slc(0, ac_int<9, false>(dest));
 		placeOfRegisters[instructionId] = dest;
 
 		ac_int<9, false> rin1 = virtualRIn1_imm9;
 		ac_int<9, false> rin2 = typeCode == 2 ? virtualRDest : virtualRIn2;
-
-    if (addressInBinaries == 2394)
-    {
-
-      printf("%d, %d\n", rin1, rin2);
-    }
 
 		ac_int<6, false> placeOfRin1 = placeOfRegisters[rin1];
 		ac_int<6, false> placeOfRin2 = placeOfRegisters[rin2];
@@ -1190,7 +1187,6 @@ ac_int<32, false> placeOfInstr[256]
 		//***********************************************************************
 
 		if (!possible[0]) {
-
 			ac_int<32, false> advance = (earliest_place > windowPosition+WINDOW_SIZE)
 			? earliest_place-windowPosition-WINDOW_SIZE+1 : ac_int<35,true>(1);
 			for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
@@ -1217,15 +1213,16 @@ ac_int<32, false> placeOfInstr[256]
 					binaries[addressInBinaries+(windowPosition+windowOffset)*2+1] = binariesWord.slc<128>(128);
 				}
 			}
-
 			windowPosition += advance;
 			windowShift = (windowShift+(advance))%WINDOW_SIZE;
 
-			for (ac_int<STAGE_NUMBER_L2+1, false> stageId = 0
-			; stageId < STAGE_NUMBER; ++stageId) {
+			for (ac_int<STAGE_NUMBER_L2+1, false> stageId_ = 0
+			; stageId_ < STAGE_NUMBER; ++stageId_) {
+				int stageId = priority[stageId_];
 				ac_int<4, false> stageType = way_specialisation.slc<4>(stageId << 2);
 				if (stageType && stageType[unitType]) {
 					bestStageId = stageId;
+					break;
 				}
 			}
 
