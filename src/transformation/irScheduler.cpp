@@ -1143,10 +1143,7 @@ ac_int<32, false> placeOfInstr[256]
 
 		instruction.set_slc(0, ac_int<9, false>(dest));
 		placeOfRegisters[instructionId] = dest;
-<<<<<<< Updated upstream
 
-=======
->>>>>>> Stashed changes
 		ac_int<9, false> rin1 = virtualRIn1_imm9;
 		ac_int<9, false> rin2 = typeCode == 2 ? virtualRDest : virtualRIn2;
 
