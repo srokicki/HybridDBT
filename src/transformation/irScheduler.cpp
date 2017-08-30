@@ -1013,7 +1013,8 @@ ac_int<32, false> placeOfInstr[256]
 			if (i < nbDataDeps) {
 				ac_int<8, false> stg = (deps[i] != instructionId-1)
 				? instructionsStages[deps[i]] : lastInstructionStage;
-				ac_int<2, false> gap = (stg == 0 || stg == 3) ? 1 : 2;
+        ac_int<4, false> spec = way_specialisation.slc<4>(stg << 2);
+				ac_int<2, false> gap = (spec[1] || spec[3]) ? 1 : 2;
 				earliest_place = max(earliest_place, (ac_int<32,false>(place+gap)));
 			}
 			// WAW
@@ -1021,7 +1022,8 @@ ac_int<32, false> placeOfInstr[256]
 				if (unitType == 0){
 					ac_int<8, false> stg = (deps[i] != instructionId-1)
 					? instructionsStages[deps[i]] : lastInstructionStage;
-					ac_int<2, true> gap = (stg == 0 || stg == 3) ? -1 : 0;
+          ac_int<4, false> spec = way_specialisation.slc<4>(stg << 2);
+					ac_int<2, true> gap = (spec[1] || spec[3]) ? -1 : 0;
 					ac_int<32, true> test = place+gap;
 					test = (stg == 0 || stg == 3) && place == 0 ? ac_int<32, true>(windowPosition) : test;
 					earliest_place = max(earliest_place, test);
