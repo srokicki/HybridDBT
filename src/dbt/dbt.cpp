@@ -197,7 +197,18 @@ int main(int argc, char *argv[])
 	int HELP = cfg.has("h");
 	char* binaryFile = cfg.has("f") && !cfg["f"].empty() ? (char*)cfg["f"].c_str() : NULL;
 
-	char* ARGUMENTS = cfg.has("a") && !cfg["a"].empty() ? (char*)cfg["a"].c_str() : NULL;
+	char* ARGUMENTS = cfg.has("-") && !cfg["-"].empty() ? (char*)1 : (char*)0;
+  std::string args_tmp;
+
+  if (ARGUMENTS)
+  {
+    bool first = 1;
+    for (std::string arg : cfg.argsOf("-"))
+    {
+      args_tmp += (first ? (first = 0, "") : " ") + arg;
+    }
+    ARGUMENTS = (char*)args_tmp.c_str();
+  }
 
 	FILE** inStreams = (FILE**) malloc(10*sizeof(FILE*));
 	FILE** outStreams = (FILE**) malloc(10*sizeof(FILE*));
