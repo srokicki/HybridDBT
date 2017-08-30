@@ -12,7 +12,7 @@ Config::Config(int argc, char ** argv)
 	for (int i = 1; i < argc; ++i)
 	{
 		char * arg = argv[i];
-		if (arg[0] == '-')
+		if (arg[0] == '-' && current_opt != "-")
 		{
 			if (current_opt != "")
 				_options[current_opt] = opt_args;
