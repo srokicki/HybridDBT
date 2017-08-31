@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
 	int OPTLEVEL = cfg.has("O") ? std::stoi(cfg["O"]) : 1;
 	int HELP = cfg.has("h");
 	char* binaryFile = cfg.has("f") && !cfg["f"].empty() ? (char*)cfg["f"].c_str() : NULL;
-
+/*
 	char* ARGUMENTS = cfg.has("-") && !cfg["-"].empty() ? (char*)1 : (char*)0;
   std::string args_tmp;
 
@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
     }
     ARGUMENTS = (char*)args_tmp.c_str();
   }
-
+*/
 	FILE** inStreams = (FILE**) malloc(10*sizeof(FILE*));
 	FILE** outStreams = (FILE**) malloc(10*sizeof(FILE*));
 
@@ -283,8 +283,46 @@ int main(int argc, char *argv[])
 //	  default:
 //		abort ();
 //	  }
-	int localArgc;
-	char** localArgv;
+
+  int localArgc = 1;
+  char ** localArgv;
+
+  // the application has an argc equal to the number of options + 1 for its path
+  // cfg stores all application arguments in the "--" option
+  //
+  // as neither the C nor the POSIX standard ensures that the arguments are stored
+  // in contiguous space, we can use cfg's c_str() as pointers
+  if (cfg.has("-"))
+  {
+    // we reserve localArgv's elements
+    localArgc += cfg.argsOf("-").size();
+    localArgv = new char*[localArgc];
+
+    // the first argument is always the path
+    localArgv[0] = binaryFile;
+
+    int argId = 1;
+    // we set localArgv values
+    for (const std::string& arg : cfg.argsOf("-"))
+    {
+      localArgv[argId] = (char*)arg.c_str();
+      argId++;
+    }
+  }
+  else
+  {
+    localArgv = new char*[localArgc];
+    localArgv[0] = binaryFile;
+  }
+
+
+  for (int i = 0; i < localArgc; ++i)
+  {
+    Log::printf(0, "localArgv[%d] = %s;\n", i, localArgv[i]);
+  }
+/*
+	char** localArgv = ;
+
 	if (ARGUMENTS == NULL){
 		localArgc = argc - optind;
 		localArgv =  &(argv[optind]);
@@ -331,7 +369,7 @@ int main(int argc, char *argv[])
 		//Value of localArgc is number of argument + the one from the file name
 		localArgc = count + 1;
 	}
-
+*/
 
 	if (HELP || binaryFile == NULL){
     Log::printf(0, "Usage is %s [-v] [-On] file\n\t-v\tVerbose mode, prints all execution information\n\t-On\t Optimization level from zero to two\n", argv[0]);
@@ -657,5 +695,8 @@ int main(int argc, char *argv[])
 	free(code);
 	#endif
 
+  delete localArgv;
+
+  return 0;
 }
 
