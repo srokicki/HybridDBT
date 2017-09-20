@@ -4,7 +4,11 @@
 #include <cstdio>
 
 //Definition of debug level symbols
-#define LOG_SCHEDULE_BLOCK 2
+#define LOG_SCHEDULE_BLOCK 3
+#define LOG_SCHEDULE_PROC 2
+#define LOG_WARNING 1
+#define LOG_ERROR 0
+
 
 /**
  * @brief This static class is used to encapsulate logging functions. To change
@@ -31,7 +35,7 @@ public:
   static void printf(char verbose, const char * format, Ts ... args)
   {
     if (_verbose_level >= verbose)
-      std::printf(format, args ...);
+      std::fprintf(stderr, format, args ...);
   }
 
   /**

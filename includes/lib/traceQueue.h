@@ -18,7 +18,7 @@ public:
   typedef struct _Entry
   {
     uint32_t instructions[8];
-    uint64_t registers[8];
+    uint64_t registers[32];
     uint64_t pc;
   } Entry;
 

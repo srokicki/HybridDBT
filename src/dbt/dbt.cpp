@@ -193,23 +193,10 @@ int main(int argc, char *argv[])
 
 	Log::Init(VERBOSE);
 
-	int OPTLEVEL = cfg.has("O") ? std::stoi(cfg["O"]) : 1;
+	int OPTLEVEL = cfg.has("O") ? std::stoi(cfg["O"]) : 2;
 	int HELP = cfg.has("h");
 	char* binaryFile = cfg.has("f") && !cfg["f"].empty() ? (char*)cfg["f"].c_str() : NULL;
-/*
-	char* ARGUMENTS = cfg.has("-") && !cfg["-"].empty() ? (char*)1 : (char*)0;
-  std::string args_tmp;
 
-  if (ARGUMENTS)
-  {
-    bool first = 1;
-    for (std::string arg : cfg.argsOf("-"))
-    {
-      args_tmp += (first ? (first = 0, "") : " ") + arg;
-    }
-    ARGUMENTS = (char*)args_tmp.c_str();
-  }
-*/
 	FILE** inStreams = (FILE**) malloc(10*sizeof(FILE*));
 	FILE** outStreams = (FILE**) malloc(10*sizeof(FILE*));
 
@@ -240,49 +227,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-//	while ((c = getopt (argc, argv, "m:vO:ha:o:i:f:c:")) != -1)
-//	switch (c)
-//	  {
-//		case 'm':
-//			MAX_SCHEDULE_COUNT = atoi(optarg);
-//		break;
-//	  case 'v':
-//		VERBOSE = 1;
-//		break;
-//	  case 'h':
-//		HELP = 1;
-//		break;
-//	  case 'a':
-//		  ARGUMENTS = optarg;
-//	  break;
-//	  case 'O':
-//		  OPTLEVEL = atoi(optarg);
-//		break;
-//	  case 'c':
-//		  CONFIGURATION = atoi(optarg);
-//		break;
-//	  case 'i':
-//		  if (strcmp(optarg, "stdin") == 0)
-//			  inStreams[nbInStreams] = stdin;
-//		  else
-//			  inStreams[nbInStreams] = fopen(optarg, "r");
-//		  nbInStreams++;
-//	  break;
-//	  case 'o':
-//		  if (strcmp(optarg, "stdout") == 0)
-//			  outStreams[nbOutStreams] = stdout;
-//		  else if (strcmp(optarg, "stderr") == 0)
-//			  outStreams[nbOutStreams] = stderr;
-//		  else
-//			  outStreams[nbOutStreams] = fopen(optarg, "w");
-//		  nbOutStreams++;
-//	  break;
-//	  case 'f':
-//		  binaryFile = optarg;
-//	  break;
-//	  default:
-//		abort ();
-//	  }
 
   int localArgc = 1;
   char ** localArgv;
@@ -316,67 +260,11 @@ int main(int argc, char *argv[])
   }
 
 
-  for (int i = 0; i < localArgc; ++i)
-  {
-    Log::printf(0, "localArgv[%d] = %s;\n", i, localArgv[i]);
-  }
-/*
-	char** localArgv = ;
-
-	if (ARGUMENTS == NULL){
-		localArgc = argc - optind;
-		localArgv =  &(argv[optind]);
-	}
-	else{
-		//We find the size of the string representing arguments and replace spaces by 0
-		int index = 0;
-		int count = 1;
-		while (ARGUMENTS[index] != 0){
-			if (ARGUMENTS[index] == ' '){
-				ARGUMENTS[index] = 0;
-				count++;
-				Log::printf(0, "Arg was %s\n", ARGUMENTS);
-			}
-			index++;
-		}
-		index++; //so that index is equal to the size of the char*
-
-
-		//We find size of filename
-		int charFileIndex = 0;
-		while (binaryFile[charFileIndex] != 0)
-			charFileIndex++;
-
-		charFileIndex++; //So that charFileIndex is equal to the size of the FILE name
-
-		//we build a char* containing all args and the file name
-		char* tempArg = (char*) malloc((index + charFileIndex)*sizeof(char));
-		memcpy(tempArg, binaryFile, charFileIndex*sizeof(char));
-		memcpy(tempArg+charFileIndex, ARGUMENTS, index * sizeof(char));
-
-		//We build the char** localArgv
-		localArgv = (char**) malloc((count+1)*sizeof(char*));
-		index = 0;
-		for (int oneArg = 0; oneArg<count+1; oneArg++){
-			localArgv[oneArg] = &(tempArg[index]);
-			while (tempArg[index] != 0){
-				index++;
-			}
-			index++;
-
-		}
-
-		//Value of localArgc is number of argument + the one from the file name
-		localArgc = count + 1;
-	}
-*/
-
 	if (HELP || binaryFile == NULL){
     Log::printf(0, "Usage is %s [-v] [-On] file\n\t-v\tVerbose mode, prints all execution information\n\t-On\t Optimization level from zero to two\n", argv[0]);
 		return 1;
 	}
 
-	// We translate OPTLEVEL
 
 	/***********************************
 	 *  Initialization of the DBT platform
@@ -429,7 +317,7 @@ int main(int argc, char *argv[])
 	readSourceBinaries(binaryFile, code, addressStart, size, pcStart, &dbtPlateform);
 
 	if (size > MEMORY_SIZE){
-		Log::fprintf(0, stderr, "ERROR: Size of source binaries is %d. Current implementation only accept size lower then %d\n", size, MEMORY_SIZE);
+		Log::printf(LOG_ERROR, "ERROR: Size of source binaries is %d. Current implementation only accept size lower then %d\n", size, MEMORY_SIZE);
 		exit(-1);
 	}
 
@@ -458,10 +346,9 @@ int main(int argc, char *argv[])
 
 	initializeInsertionsMemory(size*4);
 
-	for (int oneInsertion=0; oneInsertion<placeCode; oneInsertion++){
-		if (VERBOSE)
-			Log::fprintf(0, stderr, "insert;%d\n", oneInsertion);
-	}
+//	for (int oneInsertion=0; oneInsertion<placeCode; oneInsertion++){
+//			Log::fprintf(0, stderr, "insert;%d\n", oneInsertion);
+//	}
 
 
 	/********************************************************
@@ -493,12 +380,11 @@ int main(int argc, char *argv[])
 
 
 
-		int** insertions = (int**) malloc(sizeof(int **));
-		int nbIns = getInsertionList(oneSection*1024, insertions);
-		for (int oneInsertion=0; oneInsertion<nbIns; oneInsertion++){
-			if (VERBOSE)
-				Log::fprintf(0, stderr, "insert;%d\n", (*insertions)[oneInsertion]+(*insertions)[-1]);
-		}
+//		int** insertions = (int**) malloc(sizeof(int **));
+//		int nbIns = getInsertionList(oneSection*1024, insertions);
+//		for (int oneInsertion=0; oneInsertion<nbIns; oneInsertion++){
+//				Log::fprintf(0, stderr, "insert;%d\n", (*insertions)[oneInsertion]+(*insertions)[-1]);
+//		}
 
 	}
 
@@ -511,31 +397,22 @@ int main(int argc, char *argv[])
 		unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(&dbtPlateform, initialDestination);
 
 		if (destinationInVLIWFromNewMethod == -1){
-      Log::printf(0, "A jump from %d to %x is still unresolved... (%d insertions)\n", source, initialDestination, insertionsArray[(initialDestination>>10)<<11]);
+			Log::printf(LOG_ERROR, "A jump from %d to %x is still unresolved... (%d insertions)\n", source, initialDestination, insertionsArray[(initialDestination>>10)<<11]);
+			exit(-1);
 		}
 		else{
 			int immediateValue = (isAbsolute) ? (destinationInVLIWFromNewMethod) : ((destinationInVLIWFromNewMethod  - source));
 			writeInt(dbtPlateform.vliwBinaries, 16*(source), type + ((immediateValue & 0x7ffff)<<7));
 
-			if (immediateValue > 0x7ffff)
-				Log::fprintf(0, stderr, "error in immediate size...\n");
-
+			if (immediateValue > 0x7ffff){
+				Log::fprintf(LOG_ERROR, stderr, "error in immediate size...\n");
+				exit(-1);
+			}
 			unsigned int instructionBeforePreviousDestination = readInt(dbtPlateform.vliwBinaries, 16*(destinationInVLIWFromNewMethod-1)+12);
 			if (instructionBeforePreviousDestination != 0)
 				writeInt(dbtPlateform.vliwBinaries, 16*(source+1)+12, instructionBeforePreviousDestination);
 		}
 	}
-
-
-
-	//We initialize the VLIW processor with binaries and data from elf file
-	#ifndef __NIOS
-	if (VERBOSE){
-		dbtPlateform.vexSimulator->debugLevel = 2;
-		dbtPlateform.debugLevel = 2;
-	}
-	#endif
-//dbtPlateform.debugLevel = 2;
 
 
 	//We also add information on insertions
@@ -562,35 +439,32 @@ int main(int argc, char *argv[])
 	int blockScheduleCounter = 0;
 	int procedureOptCounter = 0;
 
-
+	float coef = 0;
 
 	while (runStatus == 0){
+
 		runStatus = run(&dbtPlateform, 1000);
 		abortCounter++;
-		if (abortCounter>8000000)
+		if (abortCounter>10000000)
 			break;
 
-		if (VERBOSE)
-			Log::fprintf(0, stderr, "IPC;%f\n", dbtPlateform.vexSimulator->getAverageIPC());
 
 		if (OPTLEVEL >= 3){
 			for (int oneProcedure = 0; oneProcedure < application.numberProcedures; oneProcedure++){
 				IRProcedure *procedure = application.procedures[oneProcedure];
 				if (procedure->state == 0){
-					Log::fprintf(0, stderr, "at entry procedure conf is %d, previous is %d\n", procedure->configuration, procedure->previousConfiguration);
 					char oldPrevious = procedure->previousConfiguration;
 					char oldConf = procedure->configuration;
 
 					changeConfiguration(procedure);
 					if (procedure->configuration != oldConf || procedure->configurationScores[procedure->configuration] == 0){
 						IRProcedure *scheduledProcedure = rescheduleProcedure_schedule(&dbtPlateform, procedure, placeCode);
-						Log::fprintf(0, stderr, "test\n");
 						suggestConfiguration(procedure, scheduledProcedure);
 
 						int score = computeScore(scheduledProcedure);
 						procedure->configurationScores[procedure->configuration] = score;
+
 						if (score > procedure->configurationScores[procedure->previousConfiguration]){
-							Log::fprintf(0, stderr, "Score %d is greater than %d, changing to %d\n", score, procedure->configurationScores[procedure->previousConfiguration], procedure->configuration);
 							placeCode = rescheduleProcedure_commit(&dbtPlateform, procedure, placeCode, scheduledProcedure);
 						}
 						else{
@@ -598,9 +472,28 @@ int main(int argc, char *argv[])
 							procedure->previousConfiguration = oldPrevious;
 						}
 					}
-					Log::fprintf(0, stderr, "at exit procedure conf is %d, previous is %d\n", procedure->configuration, procedure->previousConfiguration);
 
 					break;
+				}
+				else if (procedure->state==1){
+					char maxConf = 0;
+					int bestScore = 0;
+					for (int oneConfiguration = 1; oneConfiguration<12; oneConfiguration++){
+						char configuration = validConfigurations[oneConfiguration];
+						float score = procedure->configurationScores[configuration];
+						float energy = (score * getPowerConsumption(configuration))/10;
+						if (procedure->configurationScores[configuration] > procedure->configurationScores[maxConf])
+							if (-coef*energy + (1-coef)*score > bestScore){
+								maxConf = configuration;
+								bestScore = -coef*energy + (100-coef)*score;
+							}
+
+					}
+					procedure->previousConfiguration = procedure->configuration;
+					procedure->configuration = maxConf;
+					placeCode = rescheduleProcedure(&dbtPlateform, procedure, placeCode);
+					procedure->state = 2;
+					procedureOptCounter++;
 				}
 			}
 		}
@@ -609,19 +502,24 @@ int main(int argc, char *argv[])
 			int profileResult = profiler.getProfilingInformation(oneBlock);
 			IRBlock* block = profiler.getBlock(oneBlock);
 
-			if (block != NULL && OPTLEVEL >= 2 && profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
+			if ( block != NULL && OPTLEVEL >= 2 && profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
 
-				Log::fprintf(0, stderr, "Analyzis of %x to %x (%d to %d) for procedure building   %d \n", block->sourceStartAddress, block->sourceEndAddress, block->vliwStartAddress, block->vliwEndAddress, block->blockState);
-				buildAdvancedControlFlow(&dbtPlateform, block, &application);
+				int errorCode = buildAdvancedControlFlow(&dbtPlateform, block, &application);
 				block->blockState = IRBLOCK_PROC;
-				buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
-				placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
-				procedureOptCounter++;
+
+
+				if (!errorCode){
+					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
+
+					placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
+					procedureOptCounter++;
+				}
 			}
 
 
 		}
 
+		int oldCounter = blockScheduleCounter;
 
 		//We perform aggressive level 1 optimization: if a block takes more than 8 cycle we schedule it.
 		//If it has a backward loop, we also profile it.
@@ -633,8 +531,11 @@ int main(int argc, char *argv[])
 					optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
 					blockScheduleCounter++;
 
-					if (block->sourceDestination != -1 && block->sourceDestination <= block->sourceStartAddress)
+					if ((block->sourceDestination != -1 && block->sourceDestination <= block->sourceStartAddress) || block->nbInstr > 16)
 						profiler.profileBlock(block);
+
+					if (oldCounter >= blockScheduleCounter + 16)
+						break;
 				}
 
 			}
@@ -646,9 +547,6 @@ int main(int argc, char *argv[])
 
 	//We clean the last performance counters
 	dbtPlateform.vexSimulator->timeInConfig[dbtPlateform.vexSimulator->currentConfig] += (dbtPlateform.vexSimulator->cycle - dbtPlateform.vexSimulator->lastReconf);
-
-
-
 
 
 
@@ -670,14 +568,14 @@ int main(int argc, char *argv[])
 		energyConsumption += dbtPlateform.vexSimulator->timeInConfig[oneConfig] * period * getPowerConsumption(oneConfig) / 1000;
 	}
 
-	//	Log::fprintf(0, stdout, "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: %ld\n\t Number of instruction executed: %ld\n\t Average IPC: %f\n\t Number of block scheduled: %d\n\t Number of procedure optimized (O2): %d\n",
-	//			dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
-	//	Log::fprintf(0, stdout, "\tConfiguration used: %d\n", CONFIGURATION);
-	//	Log::fprintf(0, stdout, "\tEnergy consumed: %f\n", energyConsumption);
+	Log::fprintf(0, stdout, "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: %ld\n\t Number of instruction executed: %ld\n\t Average IPC: %f\n\t Number of block scheduled: %d\n\t Number of procedure optimized (O2): %d\n",
+			dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
+	Log::fprintf(0, stdout, "\tConfiguration used: %d\n", CONFIGURATION);
+	Log::fprintf(0, stdout, "\tEnergy consumed: %f\n", energyConsumption);
 
-	Log::fprintf(0, stdout, "%ld;%ld;%f;%d;%d;",	dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
-	Log::fprintf(0, stdout, "%d;", CONFIGURATION);
-	Log::fprintf(0, stdout, "%f\n", energyConsumption);
+//	Log::fprintf(0, stdout, "%ld;%ld;%f;%d;%d;",	dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
+//	Log::fprintf(0, stdout, "%d;", CONFIGURATION);
+//	Log::fprintf(0, stdout, "%f\n", energyConsumption);
 
 
 

@@ -21,6 +21,7 @@
 #include <lib/endianness.h>
 
 #include <transformation/irGenerator.h>
+#include <lib/log.h>
 
 #define TEMP_PROCEDURE_STORAGE_SIZE 50
 #define TEMP_BLOCK_STORAGE_SIZE 900
@@ -107,7 +108,6 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 			if (newBlock->vliwEndAddress - 2*offsetInBinaries == oneJumpSource){
 				//We save the destination
 				newBlock->sourceDestination = oneJumpInitialDestination+(sectionStartAddress>>2);
-
 				unsigned char isAbsolute = ((oneJumpType & 0x7f) != VEX_BR) && ((oneJumpType & 0x7f) != VEX_BRF);
 				unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(dbtPlateform, oneJumpInitialDestination+((sectionStartAddress>>2)-mipsStartAddress));
 				if (destinationInVLIWFromNewMethod == -1){
@@ -204,10 +204,10 @@ compare_blocks (const void *a, const void *b)
   return ((*blocka)->sourceStartAddress > (*blockb)->sourceStartAddress) - ((*blocka)->sourceStartAddress < (*blockb)->sourceStartAddress);
 }
 
-void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApplication *application){
+int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApplication *application){
 
 	char incrementInBinaries = (platform->vliwInitialIssueWidth > 4) ? 2 : 1;
-	IRBlock *blocksToStudy[200];
+	IRBlock *blocksToStudy[500];
 	int numberBlockToStudy = 1;
 	blocksToStudy[0] = startBlock;
 	IRBlock *entryBlock = startBlock;
@@ -220,25 +220,41 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 
 	while (numberBlockToStudy != 0){
 
+		if (numberBlockToStudy>500){
+			return -1;
+		}
+
 		IRBlock *currentBlock = blocksToStudy[numberBlockToStudy-1];
 		numberBlockToStudy--;
 
 		unsigned int endAddress = currentBlock->vliwEndAddress;
-		unsigned int jumpInstruction = readInt(platform->vliwBinaries, (endAddress-2*incrementInBinaries)*16);
+		unsigned int placeofJump = currentBlock->nbJumps != 0 ? currentBlock->jumpPlaces[0]*16 : (endAddress-2*incrementInBinaries)*16;
+		unsigned int jumpInstruction = readInt(platform->vliwBinaries, placeofJump);
 		if ((endAddress-2*incrementInBinaries) < currentBlock->vliwStartAddress)
 			jumpInstruction = 0;
 
-		if (currentBlock->nbSucc != -1)
-			continue;
 
-		if (numberBlockInProcedure>TEMP_BLOCK_STORAGE_SIZE){
-			fprintf(stderr, "Error while building advanced control flow: temporary storage size for blocks is too small and nothing has been implemented to handle this...\n");
-			exit(0);
+		if (currentBlock->blockState == IRBLOCK_PROC){
+			bool isValidConstruction = false;
+			for (int oneAlreadySeenBlock = 0; oneAlreadySeenBlock<numberBlockInProcedure; oneAlreadySeenBlock++){
+				IRBlock *alreadySeenBlock = blockInProcedure[oneAlreadySeenBlock];
+				if (alreadySeenBlock == currentBlock)
+					isValidConstruction = true;
+			}
+			if (!isValidConstruction)
+				return -1;
+			else
+				continue;
+		}
+
+
+		if (numberBlockInProcedure>200){
+			return -1;
 		}
 		blockInProcedure[numberBlockInProcedure] = currentBlock;
 		numberBlockInProcedure++;
 		currentBlock->nbSucc = 0;
-
+		currentBlock->blockState = IRBLOCK_PROC;
 		/******************************************************************************************
 		 ******************************  Successor resolution
 		 ******************************************************************************************
@@ -262,25 +278,35 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 			successor1 = currentBlock->sourceDestination;
 			successor2 = currentBlock->sourceEndAddress;
 			nbSucc = 2;
+			if (currentBlock->nbJumps == 0)
+				currentBlock->addJump(-1, (endAddress-2*incrementInBinaries));
 		}
 		else if (isJump){
 			if (currentBlock->sourceDestination != -1){
 				successor1 = currentBlock->sourceDestination;
 				nbSucc = 1;
+				if (currentBlock->nbJumps == 0)
+					currentBlock->addJump(-1, (endAddress-2*incrementInBinaries));
 
 			}
 		}
 		else if (isCall){
 			successor1 = currentBlock->sourceEndAddress;
 			nbSucc = 1;
+			if (currentBlock->nbJumps == 0)
+				currentBlock->addJump(-1, (endAddress-2*incrementInBinaries));
+
 		}
 		else if (isNothing){
 			successor1 = currentBlock->sourceEndAddress;
 			nbSucc = 1;
+			currentBlock->nbJumps = 0;
 
 		}
 		else{
 			nbSucc = 0;
+			if (currentBlock->nbJumps == 0)
+				currentBlock->addJump(-1, (endAddress-2*incrementInBinaries));
 		}
 
 		//We find the corresponding block(s)
@@ -288,7 +314,7 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 			for (int oneSection = 0; oneSection<application->numberOfSections; oneSection++){
 				for (int oneBlock = 0; oneBlock < application->numbersBlockInSections[oneSection]; oneBlock++){
 					IRBlock *block = application->blocksInSections[oneSection][oneBlock];
-					if (block->sourceStartAddress == successor1)
+					if (block != NULL && block->sourceStartAddress == successor1)
 						currentBlock->successor1 = block;
 					else if (nbSucc > 1 && block->sourceStartAddress == successor2)
 						currentBlock->successor2 = block;
@@ -301,9 +327,11 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 
 		if (nbSucc > 0){
 			blocksToStudy[numberBlockToStudy] = currentBlock->successor1;
+			currentBlock->successors[0] = currentBlock->successor1;
 		}
 		if (nbSucc > 1){
 			blocksToStudy[numberBlockToStudy+1] = currentBlock->successor2;
+			currentBlock->successors[1] = currentBlock->successor2;
 
 		}
 		numberBlockToStudy += nbSucc;
@@ -331,12 +359,14 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 				else if (isJump){
 					if (application->blocksInSections[oneSection][oneBlock]->sourceDestination == currentBlock->sourceStartAddress){
 						blocksToStudy[numberBlockToStudy] = application->blocksInSections[oneSection][oneBlock];
+
 						numberBlockToStudy++;
 					}
 				}
 				else if (isCall || isNothing){
 					if (application->blocksInSections[oneSection][oneBlock]->sourceEndAddress == currentBlock->sourceStartAddress){
 						blocksToStudy[numberBlockToStudy] = application->blocksInSections[oneSection][oneBlock];
+
 						numberBlockToStudy++;
 					}
 				}
@@ -387,22 +417,26 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 
 
 
+
 	//We create IR for all blocks
 	for (int oneBasicBlock=0; oneBasicBlock<procedure->nbBlock; oneBasicBlock++){
 		IRBlock *block = procedure->blocks[oneBasicBlock];
+
+
 		if (block->nbInstr == 0){
 
 			int globalVariableCounter = 288;
 
-			for (int oneGlobalVariable = 0; oneGlobalVariable < 64; oneGlobalVariable++)
+			for (int oneGlobalVariable = 0; oneGlobalVariable < 128; oneGlobalVariable++)
 				platform->globalVariables[oneGlobalVariable] = 256 + oneGlobalVariable;
 
 			int originalScheduleSize = block->vliwEndAddress - block->vliwStartAddress- 1;
 
 
 
-			int blockSize = irGenerator(platform, block->vliwStartAddress, originalScheduleSize, globalVariableCounter);
-
+			unsigned int irGeneratorResult = irGenerator(platform, block->vliwStartAddress, originalScheduleSize, globalVariableCounter);
+			int endAddress = irGeneratorResult >> 16;
+			int blockSize = irGeneratorResult & 0xffff;
 
 
 			block->instructions = (uint32*) malloc(blockSize*4*sizeof(uint32));
@@ -411,22 +445,20 @@ void buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApp
 				block->instructions[4*oneBytecodeInstr + 1] = readInt(platform->bytecode, 16*oneBytecodeInstr + 4);
 				block->instructions[4*oneBytecodeInstr + 2] = readInt(platform->bytecode, 16*oneBytecodeInstr + 8);
 				block->instructions[4*oneBytecodeInstr + 3] = readInt(platform->bytecode, 16*oneBytecodeInstr + 12);
+				printBytecodeInstruction(oneBytecodeInstr, readInt(platform->bytecode, oneBytecodeInstr*16+0), readInt(platform->bytecode, oneBytecodeInstr*16+4), readInt(platform->bytecode, oneBytecodeInstr*16+8), readInt(platform->bytecode, oneBytecodeInstr*16+12));
 			}
 
 			//We check if we find a jump as last instruction
 			char opcodeOfLastInstr = getOpcode(block->instructions, blockSize-1);
-			if ((opcodeOfLastInstr >> 4) == 2 && opcodeOfLastInstr != VEX_MOVI && opcodeOfLastInstr != VEX_SETCOND && opcodeOfLastInstr != VEX_SETCONDF){
+			if (block->nbJumps == 1){
 				block->jumpID = blockSize-1;
-				block->addJump(blockSize-1, (block->vliwEndAddress-2));
+				block->jumpIds[0] = blockSize-1;
 			}
 
 			block->nbInstr = blockSize;
 		}
+		block->oldVliwStartAddress = block->vliwStartAddress;
 		block->blockState = IRBLOCK_PROC;
 	}
-
-	if (platform->debugLevel > 1)
-		procedure->print();
-
-
+	return 0;
 }

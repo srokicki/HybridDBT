@@ -278,8 +278,8 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 	ac_int<1, false> setNextBoundaries = 0;
 	ac_int<32, true> nextBoundaries;
 
-	ac_int<6, false> previousWrittenRegister = 0;
-	ac_int<6, false> lastWrittenRegister = 0;
+	ac_int<7, false> previousWrittenRegister = 0;
+	ac_int<7, false> lastWrittenRegister = 0;
 	ac_int<3, false> lastLatency = 0;
 	ac_int<3, false> previousLatency = 0;
 
@@ -372,12 +372,16 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 			*  order to build the new instruction.
 			***************************************************************/
 			ac_int<7, false> opcode = oneInstruction.slc<7>(0);
-			ac_int<6, false> rs1 = oneInstruction.slc<5>(15);
-			ac_int<6, false> rs2 = oneInstruction.slc<5>(20);
+			ac_int<7, false> rs1 = oneInstruction.slc<5>(15);
+			ac_int<7, false> rs2 = oneInstruction.slc<5>(20);
+			ac_int<7, false> rs3 = oneInstruction.slc<5>(27);
+
 			ac_int<6, false> rd = oneInstruction.slc<5>(7);
 			ac_int<7, false> funct7 = oneInstruction.slc<7>(25);
 			ac_int<7, false> funct7_smaller = 0;
 			funct7_smaller.set_slc(1, oneInstruction.slc<6>(26));
+
+
 
 			ac_int<3, false> funct3 = oneInstruction.slc<3>(12);
 			ac_int<12, false> imm12_I = oneInstruction.slc<12>(20);
@@ -426,6 +430,11 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 
 			if (rd==1)
 				rd=63;
+
+			if (opcode == RISCV_FMADD || opcode == RISCV_FMSUB || opcode == RISCV_FNMADD || opcode == RISCV_FNMSUB ||
+					opcode == RISCV_FP && (funct7 != RISCV_FP_FCVTW && funct7 != RISCV_FP_FMVW)){
+				rs1 += 64;
+			}
 
 			/***************************************************************/
 			/*  We assemble the instruction  							   */
@@ -850,10 +859,140 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				else {
 
 					#ifndef __CATAPULT
-					printf("CSR instr not handled yet...\n", oneInstruction);
-					exit(-1);
+					binaries = assembleIInstruction(VEX_NOP, 0,0);
+
 					#endif
 				}
+			}
+			else if (opcode == RISCV_FLW){
+
+				previousLatency = lastLatency;
+				previousWrittenRegister = lastWrittenRegister;
+				lastWrittenRegister = 64+rd; //the written reg is a float reg
+				lastLatency = MEMORY_LATENCY;
+//TODO
+				if (funct3 == 4)
+					binaries = assembleRiInstruction(VEX_FLW, rd, rs1, imm12_I_signed);
+				else if (funct3 == 4)
+					binaries = assembleRiInstruction(VEX_FLH, rd, rs1, imm12_I_signed);
+				else
+					binaries = assembleRiInstruction(VEX_FLB, rd, rs1, imm12_I_signed);
+
+				stage = stageMem;
+			}
+			else if (opcode == RISCV_FSW){
+
+				previousLatency = lastLatency;
+				previousWrittenRegister = lastWrittenRegister;
+				lastWrittenRegister = rd;
+				lastLatency = 0;
+//TODO
+				if (funct3 == 4)
+					binaries = assembleRiInstruction(VEX_FSW, rs2, rs1, imm12_S_signed);
+				else if (funct3 == 2)
+					binaries = assembleRiInstruction(VEX_FSH, rs2, rs1, imm12_S_signed);
+				else
+					binaries = assembleRiInstruction(VEX_FSB, rs2, rs1, imm12_S_signed);
+
+				stage = stageMem;
+
+			}
+			else if (opcode == RISCV_FMADD || opcode == RISCV_FNMADD || opcode == RISCV_FMSUB || opcode == RISCV_FNMSUB){
+
+				previousLatency = lastLatency;
+				previousWrittenRegister = lastWrittenRegister;
+				lastWrittenRegister = 64+rd;
+				lastLatency = MULT_LATENCY;
+
+				if (opcode == RISCV_FMADD)
+					binaries = assembleRRInstruction(VEX_FMADD, rd, rs1, rs2, rs3);
+				else if (opcode == RISCV_FNMADD)
+					binaries = assembleRRInstruction(VEX_FNMADD, rd, rs1, rs2, rs3);
+				else if (opcode == RISCV_FMSUB)
+					binaries = assembleRRInstruction(VEX_FMSUB, rd, rs1, rs2, rs3);
+				else
+					binaries = assembleRRInstruction(VEX_FNMSUB, rd, rs1, rs2, rs3);
+
+				stage = stageMult;
+			}
+			else if (opcode == RISCV_FP){
+
+				previousLatency = lastLatency;
+				previousWrittenRegister = lastWrittenRegister;
+				lastWrittenRegister = rd+64;
+				lastLatency = MULT_LATENCY;
+
+				uint5 funct = 0;
+				switch (funct7)
+				{
+					case  RISCV_FP_ADD:
+						funct = VEX_FP_FADD;
+						break;
+					case  RISCV_FP_SUB:
+						funct = VEX_FP_FSUB;
+						break;
+					case  RISCV_FP_MUL:
+						funct = VEX_FP_FMUL;
+						break;
+					case  RISCV_FP_DIV:
+						funct = VEX_FP_FDIV;
+						break;
+					case  RISCV_FP_SQRT:
+						funct = VEX_FP_FSQRT;
+						break;
+					case  RISCV_FP_FSGN:
+						if (funct3 == RISCV_FP_FSGN_J)
+							funct = VEX_FP_FSGNJ;
+						else if (funct3 == RISCV_FP_FSGN_JN)
+							funct = VEX_FP_FSGNJN;
+						else //JX
+							funct = VEX_FP_FSGNJNX;
+						break;
+					case  RISCV_FP_MINMAX:
+						if (funct3 == RISCV_FP_MINMAX_MIN)
+							funct = VEX_FP_FMIN;
+						else
+							funct = VEX_FP_FMAX;
+						break;
+					case  RISCV_FP_FCVTW:
+						if (rs2 == RISCV_FP_FCVTW_W)
+							funct = VEX_FP_FCVTWS;
+						else
+							funct = VEX_FP_FCVTWUS;
+						break;
+					case  RISCV_FP_FMVXFCLASS:
+						if (funct3 == RISCV_FP_FMVXFCLASS_FMVX){
+							lastWrittenRegister = rd;
+							funct = VEX_FP_FMVXW;
+						}
+						else
+							funct = VEX_FP_FCLASS;
+						break;
+					case  RISCV_FP_FCMP:
+						lastWrittenRegister = rd;
+						if (funct3 == RISCV_FP_FCMP_FEQ)
+							funct = VEX_FP_FEQ;
+						else if (funct3 == RISCV_FP_FCMP_FLT)
+							funct = VEX_FP_FLT;
+						else
+							funct = VEX_FP_FLE;
+						break;
+					case  RISCV_FP_FCVTS:
+						lastWrittenRegister = rd;
+						if (rs2 == RISCV_FP_FCVTS_W)
+							funct = VEX_FP_FCVTSW;
+						else
+							funct = VEX_FP_FCVTSWU;
+						break;
+					case  RISCV_FP_FMVW:
+						funct = VEX_FP_FMVWX;
+						break;
+				}
+
+
+				binaries = assembleFPInstruction(VEX_FP, funct, rd, rs2, rs1);
+				stage=stageMult;
+
 			}
 			else if (opcode == 0){
 

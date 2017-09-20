@@ -1155,7 +1155,6 @@ inline unsigned int writeSuccessor_ac(ac_int<128, false> bytecode[1024], ac_int<
 }
 
 inline unsigned int writePredecessor_ac(ac_int<128, false> bytecode[1024], ac_int<8, false> srcInstr, ac_int<8, false> destInstr, ac_int<1,false> isData, ac_int<128, false> *currentInstruction){
-
 	//We load the bytecode word of the predecessor in order to increment the number of successor
 	ac_int<128, false> oneBytecodeInstruction = (writeSucc_lastAddr == srcInstr) ? writeSucc_lastValue : bytecode[srcInstr];
 	ac_int<8, false> nbDep = oneBytecodeInstruction.slc<8>(64+6);
@@ -1211,7 +1210,7 @@ inline unsigned int writeDependency_ac(ac_int<128, false> bytecode[1024], ac_int
 
 
 unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries, uint32 blockSize,
-		uint128 bytecode[1024], int32 globalVariables[64],
+		uint128 bytecode[1024], int32 globalVariables[128],
 		uint32 globalVariableCounter){
 
 	ac_int<1, false> const0 = 0;
@@ -1230,7 +1229,8 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 		int numberSuccessors = 0;
 		ac_int<32, false> successor1, successor2;
 		unsigned char indexInCurrentBlock = 0;
-		ac_int<9, true> registers[64] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+		ac_int<9, true> registers[128] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+				-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 
 		/* Datastructures for dag construction*/
 		for (int i=0; i<64; i++)
@@ -1247,10 +1247,10 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 		int predecessors[256][8];
 
 		/* Datastructure for RAW dependencies on global registers */
-		int lastWriterOnGlobal[64] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
-		ac_int<2, false> lastReaderOnGlobalCounter[64] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-		ac_int<2, false> lastReaderOnGlobalPlaceToWrite[64] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-		int lastReaderOnGlobal[64][4] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+		int lastWriterOnGlobal[128] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+		ac_int<2, false> lastReaderOnGlobalCounter[128] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+		ac_int<2, false> lastReaderOnGlobalPlaceToWrite[128] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+		int lastReaderOnGlobal[128][4] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 		/* Datastructure for control dependencies on memories */
 		int lastWriterOnMemory = -1;
@@ -1358,11 +1358,12 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 			ac_int<7, false> opcode = oneInstruction.slc<7>(0);
 			ac_int<13, true> imm13 = oneInstruction.slc<13>(7);
 			ac_int<19, true> imm19 = oneInstruction.slc<19>(7);
+			ac_int<6, false> reg8 = oneInstruction.slc<6>(8);
 			ac_int<6, false> reg14 = oneInstruction.slc<6>(14);
 			ac_int<6, false> reg20 = oneInstruction.slc<6>(20);
 			ac_int<6, false> reg26 = oneInstruction.slc<6>(26);
 
-
+			ac_int<5, false> funct = oneInstruction.slc<5>(7);
 			ac_int<1, false> isIType = (opcode.slc<3>(4) == 2);
 
 			ac_int<1, false> isLoadType = opcode == VEX_LDB | opcode == VEX_LDBU | opcode == VEX_LDH
@@ -1378,21 +1379,30 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 			ac_int<1, false> isArithImm = opcode.slc<3>(4) == 6 | opcode.slc<3>(4) == 7;
 			ac_int<1, false> isMultType = opcode.slc<3>(4) == 0;
 			ac_int<1, false> isProfile = opcode == VEX_PROFILE;
+			ac_int<1, false> isFMADD = opcode == VEX_FMADD || opcode == VEX_FMSUB ||opcode == VEX_FNMADD ||opcode == VEX_FNMSUB;
+			ac_int<1, false> isFSW = opcode == VEX_FSW || opcode == VEX_FSH || opcode == VEX_FSB;
+			ac_int<1, false> isFLW = opcode == VEX_FLW || opcode == VEX_FLH || opcode == VEX_FLB;
+			ac_int<1, false> isFP = opcode == VEX_FP;
+
+			ac_int<1, false> isFloatRa = isFSW || isFMADD || (isFP && funct != VEX_FP_FCVTWS && funct != VEX_FP_FCVTWUS && funct != VEX_FP_FMVWX);
+			ac_int<1, false> isFloatDest = isFLW || isFMADD || (isFP && funct != VEX_FP_FCVTSW && funct != VEX_FP_FCVTSWU && funct != VEX_FP_FMVXW
+					&& funct != VEX_FP_FMIN && funct != VEX_FP_FMAX && funct != VEX_FP_FCLASS);
+
 
 			uint1 pred1_ena = 0, pred2_ena = 0, dest_ena = 0;
-			uint6 pred1_reg = reg26, pred2_reg = reg20, dest_reg=0;
+			uint7 pred1_reg = reg26, pred2_reg = reg20, dest_reg=0;
 
 			//Solving accessed register 1
 			if (!isBranchWithNoReg && !isMovi && !isProfile)
 				pred1_ena = 1;
 
 			//Solving accessed register 2
-			if (isStoreType || isArith2 || isMultType)
+			if (isStoreType || isArith2 || isMultType || isFSW || isFP)
 				pred2_ena = 1;
 
 
 			//Solving written register
-			if (isArithImm || isArith1 || isLoadType){
+			if (isArithImm || isArith1 || isLoadType || isFLW){
 				dest_ena = 1;
 				dest_reg = reg20;
 			}
@@ -1400,7 +1410,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 				dest_ena = 1;
 				dest_reg = reg26;
 			}
-			else if (isArith2 || isMultType){
+			else if (isArith2 || isMultType || isFP){
 				dest_ena = 1;
 				dest_reg = reg14;
 			}
@@ -1410,6 +1420,16 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 				pred2_ena = 0;
 				pred1_ena = 0;
 				droppedInstruction = 1;
+			}
+
+			if (isFloatRa){
+				pred1_reg += 64;
+				if (pred2_ena)
+					pred2_reg += 64;
+			}
+
+			if (isFloatDest){
+				dest_reg += 64;
 			}
 
 
@@ -1603,7 +1623,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 			}
 
 
-			if (isLoadType){
+			if (isLoadType || isFLW){
 				/****************************/
 				/* We update lastReaderOneMemory and add required dependencies to keep memory coherence */
 				uint16 succ_src;
@@ -1704,7 +1724,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 			}
 			destination = temp_destination;
 
-			if (isStoreType){
+			if (isStoreType || isFSW){
 
 				if (lastReaderOnMemoryCounter == 0 && lastWriterOnMemory != -1){
 					global_succ_ena_1 = 1;
@@ -1811,10 +1831,10 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 			else if (isMovi){
 				oneBytecode = assembleIBytecodeInstruction(2, alloc, opcode, destination, imm19, 0);
 			}
-			else if (isStoreType){
+			else if (isStoreType || isFSW){
 				oneBytecode = assembleRiBytecodeInstruction(1, 0, opcode, pred1, imm13, pred2, 0);
 			}
-			else if (isLoadType){
+			else if (isLoadType || isFLW){
 				oneBytecode = assembleRiBytecodeInstruction(1, alloc, opcode, pred1, imm13, destination, 0);
 			}
 			else if (isMultType){
@@ -1828,6 +1848,12 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 			}
 			else if (isProfile){
 				oneBytecode = assembleRiBytecodeInstruction(1, 0, opcode, 256, imm13, 256, 0);
+			}
+			else if (isFMADD){
+				oneBytecode = assembleRiBytecodeInstruction(1, 0, opcode, 256, imm13, 256, 0); //TODO
+			}
+			else if (isFP){
+				oneBytecode = assembleFPBytecodeInstruction(3, alloc, opcode, funct, pred2, pred1, destination, 0);
 			}
 			else{
 				#ifndef __CATAPULT
@@ -1988,8 +2014,9 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 
 
 
-
-	return indexInCurrentBlock;
+unsigned int valueToReturn = indexInSourceBinaries;
+valueToReturn = (valueToReturn<<16) + indexInCurrentBlock;
+return valueToReturn;
 
 
 }

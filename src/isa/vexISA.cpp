@@ -36,6 +36,27 @@ uint32 assembleRiInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint13 imm
 	result.set_slc(26, regA);
 	return result;
 }
+
+uint32 assembleFPInstruction(uint7 opcode, uint5 funct, uint6 regDest, uint6 regA, uint6 regB){
+	ac_int<32, false> result = 0;
+	result.set_slc(0, opcode);
+	result.set_slc(7, funct);
+	result.set_slc(14, regDest);
+	result.set_slc(20, regB);
+	result.set_slc(26, regA);
+	return result;
+}
+
+uint32 assembleRRInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint6 regB, uint6 regC){
+	ac_int<32, false> result = 0;
+	result.set_slc(0, opcode);
+	result.set_slc(8, regDest);
+	result.set_slc(14, regC);
+	result.set_slc(20, regB);
+	result.set_slc(26, regA);
+	return result;
+}
+
 #else
 
 uint32 assembleIInstruction(uint7 opcode, uint19 imm19, uint6 regA){
@@ -71,9 +92,9 @@ uint32 assembleRiInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint13 imm
 const char* opcodeNames[128] = {
 		"NOP", "-", "-", "MPYW", "DIVW", "DIVUW", "REMW", "REMUW", "MPYH", "MPYHSU", "MPYHU", "MPY", "DIV", "DIVU", "REM", "REMU",
 		"LDD", "LDW", "LDH", "LDHU", "LDB", "LDBU","LDWU", "?", "STB", "STH", "STW", "STD", "?", "?", "?", "?",
-		"?", "GOTO", "IGOTO", "CALL", "ICALL", "BR", "BRF", "RETURN", "MOVI", "AUIPC", "RECONFFS", "RECONFEXECUNIT", "SETCOND", "SETCONDF", "?", "STOP",
-		"SETc", "SETFc", "?", "?", "?", "?", "?", "?", "SLCT", "?", "?", "?", "?", "?", "?", "?",
-		"?", "ADD", "NOR", "AND", "ANDC", "CMPLT", "CMPLTU", "CMPNE", "NOT", "OR", "ORC", "SH1ADD", "SH2ADD", "SH3ADD", "SH4ADD", "SLL",
+		"?", "GOTO", "IGOTO", "CALL", "ICALL", "BR", "BRF", "RETURN", "MOVI", "AUIPC", "RECONFFS", "RECONFEXECUNIT", "SETCOND", "SETCONDF", "ECALL", "STOP",
+		"FLB", "FLH", "FLW", "FSB", "FSH", "FSW", "FMADD", "FMSUB", "FNMSUB", "FNMADD", "FP", "?", "?", "?", "?", "?",
+		"SET", "ADD", "NOR", "AND", "ANDC", "CMPLT", "CMPLTU", "CMPNE", "NOT", "OR", "SETF", "SH1ADD", "SH2ADD", "SH3ADD", "SH4ADD", "SLL",
 		"SRL", "SRA", "SUB", "XOR", "ADDW", "SUBW", "SLLW", "SRLW", "SRAW", "CMPEQ", "CMPGE", "CMPGEU", "CMPGT", "CMPGTU", "CMPLE", "CMPLEU",
 		"?", "ADDi", "NORi", "ANDi", "ANDCi", "CMPLTi", "CMPLTUi", "CMPNEi", "NOTi", "ORi", "ORCi", "SH1ADDi", "SH2ADDi", "SH3ADDi", "SH4ADDi", "SLLi",
 		"SRLi", "SRAi", "SUBi", "XORi", "ADDWi", "?", "SLLWi", "SRLWi", "SRAWi", "CMPEQi", "CMPGEi", "CMPGEUi", "CMPGTi", "CMPGTUi", "CMPLEi", "CMPLEUi"};

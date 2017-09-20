@@ -17,8 +17,9 @@
 #include <fcntl.h>
 
 ac_int<64, false> shiftMask[64];
-
-
+float regf[32];
+#define MAX(a,b) ((a) > (b) ? a : b)
+#define MIN(a,b) ((a) < (b) ? a : b)
 
 int RiscvSimulator::doSimulation(int nbkCycle){
 	long long hilo;
@@ -66,6 +67,8 @@ void RiscvSimulator::doStep(){
 	ac_int<7, false> opcode = ins.slc<7>(0);
 	ac_int<5, false> rs1 = ins.slc<5>(15);
 	ac_int<5, false> rs2 = ins.slc<5>(20);
+	ac_int<5, false> rs3 = ins.slc<5>(27);
+
 	ac_int<5, false> rd = ins.slc<5>(7);
 	ac_int<7, false> funct7 = ins.slc<7>(25);
 	ac_int<7, false> funct7_smaller = 0;
@@ -118,7 +121,7 @@ void RiscvSimulator::doStep(){
 	ac_int<64, true> localLongResult;
 	ac_int<32, false> localDataaUnsigned, localDatabUnsigned;
 	ac_int<32, true> localResult;
-
+	float localFloat;
 	//According to opcode/funct3/funct7 we perform the correct operation
 	switch (opcode)
 	{
@@ -481,9 +484,132 @@ void RiscvSimulator::doStep(){
 	//******************************************************************************************
 	//Treatment for: SYSTEM INSTRUCTIONS
 	case RISCV_SYSTEM:
-		if (funct3 == 0 && funct7 == 0)
+		if (funct3 == 0 && funct7 == 0){
 			REG[10] = solveSyscall(REG[17], REG[10], REG[11], REG[12], REG[13]);
+		}
 	break;
+	//******************************************************************************************
+	//Treatment for: floating point operations
+	case RISCV_FLW:
+		localResult = 0;
+		for (int byte = 0; byte<funct3; byte++){
+			localResult.set_slc(byte*8, ldb(REG[rs1] + imm12_I_signed+byte));
+		}
+		memcpy(&(regf[rd]), &localResult, 4);
+		break;
+	case RISCV_FSW:
+		localResult = 0;
+		memcpy(&localResult, &(regf[rs2]), 4);
+		for (int byte = 0; byte<funct3; byte++){
+			stw(REG[rs1] + imm12_S_signed, localResult.slc<8>(byte*8));
+		}
+		break;
+	case RISCV_FMADD:
+		regf[rd] = regf[rs1] * regf[rs2] + regf[rs3];
+		break;
+	case RISCV_FMSUB:
+		regf[rd] = regf[rs1] * regf[rs2] - regf[rs3];
+		break;
+	case RISCV_FNMSUB:
+		regf[rd] = -regf[rs1] * regf[rs2] + regf[rs3];
+		break;
+	case RISCV_FNMADD:
+		regf[rd] = -regf[rs1] * regf[rs2] - regf[rs3];
+		break;
+	case RISCV_FP:
+		switch (funct7)
+		{
+			case  RISCV_FP_ADD:
+				regf[rd] = regf[rs1] + regf[rs2];
+				break;
+			case  RISCV_FP_SUB:
+				regf[rd] = regf[rs1] - regf[rs2];
+				break;
+			case  RISCV_FP_MUL:
+				regf[rd] = regf[rs1] * regf[rs2];
+				break;
+			case  RISCV_FP_DIV:
+				regf[rd] = regf[rs1] / regf[rs2];
+				break;
+			case  RISCV_FP_SQRT:
+				regf[rd] = sqrt(regf[rs1]);
+				break;
+			case  RISCV_FP_FSGN:
+				localFloat = abs(regf[rs1]);
+				if (funct3 == RISCV_FP_FSGN_J){
+					if (regf[rs2]<0){
+						regf[rd] = -localFloat;
+					}
+					else{
+						regf[rd] = localFloat;
+					}
+				}
+				else if (funct3 == RISCV_FP_FSGN_JN){
+					if (regf[rs2]<0){
+						regf[rd] = localFloat;
+					}
+					else{
+						regf[rd] = -localFloat;
+					}
+				}
+				else{ //JX
+					if ((regf[rs2]<0 && regf[rs1]>=0) || (regf[rs2]>=0 && regf[rs1]<0)){
+						regf[rd] = -localFloat;
+					}
+					else{
+						regf[rd] = localFloat;
+					}
+				}
+				break;
+			case  RISCV_FP_MINMAX:
+				if (funct3 == RISCV_FP_MINMAX_MIN)
+					regf[rd] = MIN(regf[rs1], regf[rs2]);
+				else
+					regf[rd] = MAX(regf[rs1], regf[rs2]);
+				break;
+			case  RISCV_FP_FCVTW:
+				if (rs2 == RISCV_FP_FCVTW_W){
+					regf[rd] = REG[rs1];
+				}
+				else{
+					regf[rd] = (unsigned int) REG[rs1];
+				}
+				break;
+			case  RISCV_FP_FMVXFCLASS:
+				if (funct3 == RISCV_FP_FMVXFCLASS_FMVX){
+					memcpy(&localResult, &(regf[rs1]), 4);
+					REG[rd] = localResult;
+				}
+				else{
+					fprintf(stderr, "Fclass instruction is not handled in riscv simulator\n");
+					exit(-1);
+				}
+				break;
+			case  RISCV_FP_FCMP:
+				if (funct3 == RISCV_FP_FCMP_FEQ)
+					REG[rd] = regf[rs1] == regf[rs2];
+				else if (funct3 == RISCV_FP_FCMP_FLT)
+					REG[rd] = regf[rs1] < regf[rs2];
+				else
+					REG[rd] = regf[rs1] <= regf[rs2];
+				break;
+			case  RISCV_FP_FCVTS:
+				if (rs2 == RISCV_FP_FCVTS_W){
+					REG[rd] = regf[rs1];
+				}
+				else{
+					REG[rd] = (unsigned int) regf[rs1];
+				}
+				break;
+			case  RISCV_FP_FMVW:
+				localResult = REG[rs1];
+				memcpy(&(regf[rd]),&localResult,  4);
+				break;
+		}
+
+
+		break;
+
 	default:
 		printf("In default part of switch opcode, instr %x is not handled yet(%x)\n", (int) ins, this->heapAddress);
 		exit(-1);

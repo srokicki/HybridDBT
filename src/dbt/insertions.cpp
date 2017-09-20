@@ -53,10 +53,10 @@
 
 
 
-int insertionsArray[170*2048];
-int unresolvedJumpsArray[170*2048];
-int unresolvedJumpsTypeArray[170*2048];
-int unresolvedJumpsSourceArray[170*2048];
+int insertionsArray[200*2048];
+int unresolvedJumpsArray[200*2048];
+int unresolvedJumpsTypeArray[200*2048];
+int unresolvedJumpsSourceArray[200*2048];
 
 
 
@@ -395,8 +395,12 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	platform->bytecode[nbInstr] =  assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -56, 256+test1, 0); //8
 	nbInstr++;
 	platform->bytecode[nbInstr] =  assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -64, 256+test2, 0); //9
+
 	nbInstr++;
-	platform->bytecode[nbInstr] =  assembleIBytecodeInstruction(STAGE_CODE_CONTROL, 0, VEX_GOTOR, 1, 0, 0); //10
+	platform->bytecode[nbInstr] =  assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_ADDi, 256+33, 4*increment, 256+33, 0); //10
+
+	nbInstr++;
+	platform->bytecode[nbInstr] =  assembleIBytecodeInstruction(STAGE_CODE_CONTROL, 0, VEX_GOTOR, 1, 0, 0); //11
 	nbInstr++;
 
 	uint32 endBytecode[32*4];
@@ -409,14 +413,16 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 
 	addDataDep(endBytecode, 0, 1);
 	addDataDep(endBytecode, 1, 10);
+	addDataDep(endBytecode, 10, 11);
+
 	addControlDep(endBytecode, 2,5);
 	addControlDep(endBytecode, 3,6);
 	addControlDep(endBytecode, 4,7);
 	addControlDep(endBytecode, 5,8);
-	addControlDep(endBytecode, 6,10);
-	addControlDep(endBytecode, 7,10);
-	addControlDep(endBytecode, 8,10);
-	addControlDep(endBytecode, 9,10);
+	addControlDep(endBytecode, 6,11);
+	addControlDep(endBytecode, 7,11);
+	addControlDep(endBytecode, 8,11);
+	addControlDep(endBytecode, 9,11);
 
 
 
@@ -431,7 +437,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	binaSize = irScheduler(platform, 1, nbInstr, start, 32, platform->vliwInitialConfiguration);
 	start += binaSize;
 
-	writeInt(platform->vliwBinaries, (start-2*increment)*16, assembleIInstruction(VEX_GOTOR, 0, 33));
+//	writeInt(platform->vliwBinaries, (start-2*increment)*16, assembleIInstruction(VEX_GOTOR, 0, 33));
 
 	//This is only for debug
 	if (platform->debugLevel > 2)

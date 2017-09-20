@@ -14,6 +14,7 @@
 #include <dbt/dbtPlateform.h>
 
 #include <dbt/profiling.h>
+#include <lib/log.h>
 
 
 
@@ -66,7 +67,7 @@ unsigned int Profiler::insertProfilingProcedure(int start, unsigned int startAdd
 }
 
 void Profiler::profileBlock(IRBlock *oneBlock){
-	if (numberProfiledBlocks < 64){
+	if (numberProfiledBlocks < 512){
 
 		int start = oneBlock->vliwStartAddress;
 		char successfullInsertion = 0;
@@ -87,7 +88,7 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 		}
 
 		if (!successfullInsertion){
-			fprintf(stderr, "Failed at inserting profiling, need alternative method\n");
+			Log::printf(LOG_WARNING, "Failed at inserting profiling, need alternative method\n");
 		}
 		else{
 			this->platform->vexSimulator->profileResult[numberProfiledBlocks] = 0;
@@ -199,8 +200,9 @@ int Profiler::getNumberProfiledBlocks(){
 int Profiler::getProfilingInformation(int ID){
 	#ifndef __NIOS
 
-	if (profiledBlocks[ID] != NULL)
+	if (profiledBlocks[ID] != NULL){
 		return this->platform->vexSimulator->profileResult[ID];
+	}
 	//return this->platform->vexSimulator->ldw(0x8000000 + ID*4);
 	#else
 	return this->platform->vliwDataMemory[0];

@@ -59,9 +59,44 @@
 #define VEX_SETCONDF 0x2d
 #define VEX_ECALL 0x2e
 #define VEX_STOP 0x2f
-#define VEX_SETc 0x30
-#define VEX_SETFc 0x31
 
+#define VEX_FLW 0x30
+#define VEX_FLH 0x31
+#define VEX_FLB 0x32
+#define VEX_FSW 0x33
+#define VEX_FSH 0x34
+#define VEX_FSB 0x35
+#define VEX_FMADD 0x36
+#define VEX_FMSUB 0x37
+#define VEX_FNMSUB 0x38
+#define VEX_FNMADD 0x39
+#define VEX_FP 0x3a
+
+#define VEX_FP_FADD 0
+#define VEX_FP_FSUB 1
+#define VEX_FP_FMUL 2
+#define VEX_FP_FDIV 3
+#define VEX_FP_FSQRT 4
+#define VEX_FP_FSGNJ 5
+#define VEX_FP_FSGNJN 6
+#define VEX_FP_FSGNJNX 7
+#define VEX_FP_FMIN 8
+#define VEX_FP_FMAX 9
+#define VEX_FP_FCVTWS 10
+#define VEX_FP_FCVTWUS 11
+#define VEX_FP_FMVXW 12
+#define VEX_FP_FEQ 13
+#define VEX_FP_FLT 14
+#define VEX_FP_FLE 15
+#define VEX_FP_FCLASS 16
+#define VEX_FP_FCVTSW 17
+#define VEX_FP_FCVTSWU 18
+#define VEX_FP_FMVWX 19
+
+
+
+
+#define VEX_SETc 0x40
 #define VEX_ADD 0x41
 #define VEX_NOR 0x42
 #define VEX_AND 0x43
@@ -71,7 +106,7 @@
 #define VEX_CMPNE 0x47
 #define VEX_NOT 0x48
 #define VEX_OR 0x49
-#define VEX_ORC 0x4a
+#define VEX_SETFc 0x4a
 #define VEX_SH1ADD 0x4b
 #define VEX_SH2ADD 0x4c
 #define VEX_SH3ADD 0x4d
@@ -129,6 +164,8 @@
 uint32 assembleIInstruction(uint7 opcode, uint19 imm19, uint6 regA);
 uint32 assembleRInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint6 regB);
 uint32 assembleRiInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint13 imm13);
+uint32 assembleFPInstruction(uint7 opcode, uint5 funct, uint6 regDest, uint6 regA, uint6 regB);
+uint32 assembleRRInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint6 regB, uint6 regC);
 
 #ifndef __CATAPULT
 #ifndef __NIOS

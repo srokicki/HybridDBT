@@ -54,7 +54,6 @@ void GenericSimulator::initialize(int argc, char** argv){
 
 void GenericSimulator::stb(ac_int<64, false> addr, ac_int<8, true> value){
 	this->memory[addr] = value & 0xff;
-
 }
 
 

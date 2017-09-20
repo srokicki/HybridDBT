@@ -133,14 +133,13 @@ void changeConfiguration(IRProcedure *procedure){
 	for (int oneValidConfiguration = 0; oneValidConfiguration < 12; oneValidConfiguration++){
 		char oneConfiguration = validConfigurations[oneValidConfiguration];
 		if (procedure->configurationScores[oneConfiguration] == 0){
-			fprintf(stderr, "Changing configuration from %d to %d\n", procedure->configuration, oneConfiguration);
 			procedure->previousConfiguration = procedure->configuration;
 			procedure->configuration = oneConfiguration;
 			return;
 		}
 	}
 
-	procedure->state = 1;
+	procedure->state = 2;
 
 }
 
@@ -155,7 +154,6 @@ int computeScore(IRProcedure *procedure){
 
 	result = 100000 / result;
 
-	fprintf(stderr, "Configuration with %x is %f\n", procedure->configuration, result);
 	return (int) result;
 }
 

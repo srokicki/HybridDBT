@@ -12,6 +12,9 @@
 #include <isa/vexISA.h>
 #include <isa/irISA.h>
 #include <lib/endianness.h>
+#include <sstream>
+
+#include <lib/log.h>
 
 #ifndef __NIOS
 /********************************************************************
@@ -28,6 +31,26 @@ ac_int<128, false> assembleRBytecodeInstruction(ac_int<2, false> stageCode, ac_i
 	result.set_slc(96+30, stageCode);
 	result.set_slc(96+27, isAlloc);
 	result.set_slc(96+19, opcode);
+	result.set_slc(96+0, regA);
+
+	result.set_slc(64+23, regB);
+	result.set_slc(64+14, regDest);
+	result.set_slc(64+6, nbDep);
+
+	return result;
+}
+
+ac_int<128, false> assembleFPBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+		ac_int<7, false> opcode, ac_int<5, false> funct, ac_int<9, false> regA, ac_int<9, false> regB, ac_int<9, false> regDest,
+		ac_int<8, false> nbDep){
+
+	ac_int<128, false> result = 0;
+	//Node: Type is zero: no need to write it for real. Same for isImm
+
+	result.set_slc(96+30, stageCode);
+	result.set_slc(96+27, isAlloc);
+	result.set_slc(96+19, opcode);
+	result.set_slc(96+13, funct);
 	result.set_slc(96+0, regA);
 
 	result.set_slc(64+23, regB);
@@ -87,7 +110,7 @@ ac_int<128, false> assembleIBytecodeInstruction(ac_int<2, false> stageCode, ac_i
  * ******************************************************************/
 
 
-void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instructionPart2, uint32 instructionPart3, uint32 instructionPart4){
+std::string printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instructionPart2, uint32 instructionPart3, uint32 instructionPart4){
 
 	uint2 stageCode = ((instructionPart1>>30) & 0x3);
 	uint2 typeCode = ((instructionPart1>>28) & 0x3);
@@ -111,16 +134,18 @@ void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instr
 	uint3 nbDSucc = ((instructionPart2>>3) & 7);
 	uint3 nbSucc = ((instructionPart2>>0) & 7);
 
-	fprintf(stderr, "%d : ", index);
+	std::stringstream result;
+
+	result << index << " : ";
 
 	if (typeCode == 0){
 		//R type
-		fprintf(stderr, "%s r%d = r%d, ", opcodeNames[opCode], (int) virtualRDest, (int) virtualRIn2);
-		if (isImm)
-			fprintf(stderr, "%d ", (int) imm13);
-		else
-			fprintf(stderr, "r%d ", (int) virtualRIn1_imm9);
+		result << opcodeNames[opCode] << " r" << virtualRDest << " = r" << virtualRIn2 << ", ";
 
+		if (isImm)
+			result << imm13 << " ";
+		else
+			result << "r" << virtualRIn1_imm9 << " ";
 
 	}
 	else if (typeCode == 1){
@@ -128,12 +153,17 @@ void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instr
 	}
 	else {
 		//I type
-		fprintf(stderr, "%s r%d %d, ", opcodeNames[opCode], (int) virtualRDest, (int) imm19);
-
+		result << opcodeNames[opCode] << " r" << virtualRDest << " " << imm19 << ", ";
 	}
 
-	fprintf(stderr, "nbDep=%d, nbDSucc = %d, nbSucc = %d, ", (int) nbDep, (int) nbDSucc, (int) nbSucc);
-	fprintf(stderr, "alloc=%d  successors:", (int) alloc);
+
+#ifdef IR_SUCC
+	result << "nbDep=" << nbDep << ", nbDSucc=" << nbDSucc << ", nbSucc = " << nbSucc;
+#else
+	result << "nbSucc=" << nbDep << ", nbDPred=" << nbDSucc << ", nbPred = " << nbSucc;
+#endif
+
+	result << " alloc=" << alloc << "  successors:";
 
 	for (int oneSucc = 0; oneSucc < 7; oneSucc++){
 		int succ = 0;
@@ -143,9 +173,12 @@ void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instr
 			succ = (instructionPart4 >> (8*(oneSucc))) & 0xff;
 
 
-		fprintf(stderr, " %d", succ);
+		result << " " << succ;
 	}
-	fprintf(stderr, "\n");
+	result << "\n";
+
+	std::string returnedRes(result.str());
+	return returnedRes;
 
 }
 
@@ -175,17 +208,22 @@ void IRProcedure::print(){
 
 	fprintf(stderr, "digraph{\n");
 	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
-		fprintf(stderr, "node_%d[label=\"node %x - size %d\"];\n",this->blocks[oneBlockInProcedure]->sourceStartAddress,  this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->vliwEndAddress - this->blocks[oneBlockInProcedure]->vliwStartAddress);
+		fprintf(stderr, "node_%d[label=\"node %x - size %d  - nbJump %d\"];\n",this->blocks[oneBlockInProcedure]->sourceStartAddress,  this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->nbInstr, this->blocks[oneBlockInProcedure]->nbJumps);
 	}
 	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
 
-		if (this->blocks[oneBlockInProcedure]->nbSucc >= 1)
-			fprintf(stderr, "node_%d -> node_%d;\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->successor1->sourceStartAddress);
-		if (this->blocks[oneBlockInProcedure]->nbSucc >= 2)
-			fprintf(stderr, "node_%d -> node_%d;\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->successor2->sourceStartAddress);
+		for (int oneSuccessor = 0; oneSuccessor<this->blocks[oneBlockInProcedure]->nbSucc; oneSuccessor++){
+			fprintf(stderr, "node_%d -> node_%d;\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->successors[oneSuccessor]->sourceStartAddress);
+		}
 
 	}
 	fprintf(stderr, "}\n");
+
+	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock-1; oneBlockInProcedure++){
+		if (this->blocks[oneBlockInProcedure]->sourceEndAddress != this->blocks[oneBlockInProcedure+1]->sourceStartAddress){
+			fprintf(stderr, "test block 1 %d to %d and block 2 is %d to %d\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->sourceEndAddress, this->blocks[oneBlockInProcedure+1]->sourceStartAddress, this->blocks[oneBlockInProcedure+1]->sourceEndAddress);
+		}
+	}
 }
 
 void IRBlock::addJump(unsigned char jumpID, unsigned int jumpPlace){
@@ -198,9 +236,17 @@ void IRBlock::addJump(unsigned char jumpID, unsigned int jumpPlace){
 	tempJumpIds[this->nbJumps] = jumpID;
 	tempJumpPlaces[this->nbJumps] = jumpPlace;
 
+	if (this->nbJumps>0){
+		free(this->jumpIds);
+		free(this->jumpPlaces);
+	}
+
+
 	this->nbJumps++;
 	this->jumpIds = tempJumpIds;
 	this->jumpPlaces = tempJumpPlaces;
+
+
 }
 
 IRBlock::IRBlock(int startAddress, int endAddress, int section){
@@ -239,7 +285,7 @@ IRApplication::IRApplication(int numberSections){
 
 void IRApplication::addBlock(IRBlock* block, int sectionNumber){
 	if (sectionNumber>this->numberOfSections){
-		fprintf(stderr, "Error while adding a block in an application: section %d is higher than the total number of section (%d)\n", sectionNumber, this->numberOfSections);
+		Log::printf(LOG_ERROR,"Error while adding a block in an application: section %d is higher than the total number of section (%d)\n", sectionNumber, this->numberOfSections);
 		exit(-1);
 	}
 
@@ -277,7 +323,7 @@ void IRApplication::addProcedure(IRProcedure *procedure){
 	this->numberProcedures++;
 }
 
-char getOpcode(uint32 *bytecode, char index){
+char getOpcode(uint32 *bytecode, unsigned char index){
 	//This function returns the destination register of a bytecode instruction
 	//If bytecode instruction do not write any register then it returns -1
 
@@ -285,7 +331,7 @@ char getOpcode(uint32 *bytecode, char index){
 	return (bytecodeWord96>>19) & 0x7f;
 }
 
-void setOpcode(uint32 *bytecode, char index, char newOpcode){
+void setOpcode(uint32 *bytecode, unsigned char index, char newOpcode){
 	//This function returns the destination register of a bytecode instruction
 	//If bytecode instruction do not write any register then it returns -1
 
@@ -295,7 +341,7 @@ void setOpcode(uint32 *bytecode, char index, char newOpcode){
 	writeInt(bytecode, index*16+0, bytecodeWord96);
 }
 
-short getDestinationRegister(uint32 *bytecode, char index){
+short getDestinationRegister(uint32 *bytecode, unsigned char index){
 	//This function returns the destination register of a bytecode instruction
 	//If bytecode instruction do not write any register then it returns -1
 
@@ -311,7 +357,7 @@ short getDestinationRegister(uint32 *bytecode, char index){
 	return -1;
 }
 
-char getOperands(uint32 *bytecode, char index, short result[2]){
+char getOperands(uint32 *bytecode, unsigned char index, short result[2]){
 	//This function returns the number of register operand used by the bytecode instruction
 
 	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
@@ -355,7 +401,7 @@ char getOperands(uint32 *bytecode, char index, short result[2]){
 		return 0;
 }
 
-void setOperands(uint32 *bytecode, char index, short operands[2]){
+void setOperands(uint32 *bytecode, unsigned char index, short operands[2]){
 	//This function returns the number of register operand used by the bytecode instruction
 
 	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
@@ -399,12 +445,12 @@ void setOperands(uint32 *bytecode, char index, short operands[2]){
 	}
 }
 
-void setDestinationRegister(uint32 *bytecode, char index, short newDestinationRegister){
-	fprintf(stderr, "Not implemented yet\n");
+void setDestinationRegister(uint32 *bytecode, unsigned char index, short newDestinationRegister){
+	Log::printf(LOG_ERROR,"Function to set the destination register in an IR instr is not implemented yet\n");
 	exit(-1);
 }
 
-void setAlloc(uint32 *bytecode, char index, char newAlloc){
+void setAlloc(uint32 *bytecode, unsigned char index, char newAlloc){
 	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
 
 	if (newAlloc)
@@ -416,7 +462,7 @@ void setAlloc(uint32 *bytecode, char index, char newAlloc){
 }
 
 #ifdef IR_SUCC
-void addDataDep(uint32 *bytecode, char index, char successor){
+void addDataDep(uint32 *bytecode, unsigned char index, unsigned char successor){
 	unsigned int bytecodeWord0 = readInt(bytecode, index*16+12);
 	unsigned int bytecodeWord32 = readInt(bytecode, index*16+8);
 	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
@@ -447,7 +493,7 @@ void addDataDep(uint32 *bytecode, char index, char successor){
 	}
 }
 
-void addControlDep(uint32 *bytecode, char index, char successor){
+void addControlDep(uint32 *bytecode, unsigned char index, unsigned char successor){
 	unsigned int bytecodeWord0 = readInt(bytecode, index*16+12);
 	unsigned int bytecodeWord32 = readInt(bytecode, index*16+8);
 	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
@@ -480,7 +526,7 @@ void addControlDep(uint32 *bytecode, char index, char successor){
 }
 #else
 
-void addDataDep(uint32 *bytecode, char index, char successor){
+void addDataDep(uint32 *bytecode, unsigned char index, unsigned char successor){
 	unsigned int bytecodeWord0 = readInt(bytecode, successor*16+12);
 	unsigned int bytecodeWord32 = readInt(bytecode, successor*16+8);
 	unsigned int bytecodeWord64 = readInt(bytecode, successor*16+4);
@@ -511,7 +557,7 @@ void addDataDep(uint32 *bytecode, char index, char successor){
 	}
 }
 
-void addControlDep(uint32 *bytecode, char index, char successor){
+void addControlDep(uint32 *bytecode, unsigned char index, unsigned char successor){
 	unsigned int bytecodeWord0 = readInt(bytecode, successor*16+12);
 	unsigned int bytecodeWord32 = readInt(bytecode, successor*16+8);
 	unsigned int bytecodeWord64 = readInt(bytecode, successor*16+4);
@@ -541,7 +587,7 @@ void addControlDep(uint32 *bytecode, char index, char successor){
 
 #endif
 
-void addOffsetToDep(uint32 *bytecode, char index, char offset){
+void addOffsetToDep(uint32 *bytecode, unsigned char index, unsigned char offset){
 	unsigned int bytecodeWord0 = readInt(bytecode, index*16+12);
 	unsigned int bytecodeWord32 = readInt(bytecode, index*16+8);
 	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
@@ -561,7 +607,7 @@ void addOffsetToDep(uint32 *bytecode, char index, char offset){
 	}
 }
 
-char getStageCode(uint32 *bytecode, char index){
+char getStageCode(uint32 *bytecode, unsigned char index){
 
 	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
 	return (bytecodeWord96>>30) & 0x3;

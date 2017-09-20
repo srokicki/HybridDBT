@@ -13,6 +13,9 @@
 #include <types.h>
 #include <simulator/vexSimulator.h>
 
+
+extern char validConfigurations[12];
+
 /***********************************************************
  *  Header file for reconfigureVLIW
  ****************************************

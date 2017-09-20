@@ -69,13 +69,16 @@ public:
 
 	//Link with VLIW binaries
 	unsigned int vliwStartAddress;	//Address of the first instruction in the block
+	unsigned int oldVliwStartAddress;	//Address of the first instruction in the block
+
 	unsigned int vliwEndAddress;   	//End address is the address of the first instruction not in the block
 
 	//Control flow graph
 	char nbSucc;					//Number of successors
-	IRBlock* successors;
+	IRBlock* successors[10];
 	IRBlock* successor1;			//pointer to first successor
 	IRBlock* successor2;			//pointer to second successor
+
 	short jumpID;					//Index of the jump instruction in the block's list of instruction
 	unsigned int jumpPlace; 		//Address of the jump instruction in the VLIW memory
 
@@ -154,7 +157,9 @@ ac_int<128, false> assembleRiBytecodeInstruction(ac_int<2, false> stageCode, ac_
 
 ac_int<128, false> assembleIBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
 		ac_int<7, false> opcode, ac_int<9, false> reg, ac_int<19, true> imm19, ac_int<8, false> nbDep);
-
+ac_int<128, false> assembleFPBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+		ac_int<7, false> opcode, ac_int<5, false> funct, ac_int<9, false> regA, ac_int<9, false> regB, ac_int<9, false> regDest,
+		ac_int<8, false> nbDep);
 #endif
 
 /********************************************************************
@@ -165,7 +170,7 @@ ac_int<128, false> assembleIBytecodeInstruction(ac_int<2, false> stageCode, ac_i
  *
  *******************************************************************/
 
-void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instructionPart2, uint32 instructionPart3, uint32 instructionPart4);
+std::string printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instructionPart2, uint32 instructionPart3, uint32 instructionPart4);
 
 /********************************************************************
  * Declaration utilization functions
@@ -175,19 +180,19 @@ void printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instr
  *
  *******************************************************************/
 
-short getDestinationRegister(uint32 *bytecode, char index);
-char getOperands(uint32 *bytecode, char index, short result[2]);
-void setOperands(uint32 *bytecode, char index, short operands[2]);
+short getDestinationRegister(uint32 *bytecode, unsigned char index);
+char getOperands(uint32 *bytecode, unsigned char index, short result[2]);
+void setOperands(uint32 *bytecode, unsigned char index, short operands[2]);
 
-char getOpcode(uint32 *bytecode, char index);
-void setOpcode(uint32 *bytecode, char index, char newOpcode);
+char getOpcode(uint32 *bytecode, unsigned char index);
+void setOpcode(uint32 *bytecode, unsigned char index, char newOpcode);
 
-void setDestinationRegister(uint32 *bytecode, char index, short newDestinationRegister);
-void setAlloc(uint32 *bytecode, char index, char newAlloc);
-void addDataDep(uint32 *bytecode, char index, char successor);
-void addControlDep(uint32 *bytecode, char index, char successor);
-void addOffsetToDep(uint32 *bytecode, char index, char offset);
-char getStageCode(uint32 *bytecode, char index);
+void setDestinationRegister(uint32 *bytecode, unsigned char index, short newDestinationRegister);
+void setAlloc(uint32 *bytecode, unsigned char index, char newAlloc);
+void addDataDep(uint32 *bytecode, unsigned char index, unsigned char successor);
+void addControlDep(uint32 *bytecode, unsigned char index, unsigned char successor);
+void addOffsetToDep(uint32 *bytecode, unsigned char index, unsigned char offset);
+char getStageCode(uint32 *bytecode, unsigned char index);
 
 int getNbInstr(IRProcedure *procedure);
 int getNbInstr(IRProcedure *procedure, int type);

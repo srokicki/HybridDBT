@@ -51,6 +51,8 @@ struct DCtoEx {
 	ac_int<6, false> dest;  //Register to be written
 	ac_int<7, false> opCode;//OpCode of the instruction
 	ac_int<64, true> memValue; //Second data, from register file or immediate value
+	float floatRes, floatValueA, floatValueB, floatValueC;
+	ac_int<5, false> funct;
 
 };
 
@@ -61,12 +63,17 @@ struct ExtoMem {
 	ac_int<1, false> WBena;		//Is a WB is needed ?
 	ac_int<7, false> opCode;	//OpCode of the operation
 	ac_int<64, true> memValue; //Second data, from register file or immediate value
+	float floatRes;
+	ac_int<1, false> isFloat;
+
 };
 
 struct MemtoWB {
 	ac_int<64, true> result;	//Result to be written back
 	ac_int<6, false> dest;		//Register to be written at WB stage
 	ac_int<1, false> WBena;		//Is a WB is needed ?
+	float floatRes;
+	ac_int<1, false> isFloat;
 };
 
 

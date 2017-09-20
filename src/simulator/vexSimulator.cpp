@@ -32,7 +32,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-
+#include <cmath>
 #include <map>
 
 
@@ -101,7 +101,10 @@ typedef ac_int<8, false> acuint8;
 #else
 void VexSimulator::doWB(struct MemtoWB memtoWB){
 #endif
-	if(memtoWB.WBena && memtoWB.dest != 0){
+	if (memtoWB.isFloat && memtoWB.WBena){
+		regf[memtoWB.dest] = memtoWB.floatRes;
+	}
+	else if(memtoWB.WBena && memtoWB.dest != 0){
 
 			REG[memtoWB.dest] = memtoWB.result;
 	}
@@ -115,6 +118,8 @@ void doMemNoMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB){
 	memtoWB->WBena = extoMem.WBena;
 	memtoWB->dest = extoMem.dest;
 	memtoWB->result = extoMem.result;
+	memtoWB->isFloat = extoMem.isFloat;
+	memtoWB->floatRes = extoMem.floatRes;
 }
 
 #ifdef __CATAPULT
@@ -126,14 +131,52 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 
 	memtoWB->WBena = extoMem.WBena;
 	memtoWB->dest = extoMem.dest;
+	memtoWB->isFloat = extoMem.isFloat;
+	memtoWB->floatRes = extoMem.floatRes;
 
 	//IMPORTANT NOTE: In this function the value of exToMem.address is the address of the memory access to perform
 	// 					and it is addressing byte. In current implementation DATA is a word array so we need to
 	//					divide the address by four to have actual place inside the array
 
-	if (extoMem.opCode.slc<3>(4) == 1){
+	ac_int<64, false> address = extoMem.result;
+
+	if (extoMem.opCode == VEX_FLW || extoMem.opCode == VEX_FLH || extoMem.opCode == VEX_FLB){
+
+		if (extoMem.opCode == VEX_FLW){
+			uint32 value = ldw(address);
+			memcpy(&memtoWB->floatRes, &value, 4);
+			memtoWB->isFloat = 1;
+		}
+		else if (extoMem.opCode == VEX_FLH){
+			uint32 value = ldw(address);
+			memcpy(&memtoWB->floatRes, &value, 2);
+			memtoWB->isFloat = 1;
+		}
+		else if (extoMem.opCode == VEX_FLW){
+			uint32 value = ldw(address);
+			memcpy(&memtoWB->floatRes, &value, 1);
+			memtoWB->isFloat = 1;
+		}
+	}
+	else if (extoMem.opCode == VEX_FSW || extoMem.opCode == VEX_FSH || extoMem.opCode == VEX_FSB){
+		if (extoMem.opCode == VEX_FSW){
+			uint32 value;
+			memcpy(&value, &extoMem.floatRes, 4);
+			stw(address, value);
+		}
+		else if (extoMem.opCode == VEX_FSH){
+			uint32 value;
+			memcpy(&value, &extoMem.floatRes, 2);
+			sth(address, value);
+		}
+		else if (extoMem.opCode == VEX_FSW){
+			uint32 value;
+			memcpy(&value, &extoMem.floatRes, 1);
+			stb(address, value);
+		}
+	}
+	else if (extoMem.opCode.slc<3>(4) == 1){
 		//The instruction is a memory access
-		ac_int<64, false> address = extoMem.result;
 
 		if (extoMem.opCode == VEX_PROFILE){
 			if (this->profileResult[extoMem.result] != 255)
@@ -222,7 +265,6 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 			if (enableStore){
 				switch (extoMem.opCode){
 				case VEX_STD:
-
 					this->std(address, extoMem.datac);
 					break;
 				case VEX_STW:
@@ -295,6 +337,8 @@ void doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 #else
 void VexSimulator::doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 #endif
+
+	extoMem->isFloat = 0;
 	ac_int<6, false> shiftAmount = dctoEx.datab.slc<6>(0);
 
 	ac_int<64, true> addDataa = (dctoEx.opCode == VEX_SH1ADD) ? (dctoEx.dataa << 1) :
@@ -421,6 +465,7 @@ void doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 #else
 void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 #endif
+	extoMem->isFloat = 0;
 	ac_int<6, false> shiftAmount = dctoEx.datab.slc<6>(0);
 
 	ac_int<64, true> addDataa = (dctoEx.opCode == VEX_SH1ADD) ? (dctoEx.dataa << 1) :
@@ -611,6 +656,120 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 	extoMem->dest = dctoEx.dest;
 	extoMem->opCode = dctoEx.opCode;
 	extoMem->memValue = dctoEx.memValue;
+	extoMem->isFloat = 0;
+	float localFloat;
+
+	if (dctoEx.opCode == VEX_FMADD){
+		extoMem->isFloat = 1;
+		extoMem->floatRes = dctoEx.floatValueA * dctoEx.floatValueB + dctoEx.floatValueC;
+	}
+	else if (dctoEx.opCode == VEX_FNMADD){
+		extoMem->isFloat = 1;
+		extoMem->floatRes = -dctoEx.floatValueA * dctoEx.floatValueB - dctoEx.floatValueC;
+	}
+	else if (dctoEx.opCode == VEX_FMSUB){
+		extoMem->isFloat = 1;
+		extoMem->floatRes = dctoEx.floatValueA * dctoEx.floatValueB - dctoEx.floatValueC;
+	}
+	else if (dctoEx.opCode == VEX_FNMSUB){
+		extoMem->isFloat = 1;
+		extoMem->floatRes = -dctoEx.floatValueA * dctoEx.floatValueB + dctoEx.floatValueC;
+	}
+	else if (dctoEx.opCode == VEX_FP){
+		extoMem->isFloat = 1;
+
+		switch (dctoEx.funct)
+		{
+		case  VEX_FP_FADD:
+			extoMem->floatRes = dctoEx.floatValueA + dctoEx.floatValueB;
+			break;
+		case  VEX_FP_FSUB:
+			extoMem->floatRes = dctoEx.floatValueA - dctoEx.floatValueB;
+			break;
+		case  VEX_FP_FMUL:
+			extoMem->floatRes = dctoEx.floatValueA * dctoEx.floatValueB;
+			break;
+		case  VEX_FP_FDIV:
+			extoMem->floatRes = dctoEx.floatValueA / dctoEx.floatValueB;
+			break;
+		case  VEX_FP_FSQRT:
+			extoMem->floatRes = sqrt(dctoEx.floatValueA);
+			break;
+		case  VEX_FP_FSGNJ:
+			localFloat = std::abs(dctoEx.floatValueA);
+			if (dctoEx.floatValueB<0)
+				extoMem->floatRes = -localFloat;
+			else
+				extoMem->floatRes = localFloat;
+			break;
+		case  VEX_FP_FSGNJN:
+			localFloat = std::abs(dctoEx.floatValueA);
+			if (dctoEx.floatValueB>=0)
+				extoMem->floatRes = -localFloat;
+			else
+				extoMem->floatRes = localFloat;
+			break;
+		case  VEX_FP_FSGNJNX:
+			localFloat = std::abs(dctoEx.floatValueA);
+			if ((dctoEx.floatValueB<0 && dctoEx.floatValueA>=0) || (dctoEx.floatValueB>=0 && dctoEx.floatValueA<0))
+				extoMem->floatRes = -localFloat;
+			else
+				extoMem->floatRes = localFloat;
+			break;
+		case  VEX_FP_FMAX:
+			if (dctoEx.floatValueA>dctoEx.floatValueB)
+				extoMem->floatRes = dctoEx.floatValueA;
+			else
+				extoMem->floatRes = dctoEx.floatValueB;
+			break;
+		case  VEX_FP_FMIN:
+			if (dctoEx.floatValueA<dctoEx.floatValueB)
+				extoMem->floatRes = dctoEx.floatValueA;
+			else
+				extoMem->floatRes = dctoEx.floatValueB;
+			break;
+		case  VEX_FP_FCVTWS:
+			extoMem->floatRes = dctoEx.dataa;
+			break;
+		case  VEX_FP_FCVTWUS:
+			extoMem->floatRes = (unsigned int) dctoEx.dataa;
+			break;
+		case  VEX_FP_FMVXW:
+			memcpy(&extoMem->result, &(dctoEx.floatValueA), 4);
+			extoMem->isFloat = 0;
+			break;
+		case  VEX_FP_FCLASS:
+			fprintf(stderr, "Fclass instruction is not handled in vex simulator\n");
+			exit(-1);
+			break;
+		case  VEX_FP_FEQ:
+			extoMem->isFloat = 0;
+			extoMem->result = dctoEx.floatValueA == dctoEx.floatValueB;
+			break;
+
+		case  VEX_FP_FLE:
+			extoMem->isFloat = 0;
+			extoMem->result = dctoEx.floatValueA <= dctoEx.floatValueB;
+			break;
+		case  VEX_FP_FLT:
+			extoMem->isFloat = 0;
+			extoMem->result = dctoEx.floatValueA < dctoEx.floatValueB;
+			break;
+		case  VEX_FP_FCVTSW:
+			extoMem->isFloat = 0;
+			extoMem->result = dctoEx.floatValueA;
+			break;
+		case  VEX_FP_FCVTSWU:
+			extoMem->isFloat = 0;
+			extoMem->result = (unsigned int) dctoEx.floatValueA;
+			break;
+		case  VEX_FP_FMVWX:
+			memcpy(&(dctoEx.floatValueA),&dctoEx.dataa,  4);
+			break;
+		}
+	}
+
+
 
 }
 
@@ -623,6 +782,9 @@ void VexSimulator::doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<6, false> RA = ftoDC.instruction.slc<6>(26);
 	ac_int<6, false> RB = ftoDC.instruction.slc<6>(20);
 	ac_int<6, false> RC = ftoDC.instruction.slc<6>(14);
+	ac_int<6, false> RD = ftoDC.instruction.slc<6>(8);
+	ac_int<5, false> funct = ftoDC.instruction.slc<5>(7);
+
 	ac_int<19, false> IMM19_u = ftoDC.instruction.slc<19>(7);
 	ac_int<19, true> IMM19_s = ftoDC.instruction.slc<19>(7);
 	ac_int<13, false> IMM13_u = ftoDC.instruction.slc<13>(7);
@@ -636,7 +798,7 @@ void VexSimulator::doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 
 
 	ac_int<1, false> isIType = (OP.slc<3>(4) == 2);
-	ac_int<1, false> isImm = OP.slc<3>(4) == 1 || OP.slc<3>(4) == 6 || OP.slc<3>(4) == 7;
+	ac_int<1, false> isImm = OP.slc<3>(4) == 1 || OP.slc<3>(4) == 6 || OP.slc<3>(4) == 7 || OP == VEX_FLW || OP == VEX_FLH || OP == VEX_FLB || OP == VEX_FSW || OP == VEX_FSH || OP == VEX_FSB;
 
 	ac_int<1, false> isUnsigned = (OP == VEX_CMPLTU) | (OP == VEX_CMPLTUi) | (OP == VEX_CMPGEU) | (OP == VEX_CMPGEUi)
 			| (OP == VEX_CMPGTU)
@@ -655,6 +817,11 @@ void VexSimulator::doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 
 	ac_int<64, true> regValueA = REG[RA];
 	ac_int<64, true> regValueB = REG[secondRegAccess];
+
+	dctoEx->floatValueA = regf[RA];
+	dctoEx->floatValueB = regf[RB];
+	dctoEx->floatValueC = regf[RC];
+	dctoEx->funct = funct;
 
 	dctoEx->opCode = OP;
 	dctoEx->datac = regValueB; //For store instructions
@@ -687,6 +854,10 @@ void VexSimulator::doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 			dctoEx->dest = RC;
 			dctoEx->datab = regValueB;
 		}
+	}
+
+	if (OP == VEX_FNMADD || OP == VEX_FMADD || OP == VEX_FNMSUB || OP == VEX_FMSUB){
+		dctoEx->dest = RD;
 	}
 }
 
@@ -700,6 +871,9 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<6, false> RA = ftoDC.instruction.slc<6>(26);
 	ac_int<6, false> RB = ftoDC.instruction.slc<6>(20);
 	ac_int<6, false> RC = ftoDC.instruction.slc<6>(14);
+	ac_int<6, false> RD = ftoDC.instruction.slc<6>(8);
+	ac_int<5, false> funct = ftoDC.instruction.slc<5>(7);
+
 
 	ac_int<19, false> IMM19_u = ftoDC.instruction.slc<19>(7);
 	ac_int<19, true> IMM19_s = ftoDC.instruction.slc<19>(7);
@@ -712,7 +886,8 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<3, false> BEXT = ftoDC.instruction.slc<3>(8);
 
 	ac_int<1, false> isIType = (OP.slc<3>(4) == 2);
-	ac_int<1, false> isImm = OP.slc<3>(4) == 1 || OP.slc<3>(4) == 6 || OP.slc<3>(4) == 7;
+	ac_int<1, false> isImm = OP.slc<3>(4) == 1 || OP.slc<3>(4) == 6 || OP.slc<3>(4) == 7 || OP == VEX_FLW || OP == VEX_FLH || OP == VEX_FLB || OP == VEX_FSW || OP == VEX_FSH || OP == VEX_FSB;
+
 
 	ac_int<1, false> isUnsigned = (OP == VEX_CMPLTU) | (OP == VEX_CMPLTUi) | (OP == VEX_CMPGEU) | (OP == VEX_CMPGEUi)
 			| (OP == VEX_CMPGTU)
@@ -731,6 +906,13 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 
 	ac_int<64, true> regValueA = REG[RA];
 	ac_int<64, true> regValueB = REG[secondRegAccess];
+
+	dctoEx->floatValueA = regf[RA];
+	dctoEx->floatValueB = regf[RB];
+	dctoEx->floatValueC = regf[RC];
+	dctoEx->funct = funct;
+
+	dctoEx->floatRes = regf[secondRegAccess];
 
 
 	dctoEx->opCode = OP;
@@ -766,6 +948,10 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 		}
 	}
 
+	if (OP == VEX_FNMADD || OP == VEX_FMADD || OP == VEX_FNMSUB || OP == VEX_FMSUB){
+		dctoEx->dest = RD;
+	}
+
 	ac_int<64, false> address = IMM13_s + regValueA;
 
 	if (OP.slc<3>(4) == 1 && (address != 0x10009000 || !OP[3])){
@@ -773,7 +959,9 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 		#ifdef __CATAPULT
 		dctoEx->memValue = ldd(address & 0xfffffffffffffff8, memory0, memory1, memory2, memory3, memory4, memory5, memory6, memory7);
 		#else
+
 		dctoEx->memValue = this->ldd(address & 0xfffffffffffffff8);
+
 		#endif
 	}
 
@@ -787,7 +975,9 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<6, false> RA = ftoDC.instruction.slc<6>(26);
 	ac_int<6, false> RB = ftoDC.instruction.slc<6>(20);
 	ac_int<6, false> RC = ftoDC.instruction.slc<6>(14);
+	ac_int<6, false> RD = ftoDC.instruction.slc<6>(8);
 
+	ac_int<5, false> funct = ftoDC.instruction.slc<5>(7);
 	ac_int<19, false> IMM19_u = ftoDC.instruction.slc<19>(7);
 	ac_int<19, true> IMM19_s = ftoDC.instruction.slc<19>(7);
 	ac_int<13, false> IMM13_u = ftoDC.instruction.slc<13>(7);
@@ -799,7 +989,7 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<3, false> BEXT = ftoDC.instruction.slc<3>(8);
 
 	ac_int<1, false> isIType = (OP.slc<3>(4) == 2);
-	ac_int<1, false> isImm = OP.slc<3>(4) == 1 || OP.slc<3>(4) == 6 || OP.slc<3>(4) == 7;
+	ac_int<1, false> isImm = OP.slc<3>(4) == 1 || OP.slc<3>(4) == 6 || OP.slc<3>(4) == 7 || OP == VEX_FLW || OP == VEX_FLH || OP == VEX_FLB || OP == VEX_FSW || OP == VEX_FSH || OP == VEX_FSB;
 
 	ac_int<1, false> isUnsigned = (OP == VEX_CMPLTU) | (OP == VEX_CMPLTUi) | (OP == VEX_CMPGEU) | (OP == VEX_CMPGEUi)
 			| (OP == VEX_CMPGTU)
@@ -819,6 +1009,10 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<64, true> regValueA = REG[RA];
 	ac_int<64, true> regValueB = REG[secondRegAccess];
 
+	dctoEx->floatValueA = regf[RA];
+	dctoEx->floatValueB = regf[RB];
+	dctoEx->floatValueC = regf[RC];
+	dctoEx->funct = funct;
 	dctoEx->opCode = OP;
 	dctoEx->datac = regValueB;
 
@@ -860,8 +1054,6 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 				dctoEx->dataa = PC + 4*incrementInstrMem;
 				NEXT_PC = IMM19_u;
 				NEXT_PC = NEXT_PC << 2;
-				if (IMM19_u > 0x1ffff)
-					fprintf(stderr, "%x and %x\n", 4*IMM19_u, IMM19_u);
 				NEXT_PC = 4*IMM19_u;
 				break; // CALL
 
@@ -962,6 +1154,10 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 			default:
 				break;
 			}
+
+	if (OP == VEX_FNMADD || OP == VEX_FMADD || OP == VEX_FNMSUB || OP == VEX_FMSUB){
+		dctoEx->dest = RD;
+	}
 }
 
 
@@ -1159,7 +1355,9 @@ int VexSimulator::doStep(){
 
 #ifndef __CATAPULT
 
-	if (debugLevel >= 1 /*|| (ftoDC1.instruction & 0x7f) == VEX_GOTOR || cycle>4424794*/){
+	if (debugLevel >= 1 /* || (this->PC <= 4*71913 && this->PC>=4*71819) || cycle >= 441422*/){
+
+
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
 		if (this->unitActivation[0])
 			std::cerr << "\033[1;31m" << printDecodedInstr(ftoDC1.instruction) << "\033[0m;";

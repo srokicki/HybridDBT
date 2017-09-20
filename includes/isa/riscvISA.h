@@ -108,6 +108,50 @@
 #define RISCV_SYSTEM_CSRRSI 0x6
 #define RISCV_SYSTEM_CSRRCI 0x7
 
+#define RISCV_FLW 0x07
+#define RISCV_FSW 0x27
+#define RISCV_FMADD 0x43
+#define RISCV_FMSUB 0x47
+#define RISCV_FNMSUB 0x4b
+#define RISCV_FNMADD 0x4f
+#define RISCV_FP 0x53
+
+#define RISCV_FP_ADD 0x0
+#define RISCV_FP_SUB 0x4
+#define RISCV_FP_MUL 0x8
+#define RISCV_FP_DIV 0xc
+#define RISCV_FP_SQRT 0x2c
+#define RISCV_FP_FSGN 0x10
+#define RISCV_FP_MINMAX 0x14
+#define RISCV_FP_FCVTW 0x60
+#define RISCV_FP_FMVXFCLASS 0x70
+#define RISCV_FP_FCMP 0x50
+#define RISCV_FP_FCVTS 0x68
+#define RISCV_FP_FMVW 0x78
+
+#define RISCV_FP_FSGN_J 0x0
+#define RISCV_FP_FSGN_JN 0x1
+#define RISCV_FP_FSGN_JX 0x2
+
+#define RISCV_FP_MINMAX_MIN 0x0
+#define RISCV_FP_MINMAX_MAX 0x1
+
+#define RISCV_FP_FCVTW_W 0x0
+#define RISCV_FP_FCVTW_WU 0x1
+
+#define RISCV_FP_FCVTS_W 0x0
+#define RISCV_FP_FCVTS_WU 0x1
+
+#define RISCV_FP_FMVXFCLASS_FMVX 0x0
+#define RISCV_FP_FMVXFCLASS_FCLASS 0x1
+
+#define RISCV_FP_FCMP_FEQ 2
+#define RISCV_FP_FCMP_FLT 1
+#define RISCV_FP_FCMP_FLE 0
+
+
+
+
 
 //FIXME some special operations of the base instruction set are not yet supported. (FENCE)
 

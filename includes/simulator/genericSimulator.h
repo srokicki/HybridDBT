@@ -79,7 +79,7 @@ int stop = 0;
 
 std::map<ac_int<64, false>, ac_int<8, true>> memory;
 ac_int<64, true> REG[64];
-
+float regf[64];
 void initialize(int argc, char* argv[]);
 
 
