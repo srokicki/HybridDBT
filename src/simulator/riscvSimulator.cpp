@@ -136,8 +136,9 @@ void RiscvSimulator::doStep(){
 		pc = pc - 4 + imm21_1_signed;
 	break;
 	case RISCV_JALR:
-		REG[rd] = pc;
+		localResult = pc;
 		pc = (REG[rs1] + imm12_I_signed) & 0xfffffffe;
+		REG[rd] = localResult;
 	break;
 
 	//******************************************************************************************
