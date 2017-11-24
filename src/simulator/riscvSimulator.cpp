@@ -21,6 +21,7 @@ float regf[32];
 #define MAX(a,b) ((a) > (b) ? a : b)
 #define MIN(a,b) ((a) < (b) ? a : b)
 
+
 int RiscvSimulator::doSimulation(int nbkCycle){
 	long long hilo;
 
@@ -41,9 +42,9 @@ int RiscvSimulator::doSimulation(int nbkCycle){
 	while (stop != 1 && n_inst<nbkCycle*1000);
 
 	if (this->stop)
-		fprintf(stderr,"Simulation finished in %d cycles\n",n_inst);
-
-	return 0;
+		return 0;
+	else
+		return -1;
 
 }
 
@@ -122,59 +123,99 @@ void RiscvSimulator::doStep(){
 	ac_int<32, false> localDataaUnsigned, localDatabUnsigned;
 	ac_int<32, true> localResult;
 	float localFloat;
+
+	this->lastWrittenRegister = -1;
+	this->lastIsLoad = false;
+
 	//According to opcode/funct3/funct7 we perform the correct operation
 	switch (opcode)
 	{
 	case RISCV_LUI:
+		this->lastWrittenRegister = rd;
 		REG[rd] = imm31_12;
 	break;
 	case RISCV_AUIPC:
+		this->lastWrittenRegister = rd;
 		REG[rd] = pc -4 + imm31_12;
 	break;
 	case RISCV_JAL:
+		this->lastWrittenRegister = rd;
+
 		REG[rd] = pc;
 		pc = pc - 4 + imm21_1_signed;
+		this->cycle += LOSS_INCORRECT_BRANCH;
 	break;
 	case RISCV_JALR:
+
+		//For modelling pipeline performances
+		if (rs1 == this->lastWrittenRegister){
+			if (this->lastIsLoad)
+				this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+			else
+				this->cycle += LOSS_PIPELINE_HAZARD;
+		}
+
 		localResult = pc;
 		pc = (REG[rs1] + imm12_I_signed) & 0xfffffffe;
 		REG[rd] = localResult;
+		this->cycle += LOSS_INCORRECT_BRANCH;
 	break;
 
 	//******************************************************************************************
 	//Treatment for: BRANCH INSTRUCTIONS
 	case RISCV_BR:
+
+		//For modelling pipeline performances
+		if (rs1 == this->lastWrittenRegister || rs2 == this->lastWrittenRegister){
+			if (this->lastIsLoad)
+				this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+			else
+				this->cycle += LOSS_PIPELINE_HAZARD;
+		}
+
 		switch(funct3)
 		{
 		case RISCV_BR_BEQ:
-			if (REG[rs1] == REG[rs2])
+			if (REG[rs1] == REG[rs2]){
 				pc = pc + (imm13_signed) - 4;
+				this->cycle += LOSS_INCORRECT_BRANCH;
+			}
 		break;
 		case RISCV_BR_BNE:
-			if (REG[rs1] != REG[rs2])
+			if (REG[rs1] != REG[rs2]){
 				pc = pc + (imm13_signed) - 4;
+				this->cycle += LOSS_INCORRECT_BRANCH;
+			}
 		break;
 		case RISCV_BR_BLT:
-			if (REG[rs1] < REG[rs2])
+			if (REG[rs1] < REG[rs2]){
 				pc = pc + (imm13_signed) - 4;
+				this->cycle += LOSS_INCORRECT_BRANCH;
+			}
 		break;
 		case RISCV_BR_BGE:
-			if (REG[rs1] >= REG[rs2])
+			if (REG[rs1] >= REG[rs2]){
 				pc = pc + (imm13_signed) - 4;
+				this->cycle += LOSS_INCORRECT_BRANCH;
+			}
 		break;
 		case RISCV_BR_BLTU:
 			unsignedReg1.set_slc(0, REG[rs1].slc<64>(0));
 			unsignedReg2.set_slc(0, REG[rs2].slc<64>(0));
 
-			if (unsignedReg1 < unsignedReg2)
+			if (unsignedReg1 < unsignedReg2){
 				pc = pc + (imm13_signed) - 4;
+				this->cycle += LOSS_INCORRECT_BRANCH;
+			}
 		break;
 		case RISCV_BR_BGEU:
 			unsignedReg1.set_slc(0, REG[rs1].slc<64>(0));
 			unsignedReg2.set_slc(0, REG[rs2].slc<64>(0));
 
-			if (unsignedReg1 >= unsignedReg2)
+			if (unsignedReg1 >= unsignedReg2){
 				pc = pc + (imm13_signed) - 4;
+				this->cycle += LOSS_INCORRECT_BRANCH;
+			}
 		break;
 		default:
 			printf("In BR switch case, this should never happen... Instr was %x\n", (int)ins);
@@ -186,6 +227,18 @@ void RiscvSimulator::doStep(){
 	//******************************************************************************************
 	//Treatment for: LOAD INSTRUCTIONS
 	case RISCV_LD:
+
+		//For modelling pipeline performances
+		if (rs1 == this->lastWrittenRegister || rs2 == this->lastWrittenRegister){
+			if (this->lastIsLoad)
+				this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+			else
+				this->cycle += LOSS_PIPELINE_HAZARD;
+		}
+		this->lastIsLoad = true;
+		this->lastWrittenRegister = rd;
+
+
 		switch(funct3)
 		{
 		case RISCV_LD_LB:
@@ -249,6 +302,16 @@ void RiscvSimulator::doStep(){
 	//******************************************************************************************
 	//Treatment for: OPI INSTRUCTIONS
 	case RISCV_OPI:
+
+		//For modelling pipeline performances
+		if (rs1 == this->lastWrittenRegister){
+			if (this->lastIsLoad)
+				this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+			else
+				this->cycle += LOSS_PIPELINE_HAZARD;
+		}
+		this->lastWrittenRegister = rd;
+
 		switch(funct3)
 		{
 		case RISCV_OPI_ADDI:
@@ -291,6 +354,16 @@ void RiscvSimulator::doStep(){
 	//******************************************************************************************
 	//Treatment for: OPIW INSTRUCTIONS
 	case RISCV_OPIW:
+
+		//For modelling pipeline performances
+		if (rs1 == this->lastWrittenRegister){
+			if (this->lastIsLoad)
+				this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+			else
+				this->cycle += LOSS_PIPELINE_HAZARD;
+		}
+		this->lastWrittenRegister = rd;
+
 		localDataa = REG[rs1];
 		localDatab = imm12_I_signed;
 		switch(funct3)
@@ -321,6 +394,16 @@ void RiscvSimulator::doStep(){
 	//******************************************************************************************
 	//Treatment for: OP INSTRUCTIONS
 	case RISCV_OP:
+
+		//For modelling pipeline performances
+		if (rs1 == this->lastWrittenRegister || rs2 == this->lastWrittenRegister){
+			if (this->lastIsLoad)
+				this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+			else
+				this->cycle += LOSS_PIPELINE_HAZARD;
+		}
+		this->lastWrittenRegister = rd;
+
 		if (funct7 == 1){
 			//Switch case for multiplication operations (in standard extension RV32M)
 			switch (funct3)
@@ -414,6 +497,16 @@ void RiscvSimulator::doStep(){
 	//******************************************************************************************
 	//Treatment for: OPW INSTRUCTIONS
 	case RISCV_OPW:
+
+		//For modelling pipeline performances
+		if (rs1 == this->lastWrittenRegister || rs2 == this->lastWrittenRegister){
+			if (this->lastIsLoad)
+				this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+			else
+				this->cycle += LOSS_PIPELINE_HAZARD;
+		}
+		this->lastWrittenRegister = rd;
+
 		if (funct7 == 1){
 			localDataa = REG[rs1].slc<32>(0);
 			localDatab = REG[rs2].slc<32>(0);
@@ -485,6 +578,16 @@ void RiscvSimulator::doStep(){
 	//******************************************************************************************
 	//Treatment for: SYSTEM INSTRUCTIONS
 	case RISCV_SYSTEM:
+
+		//For modelling pipeline performances
+		if (17 == this->lastWrittenRegister || 10 == this->lastWrittenRegister || 11 == this->lastWrittenRegister || 12 == this->lastWrittenRegister || 13 == this->lastWrittenRegister){
+			if (this->lastIsLoad)
+				this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+			else
+				this->cycle += LOSS_PIPELINE_HAZARD;
+		}
+		this->lastWrittenRegister = rd;
+
 		if (funct3 == 0 && funct7 == 0){
 			REG[10] = solveSyscall(REG[17], REG[10], REG[11], REG[12], REG[13]);
 		}
@@ -619,6 +722,7 @@ void RiscvSimulator::doStep(){
 	}
 	REG[0] = 0;
 	n_inst = n_inst + 1;
+	this->cycle++;
 
 	if (storedVerbose>1){
 		for (int i=0; i<32; i++){

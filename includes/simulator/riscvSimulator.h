@@ -17,12 +17,23 @@
 #include <types.h>
 #include <simulator/genericSimulator.h>
 
+//Modelization of RISC-V pipeline
+#define LOSS_INCORRECT_BRANCH 2
+#define LOSS_PIPELINE_HAZARD 2
+#define LOSS_PIPELINE_HAZARD_FORWARDED 1
+
+
 class RiscvSimulator : public GenericSimulator{
 	public:
 	ac_int<64, true> pc;
 	uint64_t n_inst;
 
-	RiscvSimulator(void) : GenericSimulator(){};
+	//Modelization of RISC-V pipeline
+	int lastWrittenRegister;
+	bool lastIsLoad;
+	long int cycle;
+
+	RiscvSimulator(void) : GenericSimulator(){lastIsLoad = false; lastWrittenRegister = -1; cycle=0;};
 	int doSimulation(int nbCycles);
 
 	void doStep();

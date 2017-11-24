@@ -171,6 +171,12 @@ int main(int argc, char* argv[]){
 	}
 	fprintf(stderr, "PC start is %x\n", simulator->pc);
 
-	simulator->doSimulation(50000000);
+	int error = simulator->doSimulation(50000000);
 
+	if (error){
+
+	}
+	else{
+		fprintf(stderr,"Simulation finished in %d cycles, executing %d instructions\n", simulator->cycle, simulator->n_inst);
+	}
 }
