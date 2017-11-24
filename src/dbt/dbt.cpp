@@ -190,8 +190,10 @@ int main(int argc, char *argv[])
 	int CONFIGURATION = cfg.has("c") ? std::stoi(cfg["c"]) : 2;
 
 	int VERBOSE = cfg.has("v") ? std::stoi(cfg["v"]) : 0;
+	int STATMODE = cfg.has("statmode") ? std::stoi(cfg["statmode"]) : 0;
 
-	Log::Init(VERBOSE);
+
+	Log::Init(VERBOSE, STATMODE);
 
 	int OPTLEVEL = cfg.has("O") ? std::stoi(cfg["O"]) : 2;
 	int HELP = cfg.has("h");
@@ -434,20 +436,21 @@ int main(int argc, char *argv[])
 	writeInt(dbtPlateform.vliwBinaries, 0, instruction);
 
 
+
+
 	int runStatus=0;
 	int abortCounter = 0;
-	int blockScheduleCounter = 0;
-	int procedureOptCounter = 0;
 
 	float coef = 0;
+	runStatus = run(&dbtPlateform, 1000);
+
 
 	while (runStatus == 0){
 
-		runStatus = run(&dbtPlateform, 1000);
-		abortCounter++;
-		if (abortCounter>10000000)
-			break;
 
+
+		int oldOptimizationCount = dbtPlateform.optimizationCycles;
+		bool optimizationPerformed = false;
 
 		if (OPTLEVEL >= 3){
 			for (int oneProcedure = 0; oneProcedure < application.numberProcedures; oneProcedure++){
@@ -472,7 +475,7 @@ int main(int argc, char *argv[])
 							procedure->previousConfiguration = oldPrevious;
 						}
 					}
-
+					optimizationPerformed = true;
 					break;
 				}
 				else if (procedure->state==1){
@@ -493,7 +496,9 @@ int main(int argc, char *argv[])
 					procedure->configuration = maxConf;
 					placeCode = rescheduleProcedure(&dbtPlateform, procedure, placeCode);
 					procedure->state = 2;
-					procedureOptCounter++;
+					dbtPlateform.procedureOptCounter++;
+
+					optimizationPerformed = true;
 				}
 			}
 		}
@@ -502,24 +507,31 @@ int main(int argc, char *argv[])
 			int profileResult = profiler.getProfilingInformation(oneBlock);
 			IRBlock* block = profiler.getBlock(oneBlock);
 
-			if ( block != NULL && OPTLEVEL >= 2 && profileResult > 20 && block->blockState == IRBLOCK_STATE_SCHEDULED){
 
+			if (block != NULL && OPTLEVEL >= 2 && profileResult > 20 && (block->blockState == IRBLOCK_STATE_SCHEDULED || block->blockState == IRBLOCK_STATE_PROFILED)){
+
+				fprintf(stderr, "optimizing a proc\n");
 				int errorCode = buildAdvancedControlFlow(&dbtPlateform, block, &application);
 				block->blockState = IRBLOCK_PROC;
 
 
 				if (!errorCode){
+					application.procedures[application.numberProcedures-1]->print();
 					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
+					application.procedures[application.numberProcedures-1]->print();
 
 					placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
-					procedureOptCounter++;
+					dbtPlateform.procedureOptCounter++;
 				}
+				else{
+					fprintf(stderr, "opt was canceled\n");
+				}
+
+				optimizationPerformed = true;
+				break;
 			}
 
-
 		}
-
-		int oldCounter = blockScheduleCounter;
 
 		//We perform aggressive level 1 optimization: if a block takes more than 8 cycle we schedule it.
 		//If it has a backward loop, we also profile it.
@@ -527,20 +539,33 @@ int main(int argc, char *argv[])
 			for (int oneBlock = 0; oneBlock<application.numbersBlockInSections[oneSection]; oneBlock++){
 				IRBlock* block = application.blocksInSections[oneSection][oneBlock];
 
-				if ((MAX_SCHEDULE_COUNT==-1 || blockScheduleCounter < MAX_SCHEDULE_COUNT) && OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress > 8  && block->blockState < IRBLOCK_STATE_SCHEDULED){
+				if (block != NULL && (MAX_SCHEDULE_COUNT==-1 || dbtPlateform.blockScheduleCounter < MAX_SCHEDULE_COUNT) && OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress > 4  && block->blockState < IRBLOCK_STATE_SCHEDULED){
+
+
 					optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
-					blockScheduleCounter++;
+					dbtPlateform.blockScheduleCounter++;
 
-					if ((block->sourceDestination != -1 && block->sourceDestination <= block->sourceStartAddress) || block->nbInstr > 16)
+					if ((block->sourceDestination != -1 && block->sourceDestination <= block->sourceStartAddress)){
 						profiler.profileBlock(block);
+					}
 
-					if (oldCounter >= blockScheduleCounter + 16)
-						break;
+					optimizationPerformed = true;
+					break;
 				}
+
 
 			}
 
+			if (optimizationPerformed)
+				break;
+
 		}
+
+		int cyclesToRun = oldOptimizationCount - dbtPlateform.optimizationCycles;
+		if (oldOptimizationCount - dbtPlateform.optimizationCycles == 0)
+			cyclesToRun = 1000;
+
+		runStatus = run(&dbtPlateform, cyclesToRun);
 
 
 	}
@@ -548,37 +573,32 @@ int main(int argc, char *argv[])
 	//We clean the last performance counters
 	dbtPlateform.vexSimulator->timeInConfig[dbtPlateform.vexSimulator->currentConfig] += (dbtPlateform.vexSimulator->cycle - dbtPlateform.vexSimulator->lastReconf);
 
+	Log::printStat(&dbtPlateform);
 
-
-	float energyConsumption = 0;
-	float period = 1.4/1000000000;
-	const int lineSize = 100;
-	for (int oneConfig = 0; oneConfig<32; oneConfig++){
-		float timeInConfig = dbtPlateform.vexSimulator->timeInConfig[oneConfig];
-		timeInConfig = timeInConfig / dbtPlateform.vexSimulator->cycle;
-		Log::fprintf(0, stdout, "Conf %x\t[", oneConfig);
-		int convertToPercent = timeInConfig * lineSize;
-		for (int oneChar = 0; oneChar < convertToPercent; oneChar++){
-			Log::fprintf(0, stdout, "|");
-		}
-		for (int oneChar = convertToPercent; oneChar < lineSize; oneChar++){
-			Log::fprintf(0, stdout, " ");
-		}
-		Log::fprintf(0, stdout, "] %f  Power consumption : %f\n", timeInConfig*100, getPowerConsumption(oneConfig));
-		energyConsumption += dbtPlateform.vexSimulator->timeInConfig[oneConfig] * period * getPowerConsumption(oneConfig) / 1000;
-	}
-
-	Log::fprintf(0, stdout, "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: %ld\n\t Number of instruction executed: %ld\n\t Average IPC: %f\n\t Number of block scheduled: %d\n\t Number of procedure optimized (O2): %d\n",
-			dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
-	Log::fprintf(0, stdout, "\tConfiguration used: %d\n", CONFIGURATION);
-	Log::fprintf(0, stdout, "\tEnergy consumed: %f\n", energyConsumption);
 
 //	Log::fprintf(0, stdout, "%ld;%ld;%f;%d;%d;",	dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
 //	Log::fprintf(0, stdout, "%d;", CONFIGURATION);
 //	Log::fprintf(0, stdout, "%f\n", energyConsumption);
 
 
-
+//	for (int i=0;i<placeCode;i++){
+//		Log::printf(0,"%d ", i);
+//
+//
+//		Log::printf(0,"0x%x, ", dbtPlateform.vliwBinaries[i].slc<32>(0));
+//		Log::printf(0,"0x%x, ", dbtPlateform.vliwBinaries[i].slc<32>(32));
+//		Log::printf(0,"0x%x, ", dbtPlateform.vliwBinaries[i].slc<32>(64));
+//		Log::printf(0,"0x%x, ", dbtPlateform.vliwBinaries[i].slc<32>(96));
+//
+//		if (dbtPlateform.vliwInitialIssueWidth>4){
+//			Log::printf(0,"0x%x, ", dbtPlateform.vliwBinaries[i+1].slc<32>(0));
+//			Log::printf(0,"0x%x, ", dbtPlateform.vliwBinaries[i+1].slc<32>(32));
+//			Log::printf(0,"0x%x, ", dbtPlateform.vliwBinaries[i+1].slc<32>(64));
+//			Log::printf(0,"0x%x, ", dbtPlateform.vliwBinaries[i+1].slc<32>(96));
+//			i++;
+//		}
+//		Log::printf(0,"\n");
+//	}
 
 	//We print profiling result
 	#ifndef __NIOS
