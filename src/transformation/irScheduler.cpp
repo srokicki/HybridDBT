@@ -935,6 +935,8 @@ ac_int<32, false> placeOfInstr[256]
 
 	while (instructionId < basicBlockSize) {
 
+
+		fprintf(stderr, "window offset == %d\n", windowPosition);
 		//**************************************************************
 		// Fetching / Decoding instruction
 		//**************************************************************
@@ -1029,28 +1031,32 @@ ac_int<32, false> placeOfInstr[256]
 			// WAW
 			else if (6-i < nbNonDataDeps) {
 				if (unitType == 0){
+					ac_int<2, false> typeOfPred = bytecode[deps[i]].slc<2>(126);
+
 					ac_int<8, false> stg = (deps[i] != instructionId-1)
 					? instructionsStages[deps[i]] : lastInstructionStage;
           ac_int<4, false> spec = way_specialisation.slc<4>(stg << 2);
 					ac_int<2, true> gap = (spec[1] || spec[3]) ? 0 : -1;
 					ac_int<32, true> test = place+gap;
 
-					ac_int<2, false> typeOfPred = bytecode[deps[i]].slc<2>(126);
 					test = !(spec[1] || spec[3]) && place == 0 ? ac_int<32, true>(windowPosition) : test;
-					test = typeOfPred == 0 ? place+2 : test+0;
-
+					test = (typeOfPred == 0) ? place+2 : test+0;
 
 					earliest_place = max(earliest_place, test);
 				}
-				else
-					earliest_place = max(earliest_place, (ac_int<32,false>(place+1)));
+				else{
+					ac_int<2, false> typeOfPred = bytecode[deps[i]].slc<2>(126);
+					ac_int<32, true> test = (typeOfPred == 0) ? (ac_int<32,false>(place+2)) : (ac_int<32,false>(place+1));
+					earliest_place = max(earliest_place, test);
 
+
+				}
 			}
 		}
 
 		// WAR
 		earliest_place = max(earliest_place, lastRead[dest]);
-
+fprintf(stderr, "place is %d\n", lastRead[dest]);
 		//**************************************************************
 		// Placing the instruction
 		//**************************************************************
@@ -1164,7 +1170,7 @@ ac_int<32, false> placeOfInstr[256]
 		ac_int<8, false> rin2Dep = registerDependencies[rin2.slc<8>(0)];
 
 		ac_int<1, false> useRin1 = (typeCode == 0 && !isImm) && (opCode != VEX_FP || (opCode == VEX_FP && funct != VEX_FP_FCVTSW && funct != VEX_FP_FCVTSWU && funct != VEX_FP_FCVTWS && funct != VEX_FP_FCVTWUS && funct != VEX_FP_FMVWX && funct != VEX_FP_FMVXW && funct != VEX_FP_FCLASS));
-		ac_int<1, false> useRin2 = typeCode == 0 || (typeCode == 2 && opCode != VEX_MOVI);
+		ac_int<1, false> useRin2 = typeCode == 0 || (typeCode == 2 && opCode != VEX_MOVI && opCode != VEX_GOTO && opCode != VEX_CALL);
 		if (useRin2) {
 			if (typeCode != 2)
 				instruction.set_slc(9, placeOfRin2);
@@ -1332,6 +1338,11 @@ ac_int<32, false> placeOfInstr[256]
 
 int irScheduler(DBTPlateform *platform, uint1 optLevel, uint8 basicBlockSize, uint32 addressInBinaries,
 int6 numberFreeRegister, char configuration){
+
+	//Modelization of optimization time : here we need 4 cycles to schedule one instruction
+	platform->optimizationCycles += basicBlockSize*4;
+	platform->optimizationEnergy += ((int)basicBlockSize)*4*5.46;
+
 
 	char issue_width = getIssueWidth(configuration)>4 ?8 :4;
 	unsigned int way_specialisation = getConfigurationForScheduler(configuration);

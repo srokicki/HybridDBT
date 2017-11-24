@@ -71,6 +71,7 @@ uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
 
 
 
+
 	platform->insertions[0] = 0;
 
 	//We call the accelerator (or the software counterpart if no accelerator)
@@ -107,81 +108,11 @@ uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
 
 	addInsertions((sectionStartAddress-sourceStartAddress)>>2, placeCode, platform->insertions, platform->insertions[0]);
 
-//	/************************************************************
-//	* Resolution of unresolved jumps
-//	*************************************************************
-//	*
-//	* Idea: The first pass translator will return a list with three values:
-//	*    -> source: index in the vliwBinaries of the unresolved jump (ie. place where we have to modify the instr.)
-//	*    -> initialDestination: address where the jump led in MIPS binaries
-//	*    -> type: is it an absolute or a relative jump
-//	*
-//	* We need to find the correct immediate value to insert in the instruction. For this, we need to find the index
-//	* of the new destination. We will process iteratively by considering the initial address and increasing its
-//	* value for each insertion done by the translator (and stored in array called 'insertions'.
-//	*
-//	* TODO: if we allow the splitting of the binaries to translate into several smaller pieces, we will need to
-//	* check here if the destination is translated or not.
-//	*
-//	* Note: Insertions from memory 'insertions' contains addresses with the offset placeCode already applied
-//	************************************************************/
-//
-//	for (int oneUnresolvedJump = 0; oneUnresolvedJump<numberUnresolvedJumps; oneUnresolvedJump++){
-//
-//		unsigned int source = platform->unresolvedJumps_src[oneUnresolvedJump];
-//		unsigned int initialDestination = platform->unresolvedJumps[oneUnresolvedJump];
-//		unsigned int type = platform->unresolvedJumps_type[oneUnresolvedJump];
-//
-//		unsigned int oldJump = readInt(platform->vliwBinaries, 16*(source));
-//		unsigned int indexOfDestination = 0;
-//		unsigned char isAbsolute = ((type & 0x7f) != VEX_BR) && ((type & 0x7f) != VEX_BRF);
-//
-//		unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(initialDestination + ((addressStart-codeSectionStart)>>2));
-//		if (destinationInVLIWFromNewMethod == -1){
-//
-//			//In this case, the jump cannot be resolved because the destination block is not translated yet.
-//			//We store information concerning the destination and it will be resolved later
-//
-//			int numberUnresolvedJumps = unresolvedJumpsArray[0];
-//			unresolvedJumpsArray[1+numberUnresolvedJumps] = initialDestination + ((addressStart-codeSectionStart)>>2);
-//			unresolvedJumpsTypeArray[1+numberUnresolvedJumps] = type;
-//			unresolvedJumpsSourceArray[1+numberUnresolvedJumps] = source;
-//
-//			unresolvedJumpsArray[0] = numberUnresolvedJumps+1;
-//		}
-//		else if (isAbsolute){
-//			//In here we solve an absolute jump
-//
-//			indexOfDestination = destinationInVLIWFromNewMethod;
-//			initialDestination = destinationInVLIWFromNewMethod;
-//			initialDestination = initialDestination << 2; //This is compute the destination according to the #of instruction and not the number of 4-instr bundle
-//
-//			writeInt(platform->vliwBinaries, 16*(source), type + ((initialDestination & 0x7ffff)<<7));
-//
-//		}
-//		else{
-//			//In here we solve a relative jump
-//
-//			indexOfDestination = destinationInVLIWFromNewMethod;
-//			initialDestination = destinationInVLIWFromNewMethod;
-//			initialDestination = initialDestination  - (source) ;
-//			initialDestination = initialDestination << 2; //This is compute the destination according to the #of instruction and not the number of 4-instr bundle
-//
-//			//We modify the jump instruction to make it jump at the correct place
-//			writeInt(platform->vliwBinaries, 16*(source), type + ((initialDestination & 0x7ffff)<<7));
-//
-//		}
-//
-//		unsigned int instructionBeforePreviousDestination = readInt(platform->vliwBinaries, 16*(indexOfDestination-1)+12);
-//		if (instructionBeforePreviousDestination != 0)
-//			writeInt(platform->vliwBinaries, 16*(source+1)+12, instructionBeforePreviousDestination);
-//	}
-//
-//
-//	numberUnresolvedJumps = 0;
-//	return placeCode + destinationIndex;
-//	/************************************************************/
-//	/************************************************************/
+	//Modelization of optimization time : here we needed one cycle per generated instruction
+	platform->optimizationCycles += destinationIndex;
+	platform->optimizationEnergy += destinationIndex*0.44;
+
+
 	return placeCode + destinationIndex;
 }
 #endif
@@ -676,7 +607,7 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 				setBoundaries1 = 1;
 				boundary1 = indexInSourceBinaries + 1;//Only plus one because in riscv next instr is not executed
 
-				if (rs1 == 63){
+				if (rs1 == 63 && rd == 0){
 					//We are in a simple return
 					binaries = assembleIInstruction(VEX_GOTOR, imm12_I_signed, 63);
 

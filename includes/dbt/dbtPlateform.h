@@ -49,6 +49,12 @@ public:
 	char vliwInitialIssueWidth;
 	char debugLevel;
 
+	//For simulating the optimization time in the platform
+	long int optimizationCycles=0;
+	double optimizationEnergy=0;
+	int blockScheduleCounter=0;
+	int procedureOptCounter=0;
+
 };
 #endif
 

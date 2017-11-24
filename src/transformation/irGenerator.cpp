@@ -1808,6 +1808,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 				if (opcode == VEX_GOTO){
 					numberSuccessors = 1;
 					successor1 = imm19;
+					pred1 = 0;
 				}
 				else if (opcode == VEX_BR || opcode == VEX_BRF){
 					numberSuccessors = 2;
@@ -2038,6 +2039,10 @@ unsigned int irGenerator(DBTPlateform *platform,
 		uint32 addressInBinaries,
 		uint32 blockSize,
 		uint32 globalVariableCounter){
+
+	//Modelization of optimization time : here we need 5 cycles to generate IR for one instruction
+	platform->optimizationCycles += blockSize*5;
+	platform->optimizationEnergy += ((int)blockSize)*5*3.22f;
 
 	#ifndef __NIOS
 
