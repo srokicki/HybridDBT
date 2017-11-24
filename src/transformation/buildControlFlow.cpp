@@ -316,7 +316,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 					IRBlock *block = application->blocksInSections[oneSection][oneBlock];
 					if (block != NULL && block->sourceStartAddress == successor1)
 						currentBlock->successor1 = block;
-					else if (nbSucc > 1 && block->sourceStartAddress == successor2)
+					else if (block != NULL && nbSucc > 1 && block->sourceStartAddress == successor2)
 						currentBlock->successor2 = block;
 				}
 			}
@@ -340,6 +340,9 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 		for (int oneSection = 0; oneSection<application->numberOfSections; oneSection++){
 			for (int oneBlock = 0; oneBlock < application->numbersBlockInSections[oneSection]; oneBlock++){
 				//We determine the kind of jump we face
+
+				if (application->blocksInSections[oneSection][oneBlock] == NULL)
+					continue;
 
 				unsigned int jumpInstruction = readInt(platform->vliwBinaries, (application->blocksInSections[oneSection][oneBlock]->vliwEndAddress-2*incrementInBinaries)*16);
 
@@ -418,10 +421,12 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 
 
 
-	//We create IR for all blocks
+	//We create IR for all blocks annd modify the location of their unique reference
 	for (int oneBasicBlock=0; oneBasicBlock<procedure->nbBlock; oneBasicBlock++){
 		IRBlock *block = procedure->blocks[oneBasicBlock];
 
+		*(block->reference) = NULL;
+		block->reference = &(procedure->blocks[oneBasicBlock]);
 
 		if (block->nbInstr == 0){
 

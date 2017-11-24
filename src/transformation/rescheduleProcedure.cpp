@@ -63,14 +63,11 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 		IRBlock *block = procedure->blocks[oneBlock];
 
 		bool isCallBlock = false;
-		if (block->nbJumps == 1){
-			char opcode = getOpcode(block->instructions, block->jumpIds[0]);
+		if (block->nbJumps > 0){
+			char opcode = getOpcode(block->instructions, block->jumpIds[block->nbJumps-1]);
 			isCallBlock = opcode == VEX_CALL || opcode == VEX_CALLR;
 		}
-		char opcode = getOpcode(block->instructions, block->nbInstr-1);
 
-		if (opcode == VEX_CALL || opcode == VEX_CALLR)
-			isCallBlock == true;
 
 		//We move instructions into bytecode memory
 		for (int oneBytecodeInstr = 0; oneBytecodeInstr<block->nbInstr; oneBytecodeInstr++){
@@ -226,7 +223,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 		IRBlock *block = procedure->blocks[oneBlock];
 
 		for (int oneJump = 0; oneJump<block->nbJumps; oneJump++){
-			char jumpOpcode = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]) & 0x7f;
+			char jumpOpcode = getOpcode(block->instructions, block->jumpIds[oneJump]);
 
 			if (jumpOpcode == VEX_BR || jumpOpcode == VEX_BRF){
 				//Conditional block (br)
@@ -237,6 +234,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 			}
 			else if (jumpOpcode != VEX_CALL && jumpOpcode != VEX_CALLR && jumpOpcode != VEX_GOTOR){
 
+				fprintf(stderr, "block has %d successor, %d jumps and we are accessing succ %d... place is %d; id %d opcode %x\n", block->nbSucc, block->nbJumps, oneJump, block->jumpPlaces[oneJump], block->jumpIds[oneJump], jumpOpcode	);
 				int dest = block->successors[oneJump]->vliwStartAddress;
 				unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
 				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
@@ -329,14 +327,11 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 		}
 
 		bool isCallBlock = false;
-		if (block->nbJumps == 1){
-			char opcode = getOpcode(block->instructions, block->jumpIds[0]);
+		if (block->nbJumps > 0){
+			char opcode = getOpcode(block->instructions, block->jumpIds[block->nbJumps-1]);
 			isCallBlock = opcode == VEX_CALL || opcode == VEX_CALLR;
 		}
-		char opcode = getOpcode(block->instructions, block->nbInstr-1);
 
-		if (opcode == VEX_CALL || opcode == VEX_CALLR)
-			isCallBlock == true;
 
 		if (isCallBlock){
 			char offsetSecondLine, offsetFirstLine;

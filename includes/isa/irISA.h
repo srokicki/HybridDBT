@@ -62,6 +62,9 @@ public:
 class IRBlock
 {
 public:
+	//address of the unique reference to the pointer
+	IRBlock** reference = NULL;
+
 	//Link with source binaries
 	unsigned int sourceStartAddress; //This represent the block start address in source binaries
 	unsigned int sourceEndAddress;	 //This represent the block end address in source binaries

@@ -397,7 +397,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	platform->bytecode[nbInstr] =  assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -64, 256+test2, 0); //9
 
 	nbInstr++;
-	platform->bytecode[nbInstr] =  assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_ADDi, 256+33, 4*increment, 256+33, 0); //10
+	platform->bytecode[nbInstr] =  assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_ADDi, 256+33, 0*4*increment, 256+33, 0); //10
 
 	nbInstr++;
 	platform->bytecode[nbInstr] =  assembleIBytecodeInstruction(STAGE_CODE_CONTROL, 0, VEX_GOTOR, 1, 0, 0); //11

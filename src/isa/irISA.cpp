@@ -208,7 +208,7 @@ void IRProcedure::print(){
 
 	fprintf(stderr, "digraph{\n");
 	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
-		fprintf(stderr, "node_%d[label=\"node %x - size %d  - nbJump %d\"];\n",this->blocks[oneBlockInProcedure]->sourceStartAddress,  this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->nbInstr, this->blocks[oneBlockInProcedure]->nbJumps);
+		fprintf(stderr, "node_%d[label=\"node %x - size %d  - nbJump %d place %lx\"];\n",this->blocks[oneBlockInProcedure]->sourceStartAddress,  this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->nbInstr, this->blocks[oneBlockInProcedure]->nbJumps, this->blocks[oneBlockInProcedure]);
 	}
 	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
 
@@ -259,12 +259,19 @@ IRBlock::IRBlock(int startAddress, int endAddress, int section){
 	this->jumpID=-1;
 	this->nbJumps = 0;
 	this->placeInProfiler = NULL;
+	this->instructions = NULL;
+
 }
 
 IRBlock::~IRBlock(){
 	if (placeInProfiler != 0)
 		*placeInProfiler = 0;
-	free(this->instructions);
+	if (!this->instructions)
+		free(this->instructions);
+	if (this->nbJumps > 0){
+		free(this->jumpIds);
+		free(this->jumpPlaces);
+	}
 }
 
 IRApplication::IRApplication(int numberSections){
@@ -297,11 +304,16 @@ void IRApplication::addBlock(IRBlock* block, int sectionNumber){
 		this->blocksInSections[sectionNumber] = (IRBlock**) malloc(newAllocation * sizeof(IRBlock*));
 		memcpy(this->blocksInSections[sectionNumber], oldList, numberBlocks*sizeof(IRBlock*));
 		this->numbersAllocatedBlockInSections[sectionNumber] = newAllocation;
+		for (int oneBlock = 0; oneBlock<numberBlocks; oneBlock++){
+			this->blocksInSections[sectionNumber][oneBlock]->reference = &(this->blocksInSections[sectionNumber][oneBlock]);
+		}
+
 		free(oldList);
 	}
 
 
 	this->blocksInSections[sectionNumber][this->numbersBlockInSections[sectionNumber]] = block;
+	block->reference = &(this->blocksInSections[sectionNumber][this->numbersBlockInSections[sectionNumber]]);
 	this->numbersBlockInSections[sectionNumber]++;
 }
 

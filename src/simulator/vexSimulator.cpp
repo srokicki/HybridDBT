@@ -179,6 +179,7 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 		//The instruction is a memory access
 
 		if (extoMem.opCode == VEX_PROFILE){
+
 			if (this->profileResult[extoMem.result] != 255)
 				this->profileResult[extoMem.result]++;
 
@@ -1081,7 +1082,6 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 
 			case VEX_RETURN :
 				dctoEx->opCode = 0;
-				REG[1] = REG[1] + IMM19_s;
 				NEXT_PC = REG[63];
 
 				break; // RETURN
@@ -1355,7 +1355,7 @@ int VexSimulator::doStep(){
 
 #ifndef __CATAPULT
 
-	if (debugLevel >= 1 /* || (this->PC <= 4*71913 && this->PC>=4*71819) || cycle >= 441422*/){
+	if (debugLevel >= 1/* || (this->PC <= 4*71913 && this->PC>=4*71819) || cycle >= 441422*/){
 
 
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
