@@ -1355,7 +1355,7 @@ int VexSimulator::doStep(){
 
 #ifndef __CATAPULT
 
-	if (debugLevel >= 1/* || (this->PC <= 4*71913 && this->PC>=4*71819) || cycle >= 441422*/){
+	if (debugLevel >= 1){/*(this->PC <= 4*21762 && this->PC>=4*21528)){*/
 
 
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";

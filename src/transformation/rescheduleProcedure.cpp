@@ -63,9 +63,13 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 		IRBlock *block = procedure->blocks[oneBlock];
 
 		bool isCallBlock = false;
+		bool isReturnBlock = false;
+
 		if (block->nbJumps > 0){
 			char opcode = getOpcode(block->instructions, block->jumpIds[block->nbJumps-1]);
 			isCallBlock = opcode == VEX_CALL || opcode == VEX_CALLR;
+			isReturnBlock = opcode == VEX_GOTOR;
+
 		}
 
 
@@ -140,7 +144,7 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 				Log::printf(LOG_SCHEDULE_PROC,"\n");
 			}
 		}
-		if ((block->nbSucc == 0 || isCallBlock) && readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 16*incrementInBinaries) != 0){
+		if ((isReturnBlock || isCallBlock) && readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 16*incrementInBinaries) != 0){
 
 			if (readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 16*incrementInBinaries).slc<6>(20) == 33){
 				writeInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 2*16*incrementInBinaries, 0);
@@ -253,6 +257,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 	 * address targeting to the new start address. This way, the execution will simply switch toward the newly
 	 * generated binaries.
 	 ******************************************************************************************/
+	fprintf(stderr, "previous conf was %d\n", procedure->previousConfiguration	);
 
 	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
 		IRBlock *block = procedure->blocks[oneBlock];
@@ -264,9 +269,11 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 		if (platform->vexSimulator->PC == originalEntry || platform->vexSimulator->PC == originalEntry+1 ||  platform->vexSimulator->PC == block->oldVliwStartAddress ||  platform->vexSimulator->PC == block->oldVliwStartAddress+1)
 			platform->vexSimulator->doStep(2);
+		fprintf(stderr, "previous conf was %d\n", procedure->previousConfiguration	);
 
 
 		if (getIssueWidth(procedure->previousConfiguration) <= 4){
+			fprintf(stderr, "previous conf was lower then 4\n");
 			writeInt(platform->vliwBinaries, 16*originalEntry+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
 			writeInt(platform->vliwBinaries, 16*originalEntry+4, 0);
 			writeInt(platform->vliwBinaries, 16*originalEntry+8, 0);
@@ -277,11 +284,11 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 			writeInt(platform->vliwBinaries, 16*originalEntry+28, 0);
 
 
-			writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
-			writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+16, getReconfigurationInstruction(procedure->configuration));
 
 		}
 		else{
+			fprintf(stderr, "previous conf was greater then 4\n");
+
 			writeInt(platform->vliwBinaries, 16*originalEntry+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
 			writeInt(platform->vliwBinaries, 16*originalEntry+4, 0);
 			writeInt(platform->vliwBinaries, 16*originalEntry+8, 0);
@@ -300,13 +307,28 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 			writeInt(platform->vliwBinaries, 16*originalEntry+32+28, 0);
 
 
-			writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
-			writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+16, getReconfigurationInstruction(procedure->configuration));
-
 
 		}
 
-		if (block->nbSucc == 0){
+		if (getIssueWidth(platform->vliwInitialConfiguration) > 4){
+			writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
+			writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+32, getReconfigurationInstruction(procedure->configuration));
+		}
+		else{
+			writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
+			writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+16, getReconfigurationInstruction(procedure->configuration));
+		}
+
+
+		bool isReturnBlock = false;
+		bool isCallBlock = false;
+		if (block->nbJumps > 0){
+			char opcode = getOpcode(block->instructions, block->jumpIds[block->nbJumps-1]);
+			isCallBlock = opcode == VEX_CALL || opcode == VEX_CALLR;
+			isReturnBlock = opcode == VEX_GOTOR;
+		}
+
+		if (isReturnBlock){
 			if (block->nbJumps == 1){
 				if (readInt(platform->vliwBinaries, 16*block->jumpPlaces[block->nbJumps-1] +16*incrementInBinaries) == 0)
 					writeInt(platform->vliwBinaries, 16*block->jumpPlaces[block->nbJumps-1] +16*incrementInBinaries, getReconfigurationInstruction(platform->vliwInitialConfiguration));
@@ -326,11 +348,6 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 		}
 
-		bool isCallBlock = false;
-		if (block->nbJumps > 0){
-			char opcode = getOpcode(block->instructions, block->jumpIds[block->nbJumps-1]);
-			isCallBlock = opcode == VEX_CALL || opcode == VEX_CALLR;
-		}
 
 
 		if (isCallBlock){

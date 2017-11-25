@@ -67,7 +67,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 	// useSetc says that we use conditional instruction for solving speculation. Other alternative is the use of correctly handled alloc
 
 	char isEscape = (entryBlock->nbSucc > 1);
-	char useSetc = 0 && entryBlock->nbInstr<8 ||  secondBlock->nbInstr < 4;
+	char useSetc = 0 && (entryBlock->nbInstr<8 ||  secondBlock->nbInstr < 4);
 	bool isDropEscape = isEscape && useSetc && secondBlock->nbSucc == secondBlock->nbJumps + 1 && entryBlock->successors[entryBlock->nbSucc - 2] == secondBlock->successors[secondBlock->nbSucc-1];
 	fprintf(stderr, "%lx \n", entryBlock->instructions);
 
@@ -109,9 +109,9 @@ fprintf(stderr, "%d\n", sizeOfResult);
 	fprintf(stderr, "test intra %lx\n", result->instructions);
 
 	//Arrays that keep track of last write places in each block
-	short lastWriteReg[64];
-	short lastWriteRegForSecond[64];
-	for (int oneReg = 0; oneReg < 64; oneReg++){
+	short lastWriteReg[128];
+	short lastWriteRegForSecond[128];
+	for (int oneReg = 0; oneReg < 128; oneReg++){
 		lastWriteReg[oneReg] = -1;
 		lastWriteRegForSecond[oneReg] = -1;
 	}
@@ -135,9 +135,10 @@ fprintf(stderr, "%d\n", sizeOfResult);
 
 		//We mark the written reg
 		short writtenReg = getDestinationRegister(entryBlock->instructions, oneInstr);
-		if (writtenReg >= 0)
+		if (writtenReg >= 0){
+		fprintf(stderr, "test of written reg %d\n", writtenReg);
 			lastWriteReg[writtenReg-256] = oneInstr;
-
+		}
 
 		//We copy the result
 		result->instructions[4*oneInstr+0] = entryBlock->instructions[4*oneInstr+0];
@@ -216,14 +217,14 @@ fprintf(stderr, "%d\n", sizeOfResult);
 		// -> The operand is lower than 256, then it is a reference to another instruction from the block: we correct it
 		// -> The operand is greater than 256 then it is an access to global register and thus we need to check if there is a dep to add
 		for (int oneOperand = 0; oneOperand<nbOperand; oneOperand++){
-			if (lastWriteReg[operands[oneOperand]] < sizeofEntryBlock){
-				if (operands[oneOperand] < 256){
+			fprintf(stderr, "operand %d\n", operands[oneOperand]);
+
+			if (operands[oneOperand] < 256){
 					operands[oneOperand] += sizeofEntryBlock;
-				}
-				else if (lastWriteReg[operands[oneOperand]-256] != -1){
-					addDataDep(result->instructions, lastWriteReg[operands[oneOperand]-256], sizeofEntryBlock+oneInstr);
-					operands[oneOperand] = lastWriteReg[operands[oneOperand]-256];
-				}
+			}
+			else if (lastWriteReg[operands[oneOperand]-256] != -1){
+				addDataDep(result->instructions, lastWriteReg[operands[oneOperand]-256], sizeofEntryBlock+oneInstr);
+				operands[oneOperand] = lastWriteReg[operands[oneOperand]-256];
 			}
 		}
 		setOperands(result->instructions, sizeofEntryBlock + oneInstr, operands);
@@ -282,8 +283,9 @@ fprintf(stderr, "%d\n", sizeOfResult);
 
 
 		}
+
 		//The new instruction will write into an allocated register (if we are in a case with escape)
-		else if (isEscape)
+		if (isEscape && writtenReg >= 0)
 			setAlloc(result->instructions, sizeofEntryBlock + oneInstr, 1);
 
 
@@ -621,13 +623,19 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 
 
 			}
-			else if (block->blockState < IRBLOCK_UNROLLED && block->nbSucc == 2 && block->successor1 == block && block->nbInstr>10 && block->nbInstr<128){
+			//WARNING: cannot unroll blocks with a call or a goto at the end
+			//A good way to check is to see if block has one less jump than successor
+			else if (block->nbJumps + 1 == block->nbSucc && block->blockState < IRBLOCK_UNROLLED && block->nbSucc == 2 && block->successor1 == block && block->nbInstr<100){
 					/**************************************************************************************************
 					 * In this situation, we are unrolling a loop.
 					 **************************************************************************************************
 					 * The block CFG information should remain unchanged : only the number of instruction changes.
 					 * The place location will also be modified...
 					 **************************************************************************************************/
+
+
+					if (block->nbJumps == block->nbSucc)
+						continue;
 
 					block->blockState = IRBLOCK_UNROLLED;
 
@@ -658,64 +666,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 					break;
 
 				}
-//				else if (isElligible && secondBlock->nbSucc == 1 && (block->nbSucc == 1 || secondBlock->nbInstr<20)){
-//
-//					/**************************************************************************************************
-//					 * In this situation, we merge two blocks
-//					 **************************************************************************************************
-//					 *TODO
-//					 **************************************************************************************************/
-//					fprintf(stderr, "TRACING!!!\n");
-//
-//					IRBlock *oneSuperBlock = superBlock(block, secondBlock);
-//					if (oneSuperBlock == NULL){
-//						secondBlock->blockState = IRBLOCK_UNROLLED;
-//						break;
-//					}
-//
-//
-//					//If the two blocks merged have the same successor, or if first block only had second block as successor,
-//					// it is no longer needed to maintain a jump...
-//					if (block->successor1 == secondBlock->successor1 || block->nbSucc == 1){
-//						oneSuperBlock->nbSucc = 1;
-//						oneSuperBlock->successor1 = secondBlock->successor1;
-//						oneSuperBlock->sourceDestination = -1;
-//					}
-//					else{
-//						oneSuperBlock->nbSucc = 2;
-//						oneSuperBlock->successor1 = block->successor1;
-//						oneSuperBlock->successor2 = secondBlock->successor1;
-//						oneSuperBlock->sourceDestination = block->sourceDestination;
-//					}
-//					oneSuperBlock->sourceStartAddress = block->sourceStartAddress;
-//					oneSuperBlock->sourceEndAddress = secondBlock->sourceEndAddress;
-//
-//
-//					secondBlock->nbSucc = 0;
-//					secondBlock->nbInstr = 0;
-//					nbBlock--;
-//
-//
-//					for (int oneOtherBlock = 0; oneOtherBlock<procedure->nbBlock; oneOtherBlock++){
-//						IRBlock *otherBlock = procedure->blocks[oneOtherBlock];
-//						if (otherBlock->successor1 == block)
-//							otherBlock->successor1 = oneSuperBlock;
-//
-//						if (otherBlock->successor2 == block)
-//							otherBlock->successor2 = oneSuperBlock;
-//
-//						procedure->blocks[oneBlock] = oneSuperBlock;
-//
-//					}
-//
-//					if (procedure->entryBlock == block)
-//						procedure->entryBlock = oneSuperBlock;
-//
-////					delete block;
-////					continue;
-//					changeMade=1;
-//					break;
-//				}
+
 
 		}
 

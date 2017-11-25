@@ -187,6 +187,8 @@ int main(int argc, char *argv[])
 
 	Config cfg(argc, argv);
 
+
+
 	int CONFIGURATION = cfg.has("c") ? std::stoi(cfg["c"]) : 2;
 
 	int VERBOSE = cfg.has("v") ? std::stoi(cfg["v"]) : 0;
@@ -196,7 +198,6 @@ int main(int argc, char *argv[])
 	Log::Init(VERBOSE, STATMODE);
 
 	int OPTLEVEL = cfg.has("O") ? std::stoi(cfg["O"]) : 2;
-	int HELP = cfg.has("h");
 	char* binaryFile = cfg.has("f") && !cfg["f"].empty() ? (char*)cfg["f"].c_str() : NULL;
 
 	FILE** inStreams = (FILE**) malloc(10*sizeof(FILE*));
@@ -205,7 +206,8 @@ int main(int argc, char *argv[])
 	int nbInStreams = 0;
 	int nbOutStreams = 0;
 
-	int MAX_SCHEDULE_COUNT = cfg.has("m") ? std::stoi(cfg["m"]) : -1;
+	int MAX_SCHEDULE_COUNT = cfg.has("ms") ? std::stoi(cfg["ms"]) : -1;
+	int MAX_PROC_COUNT = cfg.has("mp") ? std::stoi(cfg["mp"]) : -1;
 
 	if (cfg.has("i"))
 	{
@@ -262,8 +264,24 @@ int main(int argc, char *argv[])
   }
 
 
-	if (HELP || binaryFile == NULL){
-    Log::printf(0, "Usage is %s [-v] [-On] file\n\t-v\tVerbose mode, prints all execution information\n\t-On\t Optimization level from zero to two\n", argv[0]);
+	if (cfg.has("h") || binaryFile == NULL){
+		Log::printf(0, "Usage is %s -f elfFile [options] -- args\n", argv[0]);
+		Log::printf(0, "where elfFile is an RISCV64-imf elf file, args are the argument given to the simulated application and options are one of the following:\n");
+
+		Log::printf(0, "\t-O n\t\tSet optimization level between 0 and 3.\n");
+		Log::printf(0, "\t\t\t  Opt 0 means that instructions are only naively translated\n");
+		Log::printf(0, "\t\t\t  Opt 1 means that basic blocks are scheduled\n");
+		Log::printf(0, "\t\t\t  Opt 2 means that frequently executed procedure are built and optimized\n");
+		Log::printf(0, "\t\t\t  Opt 3 means that different VLIW configuration are explored\n");
+		Log::printf(0, "\t-c n\t\tSet the initial VLIW configuration to use.\n");
+
+		Log::printf(0, "\t-i file\t\tAdding an input file to use as standard input for simulated application\n");
+		Log::printf(0, "\t-o file\t\tAdding an output file to use as standard output for simulated application. Can add up to 10 files by repeating -o file\n");
+
+
+		Log::printf(0, "\t-v n\t\tSet verbose mode to a level between 0 and 9. Higher level means more messages.\n");
+		Log::printf(0, "\t-statmode n\tAllows to set stat mode to one in order to have parseable stats\n");
+
 		return 1;
 	}
 
@@ -280,7 +298,6 @@ int main(int argc, char *argv[])
 	//Definition of objects used for DBT process
 	DBTPlateform dbtPlateform;
 
-//	dbtPlateform.vliwInitialConfiguration = 0x24481284;
 	dbtPlateform.vliwInitialConfiguration = CONFIGURATION;
 	dbtPlateform.vliwInitialIssueWidth = getIssueWidth(dbtPlateform.vliwInitialConfiguration);
 
@@ -348,11 +365,6 @@ int main(int argc, char *argv[])
 
 	initializeInsertionsMemory(size*4);
 
-//	for (int oneInsertion=0; oneInsertion<placeCode; oneInsertion++){
-//			Log::fprintf(0, stderr, "insert;%d\n", oneInsertion);
-//	}
-
-
 	/********************************************************
 	 * First part of DBT: generating the first pass translation of binaries
 	 *******************************************************
@@ -379,14 +391,6 @@ int main(int argc, char *argv[])
 		placeCode =  translateOneSection(dbtPlateform, placeCode, addressStart, startAddressSource,endAddressSource);
 
 		buildBasicControlFlow(&dbtPlateform, oneSection,addressStart, startAddressSource, oldPlaceCode, placeCode, &application, &profiler);
-
-
-
-//		int** insertions = (int**) malloc(sizeof(int **));
-//		int nbIns = getInsertionList(oneSection*1024, insertions);
-//		for (int oneInsertion=0; oneInsertion<nbIns; oneInsertion++){
-//				Log::fprintf(0, stderr, "insert;%d\n", (*insertions)[oneInsertion]+(*insertions)[-1]);
-//		}
 
 	}
 
@@ -508,7 +512,7 @@ int main(int argc, char *argv[])
 			IRBlock* block = profiler.getBlock(oneBlock);
 
 
-			if (block != NULL && OPTLEVEL >= 2 && profileResult > 20 && (block->blockState == IRBLOCK_STATE_SCHEDULED || block->blockState == IRBLOCK_STATE_PROFILED)){
+			if ((MAX_PROC_COUNT==-1 || dbtPlateform.procedureOptCounter < MAX_PROC_COUNT) && block != NULL && OPTLEVEL >= 2 && profileResult > 20 && (block->blockState == IRBLOCK_STATE_SCHEDULED || block->blockState == IRBLOCK_STATE_PROFILED)){
 
 				fprintf(stderr, "optimizing a proc\n");
 				int errorCode = buildAdvancedControlFlow(&dbtPlateform, block, &application);
@@ -517,7 +521,7 @@ int main(int argc, char *argv[])
 
 				if (!errorCode){
 					application.procedures[application.numberProcedures-1]->print();
-					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
+//					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
 					application.procedures[application.numberProcedures-1]->print();
 
 					placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
@@ -575,30 +579,6 @@ int main(int argc, char *argv[])
 
 	Log::printStat(&dbtPlateform);
 
-
-//	Log::fprintf(0, stdout, "%ld;%ld;%f;%d;%d;",	dbtPlateform.vexSimulator->cycle, dbtPlateform.vexSimulator->nbInstr, ((double) dbtPlateform.vexSimulator->nbInstr)/((double) dbtPlateform.vexSimulator->cycle), blockScheduleCounter, procedureOptCounter);
-//	Log::fprintf(0, stdout, "%d;", CONFIGURATION);
-//	Log::fprintf(0, stdout, "%f\n", energyConsumption);
-
-
-//	for (int i=0;i<placeCode;i++){
-//		Log::printf(0,"%d ", i);
-//
-//
-//		Log::printf(0,"0x%x, ", dbtPlateform.vliwBinaries[i].slc<32>(0));
-//		Log::printf(0,"0x%x, ", dbtPlateform.vliwBinaries[i].slc<32>(32));
-//		Log::printf(0,"0x%x, ", dbtPlateform.vliwBinaries[i].slc<32>(64));
-//		Log::printf(0,"0x%x, ", dbtPlateform.vliwBinaries[i].slc<32>(96));
-//
-//		if (dbtPlateform.vliwInitialIssueWidth>4){
-//			Log::printf(0,"0x%x, ", dbtPlateform.vliwBinaries[i+1].slc<32>(0));
-//			Log::printf(0,"0x%x, ", dbtPlateform.vliwBinaries[i+1].slc<32>(32));
-//			Log::printf(0,"0x%x, ", dbtPlateform.vliwBinaries[i+1].slc<32>(64));
-//			Log::printf(0,"0x%x, ", dbtPlateform.vliwBinaries[i+1].slc<32>(96));
-//			i++;
-//		}
-//		Log::printf(0,"\n");
-//	}
 
 	//We print profiling result
 	#ifndef __NIOS
