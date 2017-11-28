@@ -131,6 +131,7 @@ public:
 	void addProcedure(IRProcedure *procedure);
 
 	IRApplication(int numberSections);
+	~IRApplication();
 
 	int numberAllocatedProcedures;
 	int *numbersAllocatedBlockInSections;

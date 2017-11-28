@@ -290,6 +290,21 @@ IRApplication::IRApplication(int numberSections){
 
 }
 
+IRApplication::~IRApplication(){
+
+
+	for (int oneSection = 0; oneSection<this->numberOfSections; oneSection++){
+		for (int oneBlock = 0; oneBlock<this->numbersBlockInSections[oneSection]; oneBlock++){
+			if (this->blocksInSections[oneSection][oneBlock] != NULL)
+				delete this->blocksInSections[oneSection][oneBlock];
+		}
+	}
+
+	for (int oneProcedure = 0; oneProcedure<this->numberProcedures; oneProcedure++){
+		delete this->procedures[oneProcedure];
+	}
+}
+
 void IRApplication::addBlock(IRBlock* block, int sectionNumber){
 	if (sectionNumber>this->numberOfSections){
 		Log::printf(LOG_ERROR,"Error while adding a block in an application: section %d is higher than the total number of section (%d)\n", sectionNumber, this->numberOfSections);

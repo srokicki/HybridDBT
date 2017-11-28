@@ -12,6 +12,9 @@
 unsigned int schedulerConfigurations[16] = {0x00005e00,0x0000546c,0x00005ec4,0x006c54c4,0x00005ecc,0x040c5ec4,0,0,
 											0x00005e64,0x44605e04,0x00005e6c,0x40605ec4,0x006c5ec4,0x446c5ec4,0,0};
 char validConfigurations[12] = {0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12 ,13};
+float powerConsumptions[16] = {5.04, 7.12, 8.96, 11.03, 10.85, 12.87, 0, 0,
+		9.11, 9.24, 9.11, 11.13, 13.02, 15.04};
+
 
 char getIssueWidth(char configuration){
 	//This function returns the issue width of each configuration code
@@ -90,18 +93,7 @@ char getNbMult(char configuration){
 }
 
 float getPowerConsumption(char configuration){
-
-	char nbMem = getNbMem(configuration);
-	char nbMult = getNbMult(configuration);
-	char issueWidh = getIssueWidth(configuration);
-
-	float coef = 1;
-	if (configuration>=16)
-		coef = 1.5;
-	float powerConsumption = coef*issueWidh + (nbMem*2) + (nbMult);
-
-
-	return powerConsumption;
+	return powerConsumptions[configuration];
 }
 
 void setVLIWConfiguration(VexSimulator *simulator, char configuration){

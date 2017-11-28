@@ -71,8 +71,10 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 
 		int start = oneBlock->vliwStartAddress;
 		char successfullInsertion = 0;
+		char incrementInBinaries = (getIssueWidth(this->platform->vliwInitialConfiguration) > 4) ? 2 : 1;
 
-		for (int oneInstruction = start; oneInstruction<oneBlock->vliwEndAddress; oneInstruction+=2){
+
+		for (int oneInstruction = start; oneInstruction<oneBlock->vliwEndAddress; oneInstruction+=incrementInBinaries){
 			uint32 instr64 = readInt(this->platform->vliwBinaries, oneInstruction*16+4);
 
 			//We now place the profile instr
@@ -88,9 +90,12 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 		}
 
 		if (!successfullInsertion){
+			fprintf(stderr, "Faile dprofiling %d\n", oneBlock->sourceStartAddress);
+
 			Log::printf(LOG_WARNING, "Failed at inserting profiling, need alternative method\n");
 		}
 		else{
+			fprintf(stderr, "Profiled block %d\n", oneBlock->sourceStartAddress);
 			this->platform->vexSimulator->profileResult[numberProfiledBlocks] = 0;
 			profiledBlocks[numberProfiledBlocks] = oneBlock;
 			oneBlock->placeInProfiler = &(profiledBlocks[numberProfiledBlocks]);

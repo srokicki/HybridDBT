@@ -501,35 +501,30 @@ int main(int argc, char *argv[])
 					placeCode = rescheduleProcedure(&dbtPlateform, procedure, placeCode);
 					procedure->state = 2;
 					dbtPlateform.procedureOptCounter++;
-
 					optimizationPerformed = true;
 				}
 			}
 		}
-
 		for (int oneBlock = 0; oneBlock<profiler.getNumberProfiledBlocks(); oneBlock++){
 			int profileResult = profiler.getProfilingInformation(oneBlock);
 			IRBlock* block = profiler.getBlock(oneBlock);
 
-
 			if ((MAX_PROC_COUNT==-1 || dbtPlateform.procedureOptCounter < MAX_PROC_COUNT) && block != NULL && OPTLEVEL >= 2 && profileResult > 20 && (block->blockState == IRBLOCK_STATE_SCHEDULED || block->blockState == IRBLOCK_STATE_PROFILED)){
 
-				fprintf(stderr, "optimizing a proc\n");
 				int errorCode = buildAdvancedControlFlow(&dbtPlateform, block, &application);
 				block->blockState = IRBLOCK_PROC;
 
 
 				if (!errorCode){
-					application.procedures[application.numberProcedures-1]->print();
-//					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
-					application.procedures[application.numberProcedures-1]->print();
+					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
 
 					placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
 					dbtPlateform.procedureOptCounter++;
+
 				}
 				else{
-					fprintf(stderr, "opt was canceled\n");
 				}
+
 
 				optimizationPerformed = true;
 				break;
@@ -543,20 +538,22 @@ int main(int argc, char *argv[])
 			for (int oneBlock = 0; oneBlock<application.numbersBlockInSections[oneSection]; oneBlock++){
 				IRBlock* block = application.blocksInSections[oneSection][oneBlock];
 
-				if (block != NULL && (MAX_SCHEDULE_COUNT==-1 || dbtPlateform.blockScheduleCounter < MAX_SCHEDULE_COUNT) && OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress > 4  && block->blockState < IRBLOCK_STATE_SCHEDULED){
+				if (block != NULL){
+					if ((MAX_SCHEDULE_COUNT==-1 || dbtPlateform.blockScheduleCounter < MAX_SCHEDULE_COUNT) && OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress > 4  && block->blockState < IRBLOCK_STATE_SCHEDULED){
 
 
-					optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
-					dbtPlateform.blockScheduleCounter++;
+						optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
+						dbtPlateform.blockScheduleCounter++;
 
-					if ((block->sourceDestination != -1 && block->sourceDestination <= block->sourceStartAddress)){
-						profiler.profileBlock(block);
+						if ((block->sourceDestination != -1 && block->sourceDestination <= block->sourceStartAddress) || block->nbInstr > 32){
+							profiler.profileBlock(block);
+						}
+
+						optimizationPerformed = true;
+						break;
 					}
 
-					optimizationPerformed = true;
-					break;
 				}
-
 
 			}
 
@@ -565,7 +562,7 @@ int main(int argc, char *argv[])
 
 		}
 
-		int cyclesToRun = oldOptimizationCount - dbtPlateform.optimizationCycles;
+		int cyclesToRun = dbtPlateform.optimizationCycles - oldOptimizationCount;
 		if (oldOptimizationCount - dbtPlateform.optimizationCycles == 0)
 			cyclesToRun = 1000;
 

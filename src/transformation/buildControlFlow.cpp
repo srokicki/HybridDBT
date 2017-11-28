@@ -181,6 +181,31 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 			previousBlockStartSource = indexInMipsBinaries;
 
 		}
+		else if (!isInsertion && previousBlockStart<indexInVLIWBinaries && indexInVLIWBinaries - previousBlockStart >= 250){
+
+			/******************************************************************************************
+			 ******************************  Creation and insertion of the block
+			 ******************************************************************************************
+			 * A new boundary has been reached, we have to create the IRBlock, to give him its values
+			 * (eg. vliwStartAddress, vliwEndAddress, sourceStartAddress, sourceEndAddress etc...) and
+			 * we insert it in the IRApplication
+			 *
+			 ******************************************************************************************/
+
+			//We reach the end of a block: we create the block and mark this place as a new start
+			IRBlock *newBlock = new IRBlock(previousBlockStart+startAddress, indexInVLIWBinaries+startAddress, section);
+			newBlock->sourceStartAddress = previousBlockStartSource + (sectionStartAddress>>2);
+			newBlock->sourceEndAddress = indexInMipsBinaries + (sectionStartAddress>>2);
+			newBlock->sourceDestination = -1;
+
+
+			application->addBlock(newBlock, section);
+
+			/******************************************************************************************/
+			// We update interLoop values
+			previousBlockStart = indexInVLIWBinaries;
+			previousBlockStartSource = indexInMipsBinaries;
+		}
 
 
 		//We increase counters: both if we are not in an insertion, only the VLIW if we are

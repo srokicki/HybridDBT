@@ -554,7 +554,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 				}
 			}
 
-			if (eligible){
+			if (eligible && block->nbInstr + firstPredecessor->nbInstr < 220){
 				fprintf(stderr, "test pointer is %lx\n", (firstPredecessor->sourceStartAddress));
 
 				if (firstPredecessor->sourceStartAddress == 0x40bb){
@@ -625,7 +625,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 			}
 			//WARNING: cannot unroll blocks with a call or a goto at the end
 			//A good way to check is to see if block has one less jump than successor
-			else if (block->nbJumps + 1 == block->nbSucc && block->blockState < IRBLOCK_UNROLLED && block->nbSucc == 2 && block->successor1 == block && block->nbInstr<100){
+			else if (block->nbJumps + 1 == block->nbSucc && block->nbSucc == 2 && block->successor1 == block && block->nbInstr<100){
 					/**************************************************************************************************
 					 * In this situation, we are unrolling a loop.
 					 **************************************************************************************************

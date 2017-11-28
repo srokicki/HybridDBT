@@ -936,7 +936,6 @@ ac_int<32, false> placeOfInstr[256]
 	while (instructionId < basicBlockSize) {
 
 
-		fprintf(stderr, "window offset == %d\n", windowPosition);
 		//**************************************************************
 		// Fetching / Decoding instruction
 		//**************************************************************
@@ -1056,7 +1055,6 @@ ac_int<32, false> placeOfInstr[256]
 
 		// WAR
 		earliest_place = max(earliest_place, lastRead[dest]);
-fprintf(stderr, "place is %d\n", lastRead[dest]);
 		//**************************************************************
 		// Placing the instruction
 		//**************************************************************

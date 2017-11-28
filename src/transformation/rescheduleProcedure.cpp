@@ -263,62 +263,72 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 		IRBlock *block = procedure->blocks[oneBlock];
 		int originalEntry = oldBlockStarts[oneBlock];
 
+		if (block->vliwEndAddress - block->vliwStartAddress > 2){
+
+			if (getIssueWidth(procedure->previousConfiguration) <= 4){
+				if (platform->vexSimulator->PC == 4*originalEntry || platform->vexSimulator->PC == 4*(originalEntry+1))
+					platform->vexSimulator->doStep(2);
+
+				fprintf(stderr, "previous conf was lower then 4\n");
+				writeInt(platform->vliwBinaries, 16*originalEntry+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
+				writeInt(platform->vliwBinaries, 16*originalEntry+4, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+8, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+12, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+16, getReconfigurationInstruction(procedure->configuration));
+				writeInt(platform->vliwBinaries, 16*originalEntry+20, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+24, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+28, 0);
+
+				fprintf(stderr, "Insertion of reconf and jump were made at %d and %d\n", 4*originalEntry, 4*originalEntry+4);
+
+			}
+			else{
+				if (platform->vexSimulator->PC == 4*originalEntry || platform->vexSimulator->PC == 4*(originalEntry+2))
+					platform->vexSimulator->doStep(2);
+
+				fprintf(stderr, "previous conf was greater then 4\n");
+
+				writeInt(platform->vliwBinaries, 16*originalEntry+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
+				writeInt(platform->vliwBinaries, 16*originalEntry+4, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+8, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+12, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+16, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+20, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+24, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+28, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+32+0, getReconfigurationInstruction(procedure->configuration));
+				writeInt(platform->vliwBinaries, 16*originalEntry+32+4, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+32+8, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+32+12, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+32+16, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+32+20, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+32+24, 0);
+				writeInt(platform->vliwBinaries, 16*originalEntry+32+28, 0);
+
+				fprintf(stderr, "Insertion of reconf and jump were made at %d and %d\n", 4*originalEntry, 4*originalEntry+8);
 
 
+			}
 
+			if (getIssueWidth(platform->vliwInitialConfiguration) > 4){
+				if (platform->vexSimulator->PC == 4*block->oldVliwStartAddress ||  platform->vexSimulator->PC == 4*(block->oldVliwStartAddress+2))
+					platform->vexSimulator->doStep(2);
 
-		if (platform->vexSimulator->PC == originalEntry || platform->vexSimulator->PC == originalEntry+1 ||  platform->vexSimulator->PC == block->oldVliwStartAddress ||  platform->vexSimulator->PC == block->oldVliwStartAddress+1)
-			platform->vexSimulator->doStep(2);
-		fprintf(stderr, "previous conf was %d\n", procedure->previousConfiguration	);
+				writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
+				writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+32, getReconfigurationInstruction(procedure->configuration));
+				fprintf(stderr, "additional Insertion of reconf and jump were made at %d and %d\n", 4*block->oldVliwStartAddress, 4*block->oldVliwStartAddress+8);
 
+			}
+			else{
+				if (platform->vexSimulator->PC == 4*block->oldVliwStartAddress ||  platform->vexSimulator->PC == 4*(block->oldVliwStartAddress+1))
+					platform->vexSimulator->doStep(2);
 
-		if (getIssueWidth(procedure->previousConfiguration) <= 4){
-			fprintf(stderr, "previous conf was lower then 4\n");
-			writeInt(platform->vliwBinaries, 16*originalEntry+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
-			writeInt(platform->vliwBinaries, 16*originalEntry+4, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+8, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+12, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+16, getReconfigurationInstruction(procedure->configuration));
-			writeInt(platform->vliwBinaries, 16*originalEntry+20, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+24, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+28, 0);
+				writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
+				writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+16, getReconfigurationInstruction(procedure->configuration));
+				fprintf(stderr, "additional Insertion of reconf and jump were made at %d and %d\n", 4*block->oldVliwStartAddress, 4*block->oldVliwStartAddress+4);
 
-
-
+			}
 		}
-		else{
-			fprintf(stderr, "previous conf was greater then 4\n");
-
-			writeInt(platform->vliwBinaries, 16*originalEntry+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
-			writeInt(platform->vliwBinaries, 16*originalEntry+4, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+8, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+12, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+16, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+20, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+24, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+28, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+32+0, getReconfigurationInstruction(procedure->configuration));
-			writeInt(platform->vliwBinaries, 16*originalEntry+32+4, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+32+8, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+32+12, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+32+16, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+32+20, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+32+24, 0);
-			writeInt(platform->vliwBinaries, 16*originalEntry+32+28, 0);
-
-
-
-		}
-
-		if (getIssueWidth(platform->vliwInitialConfiguration) > 4){
-			writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
-			writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+32, getReconfigurationInstruction(procedure->configuration));
-		}
-		else{
-			writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
-			writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+16, getReconfigurationInstruction(procedure->configuration));
-		}
-
 
 		bool isReturnBlock = false;
 		bool isCallBlock = false;
