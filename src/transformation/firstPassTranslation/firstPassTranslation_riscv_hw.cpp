@@ -27,99 +27,14 @@
 #include <isa/riscvToVexISA.h>
 #include <types.h>
 
-#include <dbt/dbtPlateform.h>
 #include <transformation/reconfigureVLIW.h>
-
-//Parameters:
-#define MEMORY_LATENCY 3
-#define MULT_LATENCY 3
-#define SIMPLE_LATENCY 2
-
-const unsigned int debugLevel = 0;
-
-using namespace std;
-
-#ifndef __CATAPULT
-
-#ifndef __NIOS
-int firstPassTranslatorRISCV_hw(uint32 code[1024],
-		uint32 size,
-		uint8 conf,
-		uint32 addressStart,
-		uint32 codeSectionStart,
-		uint128 destinationBinaries[1024],
-		uint32 placeCode,
-		uint32 insertions[256],
-		uint1 blocksBoundaries[65536],
-		uint32 unresolvedJumps_src[512],
-		uint32 unresolvedJumps_type[512],
-		int32 unresolvedJumps[512]);
-#endif
-
-/**************************************************************
- *  Function firstPassTranslator will translate a piece of MIPS binaries from the memory 'code' and
- *  write the result in VLIW binaries. At the same time, it collects and solve unresolved jumps (indeed jumps
- *  destination may change because of insertions during the translation); it also keep trace of the basic block
- *  and procedures boundaries.
- *
- **************************************************************/
-uint32 firstPassTranslator_RISCV(DBTPlateform *platform,
-		uint32 size,
-		uint32 sourceStartAddress,
-		uint32 sectionStartAddress,
-		uint32 placeCode){
+#include <transformation/firstPassTranslation.h>
 
 
-
-
-	platform->insertions[0] = 0;
-
-	//We call the accelerator (or the software counterpart if no accelerator)
-	#ifndef __NIOS
-	int returnedValue = firstPassTranslatorRISCV_hw(platform->mipsBinaries,
-			size,
-			platform->vliwInitialConfiguration,
-			sourceStartAddress,
-			sectionStartAddress,
-			platform->vliwBinaries,
-			placeCode,
-			platform->insertions,
-			platform->blockBoundaries,
-			platform->unresolvedJumps_src,
-			platform->unresolvedJumps_type,
-			platform->unresolvedJumps);
-	#else
-		int argA = size + (placeCode<<16);
-		int argB = addressStart;
-		printf("Test\n");
-		int returnedValue = ALT_CI_COMPONENT_FIRSTPASSTRANSLATORRISCV_HW_0(argA, argB);
-
-		printf("Passed first pass\n");
-	#endif
-
-
-	//We translate the result
-	unsigned int destinationIndex = returnedValue & 0x3ffff;
-	unsigned int numberUnresolvedJumps = returnedValue >> 18;
-
-
-
-	//We copy insertions
-
-	addInsertions((sectionStartAddress-sourceStartAddress)>>2, placeCode, platform->insertions, platform->insertions[0]);
-
-	//Modelization of optimization time : here we needed one cycle per generated instruction
-	platform->optimizationCycles += destinationIndex;
-	platform->optimizationEnergy += destinationIndex*0.44;
-
-
-	return placeCode + destinationIndex;
-}
-#endif
 
 #ifndef __NIOS
 
-int firstPassTranslatorRISCV_hw(uint32 code[1024],
+int firstPassTranslator_riscv_hw(uint32 code[1024],
 		uint32 size,
 		uint8 conf,
 		uint32 addressStart,
@@ -289,11 +204,6 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		else{
 
 			ac_int<32, false> oneInstruction = code[indexInSourceBinaries];
-
-			#ifndef __CATAPULT
-			if (debugLevel >= 1)
-				printf("Source instr %x\n", (int) oneInstruction);
-			#endif
 
 			/**************************************************************
 			*  Instruction decoding
@@ -1013,15 +923,10 @@ int firstPassTranslatorRISCV_hw(uint32 code[1024],
 		if (previousLatency != 0)
 			previousLatency--;
 
-		#ifndef __CATAPULT
-		if (debugLevel >= 1)
-			printf("at %d %x\n", (int) indexInDestinationBinaries, (int)binaries);
-		#endif
-
 	}
 
 
-	char remainingLatency = max(lastLatency, previousLatency);
+	char remainingLatency = (lastLatency > previousLatency) ? lastLatency : previousLatency;
 	indexInDestinationBinaries += remainingLatency * incrementInDest;
 	for (int oneRemainingLatency = 0; oneRemainingLatency<remainingLatency; oneRemainingLatency++){
 		insertions[1+localNumberInsertions++] = indexInDestinationBinaries;

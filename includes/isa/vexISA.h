@@ -161,17 +161,32 @@
 #define VEX_CMPLEi 0x7e
 #define VEX_CMPLEUi 0x7f
 
+#ifdef __USE_AC
+
+/*
+ * Declaration of functions that assemble vex instructions.
+ * These are implemented for HW or for SW.
+ *
+ * Note: HW version is enabled inly with __USE_AC flag
+ */
+
 uint32 assembleIInstruction(uint7 opcode, uint19 imm19, uint6 regA);
 uint32 assembleRInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint6 regB);
 uint32 assembleRiInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint13 imm13);
 uint32 assembleFPInstruction(uint7 opcode, uint5 funct, uint6 regDest, uint6 regA, uint6 regB);
 uint32 assembleRRInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint6 regB, uint6 regC);
+#endif
+
+unsigned int assembleIInstruction_sw(char opcode, int imm19, char regA);
+unsigned int  assembleRInstruction_sw(char opcode, char regDest, char regA, char regB);
+unsigned int  assembleRiInstruction_sw(char opcode, char regDest, char regA, short imm13);
+unsigned int  assembleFPInstruction_sw(char opcode, char funct, char regDest, char regA, char regB);
+unsigned int  assembleRRInstruction_sw(char opcode, char regDest, char regA, char regB, char regC);
+
 
 #ifndef __CATAPULT
-#ifndef __NIOS
 extern const char* opcodeNames[128];
 std::string printDecodedInstr(ac_int<32, false> instruction);
-#endif
 #endif
 
 #endif /* INCLUDES_VEX_H_ */
