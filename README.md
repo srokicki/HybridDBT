@@ -46,16 +46,16 @@ On the following, we will first see how to run the framework on existing RISC-V 
 
 If you want to execute the DBT framework on a given elf file (binaries.riscv), run the following command:
 
-	$ ./build/bin/dbt [-O optLevel] [-v] -f binaries.riscv [-a "arguments"] [-i inputStream] [-o outputStream]
+	$ ./build/bin/dbt [-O optLevel] [-v verboseLevel] -f binaries.riscv [-i inputStream] [-o outputStream] -- arguments
 	
 The parameters are the following:
 * optLevel is the optimization level of the DBT process. It can take a value between 0 and two. Optimization level zero just performs the first naive translation of RISC-V binaries into VLIW, without trying to exploit ILP. Optimization level one will find blocks, generate the intermediate representation (IR) for them and use it to generate efficient binaries. Optimization level 2 will work at procedure level and try to build traces, unroll loops...
-* verbose (-v) if verbose is activated, the processor will print all its internal state at each cycle of the simulation. This represent a huge amount of data to print and thus slow down the simulation.
+* verboseLevel can control the amount of information that will be printed during the process. Default value is zero and cause the process to print only error messages. Other values print information on more and more optimization levels. 
 * binaries.riscv is the RISC-V binary file we want to execute.
-* arguments is the list of argument to pass to the application executed.
 * inputStream can be used to set the source of the standard input. If a file is set there, then all read on the standard input will be done on this file instead.
 * outputStream can be used to set the destination of standard outputs. Same than for inputStream, if a file is set there, the output will be written in this file instead. Note that you can use several -o outputStream to allocate to the different standard output. If one is set at stderr or stdout, it will be mapped to the standard error or the standard output. 
-	
+* arguments is the list of argument to pass to the application executed.
+
 Note that the simulator has access to the standard system calls on your computers. It can open/close files and read/write their contents.	
 
 In addition to the DBT framework, we also provided an instruction level simulator for the RISC-V. This simulator can be used to make sure that the RISC-V binary file is compatible and should work on the DBT frameworK. This simulator shared a lot of code with the DBT framework. You can use it with the following command:
@@ -139,6 +139,7 @@ TODO
 ## <a name="contributors"></a> Contributors and Publications
 
 Project has been developed at University of Rennes, France (INRIA/IRISA). 
-Main contributors are <a href="http://people.irisa.fr/Simon.Rokicki/index.html">Simon Rokicki</a>, Erven Rohou and Steven Derrien.
+Main contributors are <a href="http://people.irisa.fr/Simon.Rokicki/index.html">Simon Rokicki</a>, Arthur Blanleuil, Erven Rohou and Steven Derrien.
 
 The framework has been presented at DATE'17. Document can be found <a href="https://hal.archives-ouvertes.fr/hal-01423639v1">here</a>. 
+Same framework is also used for a paper at DATE'18 named <a href="https://hal.archives-ouvertes.fr/hal-01653110v2"> Supporting Runtime Reconfigurable VLIWs Cores Through Dynamic Binary Translation</a>
