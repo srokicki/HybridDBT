@@ -10,6 +10,8 @@ project (HybridDBT)
 # add the binary tree to the search path for include files
 include_directories(./includes)
 
+#-fsanitize=address
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ggdb -std=c++11 -D__LINUX_API -D__USE_AC -D AC_NOT_USING_INTN -pthread")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 set (EXECUTABLE  "")
@@ -35,6 +37,10 @@ foreach(oneExecutable ${EXECUTABLE})
   endif()
 
 endforeach(oneExecutable)
+
+add_executable(getSchedulerPerf ${SOURCE} ./src/tools/getSchedulerPerf.cpp)
+
+
 
 #include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
 #ExternalProject_Add(benchmarks SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/benchmarks BINARY_DIR ./benchmarks/bin INSTALL_COMMAND ls)
