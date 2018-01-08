@@ -87,8 +87,11 @@ struct MemtoWB {
 class VexSimulator : public GenericSimulator {
 	public:
 
+	int typeInstr[190000];
+	int nbCycleType[3] = {0,0,0};
+
 	//Instruction memory is a 128-bit memory
-	ac_int<128, false> *RI;
+	unsigned int *RI;
 
 	//Definition of PC and NEXT_PC
 	ac_int<64, false> PC, NEXT_PC;
@@ -112,7 +115,7 @@ class VexSimulator : public GenericSimulator {
 	uint64_t timeInConfig[32];
 
 	//Object constructor
-	VexSimulator(ac_int<128, false> *instructionMemory): GenericSimulator() {
+	VexSimulator(unsigned int *instructionMemory): GenericSimulator() {
 		cycle=0;
 		issueWidth = 4;
 		unitActivation[0] = 1;

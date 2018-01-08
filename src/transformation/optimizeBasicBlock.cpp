@@ -106,13 +106,13 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	}
 
 	//We store old jump instruction. Its places is known from the basicBlockEnd value
-	uint32 jumpInstruction = readInt(platform->vliwBinaries, (block->vliwEndAddress-2*incrementInBinaries)*16 + 0);
+	unsigned int jumpInstruction = readInt(platform->vliwBinaries, (block->vliwEndAddress-2*incrementInBinaries)*16 + 0);
 	char isRelativeJump = (jumpInstruction & 0x7f) == VEX_BR || (jumpInstruction & 0x7f) == VEX_BRF;
 	char isNoJump = (jumpInstruction & 0x70) != (VEX_CALL&0x70);
 	char isPassthroughJump = isRelativeJump || (jumpInstruction & 0x7f) == VEX_CALL || (jumpInstruction & 0x7f) == VEX_CALLR || isNoJump;
 
 	//We store the result in an array cause it can be used later
-	block->instructions = (uint32*) malloc(blockSize*4*sizeof(uint32));
+	block->instructions = (unsigned int*) malloc(blockSize*4*sizeof(unsigned int));
 	for (int oneBytecodeInstr = 0; oneBytecodeInstr<blockSize; oneBytecodeInstr++){
 		block->instructions[4*oneBytecodeInstr + 0] = readInt(platform->bytecode, 16*oneBytecodeInstr + 0);
 		block->instructions[4*oneBytecodeInstr + 1] = readInt(platform->bytecode, 16*oneBytecodeInstr + 4);
@@ -133,17 +133,17 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 
 	for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
-		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)).c_str());
-		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i].slc<32>(32)).c_str());
-		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i].slc<32>(64)).c_str());
-		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)).c_str());
+		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
+		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
+		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
+		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
 
 
 		if (platform->vliwInitialIssueWidth>4){
-			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(0)).c_str());
-			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(32)).c_str());
-			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(64)).c_str());
-			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(96)).c_str());
+			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
+			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
+			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
+			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
 			i++;
 		}
 		Log::printf(LOG_SCHEDULE_BLOCK,"\n");
@@ -154,7 +154,8 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	Log::printf(LOG_SCHEDULE_BLOCK, "Bytecode is: \n");
 	Log::printf(LOG_SCHEDULE_BLOCK, "\n*****************\n");
 	for (int i=0; i<blockSize; i++){
-		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12)).c_str());
+		Log::printf(LOG_SCHEDULE_BLOCK,"%s", printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4),
+				readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12)).c_str());
 	}
 
 
@@ -184,10 +185,15 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 	if (binaSize < originalScheduleSize){
 
-		memcpy(&platform->vliwBinaries[basicBlockStart], &platform->vliwBinaries[placeCode], (binaSize+1)*sizeof(uint128));
+		memcpy(&platform->vliwBinaries[4*basicBlockStart], &platform->vliwBinaries[4*placeCode], (binaSize+1)*4*sizeof(unsigned int));
+
 
 		for (int i=basicBlockStart+binaSize;i<block->vliwEndAddress;i++){
-			platform->vliwBinaries[i] = 0;
+			writeInt(platform->vliwBinaries, i*16+0, 0);
+			writeInt(platform->vliwBinaries, i*16+4, 0);
+			writeInt(platform->vliwBinaries, i*16+8, 0);
+			writeInt(platform->vliwBinaries, i*16+12, 0);
+
 		}
 
 		//We gather jump places
@@ -245,9 +251,9 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		if (isPassthroughJump && basicBlockStart+binaSize+1*incrementInBinaries < block->vliwEndAddress){
 			//We need to add a jump to correct the shortening of the block.
 
-			uint32 insertedJump = VEX_GOTO + (block->vliwEndAddress<<7); // Note added the *4 to handle the new PC encoding
-			uint32 placeOfNewJump = (basicBlockStart+binaSize)*16;
-			writeInt(platform->vliwBinaries, (basicBlockStart+binaSize)*16, insertedJump);
+			unsigned int insertedJump = VEX_GOTO + (block->vliwEndAddress<<7);
+			unsigned int placeOfNewJump = (basicBlockStart+binaSize)*16;
+			writeInt(platform->vliwBinaries, placeOfNewJump, insertedJump);
 
 			//In this case, we also added a block in the design
 			//We need to insert it in the set of blocks
@@ -264,17 +270,17 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		Log::printf(LOG_SCHEDULE_BLOCK,"*************************************************************************\n");
 
 		for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
-			Log::printf(LOG_SCHEDULE_BLOCK, "%s ", printDecodedInstr(platform->vliwBinaries[i].slc<32>(0)).c_str());
-			Log::printf(LOG_SCHEDULE_BLOCK, "%s ", printDecodedInstr(platform->vliwBinaries[i].slc<32>(32)).c_str());
-			Log::printf(LOG_SCHEDULE_BLOCK, "%s ", printDecodedInstr(platform->vliwBinaries[i].slc<32>(64)).c_str());
-			Log::printf(LOG_SCHEDULE_BLOCK, "%s ", printDecodedInstr(platform->vliwBinaries[i].slc<32>(96)).c_str());
+			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
+			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
+			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
+			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
 
 
 			if (platform->vliwInitialIssueWidth>4){
-				Log::printf(LOG_SCHEDULE_BLOCK, "%s ", printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(0)).c_str());
-				Log::printf(LOG_SCHEDULE_BLOCK, "%s ", printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(32)).c_str());
-				Log::printf(LOG_SCHEDULE_BLOCK, "%s ", printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(64)).c_str());
-				Log::printf(LOG_SCHEDULE_BLOCK, "%s ", printDecodedInstr(platform->vliwBinaries[i+1].slc<32>(96)).c_str());
+				Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
+				Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
+				Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
+				Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
 				i++;
 			}
 			Log::printf(LOG_SCHEDULE_BLOCK,"\n");
@@ -283,6 +289,10 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		Log::printf(LOG_SCHEDULE_BLOCK,"*************************************************************************\n");
 		Log::printf(LOG_SCHEDULE_BLOCK,"*************************************************************************\n");
 		/*****************************************************************/
+
+		for (int i=basicBlockStart;i<basicBlockEnd;i++){
+			platform->vexSimulator->typeInstr[i] = 1;
+		}
 
 
 		//We modify the stored information concerning the block

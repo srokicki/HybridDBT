@@ -4,6 +4,7 @@
  *  Created on: 10 nov. 2016
  *      Author: simon
  */
+
 #include <types.h>
 #include <dbt/dbtPlateform.h>
 
@@ -15,11 +16,14 @@
 #define MULT_LATENCY 3
 #define SIMPLE_LATENCY 2
 
+#ifdef __USE_MIPS
+
 uint32 firstPassTranslator_MIPS(DBTPlateform *platform,
 		uint32 size,
 		uint32 codeSectionStart,
 		uint32 addressStart,
 		uint32 placeCode);
+#endif
 
 unsigned int firstPassTranslator(DBTPlateform *platform,
 		unsigned int size,
@@ -28,7 +32,7 @@ unsigned int firstPassTranslator(DBTPlateform *platform,
 		unsigned int placeCode);
 
 
-int firstPassTranslation_riscv_sw(unsigned int code[1024],
+int firstPassTranslator_riscv_sw(unsigned int code[1024],
 		unsigned int size,
 		unsigned char conf,
 		unsigned int addressStart,

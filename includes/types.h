@@ -21,7 +21,12 @@ typedef ac_int<64, false> uint64;
 #endif
 
 
-
+struct uint128_struct {
+	unsigned int word96;
+	unsigned int word64;
+	unsigned int word32;
+	unsigned int word0;
+};
 
 #ifndef __USE_AC
 typedef unsigned int uint32;

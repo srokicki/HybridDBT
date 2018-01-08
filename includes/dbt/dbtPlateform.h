@@ -29,6 +29,8 @@ class DBTPlateform
 {
 
 public:
+
+	/*
 	ac_int<128, false> vliwBinaries[MEMORY_SIZE];
 	ac_int<32, false> mipsBinaries[MEMORY_SIZE];
 	ac_int<32, false> insertions[2048];
@@ -41,6 +43,21 @@ public:
 	ac_int<6, false> placeOfRegisters[512];
 	ac_int<6, false> freeRegisters[64];
 	ac_int<32, false> placeOfInstr[256];
+	*/
+
+	unsigned int vliwBinaries[4*MEMORY_SIZE];
+	unsigned int mipsBinaries[4*MEMORY_SIZE];
+	unsigned int insertions[2048];
+	unsigned char blockBoundaries[MEMORY_SIZE];
+	unsigned int bytecode[256*4];
+	int globalVariables[64];
+	unsigned int unresolvedJumps_src[512];
+	unsigned int unresolvedJumps_type[512];
+	int unresolvedJumps[512];
+	unsigned char placeOfRegisters[512];
+	unsigned char freeRegisters[64];
+	unsigned int placeOfInstr[256];
+
 
 	VexSimulator* vexSimulator;
 	RiscvSimulator* riscvSimulator;
@@ -54,7 +71,15 @@ public:
 	double optimizationEnergy=0;
 	int blockScheduleCounter=0;
 	int procedureOptCounter=0;
+	int unrollingCounter=0;
+	int traceConstructionCounter=0;
+	double blockProcAverageSize = 0;
+	double blockProcDistance = 0;
+	int nbBlockProcedure = 0;
 
+	double blockProcAverageSizeBeforeTrace = 0;
+	double blockProcDistanceBeforeTrace = 0;
+	int nbBlockProcedureBeforeTrace = 0;
 };
 #endif
 

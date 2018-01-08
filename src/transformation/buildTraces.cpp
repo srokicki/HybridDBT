@@ -9,6 +9,7 @@
 #include <lib/endianness.h>
 #include <lib/log.h>
 
+#include <transformation/buildTraces.h>
 IRBlock* ifConversion(IRBlock *entryBlock, IRBlock *thenBlock, IRBlock *elseBlock){
 
 }
@@ -69,7 +70,6 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 	char isEscape = (entryBlock->nbSucc > 1);
 	char useSetc = 0 && (entryBlock->nbInstr<8 ||  secondBlock->nbInstr < 4);
 	bool isDropEscape = isEscape && useSetc && secondBlock->nbSucc == secondBlock->nbJumps + 1 && entryBlock->successors[entryBlock->nbSucc - 2] == secondBlock->successors[secondBlock->nbSucc-1];
-	fprintf(stderr, "%lx \n", entryBlock->instructions);
 
 
 	/*****************************************************
@@ -104,9 +104,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 	//We declare the result block:
 	int sizeOfResult = entryBlock->nbInstr + secondBlock->nbInstr + (useSetc ? 32 : 0);
 	IRBlock *result = new IRBlock(0,0,0);
-	result->instructions = (uint32*) malloc(sizeOfResult*4*sizeof(uint32));
-fprintf(stderr, "%d\n", sizeOfResult);
-	fprintf(stderr, "test intra %lx\n", result->instructions);
+	result->instructions = (unsigned int*) malloc(sizeOfResult*4*sizeof(unsigned int));
 
 	//Arrays that keep track of last write places in each block
 	short lastWriteReg[128];
@@ -136,7 +134,6 @@ fprintf(stderr, "%d\n", sizeOfResult);
 		//We mark the written reg
 		short writtenReg = getDestinationRegister(entryBlock->instructions, oneInstr);
 		if (writtenReg >= 0){
-		fprintf(stderr, "test of written reg %d\n", writtenReg);
 			lastWriteReg[writtenReg-256] = oneInstr;
 		}
 
@@ -217,7 +214,6 @@ fprintf(stderr, "%d\n", sizeOfResult);
 		// -> The operand is lower than 256, then it is a reference to another instruction from the block: we correct it
 		// -> The operand is greater than 256 then it is an access to global register and thus we need to check if there is a dep to add
 		for (int oneOperand = 0; oneOperand<nbOperand; oneOperand++){
-			fprintf(stderr, "operand %d\n", operands[oneOperand]);
 
 			if (operands[oneOperand] < 256){
 					operands[oneOperand] += sizeofEntryBlock;
@@ -277,7 +273,6 @@ fprintf(stderr, "%d\n", sizeOfResult);
 		if (opcode == VEX_GOTO || opcode == VEX_GOTOR || opcode == VEX_BRF || opcode == VEX_BR || opcode == VEX_CALL || opcode == VEX_CALLR){
 			if (indexOfSecondJump == -1 && indexOfJump != -1){
 				addControlDep(result->instructions, indexOfJump, oneInstr+sizeofEntryBlock);
-				fprintf(stderr, "indexOfJump is %d\n",indexOfJump);
 			}
 			indexOfSecondJump = oneInstr+sizeofEntryBlock;
 
@@ -310,11 +305,11 @@ fprintf(stderr, "%d\n", sizeOfResult);
 				else
 					opcodeCond = VEX_SETFc;
 
-				uint128 bytecodeInstr = assembleRBytecodeInstruction(2, 0, VEX_SETc, indexOfCondition, lastWriteRegForSecond[oneReg], oneReg+256, 0);
-				result->instructions[(result->nbInstr)*4+0] = bytecodeInstr.slc<32>(96);
-				result->instructions[(result->nbInstr)*4+1] = bytecodeInstr.slc<32>(64);
-				result->instructions[(result->nbInstr)*4+2] = bytecodeInstr.slc<32>(32);
-				result->instructions[(result->nbInstr)*4+3] = bytecodeInstr.slc<32>(0);
+				struct uint128_struct bytecodeInstr = assembleRBytecodeInstruction(2, 0, VEX_SETc, indexOfCondition, lastWriteRegForSecond[oneReg], oneReg+256, 0);
+				result->instructions[(result->nbInstr)*4+0] = bytecodeInstr.word96;
+				result->instructions[(result->nbInstr)*4+1] = bytecodeInstr.word64;
+				result->instructions[(result->nbInstr)*4+2] = bytecodeInstr.word32;
+				result->instructions[(result->nbInstr)*4+3] = bytecodeInstr.word0;
 				addDataDep(result->instructions, lastWriteRegForSecond[oneReg], result->nbInstr);
 				if (lastWriteReg[oneReg]>= 0)
 					addControlDep(result->instructions, lastWriteReg[oneReg], result->nbInstr);
@@ -358,8 +353,6 @@ fprintf(stderr, "%d\n", sizeOfResult);
 			result->instructions[result->nbInstr*4+3] = result->instructions[indexOfSecondJump*4+3];
 
 
-			fprintf(stderr, "writing in %d\n", indexOfSecondJump);
-
 			result->instructions[indexOfSecondJump*4+0] = 0;
 			result->instructions[indexOfSecondJump*4+1] = 0;
 			result->instructions[indexOfSecondJump*4+2] = 0;
@@ -380,7 +373,6 @@ fprintf(stderr, "%d\n", sizeOfResult);
 		for (int oneReg = 63; oneReg >= 1; oneReg--){
 					if (lastWriteRegForSecond[oneReg]>=0){
 
-						fprintf(stderr, "writing in %d\n", lastWriteRegForSecond[oneReg]);
 						setAlloc(result->instructions, lastWriteRegForSecond[oneReg], 0);
 						//We add a control dependency from one of the last four cond instruction (note: this array is initialized with four times the setcond instruction)
 
@@ -424,7 +416,6 @@ fprintf(stderr, "%d\n", sizeOfResult);
 			char jumpOpcode = getOpcode(secondBlock->instructions, secondBlock->jumpIds[oneJump]);
 
 			//The last jump is moved while using setc
-			fprintf(stderr, "index of second jump was %d\n", indexOfSecondJump);
 			if (oneJump == secondBlock->nbJumps-1)
 				result->addJump(indexOfSecondJump, -1);
 			else
@@ -494,6 +485,14 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
 		if (procedure->blocks[oneBlock]->nbInstr != 0){
 			nbBlock++;
+
+			//We do an online computation of average block size and squarred distance before trace construction
+			platform->nbBlockProcedureBeforeTrace++;
+			double delta = procedure->blocks[oneBlock]->nbInstr - platform->blockProcAverageSizeBeforeTrace;
+			platform->blockProcAverageSizeBeforeTrace += (delta/platform->nbBlockProcedureBeforeTrace);
+			double delta2 = procedure->blocks[oneBlock]->nbInstr - platform->blockProcAverageSizeBeforeTrace;
+			platform->blockProcDistanceBeforeTrace += delta*delta2;
+
 		}
 	}
 	char changeMade = 1;
@@ -527,7 +526,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 							if (predecessorFound){
 								eligible = false;
 								break;
-								fprintf(stderr, "not eligible because more than one pred\n");
 							}
 
 							predecessorFound = true;
@@ -538,7 +536,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 
 							if (otherBlock->nbSucc != otherBlock->nbJumps + 1 || oneSuccessor != otherBlock->nbSucc-1){
 								//We do not have natural connection (pc+4)
-								fprintf(stderr, "Not eligible because not natural succ\n");
 								eligible = false;
 								break;
 							}
@@ -555,33 +552,29 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 			}
 
 			if (eligible && block->nbInstr + firstPredecessor->nbInstr < 220){
-				fprintf(stderr, "test pointer is %lx\n", (firstPredecessor->sourceStartAddress));
 
-				if (firstPredecessor->sourceStartAddress == 0x40bb){
-					fprintf(stderr, "test pointer is %lx\n", firstPredecessor->sourceStartAddress);
-					if (firstPredecessor->sourceEndAddress == 0x40bb)
-						fprintf(stderr, "test pointer is %lx\n", firstPredecessor->sourceStartAddress);
-				}
+
 				IRBlock *oneSuperBlock = superBlock(firstPredecessor, block);
 
 				if (oneSuperBlock == NULL){
 					block->blockState = IRBLOCK_UNROLLED;
 					break;
 				}
-				fprintf(stderr, "test pointer is %lx\n", oneSuperBlock->instructions);
+				else{
+					platform->traceConstructionCounter++;
+				}
 
 				firstPredecessor->nbInstr = oneSuperBlock->nbInstr;
 				free(firstPredecessor->instructions);
 				firstPredecessor->instructions = NULL;
-				firstPredecessor->instructions = (uint32*) malloc(sizeof(uint32) * 4 * oneSuperBlock->nbInstr);
-				memcpy(firstPredecessor->instructions, oneSuperBlock->instructions, 4*oneSuperBlock->nbInstr*sizeof(uint32));
+				firstPredecessor->instructions = (unsigned int*) malloc(sizeof(unsigned int) * 4 * oneSuperBlock->nbInstr);
+				memcpy(firstPredecessor->instructions, oneSuperBlock->instructions, 4*oneSuperBlock->nbInstr*sizeof(unsigned int));
 
 				firstPredecessor->jumpID = oneSuperBlock->jumpID;
 				if (firstPredecessor->nbJumps>0){
 					firstPredecessor->nbJumps = 0;
 					free(firstPredecessor->jumpIds);
 					free(firstPredecessor->jumpPlaces);
-					fprintf(stderr, "test\n");
 				}
 
 
@@ -592,7 +585,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 						firstPredecessor->jumpIds[oneJump] = oneSuperBlock->jumpIds[oneJump];
 					}
 				}
-				fprintf(stderr, "firstPredecessor %lx %lx\n", firstPredecessor->jumpIds, firstPredecessor->jumpPlaces);
 				firstPredecessor->nbJumps = oneSuperBlock->nbJumps;
 
 
@@ -639,12 +631,14 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 
 					block->blockState = IRBLOCK_UNROLLED;
 
+
 					IRBlock *oneSuperBlock = superBlock(block, block->successor1);
 
-					fprintf(stderr, "UNROLLING!!!\n");
+					platform->unrollingCounter++;
+
 					block->nbInstr = oneSuperBlock->nbInstr;
 
-					uint32 *oldInstruction = block->instructions;
+					unsigned int *oldInstruction = block->instructions;
 					block->instructions = oneSuperBlock->instructions;
 					oneSuperBlock->instructions = oldInstruction;
 
@@ -661,7 +655,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 
 					delete oneSuperBlock;
 
-					fprintf(stderr, "after : \n");
 					changeMade=1;
 					break;
 
@@ -680,6 +673,17 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 			if (procedure->entryBlock == procedure->blocks[oneBlock])
 				procedure->entryBlock = newBlocks[index];
 			index++;
+
+//			if (procedure->blocks[oneBlock]->nbInstr > 20){
+//				memoryDisambiguation(platform, procedure->blocks[oneBlock]);
+//			}
+
+			//We do an online computation of average block size and squarred distance AFTER trace construction
+			platform->nbBlockProcedure++;
+			double delta = procedure->blocks[oneBlock]->nbInstr - platform->blockProcAverageSize;
+			platform->blockProcAverageSize += (delta/platform->nbBlockProcedure);
+			double delta2 = procedure->blocks[oneBlock]->nbInstr - platform->blockProcAverageSize;
+			platform->blockProcDistance += delta*delta2;
 		}
 		else
 			delete procedure->blocks[oneBlock];
@@ -688,7 +692,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 
 	procedure->blocks = newBlocks;
 	procedure->nbBlock = nbBlock;
-	procedure->print();
 
 }
 

@@ -12,7 +12,6 @@
 #include <simulator/vexTraceSimulator.h>
 #include <simulator/riscvSimulator.h>
 
-#include <transformation/firstPassTranslator.h>
 #include <transformation/irGenerator.h>
 #include <transformation/optimizeBasicBlock.h>
 #include <transformation/buildControlFlow.h>
@@ -28,6 +27,7 @@
 #include <lib/log.h>
 #include <lib/traceQueue.h>
 #include <lib/threadedDebug.h>
+#include <transformation/firstPassTranslation.h>
 
 
 #ifndef __NIOS
@@ -57,7 +57,7 @@ void printStats(unsigned int size, short* blockBoundaries){
 int translateOneSection(DBTPlateform &dbtPlateform, uint32 placeCode, int sourceStartAddress, int sectionStartAddress, int sectionEndAddress){
 	int previousPlaceCode = placeCode;
 	uint32 size = (sectionEndAddress - sectionStartAddress)>>2;
-	placeCode = firstPassTranslator_RISCV(&dbtPlateform,
+	placeCode = firstPassTranslator(&dbtPlateform,
 			size,
 			sourceStartAddress,
 			sectionStartAddress,
@@ -420,6 +420,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	for (int i=0; i<placeCode; i++){
+		dbtPlateform.vexSimulator->typeInstr[i] = 0;
+	}
 
 	//We also add information on insertions
 	int insertionSize = 65536;
@@ -509,7 +512,7 @@ int main(int argc, char *argv[])
 			int profileResult = profiler.getProfilingInformation(oneBlock);
 			IRBlock* block = profiler.getBlock(oneBlock);
 
-			if ((MAX_PROC_COUNT==-1 || dbtPlateform.procedureOptCounter < MAX_PROC_COUNT) && block != NULL && OPTLEVEL >= 2 && profileResult > 20 && (block->blockState == IRBLOCK_STATE_SCHEDULED || block->blockState == IRBLOCK_STATE_PROFILED)){
+			if ((MAX_PROC_COUNT==-1 || dbtPlateform.procedureOptCounter < MAX_PROC_COUNT) && block != NULL && OPTLEVEL >= 2 && profileResult >= 1 && (block->blockState == IRBLOCK_STATE_SCHEDULED || block->blockState == IRBLOCK_STATE_PROFILED)){
 
 				int errorCode = buildAdvancedControlFlow(&dbtPlateform, block, &application);
 				block->blockState = IRBLOCK_PROC;
@@ -574,7 +577,13 @@ int main(int argc, char *argv[])
 	//We clean the last performance counters
 	dbtPlateform.vexSimulator->timeInConfig[dbtPlateform.vexSimulator->currentConfig] += (dbtPlateform.vexSimulator->cycle - dbtPlateform.vexSimulator->lastReconf);
 
-	Log::printStat(&dbtPlateform);
+	Log::printStat(&dbtPlateform, &application);
+
+	int nbFirstPass = 0;
+	int nbScheduled = 0;
+	int nbProc = 0;
+
+
 
 
 	//We print profiling result

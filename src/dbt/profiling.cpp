@@ -95,7 +95,6 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 			Log::printf(LOG_WARNING, "Failed at inserting profiling, need alternative method\n");
 		}
 		else{
-			fprintf(stderr, "Profiled block %d\n", oneBlock->sourceStartAddress);
 			this->platform->vexSimulator->profileResult[numberProfiledBlocks] = 0;
 			profiledBlocks[numberProfiledBlocks] = oneBlock;
 			oneBlock->placeInProfiler = &(profiledBlocks[numberProfiledBlocks]);

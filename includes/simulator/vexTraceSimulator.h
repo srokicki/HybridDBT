@@ -6,7 +6,7 @@
 class VexTraceSimulator : public VexSimulator
 {
 public:
-  VexTraceSimulator(ac_int<128, false> * instructionMemory, TraceQueue * q);
+  VexTraceSimulator(unsigned int * instructionMemory, TraceQueue * q);
   ~VexTraceSimulator();
 
   virtual int doStep();

@@ -8,6 +8,7 @@
  * author: Simon Rokicki
  */
 
+#ifdef __USE_MIPS
 
 #include <cstdio>
 #include <cstdlib>
@@ -1186,4 +1187,6 @@ int firstPassTranslator(unsigned char* code,
 	/************************************************************/
 
 }
+#endif
+
 #endif

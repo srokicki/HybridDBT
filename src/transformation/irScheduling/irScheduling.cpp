@@ -9,6 +9,7 @@
 #include <dbt/dbtPlateform.h>
 #include <types.h>
 #include <transformation/reconfigureVLIW.h>
+#include <lib/endianness.h>
 
 
 int irScheduler(DBTPlateform *platform, bool opt, unsigned char basicBlockSize, unsigned int addressInBinaries,
@@ -25,28 +26,35 @@ unsigned char numberFreeRegister, char configuration){
 	unsigned int way_specialisation = getConfigurationForScheduler(configuration);
 
 
-	#ifndef IR_SUCC
 
-#ifndef __NIOS
-	return irScheduler_list_hw(opt, basicBlockSize, platform->bytecode, platform->vliwBinaries, addressInBinaries, platform->placeOfRegisters,
-	numberFreeRegister, platform->freeRegisters, issue_width, way_specialisation, platform->placeOfInstr);
-#else
-	unsigned int argA = opt + (basicBlockSize << 1) + (addressInBinaries << 16);
-	unsigned int argB = issue_width + (way_specialisation << 4);
-	return ALT_CI_COMPONENT_SCHEDULING_0(argA, argB);
-#endif
 
-	#else
 
-#ifndef __NIOS
-	return irScheduler_scoreboard_hw(opt, basicBlockSize, platform->bytecode, platform->vliwBinaries, addressInBinaries, platform->placeOfRegisters,
-	numberFreeRegister, platform->freeRegisters, issue_width, way_specialisation, platform->placeOfInstr);
-#else
-	unsigned int argA = opt + (basicBlockSize << 1) + (addressInBinaries << 16);
-	unsigned int argB = issue_width + (way_specialisation << 4);
-	return ALT_CI_COMPONENT_SCHEDULING_0(argA, argB);
-#endif
-#endif
+	ac_int<128, false> *localBytecode = (ac_int<128, false>*) malloc(256*sizeof(ac_int<128, false>));
+	ac_int<128, false> *localVliwBinaries = (ac_int<128, false>*) malloc(MEMORY_SIZE*sizeof(ac_int<128, false>));
+	ac_int<6, false> *localPlaceOfRegisters = (ac_int<6, false>*) malloc(512*sizeof(ac_int<6, false>));
+	ac_int<6, false> *localFreeRegisters = (ac_int<6, false>*) malloc(64*sizeof(ac_int<6, false>));
+	ac_int<32, false> *localPlaceOfInstr = (ac_int<32, false>*) malloc(256*sizeof(ac_int<32, false>));
+
+
+	acintMemcpy(localBytecode, platform->bytecode, 256*16);
+	acintMemcpy(localVliwBinaries, platform->vliwBinaries, MEMORY_SIZE*16);
+	acintMemcpy(localPlaceOfRegisters, platform->placeOfRegisters, 512);
+	acintMemcpy(localFreeRegisters, platform->freeRegisters, 64);
+	acintMemcpy(localPlaceOfInstr, platform->placeOfInstr, 256*4);
+
+
+	ac_int<32, false> result =  irScheduler_scoreboard_hw(opt, basicBlockSize, localBytecode, localVliwBinaries, addressInBinaries, localPlaceOfRegisters,
+	numberFreeRegister, localFreeRegisters, issue_width, way_specialisation, localPlaceOfInstr);
+
+
+	acintMemcpy(platform->bytecode, localBytecode, 256*16);
+	acintMemcpy(platform->vliwBinaries, localVliwBinaries, MEMORY_SIZE*16);
+	acintMemcpy(platform->placeOfRegisters, localPlaceOfRegisters, 512);
+	acintMemcpy(platform->freeRegisters, localFreeRegisters, 64);
+	acintMemcpy(platform->placeOfInstr, localPlaceOfInstr, 256*4);
+
+	return (unsigned int) result;
+
 
 }
 

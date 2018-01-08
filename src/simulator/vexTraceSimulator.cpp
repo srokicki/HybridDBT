@@ -1,7 +1,7 @@
 #include <simulator/vexTraceSimulator.h>
 #include <iostream>
 
-VexTraceSimulator::VexTraceSimulator(ac_int<128, false> * memoryPtr, TraceQueue * q) :
+VexTraceSimulator::VexTraceSimulator(unsigned int * memoryPtr, TraceQueue * q) :
   VexSimulator(memoryPtr),
   _tracer(q)
 {
@@ -20,7 +20,7 @@ int VexTraceSimulator::doStep()
       e.registers[i] = REG[i];
 
     for (int i = 0; i < 8; ++i)
-      e.instructions[i] = RI[ac_int<32,false>(PC+(i/4))].slc<32>((i%4)*32);
+      e.instructions[i] = RI[ac_int<32,false>(PC+i)];
 
   _tracer->trace(e);
 

@@ -89,7 +89,7 @@ public:
 	unsigned char *jumpIds;
 	unsigned int *jumpPlaces;
 
-	uint32 *instructions;			//A pointer to an array of uint128 describing the instructions
+	unsigned int *instructions;			//A pointer to an array of uint128 describing the instructions
 	int nbInstr;					//The number of instructions
 
 	unsigned int blockState;		//A value to store its state (optimized/translated or other things like that)
@@ -151,17 +151,17 @@ public:
 
 #ifndef __NIOS
 
-ac_int<128, false> assembleRBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+struct uint128_struct assembleRBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
 		ac_int<7, false> opcode, ac_int<9, false> regA, ac_int<9, false> regB, ac_int<9, false> regDest,
 		ac_int<8, false> nbDep);
 
-ac_int<128, false> assembleRiBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+struct uint128_struct assembleRiBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
 		ac_int<7, false> opcode, ac_int<9, false> regA, ac_int<13, false> imm13,
 		ac_int<9, false> regDest, ac_int<8, false> nbDep);
 
-ac_int<128, false> assembleIBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+struct uint128_struct assembleIBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
 		ac_int<7, false> opcode, ac_int<9, false> reg, ac_int<19, true> imm19, ac_int<8, false> nbDep);
-ac_int<128, false> assembleFPBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+struct uint128_struct assembleFPBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
 		ac_int<7, false> opcode, ac_int<5, false> funct, ac_int<9, false> regA, ac_int<9, false> regB, ac_int<9, false> regDest,
 		ac_int<8, false> nbDep);
 #endif
@@ -184,19 +184,19 @@ std::string printBytecodeInstruction(int index, uint32  instructionPart1, uint32
  *
  *******************************************************************/
 
-short getDestinationRegister(uint32 *bytecode, unsigned char index);
-char getOperands(uint32 *bytecode, unsigned char index, short result[2]);
-void setOperands(uint32 *bytecode, unsigned char index, short operands[2]);
+short getDestinationRegister(unsigned int *bytecode, unsigned char index);
+char getOperands(unsigned int *bytecode, unsigned char index, short result[2]);
+void setOperands(unsigned int *bytecode, unsigned char index, short operands[2]);
 
-char getOpcode(uint32 *bytecode, unsigned char index);
-void setOpcode(uint32 *bytecode, unsigned char index, char newOpcode);
+char getOpcode(unsigned int *bytecode, unsigned char index);
+void setOpcode(unsigned int *bytecode, unsigned char index, char newOpcode);
 
-void setDestinationRegister(uint32 *bytecode, unsigned char index, short newDestinationRegister);
-void setAlloc(uint32 *bytecode, unsigned char index, char newAlloc);
-void addDataDep(uint32 *bytecode, unsigned char index, unsigned char successor);
-void addControlDep(uint32 *bytecode, unsigned char index, unsigned char successor);
-void addOffsetToDep(uint32 *bytecode, unsigned char index, unsigned char offset);
-char getStageCode(uint32 *bytecode, unsigned char index);
+void setDestinationRegister(unsigned int *bytecode, unsigned char index, short newDestinationRegister);
+void setAlloc(unsigned int *bytecode, unsigned char index, char newAlloc);
+void addDataDep(unsigned int *bytecode, unsigned char index, unsigned char successor);
+void addControlDep(unsigned int *bytecode, unsigned char index, unsigned char successor);
+void addOffsetToDep(unsigned int *bytecode, unsigned char index, unsigned char offset);
+char getStageCode(unsigned int *bytecode, unsigned char index);
 
 int getNbInstr(IRProcedure *procedure);
 int getNbInstr(IRProcedure *procedure, int type);

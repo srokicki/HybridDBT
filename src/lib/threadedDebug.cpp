@@ -25,8 +25,10 @@ ThreadedDebug::~ThreadedDebug()
   }
 }
 
+
 void ThreadedDebug::_run_func()
 {
+
   while (_running)
   {
     if (!_tracer->hasNext())
@@ -34,23 +36,8 @@ void ThreadedDebug::_run_func()
 
     auto v = _tracer->nextChunk();
 
-    for (auto e : v) {
-    	bool enable = false;
-    	for (unsigned int instruction : e.instructions)
-    		if ((instruction & 0x7f) == VEX_CALL)
-    			enable = true;
 
-    	if (enable){
-    		fprintf(outFile, "CALL:%ld - ", e.pc);
-			for (auto i : e.registers) {
-				fprintf(outFile, "%lx ", i);// << ' ';
-			}
-			fprintf(outFile, "\n");
-
-    	}
-    }
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  //  std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 }
 

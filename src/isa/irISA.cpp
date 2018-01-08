@@ -21,83 +21,162 @@
  * Declaration functions to assemble uint128 instruction for IR
  * ******************************************************************/
 
-ac_int<128, false> assembleRBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+struct uint128_struct assembleRBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
 		ac_int<7, false> opcode, ac_int<9, false> regA, ac_int<9, false> regB, ac_int<9, false> regDest,
 		ac_int<8, false> nbDep){
 
-	ac_int<128, false> result = 0;
+
+	struct uint128_struct result = {0, 0, 0, 0};
+
+
+	result.word96 += ((stageCode & 0x3) << 30);
+	result.word96 += ((isAlloc & 0x1) << 27);
+	result.word96 += ((opcode & 0x7f) << 19);
+	result.word96 += ((regA & 0x1ff) << 0);
+
+
+	result.word64 += ((regB & 0x1ff) << 23);
+	result.word64 += ((regDest & 0x1ff) << 14);
+	result.word64 += ((nbDep & 0xff) << 6);
+
+
+	ac_int<128, false> fakeResult = 0;
 	//Node: Type is zero: no need to write it for real. Same for isImm
 
-	result.set_slc(96+30, stageCode);
-	result.set_slc(96+27, isAlloc);
-	result.set_slc(96+19, opcode);
-	result.set_slc(96+0, regA);
+	fakeResult.set_slc(96+30, stageCode);
+	fakeResult.set_slc(96+27, isAlloc);
+	fakeResult.set_slc(96+19, opcode);
+	fakeResult.set_slc(96+0, regA);
 
-	result.set_slc(64+23, regB);
-	result.set_slc(64+14, regDest);
-	result.set_slc(64+6, nbDep);
+	fakeResult.set_slc(64+23, regB);
+	fakeResult.set_slc(64+14, regDest);
+	fakeResult.set_slc(64+6, nbDep);
+
+	if (fakeResult.slc<32>(96) != result.word96 || fakeResult.slc<32>(64) != result.word64){
+		fprintf(stderr, "Error in assembleRiBytecodeInstruction...\n");
+		exit(-1);
+	}
 
 	return result;
 }
 
-ac_int<128, false> assembleFPBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+struct uint128_struct assembleFPBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
 		ac_int<7, false> opcode, ac_int<5, false> funct, ac_int<9, false> regA, ac_int<9, false> regB, ac_int<9, false> regDest,
 		ac_int<8, false> nbDep){
 
-	ac_int<128, false> result = 0;
+	struct uint128_struct result = {0, 0, 0, 0};
+
+
+	result.word96 += ((stageCode & 0x3) << 30);
+	result.word96 += ((isAlloc & 0x1) << 27);
+	result.word96 += ((opcode & 0x7f) << 19);
+	result.word96 += ((funct & 0x1f) << 13);
+	result.word96 += ((regA & 0x1ff) << 0);
+
+
+	result.word64 += ((regB & 0x1ff) << 23);
+	result.word64 += ((regDest & 0x1ff) << 14);
+	result.word64 += ((nbDep & 0xff) << 6);
+
+
+	ac_int<128, false> fakeResult = 0;
 	//Node: Type is zero: no need to write it for real. Same for isImm
 
-	result.set_slc(96+30, stageCode);
-	result.set_slc(96+27, isAlloc);
-	result.set_slc(96+19, opcode);
-	result.set_slc(96+13, funct);
-	result.set_slc(96+0, regA);
+	fakeResult.set_slc(96+30, stageCode);
+	fakeResult.set_slc(96+27, isAlloc);
+	fakeResult.set_slc(96+19, opcode);
+	fakeResult.set_slc(96+13, funct);
+	fakeResult.set_slc(96+0, regA);
 
-	result.set_slc(64+23, regB);
-	result.set_slc(64+14, regDest);
-	result.set_slc(64+6, nbDep);
+	fakeResult.set_slc(64+23, regB);
+	fakeResult.set_slc(64+14, regDest);
+	fakeResult.set_slc(64+6, nbDep);
+
+
+	if (fakeResult.slc<32>(96) != result.word96 || fakeResult.slc<32>(64) != result.word64){
+		fprintf(stderr, "Error in assembleRiBytecodeInstruction...\n");
+		exit(-1);
+	}
 
 	return result;
 }
 
-ac_int<128, false> assembleRiBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+struct uint128_struct assembleRiBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
 		ac_int<7, false> opcode, ac_int<9, false> regA, ac_int<13, false> imm13,
 		ac_int<9, false> regDest, ac_int<8, false> nbDep){
 
-	ac_int<128, false> result = 0;
+	struct uint128_struct result = {0, 0, 0, 0};
 	ac_int<1, false> isImm = 1;
 
 	//Node: Type is zero: no need to write it for real.
 
-	result.set_slc(96+30, stageCode);
-	result.set_slc(96+27, isAlloc);
-	result.set_slc(96+19, opcode);
-	result.set_slc(96+18, isImm);
-	result.set_slc(96+0, imm13);
+	result.word96 += ((stageCode & 0x3) << 30);
+	result.word96 += ((isAlloc & 0x1) << 27);
+	result.word96 += ((opcode & 0x7f) << 19);
+	result.word96 += ((isImm & 0x1) << 18);
+	result.word96 += ((imm13 & 0x1fff) << 0);
 
-	result.set_slc(64+23, regA);
-	result.set_slc(64+14, regDest);
-	result.set_slc(64+6, nbDep);
+
+	result.word64 += ((regA & 0x1ff) << 23);
+	result.word64 += ((regDest & 0x1ff) << 14);
+	result.word64 += ((nbDep & 0xff) << 6);
+
+
+	ac_int<128, false> fakeResult = 0;
+
+	fakeResult.set_slc(96+30, stageCode);
+	fakeResult.set_slc(96+27, isAlloc);
+	fakeResult.set_slc(96+19, opcode);
+	fakeResult.set_slc(96+18, isImm);
+	fakeResult.set_slc(96+0, imm13);
+
+	fakeResult.set_slc(64+23, regA);
+	fakeResult.set_slc(64+14, regDest);
+	fakeResult.set_slc(64+6, nbDep);
+
+
+	if (fakeResult.slc<32>(96) != result.word96 || fakeResult.slc<32>(64) != result.word64){
+		fprintf(stderr, "Error in assembleRiBytecodeInstruction...\n");
+		exit(-1);
+	}
 
 	return result;
 }
 
-ac_int<128, false> assembleIBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+struct uint128_struct assembleIBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
 		ac_int<7, false> opcode, ac_int<9, false> reg, ac_int<19, true> imm19, ac_int<8, false> nbDep){
 
-	ac_int<128, false> result = 0;
+	struct uint128_struct result = {0, 0, 0, 0};
 	ac_int<2, false> typeCode = 2;
 	ac_int<1, false> isImm = 1;
 
-	result.set_slc(96+30, stageCode);
-	result.set_slc(96+28, typeCode);
-	result.set_slc(96+27, isAlloc);
-	result.set_slc(96+19, opcode);
-	result.set_slc(96+18, isImm);
 
-	result.set_slc(64+23, imm19);
-	result.set_slc(64+14, reg);
-	result.set_slc(64+6, nbDep);
+	result.word96 += ((stageCode & 0x3) << 30);
+	result.word96 += ((typeCode & 0x3) << 28);
+	result.word96 += ((isAlloc & 0x1) << 27);
+	result.word96 += ((opcode & 0x7f) << 19);
+	result.word96 += ((isImm & 0x1) << 18);
+	result.word96 += ((imm19 >> 9) & 0x3ff);
+
+	result.word64 += ((imm19 & 0x1ff) << 23);
+	result.word64 += ((reg & 0x1ff) << 14);
+	result.word64 += ((nbDep & 0xff) << 6);
+
+	ac_int<128, false> fakeResult = 0;
+	fakeResult.set_slc(96+30, stageCode);
+	fakeResult.set_slc(96+28, typeCode);
+	fakeResult.set_slc(96+27, isAlloc);
+	fakeResult.set_slc(96+19, opcode);
+	fakeResult.set_slc(96+18, isImm);
+
+	fakeResult.set_slc(64+23, imm19);
+	fakeResult.set_slc(64+14, reg);
+	fakeResult.set_slc(64+6, nbDep);
+
+	if (fakeResult.slc<32>(96) != result.word96 || fakeResult.slc<32>(64) != result.word64){
+		fprintf(stderr, "Error in assembleIBytecodeInstr... %x != %x   or %x != %x\n", fakeResult.slc<32>(96),result.word96, fakeResult.slc<32>(64), result.word64);
+		exit(-1);
+	}
 
 	return result;
 }
@@ -350,7 +429,7 @@ void IRApplication::addProcedure(IRProcedure *procedure){
 	this->numberProcedures++;
 }
 
-char getOpcode(uint32 *bytecode, unsigned char index){
+char getOpcode(unsigned int *bytecode, unsigned char index){
 	//This function returns the destination register of a bytecode instruction
 	//If bytecode instruction do not write any register then it returns -1
 
@@ -358,7 +437,7 @@ char getOpcode(uint32 *bytecode, unsigned char index){
 	return (bytecodeWord96>>19) & 0x7f;
 }
 
-void setOpcode(uint32 *bytecode, unsigned char index, char newOpcode){
+void setOpcode(unsigned int *bytecode, unsigned char index, char newOpcode){
 	//This function returns the destination register of a bytecode instruction
 	//If bytecode instruction do not write any register then it returns -1
 
@@ -368,7 +447,7 @@ void setOpcode(uint32 *bytecode, unsigned char index, char newOpcode){
 	writeInt(bytecode, index*16+0, bytecodeWord96);
 }
 
-short getDestinationRegister(uint32 *bytecode, unsigned char index){
+short getDestinationRegister(unsigned int *bytecode, unsigned char index){
 	//This function returns the destination register of a bytecode instruction
 	//If bytecode instruction do not write any register then it returns -1
 
@@ -384,7 +463,7 @@ short getDestinationRegister(uint32 *bytecode, unsigned char index){
 	return -1;
 }
 
-char getOperands(uint32 *bytecode, unsigned char index, short result[2]){
+char getOperands(unsigned int *bytecode, unsigned char index, short result[2]){
 	//This function returns the number of register operand used by the bytecode instruction
 
 	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
@@ -428,7 +507,7 @@ char getOperands(uint32 *bytecode, unsigned char index, short result[2]){
 		return 0;
 }
 
-void setOperands(uint32 *bytecode, unsigned char index, short operands[2]){
+void setOperands(unsigned int *bytecode, unsigned char index, short operands[2]){
 	//This function returns the number of register operand used by the bytecode instruction
 
 	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
@@ -477,7 +556,7 @@ void setDestinationRegister(uint32 *bytecode, unsigned char index, short newDest
 	exit(-1);
 }
 
-void setAlloc(uint32 *bytecode, unsigned char index, char newAlloc){
+void setAlloc(unsigned int *bytecode, unsigned char index, char newAlloc){
 	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
 
 	if (newAlloc)
@@ -489,7 +568,7 @@ void setAlloc(uint32 *bytecode, unsigned char index, char newAlloc){
 }
 
 #ifdef IR_SUCC
-void addDataDep(uint32 *bytecode, unsigned char index, unsigned char successor){
+void addDataDep(unsigned int *bytecode, unsigned char index, unsigned char successor){
 	unsigned int bytecodeWord0 = readInt(bytecode, index*16+12);
 	unsigned int bytecodeWord32 = readInt(bytecode, index*16+8);
 	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
@@ -520,7 +599,7 @@ void addDataDep(uint32 *bytecode, unsigned char index, unsigned char successor){
 	}
 }
 
-void addControlDep(uint32 *bytecode, unsigned char index, unsigned char successor){
+void addControlDep(unsigned int *bytecode, unsigned char index, unsigned char successor){
 	unsigned int bytecodeWord0 = readInt(bytecode, index*16+12);
 	unsigned int bytecodeWord32 = readInt(bytecode, index*16+8);
 	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
@@ -553,7 +632,7 @@ void addControlDep(uint32 *bytecode, unsigned char index, unsigned char successo
 }
 #else
 
-void addDataDep(uint32 *bytecode, unsigned char index, unsigned char successor){
+void addDataDep(unsigned int *bytecode, unsigned char index, unsigned char successor){
 	unsigned int bytecodeWord0 = readInt(bytecode, successor*16+12);
 	unsigned int bytecodeWord32 = readInt(bytecode, successor*16+8);
 	unsigned int bytecodeWord64 = readInt(bytecode, successor*16+4);
@@ -584,7 +663,7 @@ void addDataDep(uint32 *bytecode, unsigned char index, unsigned char successor){
 	}
 }
 
-void addControlDep(uint32 *bytecode, unsigned char index, unsigned char successor){
+void addControlDep(unsigned int *bytecode, unsigned char index, unsigned char successor){
 	unsigned int bytecodeWord0 = readInt(bytecode, successor*16+12);
 	unsigned int bytecodeWord32 = readInt(bytecode, successor*16+8);
 	unsigned int bytecodeWord64 = readInt(bytecode, successor*16+4);
@@ -612,9 +691,10 @@ void addControlDep(uint32 *bytecode, unsigned char index, unsigned char successo
 	//We do not need to increment the number of dep...
 }
 
+
 #endif
 
-void addOffsetToDep(uint32 *bytecode, unsigned char index, unsigned char offset){
+void addOffsetToDep(unsigned int *bytecode, unsigned char index, unsigned char offset){
 	unsigned int bytecodeWord0 = readInt(bytecode, index*16+12);
 	unsigned int bytecodeWord32 = readInt(bytecode, index*16+8);
 	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
@@ -634,7 +714,7 @@ void addOffsetToDep(uint32 *bytecode, unsigned char index, unsigned char offset)
 	}
 }
 
-char getStageCode(uint32 *bytecode, unsigned char index){
+char getStageCode(unsigned int *bytecode, unsigned char index){
 
 	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
 	return (bytecodeWord96>>30) & 0x3;

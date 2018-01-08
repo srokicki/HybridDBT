@@ -34,18 +34,18 @@
 
 #ifndef __NIOS
 
-int firstPassTranslator_riscv_hw(uint32 code[1024],
-		uint32 size,
-		uint8 conf,
-		uint32 addressStart,
-		uint32 codeSectionStart,
-		uint128 destinationBinaries[1024],
-		uint32 placeCode,
-		uint32 insertions[256],
-		uint1 blocksBoundaries[65536],
-		uint32 unresolvedJumps_src[512],
-		uint32 unresolvedJumps_type[512],
-		int32 unresolvedJumps[512]){
+int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
+		ac_int<32, false> size,
+		ac_int<8, false> conf,
+		ac_int<32, false> addressStart,
+		ac_int<32, false> codeSectionStart,
+		ac_int<128, false> destinationBinaries[1024],
+		ac_int<32, false> placeCode,
+		ac_int<32, false> insertions[256],
+		ac_int<1, false> blocksBoundaries[65536],
+		ac_int<32, false> unresolvedJumps_src[512],
+		ac_int<32, false> unresolvedJumps_type[512],
+		ac_int<32, true> unresolvedJumps[512]){
 
 
 	/**
@@ -204,6 +204,7 @@ int firstPassTranslator_riscv_hw(uint32 code[1024],
 		else{
 
 			ac_int<32, false> oneInstruction = code[indexInSourceBinaries];
+
 
 			/**************************************************************
 			*  Instruction decoding
@@ -503,7 +504,6 @@ int firstPassTranslator_riscv_hw(uint32 code[1024],
 				unresolved_jump_type = binaries;
 				setUnresolvedJump = 1;
 
-
 				//In order to deal with the fact that RISCV do not execute the isntruction following a branch,
 				//we have to insert nop
 				nextInstructionNop = 1;
@@ -547,7 +547,6 @@ int firstPassTranslator_riscv_hw(uint32 code[1024],
 				// some special instruction to handle this...
 
 				//First we fill information on block boundaries
-
 
 				if (rs2 == 0 && (funct3 == RISCV_BR_BEQ || funct3 == RISCV_BR_BNE)){
 					//This is a comparison to zero
@@ -932,6 +931,7 @@ int firstPassTranslator_riscv_hw(uint32 code[1024],
 		insertions[1+localNumberInsertions++] = indexInDestinationBinaries;
 		indexInDestinationBinaries += incrementInDest;
 	}
+
 
 
 

@@ -4,7 +4,7 @@
 #include <transformation/firstPassTranslation.h>
 #include <transformation/reconfigureVLIW.h>
 
-int firstPassTranslation_riscv_sw(unsigned int code[1024],
+int firstPassTranslator_riscv_sw(unsigned int code[1024],
 		unsigned int size,
 		unsigned char conf,
 		unsigned int addressStart,

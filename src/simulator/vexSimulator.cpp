@@ -1288,18 +1288,17 @@ int VexSimulator::doStep(){
 	// Retrieving new instruction
 
 	ac_int<64, false> secondLoadAddress = (PC>>2)+1;
-	ac_int<SIZE_INSTRUCTION, false> vliw = RI[PC>>2];
-	ac_int<SIZE_INSTRUCTION, false> vliw2 = RI[secondLoadAddress];
+
 
 	ac_int<32, false> instructions[8];
-	instructions[0] = vliw.slc<32>(96);
-	instructions[1] = vliw.slc<32>(64);
-	instructions[2] = vliw.slc<32>(32);
-	instructions[3] = vliw.slc<32>(0);
-	instructions[4] = vliw2.slc<32>(96);
-	instructions[5] = vliw2.slc<32>(64);
-	instructions[6] = vliw2.slc<32>(32);
-	instructions[7] = vliw2.slc<32>(0);
+	instructions[0] = RI[(int) PC+0];
+	instructions[1] = RI[(int) PC+1];
+	instructions[2] = RI[(int) PC+2];
+	instructions[3] = RI[(int) PC+3];
+	instructions[4] = RI[(int) PC+4];
+	instructions[5] = RI[(int) PC+5];
+	instructions[6] = RI[(int) PC+6];
+	instructions[7] = RI[(int) PC+7];
 
 	ac_int<32, false> nopInstr = 0;
 
@@ -1343,6 +1342,9 @@ int VexSimulator::doStep(){
 	#endif
 
 
+	nbCycleType[typeInstr[(int) PC/4]]++;
+
+
 	int pcValueForDebug = PC;
 	// Next instruction
 	PC = NEXT_PC;
@@ -1355,7 +1357,7 @@ int VexSimulator::doStep(){
 
 #ifndef __CATAPULT
 
-	if (debugLevel >= 1){/*(this->PC <= 4*21762 && this->PC>=4*21528)){*/
+	if (debugLevel >= 1){
 
 
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";

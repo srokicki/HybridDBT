@@ -70,6 +70,7 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 		char blockBoundary = 1;
 		if (oneInstruction != sizeNewlyTranslated)
 			blockBoundary = (dbtPlateform->blockBoundaries[offset]);
+
 		char isInsertion = (oneInstruction == sizeNewlyTranslated) ? 0 : insertionMap[oneInstruction];
 		if (blockBoundary && !isInsertion & previousBlockStart<indexInVLIWBinaries){
 
@@ -105,11 +106,13 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 			unsigned int oneJumpInitialDestination = dbtPlateform->unresolvedJumps[unresolvedJumpIndex];
 			unsigned int oneJumpType = dbtPlateform->unresolvedJumps_type[unresolvedJumpIndex];
 
+
 			if (newBlock->vliwEndAddress - 2*offsetInBinaries == oneJumpSource){
 				//We save the destination
 				newBlock->sourceDestination = oneJumpInitialDestination+(sectionStartAddress>>2);
 				unsigned char isAbsolute = ((oneJumpType & 0x7f) != VEX_BR) && ((oneJumpType & 0x7f) != VEX_BRF);
 				unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(dbtPlateform, oneJumpInitialDestination+((sectionStartAddress>>2)-mipsStartAddress));
+
 				if (destinationInVLIWFromNewMethod == -1){
 					//In this case, the jump cannot be resolved because the destination block is not translated yet.
 					//We store information concerning the destination and it will be resolved later
@@ -469,7 +472,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 			int blockSize = irGeneratorResult & 0xffff;
 
 
-			block->instructions = (uint32*) malloc(blockSize*4*sizeof(uint32));
+			block->instructions = (unsigned int*) malloc(blockSize*4*sizeof(unsigned int));
 			for (int oneBytecodeInstr = 0; oneBytecodeInstr<blockSize; oneBytecodeInstr++){
 				block->instructions[4*oneBytecodeInstr + 0] = readInt(platform->bytecode, 16*oneBytecodeInstr + 0);
 				block->instructions[4*oneBytecodeInstr + 1] = readInt(platform->bytecode, 16*oneBytecodeInstr + 4);
