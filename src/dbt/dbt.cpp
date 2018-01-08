@@ -54,9 +54,9 @@ void printStats(unsigned int size, short* blockBoundaries){
 }
 
 
-int translateOneSection(DBTPlateform &dbtPlateform, uint32 placeCode, int sourceStartAddress, int sectionStartAddress, int sectionEndAddress){
+int translateOneSection(DBTPlateform &dbtPlateform, unsigned int placeCode, int sourceStartAddress, int sectionStartAddress, int sectionEndAddress){
 	int previousPlaceCode = placeCode;
-	uint32 size = (sectionEndAddress - sectionStartAddress)>>2;
+	unsigned int size = (sectionEndAddress - sectionStartAddress)>>2;
 	placeCode = firstPassTranslator(&dbtPlateform,
 			size,
 			sourceStartAddress,
@@ -69,7 +69,7 @@ int translateOneSection(DBTPlateform &dbtPlateform, uint32 placeCode, int source
 }
 
 
-void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressStart, uint32 &size, uint32 &pcStart, DBTPlateform *platform){
+void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressStart, unsigned int &size, unsigned int &pcStart, DBTPlateform *platform){
 
 #ifndef __NIOS
 	//We open the elf file and search for the section that is of interest for us
@@ -328,8 +328,8 @@ int main(int argc, char *argv[])
 
 	unsigned char* code;
 	unsigned int addressStart;
-	uint32 size;
-	uint32 pcStart;
+	unsigned int size;
+	unsigned int pcStart;
 
 
 	//We read the binaries
@@ -354,7 +354,7 @@ int main(int argc, char *argv[])
 
 
 	//We declare the variable in charge of keeping a track of where we are writing
-	uint32 placeCode = 0; //As 4 instruction bundle
+	unsigned int placeCode = 0; //As 4 instruction bundle
 
 	//We add initialization code to the vliw binaries
 	placeCode = getInitCode(&dbtPlateform, placeCode, addressStart);
@@ -438,7 +438,7 @@ int main(int argc, char *argv[])
 	#endif
 
 	//We change the init code to jump at the correct place
-	uint32 translatedStartPC = solveUnresolvedJump(&dbtPlateform, (pcStart-addressStart)>>2);
+	unsigned int translatedStartPC = solveUnresolvedJump(&dbtPlateform, (pcStart-addressStart)>>2);
 	unsigned int instruction = assembleIInstruction(VEX_CALL, translatedStartPC, 63);
 	writeInt(dbtPlateform.vliwBinaries, 0, instruction);
 

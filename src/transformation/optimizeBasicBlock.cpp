@@ -20,7 +20,7 @@
 
 #include <lib/log.h>
 
-void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *application, uint32 placeCode){
+void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *application, unsigned int placeCode){
 
 	/*********************************************************************************
 	 * Function optimizeBasicBlock
@@ -88,7 +88,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	int irGeneratorResult = irGenerator(platform, basicBlockStart, originalScheduleSize, globalVariableCounter);
 
 	int endAddress = irGeneratorResult >>16;
-	int blockSize = irGeneratorResult & 0xffff;
+	unsigned char blockSize = irGeneratorResult & 0xffff;
 
 	if (endAddress < originalScheduleSize){
 		int oldEndAddress = block->vliwEndAddress;
@@ -180,7 +180,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		platform->placeOfRegisters[256+64+onePlaceOfRegister] = onePlaceOfRegister;
 
 	//Calling scheduler
-	int binaSize = irScheduler(platform, 1,blockSize, placeCode, 29, platform->vliwInitialConfiguration);
+	int binaSize = irScheduler(platform, true,blockSize, placeCode, 29, platform->vliwInitialConfiguration);
 	binaSize = binaSize & 0xffff;
 
 	if (binaSize < originalScheduleSize){

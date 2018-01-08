@@ -189,7 +189,7 @@ struct uint128_struct assembleIBytecodeInstruction(ac_int<2, false> stageCode, a
  * ******************************************************************/
 
 
-std::string printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instructionPart2, uint32 instructionPart3, uint32 instructionPart4){
+std::string printBytecodeInstruction(int index, unsigned int  instructionPart1, unsigned int  instructionPart2, unsigned int instructionPart3, unsigned int instructionPart4){
 
 	uint2 stageCode = ((instructionPart1>>30) & 0x3);
 	uint2 typeCode = ((instructionPart1>>28) & 0x3);

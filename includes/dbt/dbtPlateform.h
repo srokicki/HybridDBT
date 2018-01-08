@@ -50,7 +50,7 @@ public:
 	unsigned int insertions[2048];
 	unsigned char blockBoundaries[MEMORY_SIZE];
 	unsigned int bytecode[256*4];
-	int globalVariables[64];
+	int globalVariables[128];
 	unsigned int unresolvedJumps_src[512];
 	unsigned int unresolvedJumps_type[512];
 	int unresolvedJumps[512];

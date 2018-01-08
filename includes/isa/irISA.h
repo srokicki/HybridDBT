@@ -174,7 +174,7 @@ struct uint128_struct assembleFPBytecodeInstruction(ac_int<2, false> stageCode, 
  *
  *******************************************************************/
 
-std::string printBytecodeInstruction(int index, uint32  instructionPart1, uint32  instructionPart2, uint32 instructionPart3, uint32 instructionPart4);
+std::string printBytecodeInstruction(int index, unsigned int  instructionPart1, unsigned int instructionPart2, unsigned int instructionPart3, unsigned int instructionPart4);
 
 /********************************************************************
  * Declaration utilization functions

@@ -42,11 +42,11 @@ unsigned int irGenerator(DBTPlateform *platform,
 
 	ac_int<128, false> *localBytecode = (ac_int<128, false>*) malloc(256*sizeof(ac_int<128, false>));
 	ac_int<128, false> *localVliwBinaries = (ac_int<128, false>*) malloc(MEMORY_SIZE*sizeof(ac_int<128, false>));
-	ac_int<32, true> *localGlobalVariables = (ac_int<32, true>*) malloc(64*sizeof(ac_int<32, true>));
+	ac_int<32, true> *localGlobalVariables = (ac_int<32, true>*) malloc(128*sizeof(ac_int<32, true>));
 
 	acintMemcpy(localBytecode, platform->bytecode, 256*16);
 	acintMemcpy(localVliwBinaries, platform->vliwBinaries, MEMORY_SIZE*16);
-	acintMemcpy(localGlobalVariables, platform->globalVariables, 64*4);
+	acintMemcpy(localGlobalVariables, platform->globalVariables, 128*4);
 
 	ac_int<32, false> localGlobalVariableCounter = globalVariableCounter;
 
@@ -62,7 +62,11 @@ unsigned int irGenerator(DBTPlateform *platform,
 
 	acintMemcpy(platform->bytecode, localBytecode, 256*16);
 	acintMemcpy(platform->vliwBinaries, localVliwBinaries, MEMORY_SIZE*16);
-	acintMemcpy(platform->globalVariables, localGlobalVariables, 64*4);
+	acintMemcpy(platform->globalVariables, localGlobalVariables, 128*4);
+
+	free(localBytecode);
+	free(localGlobalVariables);
+	free(localVliwBinaries);
 
 	return result;
 

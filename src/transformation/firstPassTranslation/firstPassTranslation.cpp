@@ -25,7 +25,6 @@ unsigned int firstPassTranslator(DBTPlateform *platform,
 
 
 	platform->insertions[0] = 0;
-	fprintf(stderr, "translating at %d\n", placeCode);
 
 	//We call the accelerator (or the software counterpart if no accelerator)
 	#ifndef __NIOS
@@ -46,7 +45,6 @@ unsigned int firstPassTranslator(DBTPlateform *platform,
 	acintMemcpy(localUnresolvedJumps_type, platform->unresolvedJumps_type, 512*4);
 	acintMemcpy(localUnresolvedJumps, platform->unresolvedJumps, 512*4);
 
-	//TODO
 
 	int returnedValue = firstPassTranslator_riscv_hw(localMipsBinaries,
 			size,
@@ -69,6 +67,13 @@ unsigned int firstPassTranslator(DBTPlateform *platform,
 	acintMemcpy(platform->unresolvedJumps_type, localUnresolvedJumps_type, 512*4);
 	acintMemcpy(platform->unresolvedJumps, localUnresolvedJumps, 512*4);
 
+	free(localMipsBinaries);
+	free(localInsertions);
+	free(localVliwBinaries);
+	free(localBlockBoundaries);
+	free(localUnresolvedJumps_src);
+	free(localUnresolvedJumps_type);
+	free(localUnresolvedJumps);
 
 
 	#else

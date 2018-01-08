@@ -107,16 +107,16 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 	unsigned char nextInstructionNop = 0;
 
 
-	uint5 reg1_mul = 0, reg2_mul = 0;
-	uint16 imm_mul = 0;
-	uint1 is_imm_mul = 0;
+	ac_int<5, false> reg1_mul = 0, reg2_mul = 0;
+	ac_int<16, false> imm_mul = 0;
+	ac_int<1, false> is_imm_mul = 0;
 
 
 	blocksBoundaries[(codeSectionStart-addressStart)>>2] = 1;
 
 	ac_int<256,false> previousBinaries = 0;
-	uint32 previousIndex = 0;
-	char previousStage = 0;
+	ac_int<32, false> previousIndex = 0;
+	ac_int<8, true> previousStage = 0;
 	ac_int<32, false> localNumberInsertions = 0;
 
 	ac_int<1, false> currentBoundaryJustSet = 0;
@@ -140,7 +140,7 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 		ac_int<1, false> isInsertion = 0;
 
 		char stage = 0;
-		uint32 binaries = 0;
+		ac_int<32, false> binaries = 0;
 
 		char wasExternalInstr = 0;
 		char droppedInstruction = 0;
@@ -261,7 +261,7 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 
 			ac_int<6, false> shamt = oneInstruction.slc<6>(20);
 
-			uint26 correctedTgtadr = imm21_1 - (addressStart>>2);
+			ac_int<26, false> correctedTgtadr = imm21_1 - (addressStart>>2);
 
 
 			if (rs1 == 1)
@@ -762,7 +762,7 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 				lastWrittenRegister = rd+64;
 				lastLatency = MULT_LATENCY;
 
-				uint5 funct = 0;
+				ac_int<5, false> funct = 0;
 				switch (funct7)
 				{
 					case  RISCV_FP_ADD:

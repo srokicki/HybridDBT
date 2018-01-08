@@ -26,27 +26,27 @@
 #define LAST_RENAME 0
 
 /* Global values */
-uint1 isOutsideNext = 0;
-uint1 droppedInstruction = 0;
+ac_int<1, false> isOutsideNext = 0;
+ac_int<1, false> droppedInstruction = 0;
 
 ac_int<128, false> outsideNext_bytecode;
-uint9 outsideNext_pred1_reg;
-uint9 outsideNext_pred1;
-uint9 outsideNext_pred2_reg;
-int10 outsideNext_dest_reg;
-int16 outsideNext_imm;
+ac_int<9, false> outsideNext_pred1_reg;
+ac_int<9, false> outsideNext_pred1;
+ac_int<9, false> outsideNext_pred2_reg;
+ac_int<10, true> outsideNext_dest_reg;
+ac_int<16, true> outsideNext_imm;
 
-uint1 outsideNext_isImm;
-uint1 outsideNext_isLongImm;
-uint1 outsideNext_pred1_ena;
-uint1 outsideNext_pred1_solved;
+ac_int<1, false> outsideNext_isImm;
+ac_int<1, false> outsideNext_isLongImm;
+ac_int<1, false> outsideNext_pred1_ena;
+ac_int<1, false> outsideNext_pred1_solved;
 
-uint1 outsideNext_pred2_ena;
-uint1 outsideNext_dest_ena;
-uint1 outsideNext_dest_alloc;
+ac_int<1, false> outsideNext_pred2_ena;
+ac_int<1, false> outsideNext_dest_ena;
+ac_int<1, false> outsideNext_dest_alloc;
 
 
-uint8 writeSucc_lastAddr = 255;
+ac_int<8, false> writeSucc_lastAddr = 255;
 ac_int<128, false> writeSucc_lastValue = 0;
 
 
@@ -80,7 +80,6 @@ inline unsigned int writeSuccessor_ac(ac_int<128, false> bytecode[1024], ac_int<
 	ac_int<8, false> nbDep = currentInstruction->slc<8>(64+6) + 1;
 
 	if (srcInstr != destInstr){
-		//fprintf(stderr, "Adding dep from %d to %d word was %lx and become %lx\n", srcInstr, destInstr, (uint64_t) bytecode[srcInstr].slc<64>(0), (uint64_t) oneBytecodeInstruction.slc<64>(0));
 
 		currentInstruction->set_slc(64+6, nbDep);
 
@@ -117,7 +116,6 @@ inline unsigned int writePredecessor_ac(ac_int<128, false> bytecode[1024], ac_in
 
 	if (srcInstr != destInstr){
 
-		//fprintf(stderr, "Adding dep from %d to %d word was %lx and become %lx\n", srcInstr, destInstr, (uint64_t) bytecode[srcInstr].slc<64>(0), (uint64_t) oneBytecodeInstruction.slc<64>(0));
 
 		currentInstruction->set_slc(offset, srcInstr);
 		currentInstruction->set_slc(64, nbSucc);
@@ -146,9 +144,9 @@ inline unsigned int writeDependency_ac(ac_int<128, false> bytecode[1024], ac_int
 }
 
 
-unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries, uint32 blockSize,
-		uint128 bytecode[1024], int32 globalVariables[128],
-		uint32 globalVariableCounter){
+unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, false> addressInBinaries, ac_int<32, false> blockSize,
+		ac_int<128, false> bytecode[1024], ac_int<32, true> globalVariables[128],
+		ac_int<32, false> globalVariableCounter){
 
 	ac_int<1, false> const0 = 0;
 	ac_int<1, false> const1 = 1;
@@ -326,8 +324,8 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 					&& funct != VEX_FP_FMIN && funct != VEX_FP_FMAX && funct != VEX_FP_FCLASS);
 
 
-			uint1 pred1_ena = 0, pred2_ena = 0, dest_ena = 0;
-			uint7 pred1_reg = reg26, pred2_reg = reg20, dest_reg=0;
+			ac_int<1, false> pred1_ena = 0, pred2_ena = 0, dest_ena = 0;
+			ac_int<7, false> pred1_reg = reg26, pred2_reg = reg20, dest_reg=0;
 
 			//Solving accessed register 1
 			if (!isBranchWithNoReg && !isMovi && !isProfile)
@@ -493,9 +491,9 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 			ac_int<9, false> pred2;
 
 
-			uint1 pred2_succ_ena = 0;
+			ac_int<1, false> pred2_succ_ena = 0;
 			ac_int<8, false> pred2_succ_src = 0;
-			uint1 pred2_succ_isData = 0;
+			ac_int<1, false> pred2_succ_isData = 0;
 
 
 
@@ -563,7 +561,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 			if (isLoadType || isFLW){
 				/****************************/
 				/* We update lastReaderOneMemory and add required dependencies to keep memory coherence */
-				uint16 succ_src;
+				ac_int<16, false> succ_src;
 				if (lastReaderOnMemoryCounter < 3){
 					lastReaderOnMemoryCounter++;
 					if (lastWriterOnMemory != -1 && !(lastWriterOnMemoryRegUnchanged && lastWriterOnMemoryReg == pred1_reg && lastWriterOnMemoryImm != imm13)){
@@ -592,10 +590,10 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 			//******************************************
 			//We set the destination
 
-			uint1 global_succ_ena_1 = 0;
-			uint1 global_succ_ena_2 = 0;
-			uint1 global_succ_ena_3 = 0;
-			uint1 global_succ_ena_4 = 0;
+			ac_int<1, false> global_succ_ena_1 = 0;
+			ac_int<1, false> global_succ_ena_2 = 0;
+			ac_int<1, false> global_succ_ena_3 = 0;
+			ac_int<1, false> global_succ_ena_4 = 0;
 
 			ac_int<8, false> global_succ_src_1;
 			ac_int<8, false> global_succ_src_2;
@@ -608,7 +606,7 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 
 
 
-			uint1 alloc = 1;
+			ac_int<1, false> alloc = 1;
 
 
 
@@ -964,8 +962,8 @@ unsigned int irGenerator_hw(uint128 srcBinaries[1024], uint32 addressInBinaries,
 		}
 
 		//Modification of last writer on renamed registers
-		for (uint9 oneRegister=FIRST_RENAME; oneRegister<LAST_RENAME; oneRegister++){
-			uint9 lastWriter = registers[oneRegister];
+		for (ac_int<9, false> oneRegister=FIRST_RENAME; oneRegister<LAST_RENAME; oneRegister++){
+			ac_int<9, false> lastWriter = registers[oneRegister];
 			if (!lastWriter[8]){
 				ac_int<9, false> newDestination = oneRegister+256;
 				bytecode[lastWriter].set_slc(64+14, newDestination);

@@ -53,6 +53,12 @@ unsigned char numberFreeRegister, char configuration){
 	acintMemcpy(platform->freeRegisters, localFreeRegisters, 64);
 	acintMemcpy(platform->placeOfInstr, localPlaceOfInstr, 256*4);
 
+	free(localBytecode);
+	free(localVliwBinaries);
+	free(localPlaceOfRegisters);
+	free(localPlaceOfInstr);
+	free(localFreeRegisters);
+
 	return (unsigned int) result;
 
 

@@ -440,24 +440,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 //	writeInt(platform->vliwBinaries, (start-2*increment)*16, assembleIInstruction(VEX_GOTOR, 0, 33));
 
 	//This is only for debug
-	if (platform->debugLevel > 2)
-		for (int i=0;i<start;i++){
-			fprintf(stderr, "%d ", i);
-			std::cerr << platform->vliwBinaries[i*4+0]; fprintf(stderr, ", ");
-			std::cerr << platform->vliwBinaries[i*4+1]; fprintf(stderr, ", ");
-			std::cerr << platform->vliwBinaries[i*4+2]; fprintf(stderr, ", ");
-			std::cerr << platform->vliwBinaries[i*4+3]; fprintf(stderr, ", ");
 
-			if (platform->vliwInitialIssueWidth>4){
-				std::cerr << platform->vliwBinaries[i*4+4]; fprintf(stderr, ", ");
-				std::cerr << platform->vliwBinaries[i*4+5]; fprintf(stderr, ", ");
-				std::cerr << platform->vliwBinaries[i*4+6]; fprintf(stderr, ", ");
-				std::cerr << platform->vliwBinaries[i*4+7]; fprintf(stderr, ", ");
-				i++;
-			}
-			fprintf(stderr, "\n");
-
-		}
 
 	return start;
 
