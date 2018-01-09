@@ -3,6 +3,7 @@
 #include <isa/vexISA.h>
 #include <transformation/firstPassTranslation.h>
 #include <transformation/reconfigureVLIW.h>
+#include <lib/endianness.h>
 
 int firstPassTranslator_riscv_sw(unsigned int code[1024],
 		unsigned int size,
@@ -12,10 +13,10 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 		unsigned int destinationBinaries[4*1024],
 		unsigned int placeCode,
 		unsigned int insertions[256],
-		bool blocksBoundaries[65536],
+		unsigned char blocksBoundaries[65536],
 		unsigned int unresolvedJumps_src[512],
 		unsigned int unresolvedJumps_type[512],
-		unsigned int unresolvedJumps[512]){
+		int unresolvedJumps[512]){
 
 
 	/**
@@ -104,10 +105,10 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 
 	while (indexInSourceBinaries < size || nextInstructionNop || enableNextInstruction){
 
-		bool setBoundaries1 = 0, setBoundaries2 = 0, setUnresolvedJump = 0;
+		bool setBoundaries1 = false, setBoundaries2 = false, setUnresolvedJump = false;
 		int boundary1, boundary2, unresolved_jump_src, unresolved_jump_type;
 
-		bool isInsertion = 0;
+		bool isInsertion = false;
 
 		char stage = 0;
 		unsigned int binaries = 0;
@@ -132,14 +133,14 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 				binaries = 0;
 				enableNextInstruction = 1;
 				wasExternalInstr = 1;
-				isInsertion = 1;
+				isInsertion = true;
 			}
 			else{
 				binaries = nextInstruction;
 				stage = nextInstruction_stage;
 				wasExternalInstr = 1;
 				enableNextInstruction = 0;
-				isInsertion = 1;
+				isInsertion = true;
 
 				lastWrittenRegister = nextInstruction_rd;
 				lastLatency = SIMPLE_LATENCY;
@@ -166,15 +167,14 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 			stage = 0;
 			wasExternalInstr = 1;
 			nextInstructionNop = 0;
-			isInsertion = 1; //A nop instruction is an insertion...
+			isInsertion = true; //A nop instruction is an insertion...
 			setBoundaries1 = setNextBoundaries;
 			boundary1 = nextBoundaries;
 			setNextBoundaries = 0;
 		}
 		else{
 
-			unsigned int oneInstruction = code[indexInSourceBinaries];
-
+			unsigned int oneInstruction = readInt(code, 4*indexInSourceBinaries);
 			/**************************************************************
 			*  Instruction decoding
 			*
@@ -183,7 +183,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 			*  order to build the new instruction.
 			***************************************************************/
 
-			char opcode = oneInstruction & 0x3f;
+			char opcode = oneInstruction & 0x7f;
 			char rs1 = ((oneInstruction >> 15) & 0x1f);
 			char rs2 = ((oneInstruction >> 20) & 0x1f);
 			char rs3 = ((oneInstruction >> 27) & 0x1f);
@@ -199,13 +199,14 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 			short imm12_I_signed = (imm12_I >= 2048) ? imm12_I - 4096 : imm12_I;
 			short imm12_S_signed = (imm12_S >= 2048) ? imm12_S - 4096 : imm12_S;
 
-			short imm13 = ((oneInstruction >> 19) & 0x800) + ((oneInstruction >> 20) & 0x7e0) + ((oneInstruction >> 7) & 0x1e) + ((oneInstruction >> 7) & 0x1);
+
+			short imm13 = ((oneInstruction >> 19) & 0x1000) + ((oneInstruction >> 20) & 0x7e0) + ((oneInstruction >> 7) & 0x1e) + ((oneInstruction << 4) & 0x800);
 			short imm13_signed = (imm13 >= 4096) ? imm13 - 8192 : imm13;
 
 			unsigned int imm31_12 = oneInstruction & 0x7ffff800;
 			int imm31_12_signed = imm31_12;
 
-			unsigned int imm21_1 = (oneInstruction & 0x7f800) + ((oneInstruction >> 9) & 0x400) + ((oneInstruction >> 20) & 0x7fe) + ((oneInstruction >> 31) & 0x1);
+			unsigned int imm21_1 = (oneInstruction & 0xff000) + ((oneInstruction >> 9) & 0x800) + ((oneInstruction >> 20) & 0x7fe) + ((oneInstruction >> 11) & 0x100000);
 			int imm21_1_signed = (imm21_1 >= 1048576) ? imm21_1 - 2097152 : imm21_1;
 
 			char shamt = ((oneInstruction >> 20) & 0x3f);
@@ -246,7 +247,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 				binaries = 0;
 				enableNextInstruction = wasExternalInstr;
 				wasExternalInstr = 1;
-				isInsertion = 1;
+				isInsertion = true;
 			}
 			else if (opcode == RISCV_OP){
 				//Instrucion io OP type: it needs two registers operand (except for rol/sll/sr)
@@ -441,9 +442,9 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 
 
 				//We fill information on block boundaries
-				setBoundaries1 = 1;
+				setBoundaries1 = true;
 				boundary1 = indexInSourceBinaries + (imm21_1_signed>>2);
-				setBoundaries2 = 1;
+				setBoundaries2 = true;
 				boundary2 = indexInSourceBinaries + 1; //Only plus one because in riscv next instr is not executed
 
 				unresolved_jump_src = indexInDestinationBinaries;
@@ -461,7 +462,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 				//JALR instruction is a bit particular: it load a value from a register and add it an immediate value.
 				//Once done, it jump and store return address in rd.
 
-				setBoundaries1 = 1;
+				setBoundaries1 = true;
 				boundary1 = indexInSourceBinaries + 1;//Only plus one because in riscv next instr is not executed
 
 				if (rs1 == 63 && rd == 0){
@@ -498,9 +499,9 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 
 				if (rs2 == 0 && (funct3 == RISCV_BR_BEQ || funct3 == RISCV_BR_BNE)){
 					//This is a comparison to zero
-					setBoundaries1 = 1;
+					setBoundaries1 = true;
 					boundary1 = ((imm13_signed>>2)+indexInSourceBinaries);
-					setBoundaries2 = 1;
+					setBoundaries2 = true;
 					boundary2 = indexInSourceBinaries + 1;//Only plus one because in riscv next instr is not executed
 
 					binaries = assembleIInstruction((funct3 == RISCV_BR_BEQ) ? VEX_BRF : VEX_BR, rs2, rs1);
@@ -516,9 +517,9 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 					lastWrittenRegister = 32;
 					lastLatency = SIMPLE_LATENCY;
 
-					setBoundaries1 = 1;
+					setBoundaries1 = true;
 					boundary1 = ((imm13_signed>>2)+indexInSourceBinaries);
-					setBoundaries2 = 1;
+					setBoundaries2 = true;
 					boundary2 = indexInSourceBinaries + 1;//Only plus one because in riscv next instr is not executed
 
 
@@ -792,7 +793,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 			}
 			else{
 				#ifndef __CATAPULT
-				printf("In first pass translator, instr %x is not handled yet...\n", oneInstruction);
+				printf("In first pass translator_riscv_sw, instr %x is not handled yet...\n", oneInstruction);
 				exit(-1);
 				#endif
 			}
@@ -839,7 +840,6 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 			int boundaryAddress = (boundary1 + ((codeSectionStart - addressStart)>>2));
 			int offset = boundaryAddress & 0xffff;
 			blocksBoundaries[offset] = 1; //.set_slc(bitOffset, const1);
-
 			if (boundary1 == indexInSourceBinaries)
 				currentBoundaryJustSet=1;
 

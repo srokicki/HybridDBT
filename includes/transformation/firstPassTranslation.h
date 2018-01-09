@@ -40,10 +40,10 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 		unsigned int destinationBinaries[4*1024],
 		unsigned int placeCode,
 		unsigned int insertions[256],
-		bool blocksBoundaries[65536],
+		unsigned char blocksBoundaries[65536],
 		unsigned int unresolvedJumps_src[512],
 		unsigned int unresolvedJumps_type[512],
-		unsigned int unresolvedJumps[512]);
+		int unresolvedJumps[512]);
 
 int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 		ac_int<32, false> size,

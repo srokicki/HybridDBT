@@ -205,7 +205,6 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 
 			ac_int<32, false> oneInstruction = code[indexInSourceBinaries];
 
-
 			/**************************************************************
 			*  Instruction decoding
 			*
@@ -493,7 +492,6 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 				ac_int<1, false> isSimpleJ = (rd==0);
 				binaries= assembleIInstruction(isSimpleJ ? VEX_GOTO : VEX_CALL, 0, rd);
 
-
 				//We fill information on block boundaries
 				setBoundaries1 = 1;
 				boundary1 = indexInSourceBinaries + (imm21_1_signed>>2);
@@ -541,7 +539,6 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 
 			}
 			else if (opcode == RISCV_BR){
-
 
 				//While handling BR instruction we distinguish the case where we compare to zero cause VEX has
 				// some special instruction to handle this...

@@ -59,13 +59,56 @@ unsigned int firstPassTranslator(DBTPlateform *platform,
 			localUnresolvedJumps_type,
 			localUnresolvedJumps);
 
-	acintMemcpy(platform->mipsBinaries, localMipsBinaries, MEMORY_SIZE*4);
-	acintMemcpy(platform->insertions, localInsertions, 2048*4);
-	acintMemcpy(platform->vliwBinaries, localVliwBinaries, MEMORY_SIZE*16);
-	acintMemcpy(platform->blockBoundaries, localBlockBoundaries, MEMORY_SIZE);
-	acintMemcpy(platform->unresolvedJumps_src, localUnresolvedJumps_src, 512*4);
-	acintMemcpy(platform->unresolvedJumps_type, localUnresolvedJumps_type, 512*4);
-	acintMemcpy(platform->unresolvedJumps, localUnresolvedJumps, 512*4);
+
+	int returnedValueSoft = firstPassTranslator_riscv_sw(platform->mipsBinaries,
+			size,
+			platform->vliwInitialConfiguration,
+			sourceStartAddress,
+			sectionStartAddress,
+			platform->vliwBinaries,
+			placeCode,
+			platform->insertions,
+			platform->blockBoundaries,
+			platform->unresolvedJumps_src,
+			platform->unresolvedJumps_type,
+			platform->unresolvedJumps);
+
+
+
+	if (!acintCmp(platform->mipsBinaries, localMipsBinaries, MEMORY_SIZE*4)){
+		fprintf(stderr, "Error: After first pass, mips binaries are different...\n");
+		exit(-1);
+	}
+
+	if (!acintCmp(platform->insertions, localInsertions, 2048*4)){
+		fprintf(stderr, "Error: After first pass, insertions are different...\n");
+		exit(-1);
+	}
+
+	if (!acintCmp(platform->vliwBinaries, localVliwBinaries, MEMORY_SIZE*16)){
+		fprintf(stderr, "Error: After first pass, vliw binaries are different...\n");
+		exit(-1);
+	}
+
+	if (!acintCmp(platform->blockBoundaries, localBlockBoundaries, MEMORY_SIZE)){
+		fprintf(stderr, "Error: After first pass, block boundaries are different...\n");
+		exit(-1);
+	}
+
+	if (!acintCmp(platform->unresolvedJumps_src, localUnresolvedJumps_src, 512*4)){
+		fprintf(stderr, "Error: After first pass, unresolved jumps src are different...\n");
+		exit(-1);
+	}
+
+	if (!acintCmp(platform->unresolvedJumps_type, localUnresolvedJumps_type, 512*4)){
+		fprintf(stderr, "Error: After first pass, unresolved jumps type are different...\n");
+		exit(-1);
+	}
+
+	if (!acintCmp(platform->unresolvedJumps, localUnresolvedJumps, 512*4)){
+		fprintf(stderr, "Error: After first pass, unresolved jumps are different...\n");
+		exit(-1);
+	}
 
 	free(localMipsBinaries);
 	free(localInsertions);
