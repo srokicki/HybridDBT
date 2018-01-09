@@ -183,7 +183,18 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	int binaSize = irScheduler(platform, true,blockSize, placeCode, 29, platform->vliwInitialConfiguration);
 	binaSize = binaSize & 0xffff;
 
-	if (binaSize < originalScheduleSize){
+
+	if (readInt(platform->vliwBinaries, 16*basicBlockStart-12) != 0 || readInt(platform->vliwBinaries, 16*basicBlockStart-8) != 0){
+		writeInt(platform->vliwBinaries, basicBlockStart*16+0, 0);
+		writeInt(platform->vliwBinaries, basicBlockStart*16+4, 0);
+		writeInt(platform->vliwBinaries, basicBlockStart*16+8, 0);
+		writeInt(platform->vliwBinaries, basicBlockStart*16+12, 0);
+		basicBlockStart++;
+	}
+
+	if (basicBlockStart + binaSize < basicBlockEnd){
+
+
 
 		memcpy(&platform->vliwBinaries[4*basicBlockStart], &platform->vliwBinaries[4*placeCode], (binaSize+1)*4*sizeof(unsigned int));
 

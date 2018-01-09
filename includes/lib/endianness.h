@@ -68,4 +68,11 @@ void acintMemcpy(unsigned char *to, ac_int<1, false>  *from, int sizeInByte);
 void acintMemcpy(ac_int<32, true> *to, int *from, int sizeInByte);
 void acintMemcpy(int *to, ac_int<32, true>  *from, int sizeInByte);
 
+bool acintCmp(unsigned int *to, ac_int<128, false>  *from, int sizeInByte);
+bool acintCmp(unsigned int *to, ac_int<32, false>  *from, int sizeInByte);
+bool acintCmp(unsigned char *to, ac_int<8, false>  *from, int sizeInByte);
+bool acintCmp(unsigned char *to, ac_int<6, false>  *from, int sizeInByte);
+bool acintCmp(unsigned char *to, ac_int<1, false>  *from, int sizeInByte);
+bool acintCmp(int *to, ac_int<32, true>  *from, int sizeInByte);
+
 #endif

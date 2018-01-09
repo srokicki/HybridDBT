@@ -47,6 +47,27 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 	IRBlock **blocks = (IRBlock **) malloc(procedure->nbBlock * sizeof(IRBlock*));
 	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
 		blocks[oneBlock] = new IRBlock(-1,-1,-1);
+		if (1){
+			for (int i=procedure->blocks[oneBlock]->vliwStartAddress;i<procedure->blocks[oneBlock]->vliwEndAddress;i++){
+				Log::printf(LOG_SCHEDULE_PROC,"%d ", i);
+
+				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
+				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
+				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
+				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
+
+
+				if (platform->vliwInitialIssueWidth>4){
+					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
+					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
+					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
+					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
+					i++;
+				}
+				Log::printf(LOG_SCHEDULE_PROC,"\n");
+			}
+		}
+
 	}
 	IRProcedure *result = new IRProcedure(blocks[0], procedure->nbBlock);
 	result->blocks = blocks;
@@ -234,6 +255,14 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((offset & 0x7ffff) << 7));
 
 			}
+			else if (jumpOpcode == VEX_GOTO){
+				fprintf(stderr, "correcting jump at %d for block with %d jumps and %d succ, dest in source is %x\n", block->jumpPlaces[oneJump], block->nbJumps, block->nbSucc, block->sourceDestination);
+					int dest = block->successors[oneJump]->vliwStartAddress;
+					unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
+					writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
+
+
+			}
 			else if (jumpOpcode != VEX_CALL && jumpOpcode != VEX_CALLR && jumpOpcode != VEX_GOTOR){
 
 				int dest = block->successors[oneJump]->vliwStartAddress;
@@ -379,7 +408,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
 		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
 		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i+4+3]).c_str());
+		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
 
 
 		if (platform->vliwInitialIssueWidth>4){
@@ -400,7 +429,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
 		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
 		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i+4+3]).c_str());
+		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
 
 
 		if (platform->vliwInitialIssueWidth>4){

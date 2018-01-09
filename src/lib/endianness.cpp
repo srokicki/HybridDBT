@@ -211,4 +211,90 @@ void acintMemcpy(unsigned char *to, ac_int<1, false>  *from, int sizeInByte){
 }
 
 
+
+
+/*************************************************************************************
+ * acintCmp function will compare two arrays, one of acint, the other of normal types
+ * and send back a boolean saying if they are the same.
+ *
+ * These functions are used to compare sw and hw implementations.
+ *************************************************************************************/
+
+
+
+
+bool acintCmp(unsigned int *to, ac_int<128, false>  *from, int sizeInByte){
+	for (int oneSourceValue = 0; oneSourceValue < sizeInByte/16; oneSourceValue++){
+		ac_int<128, false> value = 0;
+
+		if (to[4*oneSourceValue+0] != readInt(from, 16*oneSourceValue + 0)
+				|| to[4*oneSourceValue+1] != readInt(from, 16*oneSourceValue + 4)
+				|| to[4*oneSourceValue+2] != readInt(from, 16*oneSourceValue + 8)
+				|| to[4*oneSourceValue+3] != readInt(from, 16*oneSourceValue + 12))
+			return false;
+
+	}
+	return true;
+}
+
+
+bool acintCmp(unsigned int *to, ac_int<32, false>  *from, int sizeInByte){
+	for (int oneSourceValue = 0; oneSourceValue < sizeInByte/4; oneSourceValue++){
+		if (to[oneSourceValue] != from[oneSourceValue])
+			return false;
+	}
+	return true;
+}
+
+
+
+bool acintCmp(int *to, ac_int<32, true>  *from, int sizeInByte){
+	for (int oneSourceValue = 0; oneSourceValue < sizeInByte/4; oneSourceValue++){
+		if (to[oneSourceValue] != from[oneSourceValue])
+			return false;
+	}
+	return true;
+}
+
+
+
+bool acintCmp(unsigned char *to, ac_int<8, false>  *from, int sizeInByte){
+	for (int oneSourceValue = 0; oneSourceValue < sizeInByte; oneSourceValue++){
+		if (to[oneSourceValue] != from[oneSourceValue])
+			return false;
+	}
+	return true;
+}
+
+
+bool acintCmp(unsigned char *to, ac_int<6, false>  *from, int sizeInByte){
+	for (int oneSourceValue = 0; oneSourceValue < sizeInByte; oneSourceValue++){
+		if (to[oneSourceValue] != from[oneSourceValue])
+			return false;
+	}
+	return true;
+}
+
+
+
+bool acintCmp(unsigned char *to, ac_int<1, false>  *from, int sizeInByte){
+	for (int oneSourceValue = 0; oneSourceValue < sizeInByte; oneSourceValue++){
+		if (from[oneSourceValue]){
+			if (!to[oneSourceValue])
+				return false;
+		}
+		else
+			if (to[oneSourceValue])
+				return false;
+	}
+	return true;
+}
+
+
+
+
+
+
+
+
 #endif

@@ -317,6 +317,10 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 					currentBlock->addJump(-1, (endAddress-2*incrementInBinaries));
 
 			}
+			else{
+				nbSucc = 0;
+				currentBlock->nbJumps = 0;
+			}
 		}
 		else if (isCall){
 			successor1 = currentBlock->sourceEndAddress;

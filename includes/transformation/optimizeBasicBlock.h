@@ -9,7 +9,7 @@
 #define INCLUDES_TRANSFORMATION_OPTIMIZEBASICBLOCK_H_
 
 #include <isa/irISA.h>
-void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *application, uint32 placeCode);
+void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *application, unsigned int placeCode);
 
 
 

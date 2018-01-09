@@ -61,7 +61,7 @@ uint32 assembleRRInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint6 regB
  */
 
 unsigned int  assembleFPInstruction_sw(char opcode, char funct, char regDest, char regA, char regB){
-	uint32 result = 0;
+	unsigned int result = 0;
 	result += opcode & 0x7f;
 	result += (funct & 0x1f) << 7;
 	result += (regDest & 0x3f) << 14;
@@ -72,7 +72,7 @@ unsigned int  assembleFPInstruction_sw(char opcode, char funct, char regDest, ch
 
 
 unsigned int assembleIInstruction_sw(char opcode, int imm19, char regA){
-	uint32 result = 0;
+	unsigned int result = 0;
 	result += opcode & 0x7f;
 	result += (imm19 & 0x7ffff)<<7;
 	result += (regA & 0x3f) << 26;
@@ -80,7 +80,7 @@ unsigned int assembleIInstruction_sw(char opcode, int imm19, char regA){
 }
 
 unsigned int assembleRInstruction_sw(char opcode, char regDest, char regA, char regB){
-	uint32 result = 0;
+	unsigned int result = 0;
 	result += opcode & 0x7f;
 	result += (regDest & 0x3f) << 14;
 	result += (regB & 0x3f) << 20;
@@ -89,7 +89,7 @@ unsigned int assembleRInstruction_sw(char opcode, char regDest, char regA, char 
 }
 
 unsigned int assembleRiInstruction_sw(char opcode, char regDest, char regA, short imm13){
-	uint32 result = 0;
+	unsigned int result = 0;
 	result += opcode & 0x7f;
 	result += (imm13 & 0x1fff) << 7;
 	result += (regDest & 0x3f) << 20;
@@ -97,6 +97,17 @@ unsigned int assembleRiInstruction_sw(char opcode, char regDest, char regA, shor
 	return result;
 }
 
+
+unsigned int assembleRRInstruction_sw(char opcode, char regDest, char regA, char regB, char regC){
+	unsigned int result = 0;
+	result += opcode & 0x7f;
+	result += (regDest & 0x3f) << 8;
+	result += (regC & 0x3f) << 14;
+	result += (regB & 0x3f) << 20;
+	result += (regA & 0x3f) << 26;
+
+	return result;
+}
 
 
 #ifndef __NIOS
