@@ -867,7 +867,6 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 		previousIndex = indexInDestinationBinaries;
 		previousStage = stage;
 
-
 		if (isInsertion)
 			insertions[1+localNumberInsertions++] = indexInDestinationBinaries;
 
@@ -936,6 +935,7 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 	destinationBinaries[previousIndex+1] = previousBinaries.slc<128>(128);
 
 	insertions[0] = localNumberInsertions;
+
 	return (indexInDestinationBinaries-placeCode) + (numberUnresolvedJumps<<18);
 }
 

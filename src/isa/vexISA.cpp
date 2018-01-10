@@ -67,6 +67,14 @@ unsigned int  assembleFPInstruction_sw(char opcode, char funct, char regDest, ch
 	result += (regDest & 0x3f) << 14;
 	result += (regB & 0x3f) << 20;
 	result += (regA & 0x3f) << 26;
+
+	uint32 otherRes = assembleFPInstruction(opcode, funct, regDest, regA, regB);
+
+	if (otherRes != result){
+		fprintf(stderr, "In assemble FP instr, sw is different than hw : %x %x\n", result, otherRes);
+		exit(-1);
+	}
+
 	return result;
 }
 
@@ -76,6 +84,14 @@ unsigned int assembleIInstruction_sw(char opcode, int imm19, char regA){
 	result += opcode & 0x7f;
 	result += (imm19 & 0x7ffff)<<7;
 	result += (regA & 0x3f) << 26;
+
+	uint32 otherRes = assembleIInstruction(opcode, imm19, regA);
+
+	if (otherRes != result){
+		fprintf(stderr, "In assemble II instr, sw is different than hw : %x %x\n", result, otherRes);
+		exit(-1);
+	}
+
 	return result;
 }
 
@@ -85,6 +101,14 @@ unsigned int assembleRInstruction_sw(char opcode, char regDest, char regA, char 
 	result += (regDest & 0x3f) << 14;
 	result += (regB & 0x3f) << 20;
 	result += (regA & 0x3f) << 26;
+
+	uint32 otherRes = assembleRInstruction(opcode, regDest, regA, regB);
+
+	if (otherRes != result){
+		fprintf(stderr, "In assemble R instr, sw is different than hw : %x %x\n", result, otherRes);
+		exit(-1);
+	}
+
 	return result;
 }
 
@@ -94,6 +118,14 @@ unsigned int assembleRiInstruction_sw(char opcode, char regDest, char regA, shor
 	result += (imm13 & 0x1fff) << 7;
 	result += (regDest & 0x3f) << 20;
 	result += (regA & 0x3f) << 26;
+
+	uint32 otherRes = assembleRiInstruction(opcode, regDest, regA, imm13);
+
+	if (otherRes != result){
+		fprintf(stderr, "In assemble Ri instr, sw is different than hw : %x %x\n", result, otherRes);
+		exit(-1);
+	}
+
 	return result;
 }
 
@@ -105,6 +137,13 @@ unsigned int assembleRRInstruction_sw(char opcode, char regDest, char regA, char
 	result += (regC & 0x3f) << 14;
 	result += (regB & 0x3f) << 20;
 	result += (regA & 0x3f) << 26;
+
+	uint32 otherRes = assembleRRInstruction(opcode, regDest, regA, regB, regC);
+
+	if (otherRes != result){
+		fprintf(stderr, "In assemble RR instr, sw is different than hw : %x %x\n", result, otherRes);
+		exit(-1);
+	}
 
 	return result;
 }

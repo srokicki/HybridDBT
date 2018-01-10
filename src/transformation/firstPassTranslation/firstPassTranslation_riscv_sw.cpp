@@ -131,7 +131,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 			if ((nextInstruction_rs1 == lastWrittenRegister && lastLatency != 0) || (nextInstruction_rs2 == lastWrittenRegister && lastLatency != 0)
 					|| (nextInstruction_rs1 == previousWrittenRegister && previousLatency != 0) || (nextInstruction_rs2 == previousWrittenRegister && previousLatency != 0)){
 				binaries = 0;
-				enableNextInstruction = 1;
+				enableNextInstruction = true;
 				wasExternalInstr = 1;
 				isInsertion = true;
 			}
@@ -139,7 +139,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 				binaries = nextInstruction;
 				stage = nextInstruction_stage;
 				wasExternalInstr = 1;
-				enableNextInstruction = 0;
+				enableNextInstruction = false;
 				isInsertion = true;
 
 				lastWrittenRegister = nextInstruction_rd;
@@ -150,8 +150,8 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 				nextInstruction_rs2 = 0;
 
 				if (enableSecondNextInstruction){
-					enableSecondNextInstruction = 0;
-					enableNextInstruction = 1;
+					enableSecondNextInstruction = false;
+					enableNextInstruction = true;
 					nextInstruction = secondNextInstruction;
 					nextInstruction_rd = secondNextInstruction_rd;
 					nextInstruction_rs1 = secondNextInstruction_rs1;
@@ -203,7 +203,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 			short imm13 = ((oneInstruction >> 19) & 0x1000) + ((oneInstruction >> 20) & 0x7e0) + ((oneInstruction >> 7) & 0x1e) + ((oneInstruction << 4) & 0x800);
 			short imm13_signed = (imm13 >= 4096) ? imm13 - 8192 : imm13;
 
-			unsigned int imm31_12 = oneInstruction & 0x7ffff800;
+			unsigned int imm31_12 = oneInstruction & 0xfffff000;
 			int imm31_12_signed = imm31_12;
 
 			unsigned int imm21_1 = (oneInstruction & 0xff000) + ((oneInstruction >> 9) & 0x800) + ((oneInstruction >> 20) & 0x7fe) + ((oneInstruction >> 11) & 0x100000);
@@ -308,7 +308,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 					secondNextInstuction_rs2 = 0;
 
 					nextInstruction_stage = 0;
-					enableNextInstruction = 1;
+					enableNextInstruction = true;
 					enableSecondNextInstruction = 1;
 					secondNextInstruction_stage = 0;
 
@@ -328,8 +328,8 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 					secondNextInstuction_rs2 = 0;
 
 					nextInstruction_stage = 0;
-					enableNextInstruction = 1;
-					enableSecondNextInstruction = 1;
+					enableNextInstruction = true;
+					enableSecondNextInstruction = true;
 					secondNextInstruction_stage = 0;
 				}
 
@@ -349,9 +349,9 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 				bool keepHigher = 0;
 				bool keepBoth = 0;
 
-				if ((imm31_12>>31) != (imm31_12>>30)){
+				if ((imm31_12>>31) != ((imm31_12>>30)&0x1)){
 					keepHigher = 1;
-					if (imm31_12>>12)
+					if ((imm31_12>>12) & 0x1)
 						keepBoth = 1;
 				}
 
@@ -374,7 +374,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 					nextInstruction_rs2 = 0;
 
 					nextInstruction_stage = 0;
-					enableNextInstruction = 1;
+					enableNextInstruction = true;
 
 					if (keepBoth){
 						secondNextInstruction_rd = rd;
@@ -397,7 +397,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 					nextInstruction_rs2 = 0;
 
 					nextInstruction_stage = 0;
-					enableNextInstruction = 1;
+					enableNextInstruction = true;
 
 					if (keepBoth){
 						secondNextInstruction_rd = rd;
@@ -405,7 +405,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 						secondNextInstuction_rs2 = 0;
 
 						secondNextInstruction = instr3;
-						enableSecondNextInstruction = 1;
+						enableSecondNextInstruction = true;
 						secondNextInstruction_stage = 0;
 					}
 				}
@@ -803,16 +803,16 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 
 
 		if (indexInSourceBinaries != 0){
-			destinationBinaries[(previousIndex * 4 * incrementInDest) + 0] = previousBinaries[0];
-			destinationBinaries[(previousIndex * 4 * incrementInDest) + 1] = previousBinaries[1];
-			destinationBinaries[(previousIndex * 4 * incrementInDest) + 2] = previousBinaries[2];
-			destinationBinaries[(previousIndex * 4 * incrementInDest) + 3] = previousBinaries[3];
+			destinationBinaries[(previousIndex * 4) + 0] = previousBinaries[0];
+			destinationBinaries[(previousIndex * 4) + 1] = previousBinaries[1];
+			destinationBinaries[(previousIndex * 4) + 2] = previousBinaries[2];
+			destinationBinaries[(previousIndex * 4) + 3] = previousBinaries[3];
 
 			if (incrementInDest == 2){
-				destinationBinaries[(previousIndex * 4 * incrementInDest) + 4] = previousBinaries[7];
-				destinationBinaries[(previousIndex * 4 * incrementInDest) + 5] = previousBinaries[5];
-				destinationBinaries[(previousIndex * 4 * incrementInDest) + 6] = previousBinaries[6];
-				destinationBinaries[(previousIndex * 4 * incrementInDest) + 7] = previousBinaries[7];
+				destinationBinaries[(previousIndex * 4) + 4] = previousBinaries[4];
+				destinationBinaries[(previousIndex * 4) + 5] = previousBinaries[5];
+				destinationBinaries[(previousIndex * 4) + 6] = previousBinaries[6];
+				destinationBinaries[(previousIndex * 4) + 7] = previousBinaries[7];
 			}
 		}
 
@@ -820,14 +820,13 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 		previousBinaries[1] = (stage == 1) ? binaries : 0;
 		previousBinaries[2] = (stage == 2) ? binaries : 0;
 		previousBinaries[3] = (stage == 3) ? binaries : 0;
-		previousBinaries[6] = (stage == 6) ? binaries : 0;
 		previousBinaries[4] = 0;
 		previousBinaries[5] = 0;
+		previousBinaries[6] = (stage == 6) ? binaries : 0;
 		previousBinaries[7] = 0;
 
 		previousIndex = indexInDestinationBinaries;
 		previousStage = stage;
-
 
 		if (isInsertion)
 			insertions[1+localNumberInsertions++] = indexInDestinationBinaries;
@@ -889,16 +888,16 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 
 
 	if (indexInSourceBinaries != 0){
-		destinationBinaries[(previousIndex * 4 * incrementInDest) + 0] = previousBinaries[0];
-		destinationBinaries[(previousIndex * 4 * incrementInDest) + 1] = previousBinaries[1];
-		destinationBinaries[(previousIndex * 4 * incrementInDest) + 2] = previousBinaries[2];
-		destinationBinaries[(previousIndex * 4 * incrementInDest) + 3] = previousBinaries[3];
+		destinationBinaries[(previousIndex * 4) + 0] = previousBinaries[0];
+		destinationBinaries[(previousIndex * 4) + 1] = previousBinaries[1];
+		destinationBinaries[(previousIndex * 4) + 2] = previousBinaries[2];
+		destinationBinaries[(previousIndex * 4) + 3] = previousBinaries[3];
 
 		if (incrementInDest == 2){
-			destinationBinaries[(previousIndex * 4 * incrementInDest) + 4] = previousBinaries[7];
-			destinationBinaries[(previousIndex * 4 * incrementInDest) + 5] = previousBinaries[5];
-			destinationBinaries[(previousIndex * 4 * incrementInDest) + 6] = previousBinaries[6];
-			destinationBinaries[(previousIndex * 4 * incrementInDest) + 7] = previousBinaries[7];
+			destinationBinaries[(previousIndex * 4) + 4] = previousBinaries[4];
+			destinationBinaries[(previousIndex * 4) + 5] = previousBinaries[5];
+			destinationBinaries[(previousIndex * 4) + 6] = previousBinaries[6];
+			destinationBinaries[(previousIndex * 4) + 7] = previousBinaries[7];
 		}
 	}
 

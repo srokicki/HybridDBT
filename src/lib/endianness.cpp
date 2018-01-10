@@ -224,9 +224,9 @@ void acintMemcpy(unsigned char *to, ac_int<1, false>  *from, int sizeInByte){
 
 
 bool acintCmp(unsigned int *to, ac_int<128, false>  *from, int sizeInByte){
+
 	for (int oneSourceValue = 0; oneSourceValue < sizeInByte/16; oneSourceValue++){
 		ac_int<128, false> value = 0;
-
 		if (to[4*oneSourceValue+0] != readInt(from, 16*oneSourceValue + 0)
 				|| to[4*oneSourceValue+1] != readInt(from, 16*oneSourceValue + 4)
 				|| to[4*oneSourceValue+2] != readInt(from, 16*oneSourceValue + 8)
