@@ -256,7 +256,6 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 			}
 			else if (jumpOpcode == VEX_GOTO){
-				fprintf(stderr, "correcting jump at %d for block with %d jumps and %d succ, dest in source is %x\n", block->jumpPlaces[oneJump], block->nbJumps, block->nbSucc, block->sourceDestination);
 					int dest = block->successors[oneJump]->vliwStartAddress;
 					unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
 					writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
