@@ -301,6 +301,20 @@ int main(int argc, char *argv[])
 	dbtPlateform.vliwInitialConfiguration = CONFIGURATION;
 	dbtPlateform.vliwInitialIssueWidth = getIssueWidth(dbtPlateform.vliwInitialConfiguration);
 
+	//Preparation of required memories
+	for (int oneFreeRegister = 33; oneFreeRegister<63; oneFreeRegister++)
+		dbtPlateform.freeRegisters[oneFreeRegister-33] = oneFreeRegister;
+
+	for (int oneFreeRegister = 63-33; oneFreeRegister<63; oneFreeRegister++)
+		dbtPlateform.freeRegisters[oneFreeRegister] = 0;
+
+	for (int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
+		dbtPlateform.placeOfRegisters[256+onePlaceOfRegister] = onePlaceOfRegister;
+	//same for FP registers
+	for (int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
+		dbtPlateform.placeOfRegisters[256+64+onePlaceOfRegister] = onePlaceOfRegister;
+
+
 
 	#ifndef __NIOS
 

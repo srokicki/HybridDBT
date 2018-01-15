@@ -13,11 +13,11 @@
  *      Author: simon
  */
 
-#ifndef __USE_AC
 
 #include <types.h>
 #include <isa/irISA.h>
 #include <isa/vexISA.h>
+#include <lib/endianness.h>
 
 template<int N> struct l2 { enum { value = 1 + l2<N/2>::value }; };
 template<> struct l2<1> { enum { value = 1 }; };
@@ -33,46 +33,36 @@ const short cst1ff = 0x1ff;
 const unsigned int zero32 = 0;
 
 // for replacing the jump instruction at a basic block end
-bool haveJump;
-unsigned int jumpPlace;
+bool haveJump_sw;
+unsigned int jumpPlace_sw;
 
 // computed instructino ID
-unsigned short instructionId;
+unsigned short instructionId_sw;
 
 // window position in the VEX binaries
-unsigned short windowPosition;
+unsigned short windowPosition_sw;
 
 // used to virtually shift the window (instead of copying the values backward)
-unsigned char windowShift;
+unsigned char windowShift_sw;
 
 // for knowing when to enable a register for allocation
-unsigned char registerDependencies[256];
+unsigned char registerDependencies_sw[256];
 
 // for WAR dependencies
-unsigned int lastRead[128];
+unsigned int lastRead_sw[128];
 
 // Scheduled instructions stages
-unsigned char instructionsStages[256];
+unsigned char instructionsStages_sw[256];
 
 // explicit forwarding for catapult (lowering II)
-unsigned char lastInstructionStage;
-unsigned int lastPlaceOfInstr;
+unsigned char lastInstructionStage_sw;
+unsigned int lastPlaceOfInstr_sw;
 
-unsigned int window[WINDOW_SIZE][STAGE_NUMBER];
-unsigned char freeSlot[WINDOW_SIZE];
+unsigned int window_sw[WINDOW_SIZE][STAGE_NUMBER];
+bool freeSlot_sw[WINDOW_SIZE][8];
 
 unsigned int max(unsigned int a, unsigned int b) {
 	return a > b ? a : b;
-}
-
-/**
- * @brief computes the instruction type in order to know which stage
- *				it can go on
- * @param the instruction
- * @return its type
- */
-unsigned char getType(ac_int<50, false> instruction) {
-	return instruction.slc<2>(30+18);
 }
 
 /**
@@ -80,8 +70,8 @@ unsigned char getType(ac_int<50, false> instruction) {
  * @param the virtual offset
  * @return the real offset
  */
-ac_int<WINDOW_SIZE_L2+1, false> offset(ac_int<WINDOW_SIZE_L2+1, false> off) {
-	return (off + windowShift) % WINDOW_SIZE;
+int offset(int off) {
+	return (off + windowShift_sw) % WINDOW_SIZE;
 }
 
 /**
@@ -90,64 +80,59 @@ ac_int<WINDOW_SIZE_L2+1, false> offset(ac_int<WINDOW_SIZE_L2+1, false> off) {
  * @param the bytecode instruction
  * @return the VEX instruction
  */
-ac_int<32, false> createInstruction(ac_int<50, false> instruction) {
-
+unsigned int createInstruction(unsigned int irInstr96, unsigned int irInstr64, unsigned short rIn1, unsigned short rIn2, unsigned short rDest) {
 	// Type of Functional Unit needed by this instruction
-	ac_int<2, false> unitType = getType(instruction);
+	char unitType = irInstr96>>30;
 
 	// We split different information from the instruction
-	ac_int<2, false> typeCode = instruction.slc<2>(46);
-	ac_int<1, false> alloc = instruction[45];
-	ac_int<1, false> allocBr = instruction[44];
-	ac_int<7, false> opCode = instruction.slc<7>(37);
+	char typeCode = ((irInstr96 >> 28) & 0x3);
+	unsigned char alloc = ((irInstr96 >> 27) & 0x1);
+	unsigned char allocBr = ((irInstr96 >> 26) & 0x1);
+	unsigned char opCode = ((irInstr96 >> 19) & 0x7f);
 
-	ac_int<1, false> isImm = instruction[36];
-	ac_int<7, false> funct = instruction.slc<5>(31);
+	unsigned char  isImm = ((irInstr96 >> 18) & 0x1);
+	unsigned char funct = ((irInstr96 >> 13) & 0x1f);
 
-	ac_int<1, false> isBr = instruction[35];
-	ac_int<9, false> virtualRDest = instruction.slc<9>(0);
-	ac_int<9, false> virtualRIn2 = instruction.slc<9>(9);
-	ac_int<9, false> virtualRIn1_imm9 = instruction.slc<9>(18);
-	ac_int<13, false> imm13 = instruction.slc<13>(18); //TODO
-	ac_int<19, false> imm19 = instruction.slc<19>(9);
-	ac_int<9, false> brCode = instruction.slc<9>(27);
+	unsigned short virtualRDest = (irInstr64 >> 14) & 0x1ff;
+	unsigned short virtualRIn2 = (irInstr64 >> 23) & 0x1ff;
+	unsigned short virtualRIn1_imm9 = (irInstr96 >> 0) & 0x1ff;
+	unsigned short imm13 = (irInstr96 >> 0) & 0x1fff;
+	unsigned int imm19 = (((irInstr96 >> 0) & 0x3ff)<<9) + ((irInstr64 >> 23) & 0x1ff);
 
 	//***************************************
 	//We generate the instruction
-	ac_int<32, false> generatedInstruction = 0;
-	generatedInstruction.set_slc(0, opCode);
-	generatedInstruction.set_slc(26, ac_int<6>(virtualRIn2));
+
+	unsigned int generatedInstruction = 0;
+	generatedInstruction |= opCode;
 
 	if (typeCode == 0) { //The instruction is R type
+		generatedInstruction |= ((rIn2 & 0x3f)<<26);
 
 		if (opCode == VEX_FP){
-			generatedInstruction.set_slc(7, funct);
+			generatedInstruction |= ((funct & 0x1f)<<7);
 		}
 
 		if (isImm) {
-			generatedInstruction.set_slc(7, imm13);
-			generatedInstruction.set_slc(20, ac_int<6>(virtualRDest));
+			generatedInstruction |= ((imm13 & 0x1fff)<<7);
+			generatedInstruction |= ((rDest & 0x3f)<<20);
 		}
 		else{
-			generatedInstruction.set_slc(14, ac_int<6>(virtualRDest));
-			generatedInstruction.set_slc(20, ac_int<6>(virtualRIn1_imm9));
+			generatedInstruction |= ((rDest & 0x3f)<<14);
+			generatedInstruction |= ((rIn1 & 0x3f)<<20);
 		}
 	}
 	else { //The instruction is I Type
-		if (opCode == 0x28) {
-			generatedInstruction.set_slc(26, ac_int<6>(virtualRDest));
-		}
-		else{
-			generatedInstruction.set_slc(26, ac_int<6>(virtualRDest));
-		}
-		generatedInstruction.set_slc(7, imm19);
+		generatedInstruction |= ((rDest & 0x3f)<<26);
+
+		generatedInstruction |= ((imm19 & 0x7ffff)<<7);
 	}
 
 	return generatedInstruction;
 }
 
-int priority[MAX_ISSUE_WIDTH] = {7,6,0,3,1,4,5,2};
-void sort_ways(ac_int<MAX_ISSUE_WIDTH * 4, false> ways)
+
+int priority_sw[MAX_ISSUE_WIDTH] = {7,6,0,3,1,4,5,2};
+void sort_ways(unsigned int ways)
 {
   static int sorted = 0;
   if (!sorted)
@@ -158,11 +143,11 @@ void sort_ways(ac_int<MAX_ISSUE_WIDTH * 4, false> ways)
 
     for (int i = 0; i < MAX_ISSUE_WIDTH; ++i)
     {
-      int id = ways.slc<4>(i * 4);
+      int id = (ways>>(i*4)) & 0xf;
       classeur[id][ns[id]++] = i;
     }
 
-    int * it = priority;
+    int * it = priority_sw;
     for (int i = 0; i < 16; ++i)
     {
       for (int j = 0; j < ns[i]; ++j)
@@ -194,72 +179,72 @@ unsigned int irScheduler_scoreboard_sw(
 //  sort_ways(way_specialisation);
 
 
-	haveJump = 0;
-	instructionId = 0;
-	windowPosition = 0;//addressInBinaries;
-	windowShift = 0;
+	haveJump_sw = 0;
+	instructionId_sw = 0;
+	windowPosition_sw = 0;//addressInBinaries;
+	windowShift_sw = 0;
 
-	for (int windowOffset = 0; windowOffset < WINDOW_SIZE; ++windowOffset) {
-			freeSlot[windowOffset] = 0xFF;
-	}
+	for (int windowOffset = 0; windowOffset < WINDOW_SIZE; ++windowOffset)
+		for (int oneStage = 0; oneStage<MAX_ISSUE_WIDTH; oneStage++)
+			freeSlot_sw[windowOffset][oneStage] = true;
+
 
 	for (int i = 0; i < 128; ++i) {
-		lastRead[i] = 0;
+		lastRead_sw[i] = 0;
 	}
 
-	while (instructionId < basicBlockSize) {
+	while (instructionId_sw < basicBlockSize) {
 
 
 		//**************************************************************
 		// Fetching / Decoding instruction
 		//**************************************************************
 
-		ac_int<128, false> bytecode_word = bytecode[instructionId];
+		ac_int<128, false> bytecode_word = bytecode[instructionId_sw];
 
-		unsigned int bytecode_word1 = readInt(bytecode, instructionId*16 + 0);
-		unsigned int bytecode_word2 = readInt(bytecode, instructionId*16 + 4);
-		unsigned int bytecode_word3 = readInt(bytecode, instructionId*16 + 8);
-		unsigned int bytecode_word4 = readInt(bytecode, instructionId*16 + 12);
-
-		ac_int<50, false> instruction = 0;
-		instruction.set_slc(18, bytecode_word1);
-		instruction.set_slc(0, bytecode_word2.slc<18>(14));
+		unsigned int irInstr96 = readInt(bytecode, instructionId_sw*16 + 0);
+		unsigned int irInstr64 = readInt(bytecode, instructionId_sw*16 + 4);
+		unsigned int irInstr32 = readInt(bytecode, instructionId_sw*16 + 8);
+		unsigned int irInstr0 = readInt(bytecode, instructionId_sw*16 + 12);
 
 		// Type of Functional Unit needed by this instruction
-		ac_int<2, false> unitType = getType(instruction);
+		char unitType = irInstr96>>30;
 
-		ac_int<2, false> typeCode = instruction.slc<2>(46);
-		ac_int<1, false> alloc = instruction[45];
-		ac_int<1, false> allocBr = instruction[44];
-		ac_int<7, false> opCode = instruction.slc<7>(37);
-		ac_int<1, false> isImm = instruction[36];
-		ac_int<5, false> funct = instruction.slc<5>(31);
-		ac_int<1, false> isBr = instruction[35];
-		ac_int<9, false> virtualRDest = instruction.slc<9>(0);
-		ac_int<9, false> virtualRIn2 = instruction.slc<9>(9);
-		ac_int<9, false> virtualRIn1_imm9 = instruction.slc<9>(18);
-		ac_int<13, false> imm13 = instruction.slc<13>(18); //TODO
-		ac_int<19, false> imm19 = instruction.slc<19>(9);
-		ac_int<9, false> brCode = instruction.slc<9>(27);
+		// We split different information from the instruction
+		char typeCode = ((irInstr96 >> 28) & 0x3);
+		unsigned char alloc = ((irInstr96 >> 27) & 0x1);
+		unsigned char allocBr = ((irInstr96 >> 26) & 0x1);
+		unsigned char opCode = ((irInstr96 >> 19) & 0x7f);
+
+		unsigned char  isImm = ((irInstr96 >> 18) & 0x1);
+		unsigned char funct = ((irInstr96 >> 13) & 0x1f);
+
+		unsigned short virtualRDest = (irInstr64 >> 14) & 0x1ff;
+		unsigned short virtualRIn2 = (irInstr64 >> 23) & 0x1ff;
+		unsigned short virtualRIn1_imm9 = (irInstr96 >> 0) & 0x1ff;
+		unsigned short imm13 = (irInstr96 >> 0) & 0x1fff;
+		unsigned int imm19 = ((irInstr96 >> 0) & 0x3ff) + ((irInstr64 >> 23) & 0x1ff);
 
 		// real dest register (after alloc/dereferencing)
-		ac_int<6, false> dest;
+		unsigned char dest;
 
 		// for RAW/WAW dependencies
-		ac_int<3, false> nbDataDeps    = bytecode_word2.slc<3>(3);
-		ac_int<3, false> nbNonDataDeps = bytecode_word2.slc<3>(0) - nbDataDeps;
-		ac_int<8, false> deps[7];
-		deps[0] = bytecode_word3.slc<8>(16);
-		deps[1] = bytecode_word3.slc<8>(8);
-		deps[2] = bytecode_word3.slc<8>(0);
-		deps[3] = bytecode_word4.slc<8>(24);
-		deps[4] = bytecode_word4.slc<8>(16);
-		deps[5] = bytecode_word4.slc<8>(8);
-		deps[6] = bytecode_word4.slc<8>(0);
+		unsigned char nbDataDeps    = (irInstr64 >> 3) & 0x7;
+		unsigned char nbNonDataDeps = (irInstr64 & 0x7) - nbDataDeps;
+		unsigned char deps[8];
+
+		deps[0] = irInstr32 >>16;
+		deps[1] = irInstr32>>8;
+		deps[2] = irInstr32>>0;
+		deps[3] = irInstr0>>24;
+		deps[4] = irInstr0>>16;
+		deps[5] = irInstr0>>8;
+		deps[6] = irInstr0>>0;
+
 
 		//For alloc
-		ac_int<6, false> accessPlaceOfReg = placeOfRegisters[virtualRDest];
-		ac_int<6, false> accessFreeReg = freeRegisters[numberFreeRegister-1];
+		unsigned char accessPlaceOfReg = placeOfRegisters[virtualRDest];
+		unsigned char accessFreeReg = freeRegisters[numberFreeRegister-1];
 
 		//**************************************************************
 		// Allocation
@@ -271,14 +256,14 @@ unsigned int irScheduler_scoreboard_sw(
 			if (numberFreeRegister > 0) {
 				numberFreeRegister--;
 				dest = accessFreeReg;
-				registerDependencies[instructionId] = bytecode_word2.slc<8>(6);
+				registerDependencies_sw[instructionId_sw] = ((irInstr64 >> 6) & 0xff);
 			} else {
 				// else crash
 				exit(-1);
 				//return basicBlockSize+1;
 			}
 		} else {
-			registerDependencies[instructionId] = 0xff;
+			registerDependencies_sw[instructionId_sw] = 0xff;
 			dest = accessPlaceOfReg;
 		}
 
@@ -286,232 +271,171 @@ unsigned int irScheduler_scoreboard_sw(
 		// Computing dependencies
 		//**************************************************************
 
-		ac_int<32, false> earliest_place = 0;
-
+		unsigned int earliest_place = 0;
 		// here, ternary conditions are for forwarding purpose
-		for (ac_int<3, false> i = 0; i < 7; ++i) {
-			ac_int<32, true> place = (deps[i] != instructionId-1)
-			? placeOfInstr[deps[i]] : lastPlaceOfInstr;
+
+		for (int i = 0; i < 7; ++i) {
+			int place = placeOfInstr[deps[i]];
 
 			// RAW (gap depends on the type of stage because of pipeline length diffs)
 			if (i < nbDataDeps) {
-				ac_int<8, false> stg = (deps[i] != instructionId-1)
-				? instructionsStages[deps[i]] : lastInstructionStage;
-        ac_int<4, false> spec = way_specialisation.slc<4>(stg << 2);
-				ac_int<2, false> gap = (spec[1] || spec[3]) ? 2 : 1;
-				earliest_place = max(earliest_place, (ac_int<32,false>(place+gap)));
+				char stg = instructionsStages_sw[deps[i]];
+
+				char spec = (way_specialisation>>(stg*4)) & 0xf;
+				char gap = ((spec & 0x2) || (spec & 0x8)) ? 2 : 1;
+
+				earliest_place = max(earliest_place, place+gap);
+
 			}
 			// WAW
 			else if (6-i < nbNonDataDeps) {
 				if (unitType == 0){
-					ac_int<2, false> typeOfPred = bytecode[deps[i]].slc<2>(126);
 
-					ac_int<8, false> stg = (deps[i] != instructionId-1)
-					? instructionsStages[deps[i]] : lastInstructionStage;
-          ac_int<4, false> spec = way_specialisation.slc<4>(stg << 2);
-					ac_int<2, true> gap = (spec[1] || spec[3]) ? 0 : -1;
-					ac_int<32, true> test = place+gap;
+					//Special case for handling jump instructions a bit better
+					char typeOfPred = readInt(bytecode, 16*deps[i]) >> 30;
 
-					test = !(spec[1] || spec[3]) && place == 0 ? ac_int<32, true>(windowPosition) : test;
+					char stg = instructionsStages_sw[deps[i]];
+					char spec = (way_specialisation>>(stg*4)) & 0xf;
+					char gap = ((spec & 0x2) || (spec & 0x8)) ? 0 : -1;
+					unsigned int test = place+gap;
+					test = !((spec & 0x2) || (spec & 0x8)) && place == 0 ? windowPosition_sw : test;
 					test = (typeOfPred == 0) ? place+2 : test+0;
-
 					earliest_place = max(earliest_place, test);
+
 				}
 				else{
-					ac_int<2, false> typeOfPred = bytecode[deps[i]].slc<2>(126);
-					ac_int<32, true> test = (typeOfPred == 0) ? (ac_int<32,false>(place+2)) : (ac_int<32,false>(place+1));
+					//Normal case for control dep
+					char typeOfPred = readInt(bytecode, 16*deps[i]) >> 30;
+					unsigned int test = (typeOfPred == 0) ? place+2 : place+1;
 					earliest_place = max(earliest_place, test);
 
+//					ac_int<2, false> typeOfPred = bytecode[deps[i]].slc<2>(126);
+//					ac_int<32, true> test = (typeOfPred == 0) ? (ac_int<32,false>(place+2)) : (ac_int<32,false>(place+1));
+//					earliest_place = max(earliest_place, test);
 
 				}
 			}
 		}
 
 		// WAR
-		earliest_place = max(earliest_place, lastRead[dest]);
+		earliest_place = max(earliest_place, lastRead_sw[dest]);
+
 		//**************************************************************
 		// Placing the instruction
 		//**************************************************************
 
-		ac_int<WINDOW_SIZE_L2+1, false> bestWindowOffset = WINDOW_SIZE;
-		ac_int<STAGE_NUMBER_L2+1, false> bestStageId;
+		int bestWindowOffset = WINDOW_SIZE;
+		int bestStageId;
 
-		// for explicit tree reduction purpose
-		ac_int<WINDOW_SIZE, false> possible = 0;
-		ac_int<STAGE_NUMBER_L2, false> bestStage[WINDOW_SIZE];
-		ac_int<WINDOW_SIZE_L2, false> bestOffset[WINDOW_SIZE];
+		int offsetStart = earliest_place < windowPosition_sw ? 0 : earliest_place - windowPosition_sw;
 
 		// available places search
-		for (ac_int<STAGE_NUMBER_L2+1, false> stageId_ = 0
-		; stageId_ < STAGE_NUMBER; stageId_ += 1)
-		{
-      int stageId = priority[stageId_];
-			// loop unrolled by hand to ease synthesis
-			ac_int<4, false> stageType = way_specialisation.slc<4>(stageId << 2);
-			if (stageType && stageType[unitType]) {
-				for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
-				; windowOffset < WINDOW_SIZE; ++windowOffset)
-				{
-					if (freeSlot[offset(windowOffset)][stageId]
-					&& !possible[windowOffset]) {
-						bestStage[windowOffset] = stageId;
-						bestOffset[windowOffset] = windowOffset;
-						possible[windowOffset] = 1;
-					}
+		bool found = false;
+
+		for (int windowOffset = offsetStart; windowOffset < WINDOW_SIZE; ++windowOffset){
+			for (int stageId_ = 0; stageId_ < STAGE_NUMBER; stageId_ += 1){
+				int stageId = priority_sw[stageId_];
+				char stageType = (way_specialisation>>(stageId*4)) & 0xf;
+
+				//If type is compatible
+				if (stageType && ((stageType >> unitType) & 0x1) && freeSlot_sw[offset(windowOffset)][stageId]) {
+
+					bestStageId = stageId;
+					bestWindowOffset = windowOffset;
+					found = true;
+					break;
+
 				}
+				if (found)
+					break;
 			}
 
-		/*	stageType = way_specialisation.slc<2>((stageId << 1) + 2);
-			if (issue_width[stageId] && (unitType == stageType || unitType == 2)) {
-				for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
-				; windowOffset < WINDOW_SIZE; ++windowOffset)
-				{
-					if (freeSlot[offset(windowOffset)][stageId+1]
-					&& !possible[windowOffset]) {
-						bestStage[windowOffset] = stageId+1;
-						bestOffset[windowOffset] = windowOffset;
-						possible[windowOffset] = 1;
-					}
-				}
-			}*/
+
 		}
 
-		// updates possible[] array with the [earliest_place] constraint
-		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
-		; windowOffset < WINDOW_SIZE; ++windowOffset) {
-
-			possible[windowOffset] = possible[windowOffset] &&
-			windowOffset+windowPosition >= earliest_place;
-		}
-		// 3 [for] loops for tree reduction over available places
-		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
-		; windowOffset < WINDOW_SIZE; windowOffset += 2) {
-			if (possible[windowOffset+1] && !possible[windowOffset]) {
-				bestOffset[windowOffset] = bestOffset[windowOffset+1];
-				bestStage[windowOffset] = bestStage[windowOffset+1];
-				possible[windowOffset] = 1;
-			}
-		}
-
-		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
-		; windowOffset < WINDOW_SIZE; windowOffset += 4) {
-			if (possible[windowOffset+2] && !possible[windowOffset]) {
-				bestOffset[windowOffset] = bestOffset[windowOffset+2];
-				bestStage[windowOffset] = bestStage[windowOffset+2];
-				possible[windowOffset] = 1;
-			}
-		}
-
-		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
-		; windowOffset < WINDOW_SIZE; windowOffset += 8) {
-			if (possible[windowOffset+4] && !possible[windowOffset]) {
-				bestOffset[windowOffset] = bestOffset[windowOffset+4];
-				bestStage[windowOffset] = bestStage[windowOffset+4];
-				possible[windowOffset] = 1;
-			}
-		}
-		for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
-		; windowOffset < WINDOW_SIZE; windowOffset += 16) {
-			if (possible[windowOffset+8] && !possible[windowOffset]) {
-				bestOffset[windowOffset] = bestOffset[windowOffset+8];
-				bestStage[windowOffset] = bestStage[windowOffset+8];
-				possible[windowOffset] = 1;
-			}
-		}
-
-
-
-		bestWindowOffset = bestOffset[0];
-		bestStageId = bestStage[0];
+		bool possible = found;
 
 		//**************************************************************
 		// Generation + pre-placement of instruction
 		//**************************************************************
 
-		instruction.set_slc(0, ac_int<9, false>(dest));
-		placeOfRegisters[instructionId] = dest;
+		placeOfRegisters[instructionId_sw] = dest;
 
-		ac_int<9, false> rin1 = virtualRIn1_imm9;
-		ac_int<9, false> rin2 = typeCode == 2 ? virtualRDest : virtualRIn2;
+		short rin1 = virtualRIn1_imm9;
+		short rin2 = typeCode == 2 ? virtualRDest : virtualRIn2;
 
-		ac_int<6, false> placeOfRin1 = placeOfRegisters[rin1];
+		short modifiedRin2 = rin2, modifiedRin1 = rin1, modifiedRdest = dest;
 
-		ac_int<6, false> placeOfRin2 = placeOfRegisters[rin2];
+		char placeOfRin1 = placeOfRegisters[rin1];
 
-		ac_int<8, false> rin1Dep = registerDependencies[rin1.slc<8>(0)];
-		ac_int<8, false> rin2Dep = registerDependencies[rin2.slc<8>(0)];
+		char placeOfRin2 = placeOfRegisters[rin2];
 
-		ac_int<1, false> useRin1 = (typeCode == 0 && !isImm) && (opCode != VEX_FP || (opCode == VEX_FP && funct != VEX_FP_FCVTSW && funct != VEX_FP_FCVTSWU && funct != VEX_FP_FCVTWS && funct != VEX_FP_FCVTWUS && funct != VEX_FP_FMVWX && funct != VEX_FP_FMVXW && funct != VEX_FP_FCLASS));
-		ac_int<1, false> useRin2 = typeCode == 0 || (typeCode == 2 && opCode != VEX_MOVI && opCode != VEX_GOTO && opCode != VEX_CALL);
+		unsigned char rin1Dep = registerDependencies_sw[rin1 & 0xff];
+		unsigned char rin2Dep = registerDependencies_sw[rin2 & 0xff];
+
+		bool useRin1 = (typeCode == 0 && !isImm) && (opCode != VEX_FP || (opCode == VEX_FP && funct != VEX_FP_FCVTSW && funct != VEX_FP_FCVTSWU && funct != VEX_FP_FCVTWS && funct != VEX_FP_FCVTWUS && funct != VEX_FP_FMVWX && funct != VEX_FP_FMVXW && funct != VEX_FP_FCLASS));
+		bool useRin2 = typeCode == 0 || (typeCode == 2 && opCode != VEX_MOVI && opCode != VEX_GOTO && opCode != VEX_CALL);
 		if (useRin2) {
 			if (typeCode != 2)
-				instruction.set_slc(9, placeOfRin2);
+				modifiedRin2 = placeOfRin2;
 			else
-				instruction.set_slc(0, placeOfRin2);
+				modifiedRdest = placeOfRin2;
 		}
 
 		if (useRin1) {
-			instruction.set_slc(18, placeOfRin1);
-
-			if (!rin1[8] && rin1 == rin2) {
+			modifiedRin1 = placeOfRin1;
+			if (rin1<256 && rin1 == rin2) {
 				 rin1Dep -= 2;
 			} else {
-				if (!rin1[8])
+				if (rin1<256)
 					rin1Dep--;
 
-				if (!rin2[8])
+				if (rin2<256)
 					rin2Dep--;
 			}
-		} else if (!rin2[8]) {
+		} else if (rin2<256) {
 			rin2Dep--;
 		}
 
-		registerDependencies[rin1.slc<8>(0)] = rin1Dep;
-		registerDependencies[rin2.slc<8>(0)] = rin2Dep;
+		registerDependencies_sw[rin1 & 0xff] = rin1Dep;
+		registerDependencies_sw[rin2 & 0xff] = rin2Dep;
 
-		if (useRin1 && !rin1[8] && rin1Dep == 0)
+		if (useRin1 && rin1<256 && rin1Dep == 0)
 			freeRegisters[numberFreeRegister++] = placeOfRin1;
-		if (useRin2 && !rin2[8] && rin2Dep == 0)
+		if (useRin2 && rin2<256 && rin2Dep == 0)
 			freeRegisters[numberFreeRegister++] = placeOfRin2;
 
 		//***********************************************************************
 		// !Place found : Write binaries + shift the window + correct placement
 		//***********************************************************************
-		if (!possible[0]) {
-			ac_int<32, false> advance = (earliest_place > windowPosition+WINDOW_SIZE)
-			? earliest_place-windowPosition-WINDOW_SIZE+1 : ac_int<35,true>(1);
-			for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
-			; windowOffset < 3; ++windowOffset) {
-				ac_int<256, false> binariesWord;
-				ac_int<WINDOW_SIZE_L2, false> off = offset(windowOffset);
-				ac_int<8, false> available = freeSlot[off];
+		if (!possible) {
+			unsigned int advance = (earliest_place > windowPosition_sw+WINDOW_SIZE)	? earliest_place-windowPosition_sw-WINDOW_SIZE+1 : 1;
 
-				for (ac_int<STAGE_NUMBER_L2+1, false> stageId = 0
-				; stageId < STAGE_NUMBER; ++stageId) {
-					binariesWord.set_slc(  stageId*32
-					, available[stageId] ? zero32 : window[off][stageId]);
+			for (int windowOffset = 0; windowOffset < 3; ++windowOffset) {
+				char off = offset(windowOffset);
 
-
+				binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+3] = freeSlot_sw[off][0] ? 0 : window_sw[off][0];
+				binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+2] = freeSlot_sw[off][1] ? 0 : window_sw[off][1];
+				binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+1] = freeSlot_sw[off][2] ? 0 : window_sw[off][2];
+				binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+0] = freeSlot_sw[off][3] ? 0 : window_sw[off][3];
+				if (issue_width>4) {
+					binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+7] = freeSlot_sw[off][4] ? 0 : window_sw[off][4];
+					binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+6] = freeSlot_sw[off][5] ? 0 : window_sw[off][5];
+					binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+5] = freeSlot_sw[off][6] ? 0 : window_sw[off][6];
+					binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+4] = freeSlot_sw[off][7] ? 0 : window_sw[off][7];
 				}
 
 				if (windowOffset < advance)
-					freeSlot[off] = 0xFF;
-
-				if (issue_width<=4) {
-					binaries[addressInBinaries+windowPosition+windowOffset] = binariesWord.slc<128>(0);
-				} else {
-					binaries[addressInBinaries+(windowPosition+windowOffset)*2] = binariesWord.slc<128>(0);
-					binaries[addressInBinaries+(windowPosition+windowOffset)*2+1] = binariesWord.slc<128>(128);
-				}
+					for (int oneStage = 0; oneStage<MAX_ISSUE_WIDTH; oneStage++)
+						freeSlot_sw[off][oneStage] = true;
 			}
-			windowPosition += advance;
-			windowShift = (windowShift+(advance))%WINDOW_SIZE;
+			windowPosition_sw += advance;
+			windowShift_sw = (windowShift_sw+(advance))%WINDOW_SIZE;
 
-			for (ac_int<STAGE_NUMBER_L2+1, false> stageId_ = 0
-			; stageId_ < STAGE_NUMBER; ++stageId_) {
-				int stageId = priority[stageId_];
-				ac_int<4, false> stageType = way_specialisation.slc<4>(stageId << 2);
-				if (stageType && stageType[unitType]) {
+			for (int stageId_ = 0; stageId_ < STAGE_NUMBER; ++stageId_){
+				int stageId = priority_sw[stageId_];
+				char stageType = (way_specialisation>>(stageId*4)) & 0xf;
+				if (stageType && ((stageType >> unitType) & 0x1)) {
 					bestStageId = stageId;
 					break;
 				}
@@ -520,28 +444,28 @@ unsigned int irScheduler_scoreboard_sw(
 			bestWindowOffset = WINDOW_SIZE-1;
 		}
 		//****************************************************************
-		// Writing instruction into the window buffer
+		// Writing instruction into the window_sw buffer
 		//****************************************************************
 
-		lastPlaceOfInstr = windowPosition + bestWindowOffset;
-		placeOfInstr[instructionId] = windowPosition + bestWindowOffset;
+		lastPlaceOfInstr_sw = windowPosition_sw + bestWindowOffset;
+		placeOfInstr[instructionId_sw] = windowPosition_sw + bestWindowOffset;
 
-		lastInstructionStage = bestStageId;
-		instructionsStages[instructionId] = bestStageId;
+		instructionsStages_sw[instructionId_sw] = bestStageId;
 
 		if (useRin2)
-			lastRead[placeOfRin2] = lastPlaceOfInstr;
+			lastRead_sw[placeOfRin2] = lastPlaceOfInstr_sw;
 		if (useRin1)
-			lastRead[placeOfRin1] = lastPlaceOfInstr;
-		window[offset(bestWindowOffset)][bestStageId] = createInstruction(instruction);
-		freeSlot[offset(bestWindowOffset)][bestStageId] = 0;
+			lastRead_sw[placeOfRin1] = lastPlaceOfInstr_sw;
 
-		if (instruction.slc<2>(48) == 0) {
-			haveJump = 1;
-			jumpPlace = placeOfInstr[instructionId];
+		window_sw[offset(bestWindowOffset)][bestStageId] = createInstruction(irInstr96, irInstr64, modifiedRin1, modifiedRin2, modifiedRdest);
+		freeSlot_sw[offset(bestWindowOffset)][bestStageId] = false;
+
+		if (unitType == 0) {
+			haveJump_sw = 1;
+			jumpPlace_sw = placeOfInstr[instructionId_sw];
 		}
 
-		instructionId++;
+		instructionId_sw++;
 
 
 	}
@@ -550,61 +474,68 @@ unsigned int irScheduler_scoreboard_sw(
 	// Write remaining binaries + find the last word which contains instructions
 	//**************************************************************
 
-	ac_int<256, false> lastWord = 0;
-	ac_int<32, false> lastGap = 0;
-	for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
-	; windowOffset < WINDOW_SIZE; ++windowOffset) {
-		ac_int<256, false> binariesWord;
-		ac_int<WINDOW_SIZE_L2, false> off = offset(windowOffset);
-		ac_int<8, false> available = freeSlot[off];
+	unsigned int lastAddress = 0;
+	unsigned int lastGap = 0;
+	for (int windowOffset = 0; windowOffset < WINDOW_SIZE; ++windowOffset) {
+		int off = offset(windowOffset);
 
-		for (ac_int<STAGE_NUMBER_L2+1, false> stageId = 0
-		; stageId < STAGE_NUMBER; ++stageId) {
-			binariesWord.set_slc(  stageId*32
-			, available[stageId] ? zero32 : window[off][stageId]);
 
-		}
-		if (available != 0xff) {
-			lastGap = windowOffset;
-			lastWord = binariesWord;
+		binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+3] = freeSlot_sw[off][0] ? 0 : window_sw[off][0];
+		binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+2] = freeSlot_sw[off][1] ? 0 : window_sw[off][1];
+		binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+1] = freeSlot_sw[off][2] ? 0 : window_sw[off][2];
+		binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+0] = freeSlot_sw[off][3] ? 0 : window_sw[off][3];
+		if (issue_width>4) {
+			binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+7] = freeSlot_sw[off][4] ? 0 : window_sw[off][4];
+			binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+6] = freeSlot_sw[off][5] ? 0 : window_sw[off][5];
+			binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+5] = freeSlot_sw[off][6] ? 0 : window_sw[off][6];
+			binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+4] = freeSlot_sw[off][7] ? 0 : window_sw[off][7];
 		}
 
-		freeSlot[off] = 0xFF;
-		if (issue_width<=4) {
-			binaries[addressInBinaries+windowPosition+windowOffset] = binariesWord.slc<128>(0);
-		} else {
-			binaries[addressInBinaries+(windowPosition+windowOffset)*2] = binariesWord.slc<128>(0);
-			binaries[addressInBinaries+(windowPosition+windowOffset)*2+1] = binariesWord.slc<128>(128);
+		for (int oneStage = 0; oneStage<MAX_ISSUE_WIDTH; oneStage++){
+			if (freeSlot_sw[off][oneStage]){
+				lastGap = windowOffset;
+				lastAddress = (addressInBinaries+windowPosition_sw+windowOffset)*4;
+			}
+			freeSlot_sw[off][oneStage] = true;
 		}
 	}
 
 
-	ac_int<32, false> newSize = (issue_width>4 ? 2 : 1)*(windowPosition+lastGap + 1);
+	unsigned int newSize = (issue_width>4 ? 2 : 1)*(windowPosition_sw+lastGap + 1);
 
 	for (int stageId = 0; stageId<issue_width; stageId++){
-		ac_int<7, false> opcode = lastWord.slc<7>(stageId*32);
-        ac_int<4, false> spec = way_specialisation.slc<4>(stageId << 2);
+		unsigned int instr = binaries[lastAddress + (3-stageId)];
 
-		if (opcode != 0 && ((spec[1] && (opcode > 0x1f || opcode < VEX_STB))
-				|| spec[3]
-				|| (spec[0] && (opcode == VEX_BR || opcode == VEX_BRF || opcode == VEX_CALL || opcode == VEX_CALLR || opcode == VEX_GOTO || opcode == VEX_GOTOR || opcode == VEX_RETURN)))){
+		unsigned char opcode = instr & 0x7f;
+        char spec = (way_specialisation>>(stageId*4)) & 0xf;
+
+		if (opcode != 0 && (((spec & 0x2) && (opcode > 0x1f || opcode < VEX_STB))
+				|| (spec & 0x8)
+				|| ((spec & 0x1) && (opcode == VEX_BR || opcode == VEX_BRF || opcode == VEX_CALL || opcode == VEX_CALLR || opcode == VEX_GOTO || opcode == VEX_GOTOR || opcode == VEX_RETURN)))){
+
 			newSize += (issue_width>4 ? 2 : 1);
-			if (issue_width <= 4) {
-				binaries[addressInBinaries + newSize-1] = 0;
-			} else {
-				binaries[addressInBinaries + newSize-1] = 0;
-				binaries[addressInBinaries + newSize-2] = 0;
+
+			binaries[(addressInBinaries+newSize-1)*4+3] = 0;
+			binaries[(addressInBinaries+newSize-1)*4+2] = 0;
+			binaries[(addressInBinaries+newSize-1)*4+1] = 0;
+			binaries[(addressInBinaries+newSize-1)*4+0] = 0;
+
+			if (issue_width>4) {
+				binaries[(addressInBinaries+newSize-2)*4+7] = 0;
+				binaries[(addressInBinaries+newSize-2)*4+6] = 0;
+				binaries[(addressInBinaries+newSize-2)*4+5] = 0;
+				binaries[(addressInBinaries+newSize-2)*4+4] = 0;
 			}
 			break;
 		}
 	}
 
 
-	ac_int<32, false> newEnd = addressInBinaries+newSize;
+	unsigned int newEnd = addressInBinaries+newSize;
 
 
 	return newSize;
 }
 
-#endif
+
 

@@ -36,7 +36,6 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		ac_int<MAX_ISSUE_WIDTH * 4, false> way_specialisation,
 		ac_int<32, false> placeOfInstr[256]);
 
-#ifndef __USE_AC
 
 unsigned int irScheduler_scoreboard_sw(
 		bool optLevel,
@@ -50,6 +49,9 @@ unsigned int irScheduler_scoreboard_sw(
 		unsigned char issue_width, // TODO: change to 1 boolean per issue
 		unsigned int way_specialisation,
 		unsigned int placeOfInstr[256]);
+
+#ifndef __USE_AC
+
 
 unsigned int irScheduler_list_sw(unsigned char optLevel,
 		unsigned char basicBlockSize,

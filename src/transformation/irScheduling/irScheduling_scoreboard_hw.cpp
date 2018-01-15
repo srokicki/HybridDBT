@@ -110,9 +110,12 @@ ac_int<32, false> createInstruction(ac_int<50, false> instruction) {
 
 	if (typeCode == 0) { //The instruction is R type
 
+
 		if (opCode == VEX_FP){
 			generatedInstruction.set_slc(7, funct);
+
 		}
+
 
 		if (isImm) {
 			generatedInstruction.set_slc(7, imm13);
@@ -313,7 +316,6 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 					ac_int<32, true> test = (typeOfPred == 0) ? (ac_int<32,false>(place+2)) : (ac_int<32,false>(place+1));
 					earliest_place = max(earliest_place, test);
 
-
 				}
 			}
 		}
@@ -352,19 +354,6 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 				}
 			}
 
-		/*	stageType = way_specialisation.slc<2>((stageId << 1) + 2);
-			if (issue_width[stageId] && (unitType == stageType || unitType == 2)) {
-				for (ac_int<WINDOW_SIZE_L2+1, false> windowOffset = 0
-				; windowOffset < WINDOW_SIZE; ++windowOffset)
-				{
-					if (freeSlot[offset(windowOffset)][stageId+1]
-					&& !possible[windowOffset]) {
-						bestStage[windowOffset] = stageId+1;
-						bestOffset[windowOffset] = windowOffset;
-						possible[windowOffset] = 1;
-					}
-				}
-			}*/
 		}
 
 		// updates possible[] array with the [earliest_place] constraint
@@ -424,7 +413,6 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 
 		ac_int<9, false> rin1 = virtualRIn1_imm9;
 		ac_int<9, false> rin2 = typeCode == 2 ? virtualRDest : virtualRIn2;
-
 		ac_int<6, false> placeOfRin1 = placeOfRegisters[rin1];
 
 		ac_int<6, false> placeOfRin2 = placeOfRegisters[rin2];
@@ -514,6 +502,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		// Writing instruction into the window buffer
 		//****************************************************************
 
+
 		lastPlaceOfInstr = windowPosition + bestWindowOffset;
 		placeOfInstr[instructionId] = windowPosition + bestWindowOffset;
 
@@ -524,6 +513,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 			lastRead[placeOfRin2] = lastPlaceOfInstr;
 		if (useRin1)
 			lastRead[placeOfRin1] = lastPlaceOfInstr;
+
 		window[offset(bestWindowOffset)][bestStageId] = createInstruction(instruction);
 		freeSlot[offset(bestWindowOffset)][bestStageId] = 0;
 

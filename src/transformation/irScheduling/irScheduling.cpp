@@ -35,7 +35,6 @@ unsigned char numberFreeRegister, char configuration){
 	ac_int<6, false> *localFreeRegisters = (ac_int<6, false>*) malloc(64*sizeof(ac_int<6, false>));
 	ac_int<32, false> *localPlaceOfInstr = (ac_int<32, false>*) malloc(256*sizeof(ac_int<32, false>));
 
-
 	acintMemcpy(localBytecode, platform->bytecode, 256*16);
 	acintMemcpy(localVliwBinaries, platform->vliwBinaries, MEMORY_SIZE*16);
 	acintMemcpy(localPlaceOfRegisters, platform->placeOfRegisters, 512);
@@ -43,15 +42,42 @@ unsigned char numberFreeRegister, char configuration){
 	acintMemcpy(localPlaceOfInstr, platform->placeOfInstr, 256*4);
 
 
+
 	ac_int<32, false> result =  irScheduler_scoreboard_hw(opt, basicBlockSize, localBytecode, localVliwBinaries, addressInBinaries, localPlaceOfRegisters,
 	numberFreeRegister, localFreeRegisters, issue_width, way_specialisation, localPlaceOfInstr);
 
+	unsigned int swResult = irScheduler_scoreboard_sw(opt, basicBlockSize, platform->bytecode, platform->vliwBinaries, addressInBinaries, platform->placeOfRegisters, numberFreeRegister, platform->freeRegisters, issue_width, way_specialisation, platform->placeOfInstr);
 
-	acintMemcpy(platform->bytecode, localBytecode, 256*16);
-	acintMemcpy(platform->vliwBinaries, localVliwBinaries, MEMORY_SIZE*16);
-	acintMemcpy(platform->placeOfRegisters, localPlaceOfRegisters, 512);
-	acintMemcpy(platform->freeRegisters, localFreeRegisters, 64);
-	acintMemcpy(platform->placeOfInstr, localPlaceOfInstr, 256*4);
+//	for (int oneSourceValue = addressInBinaries; oneSourceValue<addressInBinaries+result+5; oneSourceValue++)
+//	fprintf(stderr, "%d   %x %x %x %x vs %x %x %x %x\n", oneSourceValue, platform->vliwBinaries[4*oneSourceValue+0], platform->vliwBinaries[4*oneSourceValue+1], platform->vliwBinaries[4*oneSourceValue+2], platform->vliwBinaries[4*oneSourceValue+3],
+//			readInt(localVliwBinaries, 16*oneSourceValue + 0), readInt(localVliwBinaries, 16*oneSourceValue + 4), readInt(localVliwBinaries, 16*oneSourceValue + 8), readInt(localVliwBinaries, 16*oneSourceValue + 12));
+//fprintf(stderr, "\n");
+
+	if (!acintCmp(platform->bytecode, localBytecode, 256*16)){
+		fprintf(stderr, "Error: After first pass, bytecode are different...\n");
+		exit(-1);
+	}
+
+	if (!acintCmp(platform->vliwBinaries, localVliwBinaries, MEMORY_SIZE*16)){
+		fprintf(stderr, "Error: After first pass, vliw binaries are different...\n");
+		exit(-1);
+	}
+
+	if (!acintCmp(platform->placeOfRegisters, localPlaceOfRegisters, basicBlockSize)){
+		fprintf(stderr, "Error: After first pass, place of reg are different...\n");
+		exit(-1);
+	}
+
+	if (!acintCmp(platform->freeRegisters, localFreeRegisters, 64)){
+		fprintf(stderr, "Error: After first pass, free reg are different...\n");
+		exit(-1);
+	}
+
+	if (!acintCmp(platform->placeOfInstr, localPlaceOfInstr, 256*4)){
+		fprintf(stderr, "Error: After first pass, place of instr are different...\n");
+		exit(-1);
+	}
+
 
 	free(localBytecode);
 	free(localVliwBinaries);
