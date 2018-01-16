@@ -25,9 +25,15 @@ unsigned char numberFreeRegister, char configuration){
 	char issue_width = getIssueWidth(configuration)>4 ? 8 :4;
 	unsigned int way_specialisation = getConfigurationForScheduler(configuration);
 
+	#ifdef __SW_HW_SIM
 
-
-
+	/********************************************************************************************
+	 * First version of sources for _SW_HW_SIM
+	 *
+	 * The pass is done in SW and in HW and the outputs are compared. If they are different
+	 * it returns an error message.
+	 * This should be the default mode
+	 ********************************************************************************************/
 
 	ac_int<128, false> *localBytecode = (ac_int<128, false>*) malloc(256*sizeof(ac_int<128, false>));
 	ac_int<128, false> *localVliwBinaries = (ac_int<128, false>*) malloc(MEMORY_SIZE*sizeof(ac_int<128, false>));
@@ -51,7 +57,7 @@ unsigned char numberFreeRegister, char configuration){
 //	for (int oneSourceValue = addressInBinaries; oneSourceValue<addressInBinaries+result+15; oneSourceValue++)
 //	fprintf(stderr, "%d   %x %x %x %x vs %x %x %x %x\n", oneSourceValue, platform->vliwBinaries[4*oneSourceValue+0], platform->vliwBinaries[4*oneSourceValue+1], platform->vliwBinaries[4*oneSourceValue+2], platform->vliwBinaries[4*oneSourceValue+3],
 //			readInt(localVliwBinaries, 16*oneSourceValue + 0), readInt(localVliwBinaries, 16*oneSourceValue + 4), readInt(localVliwBinaries, 16*oneSourceValue + 8), readInt(localVliwBinaries, 16*oneSourceValue + 12));
-//fprintf(stderr, "\n");
+//	fprintf(stderr, "\n");
 
 	if (!acintCmp(platform->bytecode, localBytecode, 256*16)){
 		fprintf(stderr, "Error: After scheduling, bytecode are different...\n");
@@ -87,7 +93,66 @@ unsigned char numberFreeRegister, char configuration){
 
 	return (unsigned int) result;
 
+	#endif
 
+
+	#ifdef __SW
+
+	/********************************************************************************************
+	 * Second version of sources for __SW
+	 *
+	 * The pass is done in SW only and the result is returned
+	 *
+	 ********************************************************************************************/
+
+	#endif
+
+	return irScheduler_scoreboard_sw(opt, basicBlockSize, platform->bytecode, platform->vliwBinaries, addressInBinaries, platform->placeOfRegisters, numberFreeRegister, platform->freeRegisters, issue_width, way_specialisation, platform->placeOfInstr);
+
+
+	#ifdef __HW_SIM
+
+	/********************************************************************************************
+	 * Second version of sources for __SW
+	 *
+	 * The pass is done in HW simulation only: all values coming from normal memories (unsigned int
+	 * and not ac_int types) are copied into newly allocated arrays using the correct type.
+	 * Then the pass is called in and the result is copied back to the normal memories.
+	 *
+	 ********************************************************************************************/
+
+	ac_int<128, false> *localBytecode = (ac_int<128, false>*) malloc(256*sizeof(ac_int<128, false>));
+	ac_int<128, false> *localVliwBinaries = (ac_int<128, false>*) malloc(MEMORY_SIZE*sizeof(ac_int<128, false>));
+	ac_int<6, false> *localPlaceOfRegisters = (ac_int<6, false>*) malloc(512*sizeof(ac_int<6, false>));
+	ac_int<6, false> *localFreeRegisters = (ac_int<6, false>*) malloc(64*sizeof(ac_int<6, false>));
+	ac_int<32, false> *localPlaceOfInstr = (ac_int<32, false>*) malloc(256*sizeof(ac_int<32, false>));
+
+	acintMemcpy(localBytecode, platform->bytecode, 256*16);
+	acintMemcpy(localVliwBinaries, platform->vliwBinaries, MEMORY_SIZE*16);
+	acintMemcpy(localPlaceOfRegisters, platform->placeOfRegisters, 512);
+	acintMemcpy(localFreeRegisters, platform->freeRegisters, 64);
+	acintMemcpy(localPlaceOfInstr, platform->placeOfInstr, 256*4);
+
+
+	ac_int<32, false> result =  irScheduler_scoreboard_hw(opt, basicBlockSize, localBytecode, localVliwBinaries, addressInBinaries, localPlaceOfRegisters,
+	numberFreeRegister, localFreeRegisters, issue_width, way_specialisation, localPlaceOfInstr);
+
+	acintMemcpy(platform->bytecode, localBytecode, 256*16);
+	acintMemcpy(platform->vliwBinaries, localVliwBinaries, MEMORY_SIZE*16);
+	acintMemcpy(platform->placeOfRegisters, localPlaceOfRegisters, basicBlockSize);
+	acintMemcpy(platform->freeRegisters, localFreeRegisters, 64);
+	acintMemcpy(platform->placeOfInstr, localPlaceOfInstr, 256*4);
+
+
+	free(localBytecode);
+	free(localVliwBinaries);
+	free(localPlaceOfRegisters);
+	free(localPlaceOfInstr);
+	free(localFreeRegisters);
+
+	return (unsigned int) result;
+
+	#endif
 }
 
 

@@ -26,7 +26,7 @@
  *  This procedure will call the hardware accelerator or its cpp implementation.
  ****************************************************************************/
 
-#ifndef __CATAPULT
+
 
 unsigned int irGenerator(DBTPlateform *platform,
 		unsigned int addressInBinaries,
@@ -37,8 +37,15 @@ unsigned int irGenerator(DBTPlateform *platform,
 	platform->optimizationCycles += blockSize*5;
 	platform->optimizationEnergy += ((int)blockSize)*5*3.22f;
 
-	#ifndef __NIOS
+	#ifdef __SW_HW_SIM
 
+	/********************************************************************************************
+	 * First version of sources for _SW_HW_SIM
+	 *
+	 * The pass is done in SW and in HW and the outputs are compared. If they are different
+	 * it returns an error message.
+	 * This should be the default mode
+	 ********************************************************************************************/
 
 	ac_int<128, false> *localBytecode = (ac_int<128, false>*) malloc(256*sizeof(ac_int<128, false>));
 	ac_int<128, false> *localVliwBinaries = (ac_int<128, false>*) malloc(MEMORY_SIZE*sizeof(ac_int<128, false>));
@@ -71,6 +78,71 @@ unsigned int irGenerator(DBTPlateform *platform,
 		fprintf(stderr, "After performing ir generation in HW and in SW, bytecode is different\n");
 		exit(-1);
 	}
+
+	if (!acintCmp(platform->vliwBinaries, localVliwBinaries, MEMORY_SIZE*16)){
+		fprintf(stderr, "After performing ir generation in HW and in SW, vliw binaries are different\n");
+		exit(-1);
+	}
+
+	if (!acintCmp(platform->globalVariables, localGlobalVariables, 128*4)){
+		fprintf(stderr, "After performing ir generation in HW and in SW, global variables are different\n");
+		exit(-1);
+	}
+
+	free(localBytecode);
+	free(localGlobalVariables);
+	free(localVliwBinaries);
+
+	return result;
+
+	#endif
+
+
+	#ifdef __SW
+
+	/********************************************************************************************
+	 * Second version of sources for __SW
+	 *
+	 * The pass is done in SW only and the result is returned
+	 *
+	 ********************************************************************************************/
+
+	return irGenerator_sw(platform->vliwBinaries, addressInBinaries, blockSize, platform->bytecode, platform->globalVariables, globalVariableCounter);
+
+	#endif
+
+
+	#ifdef __HW_SIM
+
+	/********************************************************************************************
+	 * Second version of sources for __SW
+	 *
+	 * The pass is done in HW simulation only: all values coming from normal memories (unsigned int
+	 * and not ac_int types) are copied into newly allocated arrays using the correct type.
+	 * Then the pass is called in and the result is copied back to the normal memories.
+	 *
+	 ********************************************************************************************/
+
+	ac_int<128, false> *localBytecode = (ac_int<128, false>*) malloc(256*sizeof(ac_int<128, false>));
+	ac_int<128, false> *localVliwBinaries = (ac_int<128, false>*) malloc(MEMORY_SIZE*sizeof(ac_int<128, false>));
+	ac_int<32, true> *localGlobalVariables = (ac_int<32, true>*) malloc(128*sizeof(ac_int<32, true>));
+
+	acintMemcpy(localBytecode, platform->bytecode, 256*16);
+	acintMemcpy(localVliwBinaries, platform->vliwBinaries, MEMORY_SIZE*16);
+	acintMemcpy(localGlobalVariables, platform->globalVariables, 128*4);
+
+	ac_int<32, false> localGlobalVariableCounter = globalVariableCounter;
+
+	unsigned int result = irGenerator_hw(localVliwBinaries,
+			addressInBinaries,
+			blockSize,
+			localBytecode,
+			localGlobalVariables,
+			localGlobalVariableCounter);
+
+	int size = result&0xffff;
+
+	acintMemcpy(platform->bytecode, localBytecode, size*16);
 	acintMemcpy(platform->vliwBinaries, localVliwBinaries, MEMORY_SIZE*16);
 	acintMemcpy(platform->globalVariables, localGlobalVariables, 128*4);
 
@@ -80,16 +152,6 @@ unsigned int irGenerator(DBTPlateform *platform,
 
 	return result;
 
-	#else
-
-	int argA = blockSize + (addressInBinaries << 16);
-	int argB = globalVariableCounter;
-	return ALT_CI_COMPONENT_IRGENERATOR_HW_0(argA, argB);
-
 	#endif
 
-
 }
-
-#endif
-

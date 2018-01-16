@@ -28,17 +28,21 @@ foreach(oneExecutable ${EXECUTABLE})
 	get_filename_component(execName ${oneExecutable} NAME_WE)
 
   if (execName MATCHES "dbt")
-    add_executable(dbtList ${SOURCE} ${oneExecutable})
-    set_target_properties(dbtList PROPERTIES COMPILE_DEFINITIONS "IR_SUCC")
+    add_executable(dbtSw ${SOURCE} ${oneExecutable})
+    set_target_properties(dbtSw PROPERTIES COMPILE_DEFINITIONS "__SW")
+    
+    add_executable(dbtHwSim ${SOURCE} ${oneExecutable})
+    set_target_properties(dbtHwSim PROPERTIES COMPILE_DEFINITIONS "__HW_SIM")
     
     add_executable(dbt ${SOURCE} ${oneExecutable})
+    set_target_properties(dbt PROPERTIES COMPILE_DEFINITIONS "__SW_HW_SIM")
   else()
 	  add_executable(${execName} ${SOURCE} ${oneExecutable})
+	  set_target_properties(${execName} PROPERTIES COMPILE_DEFINITIONS "__SW")
+	  
   endif()
 
 endforeach(oneExecutable)
-
-add_executable(getSchedulerPerf ${SOURCE} ./src/tools/getSchedulerPerf.cpp)
 
 
 
