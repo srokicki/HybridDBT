@@ -48,33 +48,33 @@ unsigned char numberFreeRegister, char configuration){
 
 	unsigned int swResult = irScheduler_scoreboard_sw(opt, basicBlockSize, platform->bytecode, platform->vliwBinaries, addressInBinaries, platform->placeOfRegisters, numberFreeRegister, platform->freeRegisters, issue_width, way_specialisation, platform->placeOfInstr);
 
-//	for (int oneSourceValue = addressInBinaries; oneSourceValue<addressInBinaries+result+5; oneSourceValue++)
+//	for (int oneSourceValue = addressInBinaries; oneSourceValue<addressInBinaries+result+15; oneSourceValue++)
 //	fprintf(stderr, "%d   %x %x %x %x vs %x %x %x %x\n", oneSourceValue, platform->vliwBinaries[4*oneSourceValue+0], platform->vliwBinaries[4*oneSourceValue+1], platform->vliwBinaries[4*oneSourceValue+2], platform->vliwBinaries[4*oneSourceValue+3],
 //			readInt(localVliwBinaries, 16*oneSourceValue + 0), readInt(localVliwBinaries, 16*oneSourceValue + 4), readInt(localVliwBinaries, 16*oneSourceValue + 8), readInt(localVliwBinaries, 16*oneSourceValue + 12));
 //fprintf(stderr, "\n");
 
 	if (!acintCmp(platform->bytecode, localBytecode, 256*16)){
-		fprintf(stderr, "Error: After first pass, bytecode are different...\n");
+		fprintf(stderr, "Error: After scheduling, bytecode are different...\n");
 		exit(-1);
 	}
 
 	if (!acintCmp(platform->vliwBinaries, localVliwBinaries, MEMORY_SIZE*16)){
-		fprintf(stderr, "Error: After first pass, vliw binaries are different...\n");
+		fprintf(stderr, "Error: After scheduling, vliw binaries are different...\n");
 		exit(-1);
 	}
 
 	if (!acintCmp(platform->placeOfRegisters, localPlaceOfRegisters, basicBlockSize)){
-		fprintf(stderr, "Error: After first pass, place of reg are different...\n");
+		fprintf(stderr, "Error: After scheduling, place of reg are different...\n");
 		exit(-1);
 	}
 
 	if (!acintCmp(platform->freeRegisters, localFreeRegisters, 64)){
-		fprintf(stderr, "Error: After first pass, free reg are different...\n");
+		fprintf(stderr, "Error: After scheduling, free reg are different...\n");
 		exit(-1);
 	}
 
 	if (!acintCmp(platform->placeOfInstr, localPlaceOfInstr, 256*4)){
-		fprintf(stderr, "Error: After first pass, place of instr are different...\n");
+		fprintf(stderr, "Error: After scheduling, place of instr are different...\n");
 		exit(-1);
 	}
 

@@ -184,6 +184,8 @@ unsigned int irScheduler_scoreboard_sw(
 	windowPosition_sw = 0;//addressInBinaries;
 	windowShift_sw = 0;
 
+	char incrementInBinaries = (issue_width>4) ? 2 : 1;
+
 	for (int windowOffset = 0; windowOffset < WINDOW_SIZE; ++windowOffset)
 		for (int oneStage = 0; oneStage<MAX_ISSUE_WIDTH; oneStage++)
 			freeSlot_sw[windowOffset][oneStage] = true;
@@ -336,22 +338,21 @@ unsigned int irScheduler_scoreboard_sw(
 			for (int stageId_ = 0; stageId_ < STAGE_NUMBER; stageId_ += 1){
 				int stageId = priority_sw[stageId_];
 				char stageType = (way_specialisation>>(stageId*4)) & 0xf;
-
 				//If type is compatible
 				if (stageType && ((stageType >> unitType) & 0x1) && freeSlot_sw[offset(windowOffset)][stageId]) {
-
 					bestStageId = stageId;
 					bestWindowOffset = windowOffset;
 					found = true;
 					break;
 
 				}
-				if (found)
-					break;
-			}
 
+			}
+			if (found)
+				break;
 
 		}
+
 
 		bool possible = found;
 
@@ -414,15 +415,15 @@ unsigned int irScheduler_scoreboard_sw(
 			for (int windowOffset = 0; windowOffset < 3; ++windowOffset) {
 				char off = offset(windowOffset);
 
-				binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+3] = freeSlot_sw[off][0] ? 0 : window_sw[off][0];
-				binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+2] = freeSlot_sw[off][1] ? 0 : window_sw[off][1];
-				binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+1] = freeSlot_sw[off][2] ? 0 : window_sw[off][2];
-				binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+0] = freeSlot_sw[off][3] ? 0 : window_sw[off][3];
+				binaries[(addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4+3] = freeSlot_sw[off][0] ? 0 : window_sw[off][0];
+				binaries[(addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4+2] = freeSlot_sw[off][1] ? 0 : window_sw[off][1];
+				binaries[(addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4+1] = freeSlot_sw[off][2] ? 0 : window_sw[off][2];
+				binaries[(addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4+0] = freeSlot_sw[off][3] ? 0 : window_sw[off][3];
 				if (issue_width>4) {
-					binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+7] = freeSlot_sw[off][4] ? 0 : window_sw[off][4];
-					binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+6] = freeSlot_sw[off][5] ? 0 : window_sw[off][5];
-					binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+5] = freeSlot_sw[off][6] ? 0 : window_sw[off][6];
-					binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+4] = freeSlot_sw[off][7] ? 0 : window_sw[off][7];
+					binaries[(addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4+7] = freeSlot_sw[off][4] ? 0 : window_sw[off][4];
+					binaries[(addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4+6] = freeSlot_sw[off][5] ? 0 : window_sw[off][5];
+					binaries[(addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4+5] = freeSlot_sw[off][6] ? 0 : window_sw[off][6];
+					binaries[(addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4+4] = freeSlot_sw[off][7] ? 0 : window_sw[off][7];
 				}
 
 				if (windowOffset < advance)
@@ -456,7 +457,6 @@ unsigned int irScheduler_scoreboard_sw(
 			lastRead_sw[placeOfRin2] = lastPlaceOfInstr_sw;
 		if (useRin1)
 			lastRead_sw[placeOfRin1] = lastPlaceOfInstr_sw;
-
 		window_sw[offset(bestWindowOffset)][bestStageId] = createInstruction(irInstr96, irInstr64, modifiedRin1, modifiedRin2, modifiedRdest);
 		freeSlot_sw[offset(bestWindowOffset)][bestStageId] = false;
 
@@ -479,32 +479,32 @@ unsigned int irScheduler_scoreboard_sw(
 	for (int windowOffset = 0; windowOffset < WINDOW_SIZE; ++windowOffset) {
 		int off = offset(windowOffset);
 
-
-		binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+3] = freeSlot_sw[off][0] ? 0 : window_sw[off][0];
-		binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+2] = freeSlot_sw[off][1] ? 0 : window_sw[off][1];
-		binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+1] = freeSlot_sw[off][2] ? 0 : window_sw[off][2];
-		binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+0] = freeSlot_sw[off][3] ? 0 : window_sw[off][3];
+		binaries[(addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4+3] = freeSlot_sw[off][0] ? 0 : window_sw[off][0];
+		binaries[(addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4+2] = freeSlot_sw[off][1] ? 0 : window_sw[off][1];
+		binaries[(addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4+1] = freeSlot_sw[off][2] ? 0 : window_sw[off][2];
+		binaries[(addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4+0] = freeSlot_sw[off][3] ? 0 : window_sw[off][3];
 		if (issue_width>4) {
-			binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+7] = freeSlot_sw[off][4] ? 0 : window_sw[off][4];
-			binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+6] = freeSlot_sw[off][5] ? 0 : window_sw[off][5];
-			binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+5] = freeSlot_sw[off][6] ? 0 : window_sw[off][6];
-			binaries[(addressInBinaries+windowPosition_sw+windowOffset)*4+4] = freeSlot_sw[off][7] ? 0 : window_sw[off][7];
+			binaries[(addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4+7] = freeSlot_sw[off][4] ? 0 : window_sw[off][4];
+			binaries[(addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4+6] = freeSlot_sw[off][5] ? 0 : window_sw[off][5];
+			binaries[(addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4+5] = freeSlot_sw[off][6] ? 0 : window_sw[off][6];
+			binaries[(addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4+4] = freeSlot_sw[off][7] ? 0 : window_sw[off][7];
 		}
 
 		for (int oneStage = 0; oneStage<MAX_ISSUE_WIDTH; oneStage++){
-			if (freeSlot_sw[off][oneStage]){
+			if (!freeSlot_sw[off][oneStage]){
 				lastGap = windowOffset;
-				lastAddress = (addressInBinaries+windowPosition_sw+windowOffset)*4;
+				lastAddress = (addressInBinaries+incrementInBinaries*(windowPosition_sw+windowOffset))*4;
 			}
 			freeSlot_sw[off][oneStage] = true;
 		}
 	}
 
 
-	unsigned int newSize = (issue_width>4 ? 2 : 1)*(windowPosition_sw+lastGap + 1);
-
+	unsigned int newSize = (windowPosition_sw+lastGap + 1);
 	for (int stageId = 0; stageId<issue_width; stageId++){
-		unsigned int instr = binaries[lastAddress + (3-stageId)];
+
+		char stageOffset = 4*(stageId/4) + (3-(stageId%4));
+		unsigned int instr = binaries[lastAddress + stageOffset];
 
 		unsigned char opcode = instr & 0x7f;
         char spec = (way_specialisation>>(stageId*4)) & 0xf;
@@ -513,23 +513,24 @@ unsigned int irScheduler_scoreboard_sw(
 				|| (spec & 0x8)
 				|| ((spec & 0x1) && (opcode == VEX_BR || opcode == VEX_BRF || opcode == VEX_CALL || opcode == VEX_CALLR || opcode == VEX_GOTO || opcode == VEX_GOTOR || opcode == VEX_RETURN)))){
 
-			newSize += (issue_width>4 ? 2 : 1);
+			newSize++;
 
-			binaries[(addressInBinaries+newSize-1)*4+3] = 0;
-			binaries[(addressInBinaries+newSize-1)*4+2] = 0;
-			binaries[(addressInBinaries+newSize-1)*4+1] = 0;
-			binaries[(addressInBinaries+newSize-1)*4+0] = 0;
+			binaries[(addressInBinaries+incrementInBinaries*(newSize-1))*4+3] = 0;
+			binaries[(addressInBinaries+incrementInBinaries*(newSize-1))*4+2] = 0;
+			binaries[(addressInBinaries+incrementInBinaries*(newSize-1))*4+1] = 0;
+			binaries[(addressInBinaries+incrementInBinaries*(newSize-1))*4+0] = 0;
 
 			if (issue_width>4) {
-				binaries[(addressInBinaries+newSize-2)*4+7] = 0;
-				binaries[(addressInBinaries+newSize-2)*4+6] = 0;
-				binaries[(addressInBinaries+newSize-2)*4+5] = 0;
-				binaries[(addressInBinaries+newSize-2)*4+4] = 0;
+				binaries[(addressInBinaries+incrementInBinaries*(newSize-1))*4+7] = 0;
+				binaries[(addressInBinaries+incrementInBinaries*(newSize-1))*4+6] = 0;
+				binaries[(addressInBinaries+incrementInBinaries*(newSize-1))*4+5] = 0;
+				binaries[(addressInBinaries+incrementInBinaries*(newSize-1))*4+4] = 0;
 			}
 			break;
 		}
 	}
 
+	newSize = newSize * incrementInBinaries;
 
 	unsigned int newEnd = addressInBinaries+newSize;
 

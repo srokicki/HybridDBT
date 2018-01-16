@@ -272,8 +272,6 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			ac_int<16, false> tempIndex = indexInSourceBinaries + 1;
 			indexInSourceBinaries = (takeCm1_instr1 || takeCm1_instr2 || takeCm1_instr3) ? indexInSourceBinaries : tempIndex;
 
-
-
 			/********************************************************************
 			 * Second step is to identify correct operand according to opcode
 			 *

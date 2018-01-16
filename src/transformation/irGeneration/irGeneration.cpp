@@ -57,10 +57,20 @@ unsigned int irGenerator(DBTPlateform *platform,
 			localGlobalVariables,
 			localGlobalVariableCounter);
 
+	unsigned int result_sw = irGenerator_sw(platform->vliwBinaries, addressInBinaries, blockSize, platform->bytecode, platform->globalVariables, globalVariableCounter);
+
+	int size = result&0xffff;
+//	for (int oneIRInstr = 0; oneIRInstr<size; oneIRInstr++){
+//		std::cerr << printBytecodeInstruction(oneIRInstr, platform->bytecode[oneIRInstr*4+0], platform->bytecode[oneIRInstr*4+1], platform->bytecode[oneIRInstr*4+2], platform->bytecode[oneIRInstr*4+3]);
+//		std::cerr << printBytecodeInstruction(oneIRInstr, localBytecode[oneIRInstr].slc<32>(96),  localBytecode[oneIRInstr].slc<32>(64),  localBytecode[oneIRInstr].slc<32>(32),  localBytecode[oneIRInstr].slc<32>(0));
+//		std::cerr << "\n";
+//	}
 
 
-
-	acintMemcpy(platform->bytecode, localBytecode, 256*16);
+	if (!acintCmp(platform->bytecode, localBytecode, size*16)){
+		fprintf(stderr, "After performing ir generation in HW and in SW, bytecode is different\n");
+		exit(-1);
+	}
 	acintMemcpy(platform->vliwBinaries, localVliwBinaries, MEMORY_SIZE*16);
 	acintMemcpy(platform->globalVariables, localGlobalVariables, 128*4);
 
