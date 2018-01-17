@@ -11,12 +11,26 @@
 #include <types.h>
 #include <isa/vexISA.h>
 
-extern uint7 functBindingOP[8];
-extern uint7 functBindingOPI[8];
-extern uint7 functBindingLD[8];
-extern uint7 functBindingST[8];
-extern uint7 functBindingBR[8];
-extern uint7 functBindingMULT[8];
-extern uint7 functBindingMULTW[8];
+#ifndef __SW
+#ifndef __HW
+
+extern ac_int<7, false> functBindingOP[8];
+extern ac_int<7, false> functBindingOPI[8];
+extern ac_int<7, false> functBindingLD[8];
+extern ac_int<7, false> functBindingST[8];
+extern ac_int<7, false> functBindingBR[8];
+extern ac_int<7, false> functBindingMULT[8];
+extern ac_int<7, false> functBindingMULTW[8];
+
+#endif
+#endif
+
+extern char functBindingOP_sw[8];
+extern char functBindingOPI_sw[8];
+extern char functBindingLD_sw[8];
+extern char functBindingST_sw[8];
+extern char functBindingBR_sw[8];
+extern char functBindingMULT_sw[8];
+extern char functBindingMULTW_sw[8];
 
 #endif /* INCLUDES_ISA_RISCVTOVEXISA_H_ */

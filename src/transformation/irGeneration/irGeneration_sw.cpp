@@ -11,7 +11,6 @@
 #include <cstdlib>
 
 #include <lib/endianness.h>
-#include <lib/tools.h>
 #include <dbt/dbtPlateform.h>
 #endif
 
@@ -146,8 +145,10 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 			}
 
 			//If no instruction to analyze has been found, we can break
-			if (!found)
+			if (!found){
+				indexInSourceBinaries_instr = (blockSize+1)*4;
 				break;
+			}
 
 			/********************************************************************
 			 * Second step is to identify correct operand according to opcode
@@ -788,9 +789,7 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 		}
 
 
-
-
-unsigned int valueToReturn = indexInSourceBinaries_instr*4;
+unsigned int valueToReturn = indexInSourceBinaries_instr/4;
 valueToReturn = (valueToReturn<<16) + indexInCurrentBlock;
 return valueToReturn;
 

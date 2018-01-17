@@ -79,7 +79,7 @@ unsigned int getReconfigurationInstruction(char configuration){
 								+ (issueWidth<<11)
 								+ (regFileControlBit<<15);
 
-	return assembleIInstruction(VEX_RECONFFS, immediateValue, configuration);
+	return assembleIInstruction_sw(VEX_RECONFFS, immediateValue, configuration);
 }
 
 char getNbMem(char configuration){

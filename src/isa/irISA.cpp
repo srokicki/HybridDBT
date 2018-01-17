@@ -13,7 +13,7 @@
 #include <isa/irISA.h>
 #include <lib/endianness.h>
 #include <sstream>
-
+#include <cstring>
 #include <lib/log.h>
 
 #ifndef __NIOS
@@ -21,9 +21,9 @@
  * Declaration functions to assemble uint128 instruction for IR
  * ******************************************************************/
 
-struct uint128_struct assembleRBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
-		ac_int<7, false> opcode, ac_int<9, false> regA, ac_int<9, false> regB, ac_int<9, false> regDest,
-		ac_int<8, false> nbDep){
+struct uint128_struct assembleRBytecodeInstruction(char stageCode, char isAlloc,
+		char opcode, short regA, short regB, short regDest,
+		unsigned char nbDep){
 
 
 	struct uint128_struct result = {0, 0, 0, 0};
@@ -39,30 +39,12 @@ struct uint128_struct assembleRBytecodeInstruction(ac_int<2, false> stageCode, a
 	result.word64 += ((regDest & 0x1ff) << 14);
 	result.word64 += ((nbDep & 0xff) << 6);
 
-
-	ac_int<128, false> fakeResult = 0;
-	//Node: Type is zero: no need to write it for real. Same for isImm
-
-	fakeResult.set_slc(96+30, stageCode);
-	fakeResult.set_slc(96+27, isAlloc);
-	fakeResult.set_slc(96+19, opcode);
-	fakeResult.set_slc(96+0, regA);
-
-	fakeResult.set_slc(64+23, regB);
-	fakeResult.set_slc(64+14, regDest);
-	fakeResult.set_slc(64+6, nbDep);
-
-	if (fakeResult.slc<32>(96) != result.word96 || fakeResult.slc<32>(64) != result.word64){
-		fprintf(stderr, "Error in assembleRiBytecodeInstruction...\n");
-		exit(-1);
-	}
-
 	return result;
 }
 
-struct uint128_struct assembleFPBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
-		ac_int<7, false> opcode, ac_int<5, false> funct, ac_int<9, false> regA, ac_int<9, false> regB, ac_int<9, false> regDest,
-		ac_int<8, false> nbDep){
+struct uint128_struct assembleFPBytecodeInstruction(char stageCode, char isAlloc,
+		char opcode, char funct, short regA, short regB, short regDest,
+		unsigned char nbDep){
 
 	struct uint128_struct result = {0, 0, 0, 0};
 
@@ -78,35 +60,15 @@ struct uint128_struct assembleFPBytecodeInstruction(ac_int<2, false> stageCode, 
 	result.word64 += ((regDest & 0x1ff) << 14);
 	result.word64 += ((nbDep & 0xff) << 6);
 
-
-	ac_int<128, false> fakeResult = 0;
-	//Node: Type is zero: no need to write it for real. Same for isImm
-
-	fakeResult.set_slc(96+30, stageCode);
-	fakeResult.set_slc(96+27, isAlloc);
-	fakeResult.set_slc(96+19, opcode);
-	fakeResult.set_slc(96+13, funct);
-	fakeResult.set_slc(96+0, regA);
-
-	fakeResult.set_slc(64+23, regB);
-	fakeResult.set_slc(64+14, regDest);
-	fakeResult.set_slc(64+6, nbDep);
-
-
-	if (fakeResult.slc<32>(96) != result.word96 || fakeResult.slc<32>(64) != result.word64){
-		fprintf(stderr, "Error in assembleRiBytecodeInstruction...\n");
-		exit(-1);
-	}
-
 	return result;
 }
 
-struct uint128_struct assembleRiBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
-		ac_int<7, false> opcode, ac_int<9, false> regA, ac_int<13, false> imm13,
-		ac_int<9, false> regDest, ac_int<8, false> nbDep){
+struct uint128_struct assembleRiBytecodeInstruction(char stageCode, char isAlloc,
+		char opcode, short regA, short imm13,
+		short regDest, unsigned char nbDep){
 
 	struct uint128_struct result = {0, 0, 0, 0};
-	ac_int<1, false> isImm = 1;
+	char isImm = 1;
 
 	//Node: Type is zero: no need to write it for real.
 
@@ -121,34 +83,15 @@ struct uint128_struct assembleRiBytecodeInstruction(ac_int<2, false> stageCode, 
 	result.word64 += ((regDest & 0x1ff) << 14);
 	result.word64 += ((nbDep & 0xff) << 6);
 
-
-	ac_int<128, false> fakeResult = 0;
-
-	fakeResult.set_slc(96+30, stageCode);
-	fakeResult.set_slc(96+27, isAlloc);
-	fakeResult.set_slc(96+19, opcode);
-	fakeResult.set_slc(96+18, isImm);
-	fakeResult.set_slc(96+0, imm13);
-
-	fakeResult.set_slc(64+23, regA);
-	fakeResult.set_slc(64+14, regDest);
-	fakeResult.set_slc(64+6, nbDep);
-
-
-	if (fakeResult.slc<32>(96) != result.word96 || fakeResult.slc<32>(64) != result.word64){
-		fprintf(stderr, "Error in assembleRiBytecodeInstruction...\n");
-		exit(-1);
-	}
-
 	return result;
 }
 
-struct uint128_struct assembleIBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
-		ac_int<7, false> opcode, ac_int<9, false> reg, ac_int<19, true> imm19, ac_int<8, false> nbDep){
+struct uint128_struct assembleIBytecodeInstruction(char stageCode, char isAlloc,
+		char opcode, short reg, int imm19, unsigned char nbDep){
 
 	struct uint128_struct result = {0, 0, 0, 0};
-	ac_int<2, false> typeCode = 2;
-	ac_int<1, false> isImm = 1;
+	char typeCode = 2;
+	char isImm = 1;
 
 
 	result.word96 += ((stageCode & 0x3) << 30);
@@ -162,6 +105,81 @@ struct uint128_struct assembleIBytecodeInstruction(ac_int<2, false> stageCode, a
 	result.word64 += ((reg & 0x1ff) << 14);
 	result.word64 += ((nbDep & 0xff) << 6);
 
+	return result;
+}
+
+
+
+#ifndef __SW
+#ifndef __HW
+
+ac_int<128, false> assembleRBytecodeInstruction_hw(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+		ac_int<7, false> opcode, ac_int<9, false> regA, ac_int<9, false> regB, ac_int<9, false> regDest,
+		ac_int<8, false> nbDep){
+
+	ac_int<128, false> fakeResult = 0;
+	//Node: Type is zero: no need to write it for real. Same for isImm
+
+	fakeResult.set_slc(96+30, stageCode);
+	fakeResult.set_slc(96+27, isAlloc);
+	fakeResult.set_slc(96+19, opcode);
+	fakeResult.set_slc(96+0, regA);
+
+	fakeResult.set_slc(64+23, regB);
+	fakeResult.set_slc(64+14, regDest);
+	fakeResult.set_slc(64+6, nbDep);
+
+	return fakeResult;
+}
+
+ac_int<128, false> assembleFPBytecodeInstruction_hw(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+		ac_int<7, false> opcode, ac_int<5, false> funct, ac_int<9, false> regA, ac_int<9, false> regB, ac_int<9, false> regDest,
+		ac_int<8, false> nbDep){
+
+	ac_int<128, false> fakeResult = 0;
+	//Node: Type is zero: no need to write it for real. Same for isImm
+
+	fakeResult.set_slc(96+30, stageCode);
+	fakeResult.set_slc(96+27, isAlloc);
+	fakeResult.set_slc(96+19, opcode);
+	fakeResult.set_slc(96+13, funct);
+	fakeResult.set_slc(96+0, regA);
+
+	fakeResult.set_slc(64+23, regB);
+	fakeResult.set_slc(64+14, regDest);
+	fakeResult.set_slc(64+6, nbDep);
+
+	return fakeResult;
+}
+
+ac_int<128, false> assembleRiBytecodeInstruction_hw(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+		ac_int<7, false> opcode, ac_int<9, false> regA, ac_int<13, false> imm13,
+		ac_int<9, false> regDest, ac_int<8, false> nbDep){
+
+
+	ac_int<128, false> fakeResult = 0;
+	ac_int<1, false> isImm = 1;
+
+	fakeResult.set_slc(96+30, stageCode);
+	fakeResult.set_slc(96+27, isAlloc);
+	fakeResult.set_slc(96+19, opcode);
+	fakeResult.set_slc(96+18, isImm);
+	fakeResult.set_slc(96+0, imm13);
+
+	fakeResult.set_slc(64+23, regA);
+	fakeResult.set_slc(64+14, regDest);
+	fakeResult.set_slc(64+6, nbDep);
+
+	return fakeResult;
+}
+
+ac_int<128, false> assembleIBytecodeInstruction_hw(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+		ac_int<7, false> opcode, ac_int<9, false> reg, ac_int<19, true> imm19, ac_int<8, false> nbDep){
+
+	ac_int<2, false> typeCode = 2;
+	ac_int<1, false> isImm = 1;
+
+
 	ac_int<128, false> fakeResult = 0;
 	fakeResult.set_slc(96+30, stageCode);
 	fakeResult.set_slc(96+28, typeCode);
@@ -173,16 +191,11 @@ struct uint128_struct assembleIBytecodeInstruction(ac_int<2, false> stageCode, a
 	fakeResult.set_slc(64+14, reg);
 	fakeResult.set_slc(64+6, nbDep);
 
-	if (fakeResult.slc<32>(96) != result.word96 || fakeResult.slc<32>(64) != result.word64){
-		fprintf(stderr, "Error in assembleIBytecodeInstr... %x != %x   or %x != %x\n", fakeResult.slc<32>(96),result.word96, fakeResult.slc<32>(64), result.word64);
-		exit(-1);
-	}
-
-	return result;
+	return fakeResult;
 }
 
-
-
+#endif
+#endif
 
 /********************************************************************
  * Declaration of debug function
@@ -191,27 +204,27 @@ struct uint128_struct assembleIBytecodeInstruction(ac_int<2, false> stageCode, a
 
 std::string printBytecodeInstruction(int index, unsigned int  instructionPart1, unsigned int  instructionPart2, unsigned int instructionPart3, unsigned int instructionPart4){
 
-	uint2 stageCode = ((instructionPart1>>30) & 0x3);
-	uint2 typeCode = ((instructionPart1>>28) & 0x3);
-	uint1 alloc = ((instructionPart1>>27) & 0x1);
-	uint1 allocBr = ((instructionPart1>>26) & 0x1);
-	uint7 opCode = ((instructionPart1>>19) & 0x7f);
-	uint1 isImm = ((instructionPart1>>18) & 0x1);
-	uint1 isBr = ((instructionPart1>>17) & 0x1);
-	uint9 virtualRDest = ((instructionPart2>>14) & 0x1ff);
-	uint9 virtualRIn2 = ((instructionPart2>>23) & 0x1ff);
-	uint9 virtualRIn1_imm9 = ((instructionPart1>>0) & 0x1ff);
-	ac_int<13, false> imm13 = ((instructionPart1>>0) & 0x1fff);
+	int stageCode = ((instructionPart1>>30) & 0x3);
+	int typeCode = ((instructionPart1>>28) & 0x3);
+	int alloc = ((instructionPart1>>27) & 0x1);
+	int allocBr = ((instructionPart1>>26) & 0x1);
+	int opCode = ((instructionPart1>>19) & 0x7f);
+	int isImm = ((instructionPart1>>18) & 0x1);
+	int isBr = ((instructionPart1>>17) & 0x1);
+	short virtualRDest = ((instructionPart2>>14) & 0x1ff);
+	short virtualRIn2 = ((instructionPart2>>23) & 0x1ff);
+	short virtualRIn1_imm9 = ((instructionPart1>>0) & 0x1ff);
+	short imm13 = ((instructionPart1>>0) & 0x1fff);
 
-	uint11 imm11 = ((instructionPart1>>23) & 0x7ff);
-	uint19 imm19 = 0;
+	short imm11 = ((instructionPart1>>23) & 0x7ff);
+	short imm19 = 0;
 	imm19 = ((instructionPart2>>23) & 0x1ff);
 	imm19 += ((instructionPart1>>0) & 0x3ff)<<9;
-	uint9 brCode = ((instructionPart1>>9) & 0x1ff);;
+	short brCode = ((instructionPart1>>9) & 0x1ff);;
 
-	uint8 nbDep = ((instructionPart2>>6) & 0xff);
-	uint3 nbDSucc = ((instructionPart2>>3) & 7);
-	uint3 nbSucc = ((instructionPart2>>0) & 7);
+	int nbDep = ((instructionPart2>>6) & 0xff);
+	int nbDSucc = ((instructionPart2>>3) & 7);
+	int nbSucc = ((instructionPart2>>0) & 7);
 
 	std::stringstream result;
 
@@ -451,13 +464,15 @@ short getDestinationRegister(unsigned int *bytecode, unsigned char index){
 	//This function returns the destination register of a bytecode instruction
 	//If bytecode instruction do not write any register then it returns -1
 
+
 	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
 	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
 
 	unsigned char opcode = (bytecodeWord96>>19) & 0x7f;
 	if ((opcode != 0) //not a nop
 			&&((opcode>>4) != 2 || opcode == VEX_MOVI) //if I-type then movi
-			&& ((opcode>>3) != 0x3)) //not a store
+			&& ((opcode>>3) != 0x3) //not a store
+		    && opcode != VEX_FSB && opcode != VEX_FSH && opcode != VEX_FSW) //not a FP store
 		return (bytecodeWord64>>14) & 0x1ff;
 
 	return -1;
@@ -551,7 +566,7 @@ void setOperands(unsigned int *bytecode, unsigned char index, short operands[2])
 	}
 }
 
-void setDestinationRegister(uint32 *bytecode, unsigned char index, short newDestinationRegister){
+void setDestinationRegister(unsigned int *bytecode, unsigned char index, short newDestinationRegister){
 	Log::printf(LOG_ERROR,"Function to set the destination register in an IR instr is not implemented yet\n");
 	exit(-1);
 }

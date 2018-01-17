@@ -17,7 +17,7 @@
 #include <types.h>
 #include <isa/vexISA.h>
 #include <simulator/genericSimulator.h>
-
+#include <lib/ac_int.h>
 /****************************************************************************
  * Header file for VEX Simulator
  *************************************

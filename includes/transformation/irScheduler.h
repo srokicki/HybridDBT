@@ -9,7 +9,8 @@
 #define MAX_ISSUE_WIDTH 8
 
 
-
+#ifndef __SW
+#ifndef __HW
 
 ac_int<32, false> irScheduler_list_hw(ac_int<1, false> optLevel,
 		ac_int<8, false> basicBlockSize,
@@ -36,6 +37,8 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		ac_int<MAX_ISSUE_WIDTH * 4, false> way_specialisation,
 		ac_int<32, false> placeOfInstr[256]);
 
+#endif
+#endif
 
 unsigned int irScheduler_scoreboard_sw(
 		bool optLevel,

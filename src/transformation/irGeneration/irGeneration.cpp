@@ -9,7 +9,6 @@
 #include <cstdlib>
 #include <transformation/irGenerator.h>
 #include <lib/endianness.h>
-#include <lib/tools.h>
 #include <dbt/dbtPlateform.h>
 
 #include <isa/vexISA.h>
@@ -67,14 +66,15 @@ unsigned int irGenerator(DBTPlateform *platform,
 	unsigned int result_sw = irGenerator_sw(platform->vliwBinaries, addressInBinaries, blockSize, platform->bytecode, platform->globalVariables, globalVariableCounter);
 
 	int size = result&0xffff;
-//	for (int oneIRInstr = 0; oneIRInstr<size; oneIRInstr++){
+//	for (int oneIRInstr = 0; oneIRInstr<size+5; oneIRInstr++){
 //		std::cerr << printBytecodeInstruction(oneIRInstr, platform->bytecode[oneIRInstr*4+0], platform->bytecode[oneIRInstr*4+1], platform->bytecode[oneIRInstr*4+2], platform->bytecode[oneIRInstr*4+3]);
 //		std::cerr << printBytecodeInstruction(oneIRInstr, localBytecode[oneIRInstr].slc<32>(96),  localBytecode[oneIRInstr].slc<32>(64),  localBytecode[oneIRInstr].slc<32>(32),  localBytecode[oneIRInstr].slc<32>(0));
 //		std::cerr << "\n";
 //	}
 
 
-	if (!acintCmp(platform->bytecode, localBytecode, size*16)){
+
+	if (!acintCmp(platform->bytecode, localBytecode, 256*16)){
 		fprintf(stderr, "After performing ir generation in HW and in SW, bytecode is different\n");
 		exit(-1);
 	}
@@ -86,6 +86,11 @@ unsigned int irGenerator(DBTPlateform *platform,
 
 	if (!acintCmp(platform->globalVariables, localGlobalVariables, 128*4)){
 		fprintf(stderr, "After performing ir generation in HW and in SW, global variables are different\n");
+		exit(-1);
+	}
+
+	if (result_sw != result){
+		fprintf(stderr, "result is different: %x and %x\n", result, result_sw);
 		exit(-1);
 	}
 
@@ -113,6 +118,7 @@ unsigned int irGenerator(DBTPlateform *platform,
 
 
 	#ifdef __HW_SIM
+	return irGenerator_sw(platform->vliwBinaries, addressInBinaries, blockSize, platform->bytecode, platform->globalVariables, globalVariableCounter);
 
 	/********************************************************************************************
 	 * Second version of sources for __SW

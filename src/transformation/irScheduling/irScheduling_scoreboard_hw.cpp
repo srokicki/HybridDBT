@@ -5,6 +5,9 @@
  *      Author: simon
  */
 
+#ifndef __HW
+#ifndef __SW
+
 #include <types.h>
 #include <isa/irISA.h>
 #include <isa/vexISA.h>
@@ -281,12 +284,10 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		//**************************************************************
 
 		ac_int<32, false> earliest_place = 0;
-
 		// here, ternary conditions are for forwarding purpose
 		for (ac_int<3, false> i = 0; i < 7; ++i) {
 			ac_int<32, true> place = (deps[i] != instructionId-1)
 			? placeOfInstr[deps[i]] : lastPlaceOfInstr;
-
 			// RAW (gap depends on the type of stage because of pipeline length diffs)
 			if (i < nbDataDeps) {
 				ac_int<8, false> stg = (deps[i] != instructionId-1)
@@ -524,7 +525,6 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 
 		instructionId++;
 
-
 	}
 
 	//**************************************************************
@@ -587,3 +587,5 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 	return newSize;
 }
 
+#endif
+#endif

@@ -45,6 +45,10 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 		unsigned int unresolvedJumps_type[512],
 		int unresolvedJumps[512]);
 
+
+#ifndef __SW
+#ifndef __HW
+
 int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 		ac_int<32, false> size,
 		ac_int<8, false> conf,
@@ -58,7 +62,8 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 		ac_int<32, false> unresolvedJumps_type[512],
 		ac_int<32, true> unresolvedJumps[512]);
 
-
+#endif
+#endif
 
 
 

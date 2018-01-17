@@ -258,7 +258,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 
 				if (funct7 == RISCV_OP_M){
 					//We are in the part dedicated to RV32M extension
-					binaries =  assembleRInstruction_sw(functBindingMULT[funct3], rd, rs1, rs2);
+					binaries =  assembleRInstruction_sw(functBindingMULT_sw[funct3], rd, rs1, rs2);
 					stage = stageMult;
 
 					//nextInstructionNop = 1;
@@ -276,7 +276,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 					lastLatency = SIMPLE_LATENCY;
 				}
 				else {
-					char vexOpcode = (funct7==RISCV_OP_ADD_SUB) ? VEX_SUB : (char) functBindingOP[funct3];
+					char vexOpcode = (funct7==RISCV_OP_ADD_SUB) ? VEX_SUB : (char) functBindingOP_sw[funct3];
 					binaries =  assembleRInstruction_sw(vexOpcode, rd, rs1, rs2);
 					lastLatency = SIMPLE_LATENCY;
 				}
@@ -419,7 +419,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 				lastLatency = MEMORY_LATENCY;
 
 				//Memory access operations.
-				binaries = assembleRiInstruction_sw(functBindingLD[funct3], rd, rs1, imm12_I_signed);
+				binaries = assembleRiInstruction_sw(functBindingLD_sw[funct3], rd, rs1, imm12_I_signed);
 				stage = stageMem;
 
 
@@ -431,14 +431,14 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 				lastWrittenRegister = rd;
 				lastLatency = 0;
 
-				binaries = assembleRiInstruction(functBindingST[funct3], rs2, rs1, imm12_S_signed);
+				binaries = assembleRiInstruction_sw(functBindingST_sw[funct3], rs2, rs1, imm12_S_signed);
 				stage = stageMem;
 			}
 			else if (opcode == RISCV_JAL){
 
 				//If rsd is equal to zero, then we are in a simple J instruction
 				bool isSimpleJ = (rd==0);
-				binaries= assembleIInstruction(isSimpleJ ? VEX_GOTO : VEX_CALL, 0, rd);
+				binaries= assembleIInstruction_sw(isSimpleJ ? VEX_GOTO : VEX_CALL, 0, rd);
 
 
 				//We fill information on block boundaries
@@ -467,14 +467,14 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 
 				if (rs1 == 63 && rd == 0){
 					//We are in a simple return
-					binaries = assembleIInstruction(VEX_GOTOR, imm12_I_signed, 63);
+					binaries = assembleIInstruction_sw(VEX_GOTOR, imm12_I_signed, 63);
 
 				}
 				else{
 					//FIXME should be able to add two instr at the same cycle... This would remove an insertion
-					binaries = assembleRiInstruction(VEX_ADDi, 33, rs1, imm12_I_signed);
+					binaries = assembleRiInstruction_sw(VEX_ADDi, 33, rs1, imm12_I_signed);
 
-					nextInstruction = assembleIInstruction((rd == 63) ? VEX_CALL : VEX_GOTO, 4*incrementInDest, rd);
+					nextInstruction = assembleIInstruction_sw((rd == 63) ? VEX_CALL : VEX_GOTO, 4*incrementInDest, rd);
 					enableNextInstruction = 1;
 					nextInstruction_rd = 0;
 					nextInstruction_rs1 = rd;
@@ -504,7 +504,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 					setBoundaries2 = true;
 					boundary2 = indexInSourceBinaries + 1;//Only plus one because in riscv next instr is not executed
 
-					binaries = assembleIInstruction((funct3 == RISCV_BR_BEQ) ? VEX_BRF : VEX_BR, rs2, rs1);
+					binaries = assembleIInstruction_sw((funct3 == RISCV_BR_BEQ) ? VEX_BRF : VEX_BR, rs2, rs1);
 
 					unresolved_jump_src = indexInDestinationBinaries;
 					unresolved_jump_type = binaries;
@@ -523,9 +523,9 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 					boundary2 = indexInSourceBinaries + 1;//Only plus one because in riscv next instr is not executed
 
 
-					binaries = assembleRInstruction(functBindingBR[funct3], 32, rs1, rs2); //TODO check order
+					binaries = assembleRInstruction_sw(functBindingBR_sw[funct3], 32, rs1, rs2); //TODO check order
 
-					nextInstruction = assembleIInstruction(VEX_BR, 0, 32);
+					nextInstruction = assembleIInstruction_sw(VEX_BR, 0, 32);
 
 
 					nextInstruction_stage = 0;
@@ -567,12 +567,12 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 					char vexOpcode = (funct3==RISCV_OPI_SLLI) ? VEX_SLLi :
 							(funct7_smaller==RISCV_OPI_SRI_SRAI) ? VEX_SRAi : VEX_SRLi;
 
-					binaries = assembleRiInstruction(vexOpcode, rd, rs1, shamt);
+					binaries = assembleRiInstruction_sw(vexOpcode, rd, rs1, shamt);
 
 
 				}
 				else {
-					binaries = assembleRiInstruction(functBindingOPI[funct3], rd, rs1, extendedImm);
+					binaries = assembleRiInstruction_sw(functBindingOPI_sw[funct3], rd, rs1, extendedImm);
 				}
 			}
 			else if (opcode == RISCV_OPW){
@@ -584,7 +584,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 
 				if (funct7 == RISCV_OP_M){
 					//We are in the part dedicated to RV64M extension
-					binaries =  assembleRInstruction(functBindingMULTW[funct3], rd, rs1, rs2);
+					binaries =  assembleRInstruction_sw(functBindingMULTW_sw[funct3], rd, rs1, rs2);
 					stage = stageMult;
 
 					nextInstructionNop = 1;
@@ -597,14 +597,14 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 					char vexOpcode = (funct3==RISCV_OPW_SLLW) ? VEX_SLLW :
 							(funct7==RISCV_OPW_SRW_SRAW) ? VEX_SRAW : VEX_SRLW;
 
-					binaries = assembleRInstruction(vexOpcode, rd, rs1, rs2);
+					binaries = assembleRInstruction_sw(vexOpcode, rd, rs1, rs2);
 
 				}
 				else {
 
 
 					char vexOpcode = (funct7==RISCV_OPW_ADDSUBW_SUBW) ? VEX_SUBW : VEX_ADDW;
-					binaries =  assembleRInstruction(vexOpcode, rd, rs1, rs2);
+					binaries =  assembleRInstruction_sw(vexOpcode, rd, rs1, rs2);
 				}
 			}
 			else if (opcode == RISCV_OPIW){ //For 32-bits instructions (labelled with a W)
@@ -632,7 +632,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 
 				}
 				else {
-					binaries = assembleRiInstruction(VEX_ADDWi, rd, rs1, extendedImm);
+					binaries = assembleRiInstruction_sw(VEX_ADDWi, rd, rs1, extendedImm);
 				}
 			}
 			else if (opcode == RISCV_SYSTEM){
@@ -643,12 +643,12 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 				lastLatency = SIMPLE_LATENCY;
 
 				if (funct3 == RISCV_SYSTEM_ENV){
-					binaries = assembleIInstruction(VEX_ECALL, 0,0);
+					binaries = assembleIInstruction_sw(VEX_ECALL, 0,0);
 				}
 				else {
 
 					#ifndef __CATAPULT
-					binaries = assembleIInstruction(VEX_NOP, 0,0);
+					binaries = assembleIInstruction_sw(VEX_NOP, 0,0);
 
 					#endif
 				}

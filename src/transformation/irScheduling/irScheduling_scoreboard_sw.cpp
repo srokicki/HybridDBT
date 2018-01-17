@@ -202,8 +202,6 @@ unsigned int irScheduler_scoreboard_sw(
 		// Fetching / Decoding instruction
 		//**************************************************************
 
-		ac_int<128, false> bytecode_word = bytecode[instructionId_sw];
-
 		unsigned int irInstr96 = readInt(bytecode, instructionId_sw*16 + 0);
 		unsigned int irInstr64 = readInt(bytecode, instructionId_sw*16 + 4);
 		unsigned int irInstr32 = readInt(bytecode, instructionId_sw*16 + 8);

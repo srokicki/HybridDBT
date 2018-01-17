@@ -9,7 +9,7 @@
 #define INCLUDES_ISA_IRISA_H_
 
 #include <types.h>
-
+#include <string>
 
 /********************************************************************
  * IR configuration
@@ -149,22 +149,36 @@ public:
  *
  *******************************************************************/
 
-#ifndef __NIOS
+struct uint128_struct assembleRBytecodeInstruction(char stageCode, char isAlloc,
+		char opcode, short regA, short regB, short regDest,	unsigned char nbDep);
+struct uint128_struct assembleFPBytecodeInstruction(char stageCode, char isAlloc,
+		char opcode, char funct, short regA, short regB, short regDest, unsigned char nbDep);
+struct uint128_struct assembleRiBytecodeInstruction(char stageCode, char isAlloc,
+		char opcode, short regA, short imm13, short regDest, unsigned char nbDep);
+struct uint128_struct assembleIBytecodeInstruction(char stageCode, char isAlloc,
+		char opcode, short reg, int imm19, unsigned char nbDep);
 
-struct uint128_struct assembleRBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+
+#ifndef __SW
+#ifndef __HW
+
+ac_int<128, false> assembleRBytecodeInstruction_hw(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
 		ac_int<7, false> opcode, ac_int<9, false> regA, ac_int<9, false> regB, ac_int<9, false> regDest,
 		ac_int<8, false> nbDep);
 
-struct uint128_struct assembleRiBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+ac_int<128, false> assembleRiBytecodeInstruction_hw(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
 		ac_int<7, false> opcode, ac_int<9, false> regA, ac_int<13, false> imm13,
 		ac_int<9, false> regDest, ac_int<8, false> nbDep);
 
-struct uint128_struct assembleIBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+ac_int<128, false> assembleIBytecodeInstruction_hw(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
 		ac_int<7, false> opcode, ac_int<9, false> reg, ac_int<19, true> imm19, ac_int<8, false> nbDep);
-struct uint128_struct assembleFPBytecodeInstruction(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
+ac_int<128, false> assembleFPBytecodeInstruction_hw(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
 		ac_int<7, false> opcode, ac_int<5, false> funct, ac_int<9, false> regA, ac_int<9, false> regB, ac_int<9, false> regDest,
 		ac_int<8, false> nbDep);
+
 #endif
+#endif
+
 
 /********************************************************************
  * Declaration of debug function

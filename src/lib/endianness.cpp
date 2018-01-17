@@ -1,6 +1,6 @@
 #include <types.h>
 
-
+#include <lib/ac_int.h>
 /***********************************************************************
  * These three procedure are used to write an int inside a memory.
  * The addressing is made on byte.
@@ -10,19 +10,32 @@
 
 unsigned int endiannessMask[4] = {0xffffff, 0xff00ffff, 0xffff00ff, 0xffffff00};
 
-void write128(unsigned int *bytecode, int place, struct uint128_struct value){
-	bytecode[(place>>2)+0] = value.word96;
-	bytecode[(place>>2)+1] = value.word64;
-	bytecode[(place>>2)+2] = value.word32;
-	bytecode[(place>>2)+3] = value.word0;
+
+/******************************************************************************
+ * Functions that read/write in memories when an ac_int is involved
+ *
+ ******************************************************************************/
+
+#ifndef __SW
+#ifndef __HW
+
+ac_int<32, false> readInt(ac_int<32, false>* bytecode, int place){
+	return bytecode[(place>>2)/*+(3-(place&0x3))*/];
+}
+
+ac_int<8, false> readChar(ac_int<32, false>* bytecode, int place){
+	return bytecode[(place>>2)].slc<8>(8*(3-(place & 0x3)));
+}
+
+ac_int<32, false> readInt(ac_int<128, false>* bytecode, int place){
+	return bytecode[place>>4].slc<32>(32*(3-((place>>2) & 0x3)));
 
 }
 
-void writeInt(uint8* bytecode, int place, unsigned int value){
+void writeInt(ac_int<8, false>* bytecode, int place, unsigned int value){
 	unsigned int *bytecodeAsInt = (unsigned int *) bytecode;
 	place = place >> 2;
 
-	//FIXME endianness
 	bytecode[place+3] = (value >> 24) & 0xff;
 	bytecode[place+2] = (value >> 16) & 0xff;
 	bytecode[place+1] = (value >> 8) & 0xff;
@@ -34,8 +47,34 @@ void writeInt(ac_int<32, false>* bytecode, int place, unsigned int value){
 	bytecode[(place>>2)/*+(3-(place&0x3))*/] = value;
 }
 
-void writeChar(unsigned int* bytecode, int place, unsigned char value){
+void writeChar(ac_int<32, false>* bytecode, int place, unsigned char value){
+	ac_int<8, false> value_ac = value;
+	bytecode[(place>>2)].set_slc(8*(3-(place & 0x3)), value_ac);
+}
 
+void writeInt(ac_int<128, false>* bytecode, int place, unsigned int value){
+
+	ac_int<32, false> valueAsAcInt = value;
+	bytecode[place>>4].set_slc(32*(3-((place>>2) & 0x3)), valueAsAcInt);
+}
+
+#endif
+#endif
+
+/******************************************************************************
+ * Functions that read/write in memories when NO ac_int are involved
+ *
+ ******************************************************************************/
+
+void write128(unsigned int *bytecode, int place, struct uint128_struct value){
+	bytecode[(place>>2)+0] = value.word96;
+	bytecode[(place>>2)+1] = value.word64;
+	bytecode[(place>>2)+2] = value.word32;
+	bytecode[(place>>2)+3] = value.word0;
+
+}
+
+void writeChar(unsigned int* bytecode, int place, unsigned char value){
 	unsigned int longValue = value;
 
 	unsigned int bytecodeValue = bytecode[(place>>2)];
@@ -45,60 +84,10 @@ void writeChar(unsigned int* bytecode, int place, unsigned char value){
 
 }
 
-void writeChar(ac_int<32, false>* bytecode, int place, unsigned char value){
-	uint8 value_ac = value;
-	bytecode[(place>>2)].set_slc(8*(3-(place & 0x3)), value_ac);
-}
-
-
-#ifndef __NIOS
-void writeInt(uint128* bytecode, int place, unsigned int value){
-
-	ac_int<32, false> valueAsAcInt = value;
-	bytecode[place>>4].set_slc(32*(3-((place>>2) & 0x3)), valueAsAcInt);
-}
-#endif
-
-
-/***********************************************************************
- * These three procedure are used to read an int inside a memory.
- * The addressing is made on byte.
- *
- * The input memory can be uint8*, uint32* or uint128*
- ***********************************************************************/
-
-//uint32 readInt(uint8* bytecode, int place){
-//
-//	unsigned int result = 0;
-//	//FIXME endianness
-//	result = (bytecode[place+3] << 24);
-//	result += (bytecode[place+2] << 16);
-//	result += (bytecode[place+1] << 8);
-//	result += (bytecode[place+0] << 0);
-//
-//	return result;
-//
-//}
-
-uint32 readInt(uint32* bytecode, int place){
-	return bytecode[(place>>2)/*+(3-(place&0x3))*/];
-}
-
-uint8 readChar(uint32* bytecode, int place){
-	return bytecode[(place>>2)].slc<8>(8*(3-(place & 0x3)));
-}
-
-#ifndef __NIOS
-uint32 readInt(uint128* bytecode, int place){
-	return bytecode[place>>4].slc<32>(32*(3-((place>>2) & 0x3)));
-
-}
-
 void writeInt(unsigned char* bytecode, int place, unsigned int value){
 	unsigned int *bytecodeAsInt = (unsigned int *) bytecode;
 	place = place >> 2;
 
-	//FIXME endianness
 	bytecode[place+3] = (value >> 24) & 0xff;
 	bytecode[place+2] = (value >> 16) & 0xff;
 	bytecode[place+1] = (value >> 8) & 0xff;
@@ -110,7 +99,6 @@ void writeInt(unsigned int* bytecode, int place, unsigned int value){
 	bytecode[(place>>2)] = value;
 }
 
-
 unsigned int readInt(unsigned int* bytecode, int place){
 	return bytecode[(place>>2)/*+(3-(place&0x3))*/];
 }
@@ -118,6 +106,13 @@ unsigned char readChar(unsigned int* bytecode, int place){
 	return bytecode[(place>>2)]>>8*(3-(place & 0x3));
 }
 
+/***************************************************************
+ * Memcpy operations for and from ac_int arrays
+ *
+ ***************************************************************/
+
+#ifndef __SW
+#ifndef __HW
 
 void acintMemcpy(ac_int<128, false> *to, unsigned int *from, int sizeInByte){
 	for (int oneDestValue = 0; oneDestValue < sizeInByte/16; oneDestValue++){
@@ -292,10 +287,5 @@ bool acintCmp(unsigned char *to, ac_int<1, false>  *from, int sizeInByte){
 }
 
 
-
-
-
-
-
-
+#endif
 #endif

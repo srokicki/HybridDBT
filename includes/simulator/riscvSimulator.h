@@ -16,6 +16,7 @@
 #include <string>
 #include <types.h>
 #include <simulator/genericSimulator.h>
+#include <lib/ac_int.h>
 
 //Modelization of RISC-V pipeline
 #define LOSS_INCORRECT_BRANCH 2

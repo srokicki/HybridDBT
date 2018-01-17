@@ -24,52 +24,43 @@ const char* riscvNamesST[8] = {"STB", "STH", "STW", "STD"};
 const char* riscvNamesBR[8] = {"BEQ", "BNE", "", "", "BLT", "BGE", "BLTU", "BGEU"};
 const char* riscvNamesMUL[8] = {"MPYLO","MPYHI", "MPYHI", "MPYHI", "DIVHI", "DIVHI", "DIVLO", "DIVLO"};
 
-std::string printDecodedInstrRISCV(uint32 ins){
-	ac_int<7, false> opcode = ins.slc<7>(0);
-	ac_int<5, false> rs1 = ins.slc<5>(15);
-	ac_int<5, false> rs2 = ins.slc<5>(20);
-	ac_int<5, false> rd = ins.slc<5>(7);
-	ac_int<7, false> funct7 = ins.slc<7>(25);
-	ac_int<3, false> funct3 = ins.slc<3>(12);
-	ac_int<12, false> imm12_I = ins.slc<12>(20);
-	ac_int<12, false> imm12_S = 0;
-	imm12_S.set_slc(5, ins.slc<7>(25));
-	imm12_S.set_slc(0, ins.slc<5>(7));
+std::string printDecodedInstrRISCV(unsigned int oneInstruction){
+	char opcode = oneInstruction & 0x7f;
+	char rs1 = ((oneInstruction >> 15) & 0x1f);
+	char rs2 = ((oneInstruction >> 20) & 0x1f);
+	char rs3 = ((oneInstruction >> 27) & 0x1f);
+	char rd = ((oneInstruction >> 7) & 0x1f);
+	char funct7 = ((oneInstruction >> 25) & 0x7f);
+	char funct7_smaller = funct7 & 0x3e;
 
-	ac_int<12, true> imm12_I_signed = ins.slc<12>(20);
-	ac_int<12, true> imm12_S_signed = 0;
-	imm12_S_signed.set_slc(0, imm12_S.slc<12>(0));
+	char funct3 = ((oneInstruction >> 12) & 0x7);
+	unsigned short imm12_I = ((oneInstruction >> 20) & 0xfff);
+	unsigned short imm12_S = ((oneInstruction >> 20) & 0xfe0) + ((oneInstruction >> 7) & 0x1f);
 
-	ac_int<6, false> shamt = ins.slc<6>(20);
+
+	short imm12_I_signed = (imm12_I >= 2048) ? imm12_I - 4096 : imm12_I;
+	short imm12_S_signed = (imm12_S >= 2048) ? imm12_S - 4096 : imm12_S;
+
+
+	short imm13 = ((oneInstruction >> 19) & 0x1000) + ((oneInstruction >> 20) & 0x7e0) + ((oneInstruction >> 7) & 0x1e) + ((oneInstruction << 4) & 0x800);
+	short imm13_signed = (imm13 >= 4096) ? imm13 - 8192 : imm13;
+
+	unsigned int imm31_12 = oneInstruction & 0xfffff000;
+	int imm31_12_signed = imm31_12;
+
+	unsigned int imm21_1 = (oneInstruction & 0xff000) + ((oneInstruction >> 9) & 0x800) + ((oneInstruction >> 20) & 0x7fe) + ((oneInstruction >> 11) & 0x100000);
+	int imm21_1_signed = (imm21_1 >= 1048576) ? imm21_1 - 2097152 : imm21_1;
+
+	char shamt = ((oneInstruction >> 20) & 0x3f);
+
+
+
 	if (opcode == RISCV_OPIW) //If we are on opiw, shamt only have 5bits
 		shamt = rs2;
 
 	//In case of immediate shift instr, as shamt needs one more bit the lower bit of funct7 has to be set to 0
 	if (opcode == RISCV_OPI && (funct3 == RISCV_OPI_SLLI || funct3 == RISCV_OPI_SRI))
-		funct7[0] = 0;
-
-
-	ac_int<13, false> imm13 = 0;
-	imm13[12] = ins[31];
-	imm13.set_slc(5, ins.slc<6>(25));
-	imm13.set_slc(1, ins.slc<4>(8));
-	imm13[11] = ins[7];
-
-	ac_int<13, true> imm13_signed = 0;
-	imm13_signed.set_slc(0, imm13);
-
-	ac_int<32, true> imm31_12 = 0;
-	imm31_12.set_slc(12, ins.slc<20>(12));
-
-	ac_int<21, false> imm21_1 = 0;
-	imm21_1.set_slc(12, ins.slc<8>(12));
-	imm21_1[11] = ins[20];
-	imm21_1.set_slc(1, ins.slc<10>(21));
-	imm21_1[20] = ins[31];
-
-	ac_int<21, true> imm21_1_signed = 0;
-	imm21_1_signed.set_slc(0, imm21_1);
-
+		funct7 = funct7 & 0x3f;
 
 	std::stringstream stream;
 
@@ -184,7 +175,7 @@ std::string printDecodedInstrRISCV(uint32 ins){
 		stream << "SYSTEM";
 	break;
 	default:
-		fprintf(stderr,"In default part of switch opcode, instr %x is not handled yet", (int) ins);
+		fprintf(stderr,"In default part of switch opcode, instr %x is not handled yet", (int) oneInstruction);
 	break;
 	}
 

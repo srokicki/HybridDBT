@@ -5,8 +5,11 @@
 #include <sstream>
 #include <strings.h>
 
-#ifdef __USE_AC
-uint32 assembleIInstruction(uint7 opcode, uint19 imm19, uint6 regA){
+
+#ifndef __SW
+#ifndef __HW
+
+ac_int<32, false> assembleIInstruction(ac_int<7, false> opcode, ac_int<19, false> imm19, ac_int<6, false> regA){
 	ac_int<32, false> result = 0;
 	result.set_slc(0, opcode);
 	result.set_slc(7, imm19);
@@ -14,7 +17,7 @@ uint32 assembleIInstruction(uint7 opcode, uint19 imm19, uint6 regA){
 	return result;
 }
 
-uint32 assembleRInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint6 regB){
+ac_int<32, false> assembleRInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<6, false> regB){
 	ac_int<32, false> result = 0;
 	ac_int<1, false> const0 = 0;
 	result.set_slc(0, opcode);
@@ -25,7 +28,7 @@ uint32 assembleRInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint6 regB)
 	return result;
 }
 
-uint32 assembleRiInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint13 imm13){
+ac_int<32, false> assembleRiInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<13, false> imm13){
 	ac_int<32, false> result = 0;
 	result.set_slc(0, opcode);
 	result.set_slc(7, imm13);
@@ -34,7 +37,7 @@ uint32 assembleRiInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint13 imm
 	return result;
 }
 
-uint32 assembleFPInstruction(uint7 opcode, uint5 funct, uint6 regDest, uint6 regA, uint6 regB){
+ac_int<32, false> assembleFPInstruction(ac_int<7, false> opcode, ac_int<5, false> funct, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<6, false> regB){
 	ac_int<32, false> result = 0;
 	result.set_slc(0, opcode);
 	result.set_slc(7, funct);
@@ -44,7 +47,7 @@ uint32 assembleFPInstruction(uint7 opcode, uint5 funct, uint6 regDest, uint6 reg
 	return result;
 }
 
-uint32 assembleRRInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint6 regB, uint6 regC){
+ac_int<32, false> assembleRRInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<6, false> regB, ac_int<6, false> regC){
 	ac_int<32, false> result = 0;
 	result.set_slc(0, opcode);
 	result.set_slc(8, regDest);
@@ -55,6 +58,8 @@ uint32 assembleRRInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint6 regB
 }
 
 #endif
+#endif
+
 
 /*
  * Same assembly functions but which do not use ac_int
@@ -68,12 +73,7 @@ unsigned int  assembleFPInstruction_sw(char opcode, char funct, char regDest, ch
 	result += (regB & 0x3f) << 20;
 	result += (regA & 0x3f) << 26;
 
-	uint32 otherRes = assembleFPInstruction(opcode, funct, regDest, regA, regB);
 
-	if (otherRes != result){
-		fprintf(stderr, "In assemble FP instr, sw is different than hw : %x %x\n", result, otherRes);
-		exit(-1);
-	}
 
 	return result;
 }
@@ -85,13 +85,6 @@ unsigned int assembleIInstruction_sw(char opcode, int imm19, char regA){
 	result += (imm19 & 0x7ffff)<<7;
 	result += (regA & 0x3f) << 26;
 
-	uint32 otherRes = assembleIInstruction(opcode, imm19, regA);
-
-	if (otherRes != result){
-		fprintf(stderr, "In assemble II instr, sw is different than hw : %x %x\n", result, otherRes);
-		exit(-1);
-	}
-
 	return result;
 }
 
@@ -102,13 +95,6 @@ unsigned int assembleRInstruction_sw(char opcode, char regDest, char regA, char 
 	result += (regB & 0x3f) << 20;
 	result += (regA & 0x3f) << 26;
 
-	uint32 otherRes = assembleRInstruction(opcode, regDest, regA, regB);
-
-	if (otherRes != result){
-		fprintf(stderr, "In assemble R instr, sw is different than hw : %x %x\n", result, otherRes);
-		exit(-1);
-	}
-
 	return result;
 }
 
@@ -118,13 +104,6 @@ unsigned int assembleRiInstruction_sw(char opcode, char regDest, char regA, shor
 	result += (imm13 & 0x1fff) << 7;
 	result += (regDest & 0x3f) << 20;
 	result += (regA & 0x3f) << 26;
-
-	uint32 otherRes = assembleRiInstruction(opcode, regDest, regA, imm13);
-
-	if (otherRes != result){
-		fprintf(stderr, "In assemble Ri instr, sw is different than hw : %x %x\n", result, otherRes);
-		exit(-1);
-	}
 
 	return result;
 }
@@ -138,18 +117,10 @@ unsigned int assembleRRInstruction_sw(char opcode, char regDest, char regA, char
 	result += (regB & 0x3f) << 20;
 	result += (regA & 0x3f) << 26;
 
-	uint32 otherRes = assembleRRInstruction(opcode, regDest, regA, regB, regC);
-
-	if (otherRes != result){
-		fprintf(stderr, "In assemble RR instr, sw is different than hw : %x %x\n", result, otherRes);
-		exit(-1);
-	}
-
 	return result;
 }
 
 
-#ifndef __NIOS
 const char* opcodeNames[128] = {
 		"NOP", "-", "-", "MPYW", "DIVW", "DIVUW", "REMW", "REMUW", "MPYH", "MPYHSU", "MPYHU", "MPY", "DIV", "DIVU", "REM", "REMU",
 		"LDD", "LDW", "LDH", "LDHU", "LDB", "LDBU","LDWU", "?", "STB", "STH", "STW", "STD", "?", "?", "?", "?",
@@ -165,23 +136,24 @@ const char* fpNames[32] = {
 		"FADD", "FSUB", "FADD","FSUB","FMUL","FDIV","FSQRT","FSGNJ","FSGNJN","FSGNJNX","FMIN","FMAX",
 "FCVTWS","FCVTWUS","FMVXW","FEQ","FLT","FLE","FCLASS","FCVTSW","FCVTSWU","FMVWX"};
 
-std::string printDecodedInstr(ac_int<32, false> instruction){
+
+std::string printDecodedInstr(unsigned int instruction){
 
 
 
-	ac_int<6, false> RA = instruction.slc<6>(26);
-	ac_int<6, false> RB = instruction.slc<6>(20);
-	ac_int<6, false> RC = instruction.slc<6>(14);
-	ac_int<19, true> IMM19 = instruction.slc<19>(7);
-	ac_int<13, false> IMM13 = instruction.slc<13>(7);
-	ac_int<13, true> IMM13_signed = instruction.slc<13>(7);
-	ac_int<5, false> funct = instruction.slc<5>(7);
-	ac_int<7, false> OP = instruction.slc<7>(0);
-	ac_int<3, false> BEXT = instruction.slc<3>(8);
-	ac_int<9, false> IMM9 = instruction.slc<9>(11);
+	char RA = (instruction >> 26) & 0x3f;
+	char RB = (instruction >> 20) & 0x3f;
+	char RC = (instruction >> 14) & 0x3f;
+	int IMM19 = (instruction >> 7) & 0x7ffff;
+	short IMM13 = (instruction >> 7) & 0x1fff;
+	short IMM13_signed = (IMM13 > 4095) ? IMM13 - 8192 : IMM13;
+	char funct = (instruction >> 7) & 0x1f;
+	char OP = (instruction & 0x7f);
+	char BEXT = (instruction >> 8) & 0x7;
+	short IMM9 = (instruction >> 11) & 0x1ff;
 
-	ac_int<1, false> isIType = (OP.slc<3>(4) == 2);
-	ac_int<1, false> isImm = OP.slc<3>(4) == 1 || OP.slc<3>(4) == 6 || OP.slc<3>(4) == 7;
+	char isIType = (((OP >> 4) & 0x7) == 2);
+	char isImm = ((OP >> 4) & 0x7) == 1 || ((OP >> 4) & 0x7) == 6 || ((OP >> 4) & 0x7) == 7;
 
 	std::stringstream stream;
 
@@ -207,4 +179,3 @@ std::string printDecodedInstr(ac_int<32, false> instruction){
 
 	return result;
 }
-#endif

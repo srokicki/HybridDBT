@@ -5,6 +5,8 @@
  *      Author: simon
  */
 
+#ifndef __SW
+#ifndef __HW
 
 #ifndef __CATAPULT
 //Includes not required by catapult
@@ -12,15 +14,12 @@
 #include <cstdlib>
 
 #include <lib/endianness.h>
-#include <lib/tools.h>
 #include <dbt/dbtPlateform.h>
 #endif
 
 //Includes required by catapult
 #include <isa/vexISA.h>
 #include <isa/irISA.h>
-
-#ifndef __NIOS
 
 #define FIRST_RENAME 0
 #define LAST_RENAME 0
@@ -756,78 +755,38 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 					pred1 = destination;
 				}
 
-				struct uint128_struct oneBytecodeStruct = assembleIBytecodeInstruction(0, 0, opcode, pred1, imm19, 0);
-				oneBytecode.set_slc(0, ac_int<32, false>(oneBytecodeStruct.word0));
-				oneBytecode.set_slc(32, ac_int<32, false>(oneBytecodeStruct.word32));
-				oneBytecode.set_slc(64, ac_int<32, false>(oneBytecodeStruct.word64));
-				oneBytecode.set_slc(96, ac_int<32, false>(oneBytecodeStruct.word96));
+				oneBytecode = assembleIBytecodeInstruction_hw(0, 0, opcode, pred1, imm19, 0);
 
 				haveJump = 1;
 				jumpID = indexInCurrentBlock;
 
 			}
 			else if (isMovi){
-				struct uint128_struct oneBytecodeStruct = assembleIBytecodeInstruction(2, alloc, opcode, destination, imm19, 0);
-				oneBytecode.set_slc(0, ac_int<32, false>(oneBytecodeStruct.word0));
-				oneBytecode.set_slc(32, ac_int<32, false>(oneBytecodeStruct.word32));
-				oneBytecode.set_slc(64, ac_int<32, false>(oneBytecodeStruct.word64));
-				oneBytecode.set_slc(96, ac_int<32, false>(oneBytecodeStruct.word96));
+				oneBytecode = assembleIBytecodeInstruction_hw(2, alloc, opcode, destination, imm19, 0);
 			}
 			else if (isStoreType || isFSW){
-				struct uint128_struct oneBytecodeStruct = assembleRiBytecodeInstruction(1, 0, opcode, pred1, imm13, pred2, 0);
-				oneBytecode.set_slc(0, ac_int<32, false>(oneBytecodeStruct.word0));
-				oneBytecode.set_slc(32, ac_int<32, false>(oneBytecodeStruct.word32));
-				oneBytecode.set_slc(64, ac_int<32, false>(oneBytecodeStruct.word64));
-				oneBytecode.set_slc(96, ac_int<32, false>(oneBytecodeStruct.word96));
+				oneBytecode = assembleRiBytecodeInstruction_hw(1, 0, opcode, pred1, imm13, pred2, 0);
 			}
 			else if (isLoadType || isFLW){
-				struct uint128_struct oneBytecodeStruct = assembleRiBytecodeInstruction(1, alloc, opcode, pred1, imm13, destination, 0);
-				oneBytecode.set_slc(0, ac_int<32, false>(oneBytecodeStruct.word0));
-				oneBytecode.set_slc(32, ac_int<32, false>(oneBytecodeStruct.word32));
-				oneBytecode.set_slc(64, ac_int<32, false>(oneBytecodeStruct.word64));
-				oneBytecode.set_slc(96, ac_int<32, false>(oneBytecodeStruct.word96));
+				oneBytecode = assembleRiBytecodeInstruction_hw(1, alloc, opcode, pred1, imm13, destination, 0);
 			}
 			else if (isMultType){
-				struct uint128_struct oneBytecodeStruct = assembleRBytecodeInstruction(3, alloc, opcode, pred2, pred1, destination, 0);
-				oneBytecode.set_slc(0, ac_int<32, false>(oneBytecodeStruct.word0));
-				oneBytecode.set_slc(32, ac_int<32, false>(oneBytecodeStruct.word32));
-				oneBytecode.set_slc(64, ac_int<32, false>(oneBytecodeStruct.word64));
-				oneBytecode.set_slc(96, ac_int<32, false>(oneBytecodeStruct.word96));
+				oneBytecode = assembleRBytecodeInstruction_hw(3, alloc, opcode, pred2, pred1, destination, 0);
 			}
 			else if (isArith1 || isArithImm){
-				struct uint128_struct oneBytecodeStruct = assembleRiBytecodeInstruction(2, alloc, opcode, pred1, imm13, destination, 0);
-				oneBytecode.set_slc(0, ac_int<32, false>(oneBytecodeStruct.word0));
-				oneBytecode.set_slc(32, ac_int<32, false>(oneBytecodeStruct.word32));
-				oneBytecode.set_slc(64, ac_int<32, false>(oneBytecodeStruct.word64));
-				oneBytecode.set_slc(96, ac_int<32, false>(oneBytecodeStruct.word96));
+				oneBytecode = assembleRiBytecodeInstruction_hw(2, alloc, opcode, pred1, imm13, destination, 0);
 			}
 			else if (isArith2){
-				struct uint128_struct oneBytecodeStruct = assembleRBytecodeInstruction(2, alloc, opcode, pred2, pred1, destination, 0);
-				oneBytecode.set_slc(0, ac_int<32, false>(oneBytecodeStruct.word0));
-				oneBytecode.set_slc(32, ac_int<32, false>(oneBytecodeStruct.word32));
-				oneBytecode.set_slc(64, ac_int<32, false>(oneBytecodeStruct.word64));
-				oneBytecode.set_slc(96, ac_int<32, false>(oneBytecodeStruct.word96));
+				oneBytecode = assembleRBytecodeInstruction_hw(2, alloc, opcode, pred2, pred1, destination, 0);
 			}
 			else if (isProfile){
-				struct uint128_struct oneBytecodeStruct = assembleRiBytecodeInstruction(1, 0, opcode, 256, imm13, 256, 0);
-				oneBytecode.set_slc(0, ac_int<32, false>(oneBytecodeStruct.word0));
-				oneBytecode.set_slc(32, ac_int<32, false>(oneBytecodeStruct.word32));
-				oneBytecode.set_slc(64, ac_int<32, false>(oneBytecodeStruct.word64));
-				oneBytecode.set_slc(96, ac_int<32, false>(oneBytecodeStruct.word96));
+				oneBytecode = assembleRiBytecodeInstruction_hw(1, 0, opcode, 256, imm13, 256, 0);
 			}
 			else if (isFMADD){
-				struct uint128_struct oneBytecodeStruct = assembleRiBytecodeInstruction(1, 0, opcode, 256, imm13, 256, 0); //TODO
-				oneBytecode.set_slc(0, ac_int<32, false>(oneBytecodeStruct.word0));
-				oneBytecode.set_slc(32, ac_int<32, false>(oneBytecodeStruct.word32));
-				oneBytecode.set_slc(64, ac_int<32, false>(oneBytecodeStruct.word64));
-				oneBytecode.set_slc(96, ac_int<32, false>(oneBytecodeStruct.word96));
+				oneBytecode = assembleRiBytecodeInstruction_hw(1, 0, opcode, 256, imm13, 256, 0); //TODO
 			}
 			else if (isFP){
-				struct uint128_struct oneBytecodeStruct = assembleFPBytecodeInstruction(3, alloc, opcode, funct, pred2, pred1, destination, 0);
-				oneBytecode.set_slc(0, ac_int<32, false>(oneBytecodeStruct.word0));
-				oneBytecode.set_slc(32, ac_int<32, false>(oneBytecodeStruct.word32));
-				oneBytecode.set_slc(64, ac_int<32, false>(oneBytecodeStruct.word64));
-				oneBytecode.set_slc(96, ac_int<32, false>(oneBytecodeStruct.word96));
+				oneBytecode = assembleFPBytecodeInstruction_hw(3, alloc, opcode, funct, pred2, pred1, destination, 0);
 			}
 			else{
 				#ifndef __CATAPULT
@@ -885,8 +844,8 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			 * Last step is to place the instruction in the bytecode memory.
 			 */
 
+			if (!droppedInstruction)
 			bytecode[indexInCurrentBlock] = oneBytecode;
-
 
 			if (!insertMove_ena & !droppedInstruction)
 				indexInCurrentBlock++;
@@ -995,4 +954,5 @@ return valueToReturn;
 
 }
 
+#endif
 #endif

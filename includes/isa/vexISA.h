@@ -5,7 +5,7 @@
  *      Author: simon
  */
 #include <types.h>
-#include <string.h>
+#include <string>
 #ifndef INCLUDES_VEX_H_
 #define INCLUDES_VEX_H_
 
@@ -161,8 +161,6 @@
 #define VEX_CMPLEi 0x7e
 #define VEX_CMPLEUi 0x7f
 
-#ifdef __USE_AC
-
 /*
  * Declaration of functions that assemble vex instructions.
  * These are implemented for HW or for SW.
@@ -170,11 +168,15 @@
  * Note: HW version is enabled inly with __USE_AC flag
  */
 
-uint32 assembleIInstruction(uint7 opcode, uint19 imm19, uint6 regA);
-uint32 assembleRInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint6 regB);
-uint32 assembleRiInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint13 imm13);
-uint32 assembleFPInstruction(uint7 opcode, uint5 funct, uint6 regDest, uint6 regA, uint6 regB);
-uint32 assembleRRInstruction(uint7 opcode, uint6 regDest, uint6 regA, uint6 regB, uint6 regC);
+#ifndef __HW
+#ifndef __SW
+
+ac_int<32, false> assembleIInstruction(ac_int<7, false> opcode, ac_int<19, false> imm19, ac_int<6, false> regA);
+ac_int<32, false> assembleRInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<6, false> regB);
+ac_int<32, false> assembleRiInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<13, false> imm13);
+ac_int<32, false> assembleFPInstruction(ac_int<7, false> opcode, ac_int<5, false> funct, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<6, false> regB);
+ac_int<32, false> assembleRRInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<6, false> regB, ac_int<6, false> regC);
+#endif
 #endif
 
 unsigned int assembleIInstruction_sw(char opcode, int imm19, char regA);
@@ -186,7 +188,7 @@ unsigned int  assembleRRInstruction_sw(char opcode, char regDest, char regA, cha
 
 #ifndef __CATAPULT
 extern const char* opcodeNames[128];
-std::string printDecodedInstr(ac_int<32, false> instruction);
+std::string printDecodedInstr(unsigned int instruction);
 #endif
 
 #endif /* INCLUDES_VEX_H_ */

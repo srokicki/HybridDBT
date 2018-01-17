@@ -1,13 +1,12 @@
 #include <dbt/dbtPlateform.h>
 #include <dbt/insertions.h>
 #include <dbt/profiling.h>
-
+#include <cstring>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <lib/endianness.h>
-#include <lib/tools.h>
 #include <simulator/vexSimulator.h>
 #include <simulator/vexTraceSimulator.h>
 #include <simulator/riscvSimulator.h>
@@ -375,7 +374,7 @@ int main(int argc, char *argv[])
 	placeCode = insertCodeForInsertions(&dbtPlateform, placeCode, addressStart);
 
 	//We modify the initialization call
-	writeInt(dbtPlateform.vliwBinaries, 0*16, assembleIInstruction(VEX_CALL, placeCode, 63));
+	writeInt(dbtPlateform.vliwBinaries, 0*16, assembleIInstruction_sw(VEX_CALL, placeCode, 63));
 
 	initializeInsertionsMemory(size*4);
 
@@ -453,7 +452,7 @@ int main(int argc, char *argv[])
 
 	//We change the init code to jump at the correct place
 	unsigned int translatedStartPC = solveUnresolvedJump(&dbtPlateform, (pcStart-addressStart)>>2);
-	unsigned int instruction = assembleIInstruction(VEX_CALL, translatedStartPC, 63);
+	unsigned int instruction = assembleIInstruction_sw(VEX_CALL, translatedStartPC, 63);
 	writeInt(dbtPlateform.vliwBinaries, 0, instruction);
 
 

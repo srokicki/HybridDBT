@@ -7,7 +7,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-
+#include <cstring>
 #include <dbt/dbtPlateform.h>
 #include <lib/endianness.h>
 #include <isa/vexISA.h>

@@ -293,7 +293,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 				if (platform->vexSimulator->PC == 4*originalEntry || platform->vexSimulator->PC == 4*(originalEntry+1))
 					platform->vexSimulator->doStep(2);
 
-				writeInt(platform->vliwBinaries, 16*originalEntry+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
+				writeInt(platform->vliwBinaries, 16*originalEntry+0, assembleIInstruction_sw(VEX_GOTO, block->vliwStartAddress, 0));
 				writeInt(platform->vliwBinaries, 16*originalEntry+4, 0);
 				writeInt(platform->vliwBinaries, 16*originalEntry+8, 0);
 				writeInt(platform->vliwBinaries, 16*originalEntry+12, 0);
@@ -307,7 +307,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 				if (platform->vexSimulator->PC == 4*originalEntry || platform->vexSimulator->PC == 4*(originalEntry+2))
 					platform->vexSimulator->doStep(2);
 
-				writeInt(platform->vliwBinaries, 16*originalEntry+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
+				writeInt(platform->vliwBinaries, 16*originalEntry+0, assembleIInstruction_sw(VEX_GOTO, block->vliwStartAddress, 0));
 				writeInt(platform->vliwBinaries, 16*originalEntry+4, 0);
 				writeInt(platform->vliwBinaries, 16*originalEntry+8, 0);
 				writeInt(platform->vliwBinaries, 16*originalEntry+12, 0);
@@ -330,7 +330,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 				if (platform->vexSimulator->PC == 4*block->oldVliwStartAddress ||  platform->vexSimulator->PC == 4*(block->oldVliwStartAddress+2))
 					platform->vexSimulator->doStep(2);
 
-				writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
+				writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+0, assembleIInstruction_sw(VEX_GOTO, block->vliwStartAddress, 0));
 				writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+32, getReconfigurationInstruction(procedure->configuration));
 
 			}
@@ -338,7 +338,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 				if (platform->vexSimulator->PC == 4*block->oldVliwStartAddress ||  platform->vexSimulator->PC == 4*(block->oldVliwStartAddress+1))
 					platform->vexSimulator->doStep(2);
 
-				writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+0, assembleIInstruction(VEX_GOTO, block->vliwStartAddress, 0));
+				writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+0, assembleIInstruction_sw(VEX_GOTO, block->vliwStartAddress, 0));
 				writeInt(platform->vliwBinaries, 16*block->oldVliwStartAddress+16, getReconfigurationInstruction(procedure->configuration));
 
 			}

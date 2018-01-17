@@ -9,7 +9,7 @@
 #define INCLUDES_ISA_RISCVISA_H_
 
 #include <types.h>
-#include <string.h>
+#include <string>
 
 #define RISCV_LUI 0x37
 #define RISCV_AUIPC 0x17
@@ -183,8 +183,7 @@
 
 
 #ifndef __CATAPULT
-#ifndef __NIOS
-std::string printDecodedInstrRISCV(uint32 instruction);
+std::string printDecodedInstrRISCV(unsigned int instruction);
 
 extern const char* riscvNamesOP[8];
 extern const char* riscvNamesOPI[8];
@@ -194,7 +193,6 @@ extern const char* riscvNamesLD[8];
 extern const char* riscvNamesST[8];
 extern const char* riscvNamesBR[8];
 extern const char* riscvNames[8];
-#endif
 #endif
 
 

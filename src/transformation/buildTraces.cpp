@@ -8,6 +8,7 @@
 #include <dbt/dbtPlateform.h>
 #include <lib/endianness.h>
 #include <lib/log.h>
+#include <cstring>
 
 #include <transformation/buildTraces.h>
 IRBlock* ifConversion(IRBlock *entryBlock, IRBlock *thenBlock, IRBlock *elseBlock){
@@ -175,6 +176,8 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 		char shiftOpcode = opcode >> 3;
 		if (shiftOpcode == (VEX_STD >> 3)){
 			lastStore = oneInstr;
+			nbLastMemInstr = 0;
+			placeLastMemInstr = 0;
 		}
 
 		if (shiftOpcode == (VEX_LDD >> 3)){
@@ -251,7 +254,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 
 		if (lastStore > 0 && nbLastMemInstr > 0 && shiftedOpcode == (VEX_LDD>>3)){
 			//For the first 4 load instr we add a dependency to ensure the correctness
-			if (nbLastMemInstr == 3){
+			if (nbLastMemInstr == 4){
 				addControlDep(result->instructions, lastMemInstr[placeLastMemInstr], sizeofEntryBlock+oneInstr);
 				lastMemInstr[placeLastMemInstr] = sizeofEntryBlock+oneInstr;
 				placeLastMemInstr = (placeLastMemInstr+1) & 0x3;
@@ -266,9 +269,10 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 
 
 		short writtenReg = getDestinationRegister(secondBlock->instructions, oneInstr);
-		if (writtenReg >= 0)
+		if (writtenReg >= 0){
 			lastWriteRegForSecond[writtenReg-256] = oneInstr+sizeofEntryBlock;
 
+		}
 		//We check if there is a jump in the second block
 		if (opcode == VEX_GOTO || opcode == VEX_GOTOR || opcode == VEX_BRF || opcode == VEX_BR || opcode == VEX_CALL || opcode == VEX_CALLR){
 			if (indexOfSecondJump == -1 && indexOfJump != -1){

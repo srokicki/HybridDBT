@@ -1,7 +1,6 @@
 #include <stdio.h>
 
 #include <lib/elfFile.h>
-#include <lib/tools.h>
 #include <lib/endianness.h>
 
 

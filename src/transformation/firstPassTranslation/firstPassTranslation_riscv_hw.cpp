@@ -17,7 +17,6 @@
 #include <cstdlib>
 
 #include <lib/endianness.h>
-#include <lib/tools.h>
 #include <dbt/insertions.h>
 #endif
 
@@ -32,7 +31,8 @@
 
 
 
-#ifndef __NIOS
+#ifndef __SW
+#ifndef __HW
 
 int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 		ac_int<32, false> size,
@@ -939,4 +939,5 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 	return (indexInDestinationBinaries-placeCode) + (numberUnresolvedJumps<<18);
 }
 
+#endif
 #endif

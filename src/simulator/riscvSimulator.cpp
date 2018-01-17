@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <cstring>
 
 ac_int<64, false> shiftMask[64];
 float regf[32];

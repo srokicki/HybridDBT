@@ -11,6 +11,7 @@
 #ifndef __NIOS
 
 #include <map>
+#include <lib/ac_int.h>
 
 /*********************************************************
  *    Definition of system calls IDs

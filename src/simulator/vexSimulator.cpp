@@ -31,7 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
+#include <cstring>
 #include <cmath>
 #include <map>
 
@@ -143,34 +143,34 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 	if (extoMem.opCode == VEX_FLW || extoMem.opCode == VEX_FLH || extoMem.opCode == VEX_FLB){
 
 		if (extoMem.opCode == VEX_FLW){
-			uint32 value = ldw(address);
+			ac_int<32, false> value = ldw(address);
 			memcpy(&memtoWB->floatRes, &value, 4);
 			memtoWB->isFloat = 1;
 		}
 		else if (extoMem.opCode == VEX_FLH){
-			uint32 value = ldw(address);
+			ac_int<32, false> value = ldw(address);
 			memcpy(&memtoWB->floatRes, &value, 2);
 			memtoWB->isFloat = 1;
 		}
 		else if (extoMem.opCode == VEX_FLW){
-			uint32 value = ldw(address);
+			ac_int<32, false> value = ldw(address);
 			memcpy(&memtoWB->floatRes, &value, 1);
 			memtoWB->isFloat = 1;
 		}
 	}
 	else if (extoMem.opCode == VEX_FSW || extoMem.opCode == VEX_FSH || extoMem.opCode == VEX_FSB){
 		if (extoMem.opCode == VEX_FSW){
-			uint32 value;
+			ac_int<32, false> value;
 			memcpy(&value, &extoMem.floatRes, 4);
 			stw(address, value);
 		}
 		else if (extoMem.opCode == VEX_FSH){
-			uint32 value;
+			ac_int<32, false> value;
 			memcpy(&value, &extoMem.floatRes, 2);
 			sth(address, value);
 		}
 		else if (extoMem.opCode == VEX_FSW){
-			uint32 value;
+			ac_int<32, false> value;
 			memcpy(&value, &extoMem.floatRes, 1);
 			stb(address, value);
 		}

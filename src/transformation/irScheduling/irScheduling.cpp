@@ -48,11 +48,15 @@ unsigned char numberFreeRegister, char configuration){
 	acintMemcpy(localPlaceOfInstr, platform->placeOfInstr, 256*4);
 
 
-
 	ac_int<32, false> result =  irScheduler_scoreboard_hw(opt, basicBlockSize, localBytecode, localVliwBinaries, addressInBinaries, localPlaceOfRegisters,
 	numberFreeRegister, localFreeRegisters, issue_width, way_specialisation, localPlaceOfInstr);
 
 	unsigned int swResult = irScheduler_scoreboard_sw(opt, basicBlockSize, platform->bytecode, platform->vliwBinaries, addressInBinaries, platform->placeOfRegisters, numberFreeRegister, platform->freeRegisters, issue_width, way_specialisation, platform->placeOfInstr);
+
+	if (result != swResult){
+		fprintf(stderr, "Result of schedulers are different : %d vs %d\n", result, swResult);
+		exit(-1);
+	}
 
 //	for (int oneSourceValue = addressInBinaries; oneSourceValue<addressInBinaries+result+15; oneSourceValue++)
 //	fprintf(stderr, "%d   %x %x %x %x vs %x %x %x %x\n", oneSourceValue, platform->vliwBinaries[4*oneSourceValue+0], platform->vliwBinaries[4*oneSourceValue+1], platform->vliwBinaries[4*oneSourceValue+2], platform->vliwBinaries[4*oneSourceValue+3],

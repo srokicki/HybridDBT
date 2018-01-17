@@ -152,7 +152,7 @@ const uint7 functBinding[64] = {
 
 
 
-const ac_int<7, false> regimmBindings[64] = {VEX_CMPLT, VEX_CMPGE};
+const char regimmBindings[64] = {VEX_CMPLT, VEX_CMPGE};
 #endif
 
 #ifndef __USE_AC

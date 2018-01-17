@@ -7,6 +7,8 @@
 
 #include <transformation/irScheduler.h>
 
+#ifndef __HW
+#ifndef __SW
 
 #ifndef __CATAPULT
 #include <lib/log.h>
@@ -736,4 +738,5 @@ ac_int<32, false> irScheduler_list_hw(ac_int<1, false> optLevel,
 
 	return writeInBinaries-addressInBinaries;
 }
-
+#endif
+#endif
