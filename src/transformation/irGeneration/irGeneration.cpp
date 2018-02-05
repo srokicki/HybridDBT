@@ -13,6 +13,7 @@
 
 #include <isa/vexISA.h>
 #include <isa/irISA.h>
+#include <lib/dbtProfiling.h>
 
 #include <lib/log.h>
 
@@ -26,6 +27,10 @@
  ****************************************************************************/
 
 
+#ifndef __CATAPULT
+//Performance simulation
+int timeTakenIRGeneration;
+#endif
 
 unsigned int irGenerator(DBTPlateform *platform,
 		unsigned int addressInBinaries,
@@ -111,14 +116,15 @@ unsigned int irGenerator(DBTPlateform *platform,
 	 * The pass is done in SW only and the result is returned
 	 *
 	 ********************************************************************************************/
+	startProfiler(1);
+	int result = irGenerator_sw(platform->vliwBinaries, addressInBinaries, blockSize, platform->bytecode, platform->globalVariables, globalVariableCounter);
+	stopProfiler(1);
 
-	return irGenerator_sw(platform->vliwBinaries, addressInBinaries, blockSize, platform->bytecode, platform->globalVariables, globalVariableCounter);
-
+	return result;
 	#endif
 
 
 	#ifdef __HW_SIM
-	return irGenerator_sw(platform->vliwBinaries, addressInBinaries, blockSize, platform->bytecode, platform->globalVariables, globalVariableCounter);
 
 	/********************************************************************************************
 	 * Second version of sources for __SW

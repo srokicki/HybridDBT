@@ -295,7 +295,7 @@ int main(int argc, char *argv[])
 	 ************************************/
 
 	//Definition of objects used for DBT process
-	DBTPlateform dbtPlateform;
+	DBTPlateform dbtPlateform(MEMORY_SIZE);
 
 	dbtPlateform.vliwInitialConfiguration = CONFIGURATION;
 	dbtPlateform.vliwInitialIssueWidth = getIssueWidth(dbtPlateform.vliwInitialConfiguration);

@@ -379,6 +379,8 @@ IRApplication::IRApplication(int numberSections){
 	}
 
 	this->numberAllocatedProcedures = 0;
+	this->numberProcedures = 0;
+
 
 }
 
@@ -391,6 +393,7 @@ IRApplication::~IRApplication(){
 				delete this->blocksInSections[oneSection][oneBlock];
 		}
 	}
+
 
 	for (int oneProcedure = 0; oneProcedure<this->numberProcedures; oneProcedure++){
 		delete this->procedures[oneProcedure];

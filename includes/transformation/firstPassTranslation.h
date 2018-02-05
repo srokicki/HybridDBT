@@ -16,6 +16,11 @@
 #define MULT_LATENCY 3
 #define SIMPLE_LATENCY 2
 
+#ifndef __CATAPULT
+//Performance simulation
+	extern int timeTakenFirstPass;
+#endif
+
 #ifdef __USE_MIPS
 
 uint32 firstPassTranslator_MIPS(DBTPlateform *platform,

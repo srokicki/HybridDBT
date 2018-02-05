@@ -64,11 +64,16 @@ unsigned int irScheduler_list_sw(unsigned char optLevel,
 		unsigned char numberFreeRegister,
 		unsigned char freeRegisters[64],
 		unsigned char issue_width,
-		uintIW way_specialisation,
+		unsigned int way_specialisation,
 		unsigned int placeOfInstr[256]);
 #endif
 
 int irScheduler(DBTPlateform *platform, bool optLevel, unsigned char basicBlockSize, unsigned int addressInBinaries,
 		unsigned char numberFreeRegister, char configuration);
+
+#ifndef __CATAPULT
+//Performance simulation
+extern int timeTakenIRScheduler;
+#endif
 
 #endif

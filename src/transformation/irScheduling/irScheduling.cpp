@@ -10,7 +10,12 @@
 #include <types.h>
 #include <transformation/reconfigureVLIW.h>
 #include <lib/endianness.h>
+#include <lib/dbtProfiling.h>
 
+#ifndef __CATAPULT
+//Performance simulation
+int timeTakenIRScheduler;
+#endif
 
 int irScheduler(DBTPlateform *platform, bool opt, unsigned char basicBlockSize, unsigned int addressInBinaries,
 unsigned char numberFreeRegister, char configuration){
@@ -109,9 +114,13 @@ unsigned char numberFreeRegister, char configuration){
 	 *
 	 ********************************************************************************************/
 
+	startProfiler(2);
+	int result = irScheduler_scoreboard_sw(opt, basicBlockSize, platform->bytecode, platform->vliwBinaries, addressInBinaries, platform->placeOfRegisters, numberFreeRegister, platform->freeRegisters, issue_width, way_specialisation, platform->placeOfInstr);
+	stopProfiler(2);
+
+	return result;
 	#endif
 
-	return irScheduler_scoreboard_sw(opt, basicBlockSize, platform->bytecode, platform->vliwBinaries, addressInBinaries, platform->placeOfRegisters, numberFreeRegister, platform->freeRegisters, issue_width, way_specialisation, platform->placeOfInstr);
 
 
 	#ifdef __HW_SIM

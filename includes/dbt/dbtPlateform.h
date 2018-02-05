@@ -17,7 +17,12 @@
  *
  ********************************************************************/
 
-#define MEMORY_SIZE 190000
+#define MEMORY_SIZE 230000
+#define MAX_INSERTION_PER_SECTION 2048
+#define SHIFT_FOR_INSERTION_SECTION 13 //Should be equal to log2(MAX_INSERTION_PER_SECTION) + 2
+
+
+
 
 
 #include <simulator/vexSimulator.h>
@@ -45,18 +50,18 @@ public:
 	ac_int<32, false> placeOfInstr[256];
 	*/
 
-	unsigned int vliwBinaries[4*MEMORY_SIZE];
-	unsigned int mipsBinaries[4*MEMORY_SIZE];
-	unsigned int insertions[2048];
-	unsigned char blockBoundaries[MEMORY_SIZE];
-	unsigned int bytecode[256*4];
-	int globalVariables[128];
-	unsigned int unresolvedJumps_src[512];
-	unsigned int unresolvedJumps_type[512];
-	int unresolvedJumps[512];
-	unsigned char placeOfRegisters[512];
-	unsigned char freeRegisters[64];
-	unsigned int placeOfInstr[256];
+	unsigned int *vliwBinaries;
+	unsigned int *mipsBinaries;
+	unsigned int *insertions;
+	unsigned char *blockBoundaries;
+	unsigned int *bytecode;
+	int *globalVariables;
+	unsigned int *unresolvedJumps_src;
+	unsigned int *unresolvedJumps_type;
+	int *unresolvedJumps;
+	unsigned char *placeOfRegisters;
+	unsigned char *freeRegisters;
+	unsigned int *placeOfInstr;
 
 
 	VexSimulator* vexSimulator;
@@ -80,6 +85,10 @@ public:
 	double blockProcAverageSizeBeforeTrace = 0;
 	double blockProcDistanceBeforeTrace = 0;
 	int nbBlockProcedureBeforeTrace = 0;
+
+	DBTPlateform(int binarySize);
+	~DBTPlateform();
+
 };
 #endif
 

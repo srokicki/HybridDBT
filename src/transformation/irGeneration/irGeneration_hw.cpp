@@ -20,6 +20,7 @@
 //Includes required by catapult
 #include <isa/vexISA.h>
 #include <isa/irISA.h>
+#include <transformation/irGenerator.h>
 
 #define FIRST_RENAME 0
 #define LAST_RENAME 0
@@ -146,6 +147,11 @@ inline unsigned int writeDependency_ac(ac_int<128, false> bytecode[1024], ac_int
 unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, false> addressInBinaries, ac_int<32, false> blockSize,
 		ac_int<128, false> bytecode[1024], ac_int<32, true> globalVariables[128],
 		ac_int<32, false> globalVariableCounter){
+
+	#ifndef __CATAPULT
+	//Performance simulation
+	timeTakenIRGeneration = 0;
+	#endif
 
 	ac_int<1, false> const0 = 0;
 	ac_int<1, false> const1 = 1;
@@ -851,6 +857,10 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 				indexInCurrentBlock++;
 
 
+			#ifndef __CATAPULT
+			//Performance simulation
+			timeTakenIRGeneration += 4;
+			#endif
 		}
 		while (indexInSourceBinaries<=blockSize && indexInCurrentBlock<255);
 
@@ -908,6 +918,10 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 						writeOlderDependency++;
 					}
 				}
+				#ifndef __CATAPULT
+				//Performance simulation
+				timeTakenIRGeneration++;
+				#endif
 			}
 
 			for (int oneOlder=0; oneOlder<nbOlderDependency; oneOlder++){
@@ -945,7 +959,10 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			}
 		}
 
-
+#ifndef __CATAPULT
+//Performance simulation
+timeTakenIRGeneration+=5;
+#endif
 
 unsigned int valueToReturn = indexInSourceBinaries;
 valueToReturn = (valueToReturn<<16) + indexInCurrentBlock;

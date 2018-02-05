@@ -11,6 +11,7 @@
 #include <types.h>
 #include <isa/irISA.h>
 #include <isa/vexISA.h>
+#include <transformation/irScheduler.h>
 
 template<int N> struct l2 { enum { value = 1 + l2<N/2>::value }; };
 template<> struct l2<1> { enum { value = 1 }; };
@@ -189,6 +190,10 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 
 //  sort_ways(way_specialisation);
 
+	#ifndef __CATAPULT
+	//Performance simulation
+	timeTakenIRScheduler = 0;
+	#endif
 
 	haveJump = 0;
 	instructionId = 0;
@@ -484,6 +489,8 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 					binaries[addressInBinaries+(windowPosition+windowOffset)*2+1] = binariesWord.slc<128>(128);
 				}
 			}
+
+
 			windowPosition += advance;
 			windowShift = (windowShift+(advance))%WINDOW_SIZE;
 
@@ -524,6 +531,11 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		}
 
 		instructionId++;
+
+		#ifndef __CATAPULT
+		//Performance simulation
+		timeTakenIRScheduler += 4;
+		#endif
 
 	}
 
@@ -582,7 +594,10 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 
 
 	ac_int<32, false> newEnd = addressInBinaries+newSize;
-
+	#ifndef __CATAPULT
+	//Performance simulation
+	timeTakenIRScheduler += 8;
+	#endif
 
 	return newSize;
 }

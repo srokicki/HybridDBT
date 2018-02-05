@@ -9,6 +9,12 @@
 #include <transformation/firstPassTranslation.h>
 #include <dbt/insertions.h>
 #include <lib/endianness.h>
+#include <lib/dbtProfiling.h>
+
+#ifndef __CATAPULT
+//Performance simulation
+	int timeTakenFirstPass;
+#endif
 
 /**************************************************************
  *  Function firstPassTranslator will translate a piece of MIPS binaries from the memory 'code' and
@@ -137,6 +143,7 @@ unsigned int firstPassTranslator(DBTPlateform *platform,
 	 *
 	 ********************************************************************************************/
 
+	startProfiler(0);
 	int returnedValue = firstPassTranslator_riscv_sw(platform->mipsBinaries,
 			size,
 			platform->vliwInitialConfiguration,
@@ -149,7 +156,7 @@ unsigned int firstPassTranslator(DBTPlateform *platform,
 			platform->unresolvedJumps_src,
 			platform->unresolvedJumps_type,
 			platform->unresolvedJumps);
-
+	stopProfiler(0);
 
 	#endif
 
@@ -179,6 +186,7 @@ unsigned int firstPassTranslator(DBTPlateform *platform,
 	acintMemcpy(localUnresolvedJumps_src, platform->unresolvedJumps_src, 512*4);
 	acintMemcpy(localUnresolvedJumps_type, platform->unresolvedJumps_type, 512*4);
 	acintMemcpy(localUnresolvedJumps, platform->unresolvedJumps, 512*4);
+
 
 
 	int returnedValue = firstPassTranslator_riscv_hw(localMipsBinaries,

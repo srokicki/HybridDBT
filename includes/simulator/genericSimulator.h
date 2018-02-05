@@ -78,6 +78,8 @@ GenericSimulator(void) : memory(){this->debugLevel = 0;};
 int debugLevel = 0;
 int stop = 0;
 
+uint64_t cycle;
+
 std::map<ac_int<64, false>, ac_int<8, true>> memory;
 ac_int<64, true> REG[64];
 float regf[64];
@@ -99,7 +101,8 @@ ac_int<64, true> ldd(ac_int<64, false> addr);
 
 //********************************************************
 //System calls
-
+uint64_t profilingStarts[3];
+uint64_t profilingDomains[3];
 std::map<ac_int<16, true>, FILE*> fileMap;
 FILE **inStreams, **outStreams;
 int nbInStreams, nbOutStreams;

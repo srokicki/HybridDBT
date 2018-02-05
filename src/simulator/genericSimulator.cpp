@@ -13,14 +13,25 @@
 #include <sys/time.h>
 #include <types.h>
 #include <simulator/genericSimulator.h>
+#include <lib/dbtProfiling.h>
 
 
 void GenericSimulator::initialize(int argc, char** argv){
 
+
+	profilingStarts[0] = 0;
+	profilingStarts[1] = 0;
+	profilingStarts[2] = 0;
+
+	profilingDomains[0] = 0;
+	profilingDomains[1] = 0;
+	profilingDomains[2] = 0;
+	cycle = 0;
+
 	//We initialize registers
 	for (int oneReg = 0; oneReg < 32; oneReg++)
 		REG[oneReg] = 0;
-	REG[2] = 0xf00000;
+	REG[2] = 0x70000000;
 
 	/******************************************************
 	 * Argument passing:
@@ -172,6 +183,17 @@ ac_int<64, false> GenericSimulator::solveSyscall(ac_int<64, false> syscallId, ac
 		break;
 		case SYS_unlink:
 			result = this->doUnlink(arg1);
+		break;
+		case SYS_PROFILING_START:
+			result = 0;
+			profilingStarts[arg1] = this->cycle;
+		break;
+		case SYS_PROFILING_STOP:
+			result = 0;
+			profilingDomains[arg1] += (this->cycle - profilingStarts[arg1]);
+		break;
+		case SYS_PROFILING_GET:
+			result = profilingDomains[arg1];
 		break;
 		default:
 			printf("Unknown syscall with code %d\n", syscallId.slc<32>(0));

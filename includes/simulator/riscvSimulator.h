@@ -32,7 +32,6 @@ class RiscvSimulator : public GenericSimulator{
 	//Modelization of RISC-V pipeline
 	int lastWrittenRegister;
 	bool lastIsLoad;
-	long int cycle;
 
 	RiscvSimulator(void) : GenericSimulator(){lastIsLoad = false; lastWrittenRegister = -1; cycle=0;};
 	int doSimulation(int nbCycles);

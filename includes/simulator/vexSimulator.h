@@ -87,7 +87,7 @@ struct MemtoWB {
 class VexSimulator : public GenericSimulator {
 	public:
 
-	int typeInstr[190000];
+	int typeInstr[230000];
 	int nbCycleType[3] = {0,0,0};
 
 	//Instruction memory is a 128-bit memory
@@ -109,7 +109,7 @@ class VexSimulator : public GenericSimulator {
 
 	//Tools for statistics
 	uint64_t nbInstr, lastNbInstr;
-	uint64_t cycle, lastNbCycle;
+	uint64_t lastNbCycle;
 	uint64_t lastReconf;
 	char currentConfig;
 	uint64_t timeInConfig[32];

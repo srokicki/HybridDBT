@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <vector>
 #include <string>
-#include <sys/sendfile.h>
+//#include <sys/sendfile.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -209,27 +209,30 @@ ElfFile::ElfFile(char* pathToElfFile){
 
 ElfFile* ElfFile::copy(char* newDest){
 
-    int input, output;
-    if ((input = open(this->pathToElfFile, O_RDONLY)) == -1){
-    	printf("Error while opening %s", this->pathToElfFile);
-        exit(-1);
-    }
-    if ((output = open(newDest, O_WRONLY|O_TRUNC|O_CREAT,S_IWRITE | S_IREAD)) == -1){
-        close(input);
-    	printf("Error while opening %s", newDest);
-        exit(-1);
-    }
+//    int input, output;
+//    if ((input = open(this->pathToElfFile, O_RDONLY)) == -1){
+//    	printf("Error while opening %s", this->pathToElfFile);
+//        exit(-1);
+//    }
+//    if ((output = open(newDest, O_WRONLY|O_TRUNC|O_CREAT,S_IWRITE | S_IREAD)) == -1){
+//        close(input);
+//    	printf("Error while opening %s", newDest);
+//        exit(-1);
+//    }
 
-    //sendfile will work with non-socket output (i.e. regular file) on Linux 2.6.33+
-    off_t bytesCopied = 0;
-    struct stat fileinfo = {0};
-    fstat(input, &fileinfo);
-    sendfile(output, input, &bytesCopied, fileinfo.st_size);
+    fprintf(stderr, "Send file function in elf file is no longer supported !\n Exiting...\n");
+    exit(-1);
 
-    close(input);
-    close(output);
-
-    return new ElfFile(newDest);
+//    //sendfile will work with non-socket output (i.e. regular file) on Linux 2.6.33+
+//    off_t bytesCopied = 0;
+//    struct stat fileinfo = {0};
+//    fstat(input, &fileinfo);
+////    sendfile(output, input, &bytesCopied, fileinfo.st_size);
+//
+//    close(input);
+//    close(output);
+//
+//    return new ElfFile(newDest);
 }
 
 

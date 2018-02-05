@@ -31,6 +31,7 @@
 
 
 
+
 #ifndef __SW
 #ifndef __HW
 
@@ -84,6 +85,13 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 	 *     contains the number of jumps being registered.
 	 *
 	 */
+
+
+	#ifndef __CATAPULT
+	//Performance simulation
+	timeTakenFirstPass = 0;
+	#endif
+
 	unsigned int numberUnresolvedJumps = 0;
 	char issueWidth = getIssueWidth(conf);
 
@@ -285,7 +293,7 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 			//We compute a bit saying if previous instruction is at BB boundary
 			ac_int<1, false> previousIsBoundary = 0;
 			ac_int<32, false> currentAddress = (indexInSourceBinaries + ((codeSectionStart - addressStart)>>2));
-			ac_int<16, false> offset = currentAddress.slc<16>(0);
+			ac_int<18, false> offset = currentAddress.slc<18>(0);
 			previousIsBoundary = blocksBoundaries[offset];
 			if (currentBoundaryJustSet)
 				previousIsBoundary = currentBoundaryJustSet;
@@ -549,6 +557,7 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 					//This is a comparison to zero
 					setBoundaries1 = 1;
 					boundary1 = ((imm13_signed>>2)+indexInSourceBinaries);
+
 					setBoundaries2 = 1;
 					boundary2 = indexInSourceBinaries + 1;//Only plus one because in riscv next instr is not executed
 
@@ -574,7 +583,6 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 					binaries = assembleRInstruction(functBindingBR[funct3], 32, rs1, rs2); //TODO check order
 
 					nextInstruction = assembleIInstruction(VEX_BR, 0, 32);
-
 
 					nextInstruction_stage = 0;
 					enableNextInstruction = 1;
@@ -877,7 +885,7 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 		if (setBoundaries1){
 			ac_int<1, false> const1 = 1;
 			ac_int<32, false> boundaryAddress = (boundary1 + ((codeSectionStart - addressStart)>>2));
-			ac_int<16, false> offset = boundaryAddress.slc<16>(0);
+			ac_int<18, false> offset = boundaryAddress.slc<18>(0);
 			//ac_int<3, false> bitOffset = boundaryAddress.slc<3>(0);
 			blocksBoundaries[offset] = 1; //.set_slc(bitOffset, const1);
 
@@ -918,6 +926,11 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 		if (previousLatency != 0)
 			previousLatency--;
 
+	#ifndef __CATAPULT
+	//Performance simulation
+	timeTakenFirstPass++;
+	#endif
+
 	}
 
 
@@ -929,7 +942,10 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 	}
 
 
-
+	#ifndef __CATAPULT
+	//Performance simulation
+	timeTakenFirstPass+=2;
+	#endif
 
 	destinationBinaries[previousIndex] = previousBinaries.slc<128>(0);
 	destinationBinaries[previousIndex+1] = previousBinaries.slc<128>(128);

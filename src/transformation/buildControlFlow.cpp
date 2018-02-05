@@ -64,7 +64,6 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 	unsigned int unresolvedJumpIndex = 0;
 
 
-
 	for (int oneInstruction = 0; oneInstruction <= sizeNewlyTranslated; oneInstruction++){
 		int offset = (indexInMipsBinaries + ((sectionStartAddress>>2) - mipsStartAddress));
 		char blockBoundary = 1;
@@ -129,9 +128,11 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 					int immediateValue = (isAbsolute) ? (destinationInVLIWFromNewMethod) : ((destinationInVLIWFromNewMethod  - oneJumpSource));
 					writeInt(dbtPlateform->vliwBinaries, 16*(oneJumpSource), oneJumpType + ((immediateValue & 0x7ffff)<<7));
 
-					unsigned int instructionBeforePreviousDestination = readInt(dbtPlateform->vliwBinaries, 16*(destinationInVLIWFromNewMethod-1)+12);
-					if (instructionBeforePreviousDestination != 0)
-						writeInt(dbtPlateform->vliwBinaries, 16*(oneJumpSource+1*offsetInBinaries)+12, instructionBeforePreviousDestination);
+					if (destinationInVLIWFromNewMethod != 0){
+						unsigned int instructionBeforePreviousDestination = readInt(dbtPlateform->vliwBinaries, 16*(destinationInVLIWFromNewMethod-1)+12);
+						if (instructionBeforePreviousDestination != 0)
+							writeInt(dbtPlateform->vliwBinaries, 16*(oneJumpSource+1*offsetInBinaries)+12, instructionBeforePreviousDestination);
+					}
 				}
 
 				unresolvedJumpIndex++;

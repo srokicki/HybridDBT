@@ -62,7 +62,6 @@ unsigned int writeDependency_sw(unsigned int *ir, unsigned char srcInstr, unsign
 unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBinaries, unsigned int blockSize,
 		unsigned int *bytecode, int globalVariables[128], unsigned int globalVariableCounter){
 
-
 		unsigned char indexInCurrentBlock = 0;
 		short registers[128];
 

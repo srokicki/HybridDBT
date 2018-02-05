@@ -592,6 +592,9 @@ void RiscvSimulator::doStep(){
 		if (funct3 == 0 && funct7 == 0){
 			REG[10] = solveSyscall(REG[17], REG[10], REG[11], REG[12], REG[13]);
 		}
+		else {
+			fprintf(stderr, "Unresolved system instr funct3 = %d funct7 = %d\n", funct3, funct7);
+		}
 	break;
 	//******************************************************************************************
 	//Treatment for: floating point operations
@@ -716,7 +719,7 @@ void RiscvSimulator::doStep(){
 		break;
 
 	default:
-		printf("In default part of switch opcode, instr %x is not handled yet(%x)\n", (int) ins, this->heapAddress);
+		printf("In default part of switch opcode, instr %x is not handled yet(%x)  pC is %x\n", (int) ins, this->heapAddress, this->cycle);
 		exit(-1);
 	break;
 

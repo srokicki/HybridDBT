@@ -30,5 +30,10 @@ unsigned int irGenerator(DBTPlateform *platform,
 		unsigned int blockSize,
 		unsigned int globalVariableCounter);
 
+#ifndef __CATAPULT
+//Performance simulation
+extern int timeTakenIRGeneration;
+#endif
+
 
 #endif /* INCLUDES_TRANSFORMATION_IRGENERATOR_H_ */
