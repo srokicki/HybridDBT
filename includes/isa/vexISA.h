@@ -161,6 +161,23 @@
 #define VEX_CMPLEi 0x7e
 #define VEX_CMPLEUi 0x7f
 
+#define VEX_OPCODE_MASK 0x7f
+#define VEX_REG_MASK 0x3f
+#define VEX_RA_OFF 26
+#define VEX_RB_OFF 20
+#define VEX_RC_OFF 14
+#define VEX_IMM19_MASK 0x7ffff
+#define VEX_IMM13_MASK 0x1ffff
+#define VEX_IMM_OFF 7
+#define VEX_BEXT_MASK 0x7
+#define VEX_FUNCT_OFF 7
+#define VEX_FUNCT_MASK 0x1f
+#define VEX_BEXT_OFF 8
+#define VEX_BEXT_MASK 0x7
+#define VEX_IMM9_OFF 11
+#define VEX_IMM9_MASK 0x1ff
+
+
 /*
  * Declaration of functions that assemble vex instructions.
  * These are implemented for HW or for SW.

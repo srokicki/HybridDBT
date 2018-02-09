@@ -8,8 +8,9 @@ set(SOURCE
    ${CMAKE_CURRENT_SOURCE_DIR}/buildControlFlow.cpp   
    ${CMAKE_CURRENT_SOURCE_DIR}/reconfigureVLIW.cpp   
    ${CMAKE_CURRENT_SOURCE_DIR}/buildTraces.cpp  
-   ${CMAKE_CURRENT_SOURCE_DIR}/rescheduleProcedure.cpp 
-  ${CMAKE_CURRENT_SOURCE_DIR}/memoryDisambiguation.cpp 
+   ${CMAKE_CURRENT_SOURCE_DIR}/rescheduleProcedure.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/memoryDisambiguation.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/cgraScheduler.cpp
    
      
    PARENT_SCOPE
@@ -24,6 +25,7 @@ set(SOURCE_DBT
    ${CMAKE_CURRENT_SOURCE_DIR}/buildTraces.cpp  
    ${CMAKE_CURRENT_SOURCE_DIR}/rescheduleProcedure.cpp 
   ${CMAKE_CURRENT_SOURCE_DIR}/memoryDisambiguation.cpp 
+  ${CMAKE_CURRENT_SOURCE_DIR}/cgraScheduler.cpp
    
      
    PARENT_SCOPE

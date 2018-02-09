@@ -165,13 +165,13 @@ std::string printDecodedInstr(unsigned int instruction){
 	if (OP == 0){
 	}
 	else if (isIType)
-		stream << " r" << RA << ", "  << IMM19;
+    stream << " r" << (int)RA << ", "  << (int)IMM19;
 	else if (isImm){
-		stream << " r" << RB << "  = r" << RA << " 0x";
+    stream << " r" << (int)RB << "  = r" << (int)RA << " 0x";
 		stream << std::hex << IMM13_signed;
 	}
 	else
-		stream << " r" << RC << "  = r" << RA << " r" << RB;
+    stream << " r" << (int)RC << "  = r" << (int)RA << " r" << (int)RB;
 
 	std::string result(stream.str());
 	for (int addedSpace = result.size(); addedSpace < 20; addedSpace++)
