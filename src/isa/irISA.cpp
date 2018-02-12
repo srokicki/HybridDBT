@@ -380,7 +380,7 @@ IRApplication::IRApplication(int numberSections){
 
 	this->numberAllocatedProcedures = 0;
 	this->numberProcedures = 0;
-
+  this->procedures = nullptr;
 
 }
 
@@ -437,7 +437,9 @@ void IRApplication::addProcedure(IRProcedure *procedure){
 		this->procedures = (IRProcedure**) malloc(newAllocation * sizeof(IRProcedure*));
 		memcpy(this->procedures, oldList, numberProc*sizeof(IRProcedure*));
 		this->numberAllocatedProcedures = newAllocation;
-		free(oldList);
+
+    if (oldList)
+      free(oldList);
 	}
 
 
