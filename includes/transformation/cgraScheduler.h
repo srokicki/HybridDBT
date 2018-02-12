@@ -2,6 +2,7 @@
 #define CGRASCHEDULER_H
 
 #include <simulator/cgraSimulator.h>
+#include <isa/irISA.h>
 #include <cstdint>
 
 class CgraScheduler
@@ -9,7 +10,7 @@ class CgraScheduler
 public:
   CgraScheduler();
 
-  void schedule(CgraSimulator &cgra, uint32_t *instructions, uint32_t numInstructions);
+  void schedule(CgraSimulator &cgra, uint128_struct *instructions, uint32_t numInstructions);
 private:
   uint8_t * _cgra_cache;
 

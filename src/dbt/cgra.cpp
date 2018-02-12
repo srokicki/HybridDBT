@@ -508,12 +508,18 @@ int main(int argc, char *argv[])
       // un bloc est eligible si ses instructions sont toutes implementables dans le CGRA
       Log::printf(0, "IS BLOC ELIGIBLE ?\n");
       bool eligible = true;
+      uint128_struct * to_schedule = new uint128_struct[block->nbInstr-1];
       for (int instrId = 0; instrId < block->nbInstr-1; ++instrId)
       {
-        if (!isEligible(readInt(block->instructions, instrId*16+0)
-                       ,readInt(block->instructions, instrId*16+4)
-                       ,readInt(block->instructions, instrId*16+8)
-                       ,readInt(block->instructions, instrId*16+12)))
+        to_schedule[instrId].word96 = readInt(block->instructions, instrId*16+0);
+        to_schedule[instrId].word64 = readInt(block->instructions, instrId*16+4);
+        to_schedule[instrId].word32 = readInt(block->instructions, instrId*16+8);
+        to_schedule[instrId].word0 = readInt(block->instructions, instrId*16+12);
+
+        if (!isEligible(to_schedule[instrId].word96
+                       ,to_schedule[instrId].word64
+                       ,to_schedule[instrId].word32
+                       ,to_schedule[instrId].word0))
           eligible = false;
       }
 
@@ -521,27 +527,17 @@ int main(int argc, char *argv[])
       if (eligible)
       {
         Log::printf(0, "YES\n");
-        Log::printf(0, "%d, %d\n", block->vliwStartAddress, block->vliwEndAddress);
-
-        // copie des instructions VEX dans un buffer
-        uint32_t * to_schedule = new uint32_t[(block->vliwEndAddress - block->vliwStartAddress - 1)*sizeof(uint32_t)];
-        for (int vliwI = block->vliwStartAddress; vliwI < block->vliwEndAddress - 1; ++vliwI)
-        {
-          to_schedule[vliwI] = dbtPlateform.vliwBinaries[vliwI*4+3];
-          Log::printf(0, "%s\n", printDecodedInstr(to_schedule[vliwI]).c_str());
-        }
 
         // configuration du CGRA
         CgraScheduler scheduler;
-        scheduler.schedule(sim, to_schedule, block->vliwEndAddress - block->vliwStartAddress - 1);
-
-        // liberation du buffer d'instructions VEX
-        delete to_schedule;
+        scheduler.schedule(sim, to_schedule, block->nbInstr-1);
       }
       else
       {
         Log::printf(0, "NO\n");
       }
+
+      delete[] to_schedule;
       Log::printf(0, "FINISHED PRINTING BLOCS\n");
       // ARTHUR END
 
