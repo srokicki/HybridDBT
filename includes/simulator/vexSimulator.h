@@ -88,7 +88,7 @@ class VexSimulator : public GenericSimulator {
 	public:
 
 	int typeInstr[230000];
-	int nbCycleType[3] = {0,0,0};
+	int nbCycleType[4] = {0,0,0,0};
 
 	//Instruction memory is a 128-bit memory
 	unsigned int *RI;

@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.0.2)
 
-set(CMAKE_C_COMPILER_INIT g++)
+
 enable_testing()
 
 
@@ -11,8 +11,10 @@ project (HybridDBT)
 include_directories(./includes)
 
 #-fsanitize=address
+set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
+set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ggdb -std=c++11 -D__LINUX_API -D__USE_AC -D AC_NOT_USING_INTN -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ggdb -std=c++11 -D__LINUX_API -D__USE_AC -D AC_NOT_USING_INTN -pthread ")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 set (EXECUTABLE  "")
 
@@ -35,7 +37,7 @@ foreach(oneExecutable ${EXECUTABLE})
     set_target_properties(dbtHwSim PROPERTIES COMPILE_DEFINITIONS "__HW_SIM")
     
     add_executable(dbt ${SOURCE} ${oneExecutable})
-    set_target_properties(dbt PROPERTIES COMPILE_DEFINITIONS "__SW_HW_SIM")
+    set_target_properties(dbt PROPERTIES COMPILE_DEFINITIONS "__HW_SIM")
   else()
 	  add_executable(${execName} ${SOURCE} ${oneExecutable})
 	  set_target_properties(${execName} PROPERTIES COMPILE_DEFINITIONS "__SW")
@@ -46,7 +48,4 @@ endforeach(oneExecutable)
 
 
 
-#include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
-#ExternalProject_Add(benchmarks SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/benchmarks BINARY_DIR ./benchmarks/bin INSTALL_COMMAND ls)
 
-add_subdirectory(benchmarks)

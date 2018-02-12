@@ -643,6 +643,9 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 				lastLatency = SIMPLE_LATENCY;
 
 				if (funct3 == RISCV_SYSTEM_ENV){
+					setBoundaries1 = 1;
+					boundary1 = indexInSourceBinaries;//Only plus one because in riscv next instr is not executed
+
 					binaries = assembleIInstruction_sw(VEX_ECALL, 0,0);
 				}
 				else {
