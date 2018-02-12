@@ -380,7 +380,7 @@ IRApplication::IRApplication(int numberSections){
 
 	this->numberAllocatedProcedures = 0;
 	this->numberProcedures = 0;
-  this->procedures = nullptr;
+	this->procedures = nullptr;
 
 }
 
@@ -438,8 +438,8 @@ void IRApplication::addProcedure(IRProcedure *procedure){
 		memcpy(this->procedures, oldList, numberProc*sizeof(IRProcedure*));
 		this->numberAllocatedProcedures = newAllocation;
 
-    if (oldList)
-      free(oldList);
+		if (oldList)
+			free(oldList);
 	}
 
 
@@ -477,7 +477,7 @@ short getDestinationRegister(unsigned int *bytecode, unsigned char index){
 	if ((opcode != 0) //not a nop
 			&&((opcode>>4) != 2 || opcode == VEX_MOVI) //if I-type then movi
 			&& ((opcode>>3) != 0x3) //not a store
-		    && opcode != VEX_FSB && opcode != VEX_FSH && opcode != VEX_FSW) //not a FP store
+			&& opcode != VEX_FSB && opcode != VEX_FSH && opcode != VEX_FSW) //not a FP store
 		return (bytecodeWord64>>14) & 0x1ff;
 
 	return -1;

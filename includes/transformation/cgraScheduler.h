@@ -8,11 +8,11 @@
 class CgraScheduler
 {
 public:
-  CgraScheduler();
+	CgraScheduler();
 
-  void schedule(CgraSimulator &cgra, uint128_struct *instructions, uint32_t numInstructions);
+	void schedule(CgraSimulator &cgra, uint128_struct *instructions, uint32_t numInstructions);
 private:
-  uint8_t * _cgra_cache;
+	uint8_t * _cgra_cache;
 
 };
 

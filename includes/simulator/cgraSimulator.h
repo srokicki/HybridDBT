@@ -17,27 +17,27 @@
 class CgraSimulator : public GenericSimulator
 {
 public:
-  CgraSimulator();
+	CgraSimulator();
 
-  /**
-   * @brief doStep executes all CGRA's FunctionalUnits
-   */
-  void doStep();
+	/**
+	 * @brief doStep executes all CGRA's FunctionalUnits
+	 */
+	void doStep();
 
-  /**
-   * @brief configures the CGRA's FunctionalUnits
-   * @param config: a bitstream formated configuration
-   * @param size: the size of the bitstream in bytes
-   */
-  void configure(uint8_t * config, uint32_t size);
+	/**
+	 * @brief configures the CGRA's FunctionalUnits
+	 * @param config: a bitstream formated configuration
+	 * @param size: the size of the bitstream in bytes
+	 */
+	void configure(uint8_t * config, uint32_t size);
 
-  /**
-   * @brief print prints the CGRA's FunctionalUnits _out register
-   */
-  void print();
+	/**
+	 * @brief print prints the CGRA's FunctionalUnits _out register
+	 */
+	void print();
 private:
-  FunctionalUnit _units[12];
-  uint8_t * _config;
+	FunctionalUnit _units[12];
+	uint8_t * _config;
 };
 
 #endif // CGRASIMULATOR_H
