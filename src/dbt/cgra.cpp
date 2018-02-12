@@ -41,8 +41,8 @@
 // ldi 12 | rt LEFT | mul UP LEFT    | NOP
 
 uint8_t dummy1[] = {
-  0xBA, 0x00, 0x0F, 0x10, 0xB5, 0x00, 0x00, 0xF3, 0x11, 0x19,
-  0xB2, 0x00, 0xBC, 0x00, 0x0F, 0x13, 0xB0, 0x00
+	0xBA, 0x00, 0x0F, 0x10, 0xB5, 0x00, 0x00, 0xF3, 0x11, 0x19,
+	0xB2, 0x00, 0xBC, 0x00, 0x0F, 0x13, 0xB0, 0x00
 };
 
 void printStats(unsigned int size, short* blockBoundaries){
@@ -66,10 +66,10 @@ int translateOneSection(DBTPlateform &dbtPlateform, unsigned int placeCode, int 
 	int previousPlaceCode = placeCode;
 	unsigned int size = (sectionEndAddress - sectionStartAddress)>>2;
 	placeCode = firstPassTranslator(&dbtPlateform,
-	                                size,
-	                                sourceStartAddress,
-	                                sectionStartAddress,
-	                                placeCode);
+																	size,
+																	sourceStartAddress,
+																	sectionStartAddress,
+																	placeCode);
 
 
 
@@ -137,13 +137,14 @@ bool isEligible(uint32_t i1, uint32_t i2, uint32_t i3, uint32_t i4)
 {
 	uint8_t opCode = ((i1>>19) & 0x7f);
 	static const uint8_t validOpCodes[] = {
-	  VEX_ADD, VEX_ADDi,
-	  VEX_SUB, VEX_SUBi, VEX_SLL, VEX_SLLi,
-	  VEX_AND, VEX_ANDi, VEX_XOR, VEX_XORi,
-	  VEX_OR, VEX_ORi, VEX_SRL, VEX_SRLi
+		VEX_ADD, VEX_ADDi,
+		VEX_MPY, VEX_LDD, VEX_STD, VEX_STB, VEX_STH, VEX_STW, VEX_LDW, VEX_LDB, VEX_LDH,
+		VEX_SUB, VEX_SUBi, VEX_SLL, VEX_SLLi,
+		VEX_AND, VEX_ANDi, VEX_XOR, VEX_XORi,
+		VEX_OR, VEX_ORi, VEX_SRL, VEX_SRLi
 	};
 	return std::find(validOpCodes, validOpCodes+sizeof(validOpCodes), opCode)
-	    != validOpCodes+sizeof(validOpCodes);
+			!= validOpCodes+sizeof(validOpCodes);
 }
 
 int main(int argc, char *argv[])
@@ -166,9 +167,9 @@ int main(int argc, char *argv[])
 
 	static std::map<std::string, FILE*> ios =
 	{
-	  { "stdin", stdin },
-	  { "stdout", stdout },
-	  { "stderr", stderr }
+		{ "stdin", stdin },
+		{ "stdout", stdout },
+		{ "stderr", stderr }
 	};
 
 	Config cfg(argc, argv);
@@ -507,7 +508,6 @@ int main(int argc, char *argv[])
 			// un bloc est eligible si ses instructions sont toutes implementables dans le CGRA
 			if (block)
 			{
-				Log::printf(0, "IS BLOC ELIGIBLE ?\n");
 				bool eligible = true;
 				uint128_struct * to_schedule = new uint128_struct[block->nbInstr-1];
 				for (int instrId = 0; instrId < block->nbInstr-1; ++instrId)
@@ -518,30 +518,25 @@ int main(int argc, char *argv[])
 					to_schedule[instrId].word0 = readInt(block->instructions, instrId*16+12);
 
 					if (!isEligible(to_schedule[instrId].word96
-					                ,to_schedule[instrId].word64
-					                ,to_schedule[instrId].word32
-					                ,to_schedule[instrId].word0))
+													,to_schedule[instrId].word64
+													,to_schedule[instrId].word32
+													,to_schedule[instrId].word0))
 						eligible = false;
 				}
 
 				// si eligible, on le transforme en configuration CGRA
 				if (eligible)
 				{
-					Log::printf(0, "YES\n");
-
 					// configuration du CGRA
 					CgraScheduler scheduler;
 					scheduler.schedule(sim, to_schedule, block->nbInstr-1);
 				}
-				else
-				{
-					Log::printf(0, "NO\n");
-				}
 
 				delete[] to_schedule;
-				Log::printf(0, "FINISHED PRINTING BLOCS\n");
-				// ARTHUR END
 			}
+			// /////////////////////////////////////////////////
+			// ARTHUR END
+			// /////////////////////////////////////////////////
 
 			if ((MAX_PROC_COUNT==-1 || dbtPlateform.procedureOptCounter < MAX_PROC_COUNT) && block != NULL && OPTLEVEL >= 2 && profileResult >= 1 && (block->blockState == IRBLOCK_STATE_SCHEDULED || block->blockState == IRBLOCK_STATE_PROFILED)){
 
