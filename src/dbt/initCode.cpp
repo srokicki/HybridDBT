@@ -31,6 +31,8 @@ unsigned int getInitCode(DBTPlateform *platform, int start, unsigned int startAd
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 
+
+
 	cycle+=offset;
 	return cycle;
 

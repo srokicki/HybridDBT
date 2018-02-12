@@ -99,11 +99,15 @@ public:
 
 		  Log::fprintf(0, stdout, "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: %ld\n\t Number of instruction executed: %ld\n\t Average IPC: %f\n",
 				  platform->vexSimulator->cycle, platform->vexSimulator->nbInstr, ((double) platform->vexSimulator->nbInstr)/((double) platform->vexSimulator->cycle));
-		  Log::fprintf(0, stdout, "\tConfiguration used: %d\n", platform->vliwInitialConfiguration);
-		  Log::fprintf(0, stdout, "\tEnergy consumed (exec): %f\n", energyConsumption);
+		  Log::fprintf(0, stdout, "\t Configuration used: %d\n", platform->vliwInitialConfiguration);
+		  Log::fprintf(0, stdout, "\t Energy consumed (exec): %f\n", energyConsumption);
 
-		  Log::fprintf(0, stdout, "\tOptimization cycles: %d\n", platform->optimizationCycles);
-		  Log::fprintf(0, stdout, "\tOptimization energy (mJ): %f\n", platform->optimizationEnergy*period);
+		  Log::fprintf(0, stdout, "\t Optimization cycles: %d\n", platform->optimizationCycles);
+
+		  Log::fprintf(0, stdout, "\t Optimization cycles: %d\n", platform->optimizationCycles);
+		  Log::fprintf(0, stdout, "\t Optimization energy (mJ): %f\n", platform->optimizationEnergy*period);
+
+		  Log::fprintf(0, stdout, "\t\t Number of cycle spent on system code : %d\n", platform->vexSimulator->nbCycleType[3]);
 
 		  Log::fprintf(0, stdout, "\t -----------------------------------------------------\n");
 		  Log::fprintf(0, stdout, "\t Stats for optimization level 0:\n");

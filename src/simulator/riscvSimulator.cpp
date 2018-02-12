@@ -713,6 +713,11 @@ void RiscvSimulator::doStep(){
 				localResult = REG[rs1];
 				memcpy(&(regf[rd]),&localResult,  4);
 				break;
+
+			default:
+				printf("In FP part of switch opcode, instr %x is not handled yet(%x)  pC is %x\n", (int) ins, this->heapAddress, this->cycle);
+				exit(-1);
+			break;
 		}
 
 

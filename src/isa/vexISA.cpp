@@ -141,15 +141,15 @@ std::string printDecodedInstr(unsigned int instruction){
 
 
 
-	char RA = (instruction >> 26) & 0x3f;
-	char RB = (instruction >> 20) & 0x3f;
-	char RC = (instruction >> 14) & 0x3f;
+	int RA = (instruction >> 26) & 0x3f;
+	int RB = (instruction >> 20) & 0x3f;
+	int RC = (instruction >> 14) & 0x3f;
 	int IMM19 = (instruction >> 7) & 0x7ffff;
 	short IMM13 = (instruction >> 7) & 0x1fff;
 	short IMM13_signed = (IMM13 > 4095) ? IMM13 - 8192 : IMM13;
-	char funct = (instruction >> 7) & 0x1f;
-	char OP = (instruction & 0x7f);
-	char BEXT = (instruction >> 8) & 0x7;
+	int funct = (instruction >> 7) & 0x1f;
+	int OP = (instruction & 0x7f);
+	int BEXT = (instruction >> 8) & 0x7;
 	short IMM9 = (instruction >> 11) & 0x1ff;
 
 	char isIType = (((OP >> 4) & 0x7) == 2);

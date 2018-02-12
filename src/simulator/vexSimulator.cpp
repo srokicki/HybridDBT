@@ -459,6 +459,10 @@ void VexSimulator::doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 	extoMem->dest = dctoEx.dest;
 	extoMem->opCode = dctoEx.opCode;
 	extoMem->memValue = dctoEx.memValue;
+
+	if (dctoEx.opCode == VEX_FLB || dctoEx.opCode == VEX_FLH || dctoEx.opCode == VEX_FLW){
+		extoMem->isFloat = 1;
+	}
 }
 
 #ifdef __CATAPULT
@@ -660,7 +664,10 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 	extoMem->isFloat = 0;
 	float localFloat;
 
-	if (dctoEx.opCode == VEX_FMADD){
+	if (dctoEx.opCode == VEX_FLB || dctoEx.opCode == VEX_FLH || dctoEx.opCode == VEX_FLW){
+		extoMem->isFloat = 1;
+	}
+	else if (dctoEx.opCode == VEX_FMADD){
 		extoMem->isFloat = 1;
 		extoMem->floatRes = dctoEx.floatValueA * dctoEx.floatValueB + dctoEx.floatValueC;
 	}

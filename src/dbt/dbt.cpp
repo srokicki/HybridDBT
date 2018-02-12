@@ -386,6 +386,10 @@ int main(int argc, char *argv[])
 	 *
 	 ********************************************************/
 
+	for (int i=0; i<placeCode; i++){
+		dbtPlateform.vexSimulator->typeInstr[i] = 3;
+	}
+	int endOfInitSection = placeCode;
 
 	for (int oneSection=0; oneSection<(size>>10)+1; oneSection++){
 
@@ -433,7 +437,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	for (int i=0; i<placeCode; i++){
+	for (int i=endOfInitSection; i<placeCode; i++){
 		dbtPlateform.vexSimulator->typeInstr[i] = 0;
 	}
 
