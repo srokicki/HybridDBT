@@ -23,7 +23,7 @@ public:
 
 	enum DIR : int { LEFT = 1, RIGHT = 2, UP = 3, DOWN = 4 };
 
-	FunctionalUnit();
+	FunctionalUnit(uint8_t * memory = nullptr);
 
 	/**
 	 * @brief run performs an instruction, and stores its result in _result variable.
@@ -46,12 +46,16 @@ public:
 
 	void setInstruction(uint32_t instr);
 
+	void setMemory(uint8_t * memory);
+
 	uint32_t read();
 private:
 	FunctionalUnit * _neighbours[5];
 	uint32_t _result;
 	uint32_t _out;
 	uint32_t _instruction;
+
+	uint8_t * _memory;
 };
 
 #endif // FUNCTIONALUNIT_H

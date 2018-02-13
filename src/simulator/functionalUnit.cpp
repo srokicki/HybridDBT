@@ -13,7 +13,8 @@ FunctionalUnit::DIR reverse(FunctionalUnit::DIR d)
 	}
 }
 
-FunctionalUnit::FunctionalUnit()
+FunctionalUnit::FunctionalUnit(uint8_t *memory)
+	: _memory(memory)
 {
 	_neighbours[0] = this;
 	for (unsigned int i = 1; i < 5; ++i)
@@ -24,38 +25,104 @@ FunctionalUnit::FunctionalUnit()
 
 void FunctionalUnit::run()
 {
-	uint32_t imm13, imm16;
-	FunctionalUnit * op1, * op2;
+	uint32_t imm13, imm19, addr;
+	int32_t imm13_s;
+	FunctionalUnit * op1 = nullptr, * op2 = nullptr;
+	uint8_t opcode, isImm, ra, rb, rc;
 
-	op1 = _neighbours[(_instruction & OP1) >> OP1_OFF];
-	op2 = _neighbours[(_instruction & OP2) >> OP2_OFF];
-	imm13 = (_instruction & IMM13) >> IMM13_OFF;
-	imm16 = (_instruction & IMM16) >> IMM16_OFF;
+	ra = (_instruction >> 26) & 0x3f;
+	rb = (_instruction >> 20) & 0x3f;
+	rc = (_instruction >> 14) & 0x3f;
+	imm13 = (_instruction >> 7) & 0x1fff;
+	imm13_s = (imm13 > 4096) ? imm13 - 8192 : imm13;
+	imm19 = (_instruction >> 7) & 0x7ffff;
+	opcode = (_instruction >> 0) & 0x7f;
+	isImm = (((opcode >> 4) & 0x7) == 2);
 
-	switch (_instruction & 0xF)
+	addr = imm13_s + ra;
+
+	op1 = _neighbours[ra];
+	if (!isImm)
+		op2 = _neighbours[rb];
+
+	switch (opcode)
 	{
-	case CGRA_ADD:
+	case VEX_NOP:
+		break;
+
+	// ARITHMETIC OPERATIONS
+	case VEX_ADD:
 		_result = op1->_out + op2->_out;
 		break;
-	case CGRA_SUB:
-		_result = op1->_out - op2->_out;
-		break;
-	case CGRA_MUL:
-		_result = op1->_out * op2->_out;
-		break;
-	case CGRA_DIV:
-		_result = op1->_out / op2->_out;
-		break;
-	case CGRA_ADDi:
+	case VEX_ADDi:
 		_result = op1->_out + imm13;
 		break;
-	case CGRA_SUBi:
+	case VEX_SUB:
+		_result = op1->_out - op2->_out;
+		break;
+	case VEX_SUBi:
 		_result = op1->_out - imm13;
 		break;
-	case CGRA_LDi:
-		_result = imm16;
+	case VEX_MPY:
+		_result = op1->_out * op2->_out;
 		break;
-	case CGRA_RT:
+	case VEX_SLL:
+		_result = op1->_out << op2->_out;
+		break;
+	case VEX_SLLi:
+		_result = op1->_out << imm13;
+		break;
+	case VEX_SRL:
+		_result = op1->_out >> op2->_out;
+		break;
+	case VEX_SRLi:
+		_result = op1->_out >> imm13;
+		break;
+	case VEX_OR:
+		_result = op1->_out | op2->_out;
+		break;
+	case VEX_ORi:
+		_result = op1->_out | imm13;
+		break;
+	case VEX_AND:
+		_result = op1->_out & op2->_out;
+		break;
+	case VEX_ANDi:
+		_result = op1->_out & imm13;
+		break;
+	case VEX_XOR:
+		_result = op1->_out ^ op2->_out;
+		break;
+	case VEX_XORi:
+		_result = op1->_out ^ imm13;
+		break;
+
+	// MEMORY OPERATIONS
+	case VEX_LDD:
+		_result = _memory[addr] + (_memory[addr+1] << 8) + (_memory[addr+2] << 16) + (_memory[addr+3] << 24);
+		break;
+	case VEX_LDW:
+		_result = _memory[addr] + (_memory[addr+1] << 8) + (_memory[addr+2] << 16);
+		break;
+	case VEX_LDH:
+		_result = _memory[addr] + (_memory[addr+1] << 8);
+		break;
+	case VEX_LDB:
+		_result = _memory[addr];
+		break;
+
+	case VEX_STD:
+		_memory[addr+3] = (_result >> 24) & 0xff;
+	case VEX_STW:
+		_memory[addr+2] = (_result >> 16) & 0xff;
+	case VEX_STH:
+		_memory[addr+1] = (_result >>  8) & 0xff;
+	case VEX_STB:
+		_memory[addr+0] = (_result >>  0) & 0xff;
+		break;
+
+	// CGRA OPERATIONS
+	case 0xFF:
 		_result = op1->_out;
 		break;
 	default:
@@ -76,6 +143,11 @@ void FunctionalUnit::setNeighbour(FunctionalUnit::DIR d, FunctionalUnit *u)
 void FunctionalUnit::setInstruction(uint32_t instr)
 {
 	_instruction = instr;
+}
+
+void FunctionalUnit::setMemory(uint8_t *memory)
+{
+	_memory = memory;
 }
 
 uint32_t FunctionalUnit::read()

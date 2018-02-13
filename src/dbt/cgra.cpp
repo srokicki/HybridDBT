@@ -36,15 +36,6 @@
 
 #include <algorithm>
 
-// ldi 10 | rt LEFT | NOP            | ldi 5
-// NOP    | rt UP   | add LEFT RIGHT | addi 5 UP
-// ldi 12 | rt LEFT | mul UP LEFT    | NOP
-
-uint8_t dummy1[] = {
-	0xBA, 0x00, 0x0F, 0x10, 0xB5, 0x00, 0x00, 0xF3, 0x11, 0x19,
-	0xB2, 0x00, 0xBC, 0x00, 0x0F, 0x13, 0xB0, 0x00
-};
-
 void printStats(unsigned int size, short* blockBoundaries){
 
 	float numberBlocks = 0;
@@ -151,7 +142,7 @@ int main(int argc, char *argv[])
 {
 
 
-	CgraSimulator sim;
+	CgraSimulator sim(nullptr);/*
 	sim.configure(dummy1, sizeof(dummy1));
 
 	for (int i = 0; i < 5; ++i)
@@ -160,6 +151,7 @@ int main(int argc, char *argv[])
 		sim.doStep();
 		sim.print();
 	}
+*/
 
 	/*Parsing arguments of the commant
 	 *

@@ -1,6 +1,9 @@
 #ifndef CGRAISA_H
 #define CGRAISA_H
 
+#include <isa/vexISA.h>
+
+/*
 #define CGRA_NOP 0x0
 
 // Arithmetics
@@ -28,5 +31,6 @@
 #define OP2_OFF 7
 #define IMM13_OFF 7
 #define IMM16_OFF 4
+*/
 
 #endif // CGRAISA_H
