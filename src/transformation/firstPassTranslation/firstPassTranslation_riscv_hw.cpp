@@ -142,6 +142,7 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 
 	while (indexInSourceBinaries < size || nextInstructionNop || enableNextInstruction){
 
+		// TODO: handle FENCE (FF0000F) instructions by skipping them
 		ac_int<1, false> setBoundaries1 = 0, setBoundaries2 = 0, setUnresolvedJump = 0;
 		ac_int<32, true> boundary1, boundary2, unresolved_jump_src, unresolved_jump_type;
 
