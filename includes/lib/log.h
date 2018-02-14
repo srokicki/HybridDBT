@@ -175,7 +175,7 @@ private:
 public:
 
 	template<class T>
-	const LogStream& operator<<(const T& v)
+	LogStream& operator<<(T v)
 	{
 		if (Log::_verbose_level >= _verbose)
 			std::cout << v;
