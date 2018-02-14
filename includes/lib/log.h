@@ -2,6 +2,7 @@
 #define LOG_H
 
 #include <cstdio>
+#include <iostream>
 #include <dbt/dbtPlateform.h>
 #include <transformation/reconfigureVLIW.h>
 #include <isa/irISA.h>
@@ -12,6 +13,8 @@
 #define LOG_WARNING 1
 #define LOG_ERROR 0
 
+
+class LogStream;
 
 /**
  * @brief This static class is used to encapsulate logging functions. To change
@@ -149,13 +152,36 @@ public:
 
 	  }
   }
- 
+
+	static LogStream& out(char verbose);
+
 private:
 
   static char _verbose_level;
   static char _stat_mode;
 
+	friend class LogStream;
 };
 
+class LogStream
+{
+private:
+	char _verbose;
+	LogStream() : _verbose(0) {}
+
+	void setVerbose(char verbose) { _verbose = verbose; }
+	friend class Log;
+
+public:
+
+	template<class T>
+	const LogStream& operator<<(const T& v)
+	{
+		if (Log::_verbose_level >= _verbose)
+			std::cout << v;
+
+		return *this;
+	}
+};
 
 #endif // LOG_H
