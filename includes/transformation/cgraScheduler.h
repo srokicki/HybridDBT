@@ -10,7 +10,7 @@ class CgraScheduler
 public:
 	CgraScheduler();
 
-	void schedule(CgraSimulator &cgra, uint128_struct *instructions, uint32_t numInstructions);
+	bool schedule(CgraSimulator &cgra, uint128_struct *instructions, uint32_t numInstructions);
 private:
 	uint8_t * _cgra_cache;
 

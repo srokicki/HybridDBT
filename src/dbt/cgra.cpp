@@ -35,6 +35,7 @@
 #include <lib/elfFile.h>
 
 #include <algorithm>
+#include <set>
 
 void printStats(unsigned int size, short* blockBoundaries){
 
@@ -360,6 +361,9 @@ int main(int argc, char *argv[])
 	 *
 	 ********************************************************/
 
+	// ARTHUR BEGIN
+	std::set<IRBlock*> scheduled_so_far;
+	// ARTHUR END
 
 	for (int oneSection=0; oneSection<(size>>10)+1; oneSection++){
 
@@ -498,8 +502,9 @@ int main(int argc, char *argv[])
 			// ARTHUR BEGIN
 			// test de l'eligibilite d'un bloc
 			// un bloc est eligible si ses instructions sont toutes implementables dans le CGRA
-			if (block)
+			if (block && (scheduled_so_far.find(block) == scheduled_so_far.end()))
 			{
+				scheduled_so_far.insert(block);
 				bool eligible = true;
 				uint128_struct * to_schedule = new uint128_struct[block->nbInstr-1];
 				for (int instrId = 0; instrId < block->nbInstr-1; ++instrId)
@@ -521,7 +526,14 @@ int main(int argc, char *argv[])
 				{
 					// configuration du CGRA
 					CgraScheduler scheduler;
-					scheduler.schedule(sim, to_schedule, block->nbInstr-1);
+					if (scheduler.schedule(sim, to_schedule, block->nbInstr-1))
+					{
+						Log::out(1) << "Schedule of " << block << " ok !\n";
+					}
+					else
+					{
+						Log::out(1) << "Schedule of " << block << " failed !\n";
+					}
 				}
 
 				delete[] to_schedule;
