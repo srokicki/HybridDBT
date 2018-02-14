@@ -10,41 +10,46 @@
 #include <cstring>
 
 int nbBlocs = 0;
+int II;
 
 typedef struct
 {
 	int32_t i;
 	int32_t j;
+	int32_t k;
 } cgra_node;
 
 cgra_node operator+(const cgra_node& l, const cgra_node& r)
 {
-	return { l.i+r.i, l.j+r.j };
+	return { l.i+r.i, l.j+r.j, l.k+r.k };
 }
 
 bool operator<(const cgra_node& l, const cgra_node& r);
 
 bool operator==(const cgra_node& l, const cgra_node& r)
 {
-	return l.i == r.i && l.j == r.j;
+	return l.i == r.i && l.j == r.j && l.k == r.k;
 }
 
 
 int manhatan(const cgra_node& src, const cgra_node& dst)
 {
 	return std::abs(src.i - dst.i)
-			+ std::abs(src.j - dst.j);
+			+ std::abs(src.j - dst.j)
+			+ std::abs(src.k - dst.k);
 }
 
 class dist_from_deps
 {
 	static cgra_node _dep1;
 	static cgra_node _dep2;
+	static uint32_t	 (*_cgra_conf)[3][4];
 public:
-	static void init(const cgra_node& dep1, const cgra_node& dep2)
+	static void init(const cgra_node& dep1, const cgra_node& dep2, uint32_t (*cgra_conf)[3][4])
 	{
 		_dep1 = dep1;
 		_dep2 = dep2;
+		_cgra_conf = cgra_conf;
 	}
 
 	bool operator() (const cgra_node& a, const cgra_node& b)
@@ -52,12 +57,40 @@ public:
 		if (_dep1.i == -1)
 			return 0;
 
+		if (a.k != b.k)
+			return a.k > b.k;
+
 		int da = manhatan(a, _dep1), db = manhatan(b, _dep1);
-		return da > db;
+		if (_dep2.i != -1)
+		{
+			da += manhatan(a, _dep2);
+			db += manhatan(b, _dep2);
+		}
+
+		if (da == db && a.k < II)
+		{
+			int freedoma = 0, freedomb = 0;
+			const cgra_node a2={0,1,a.k+1},b2={1,0,a.k+1},c={0,-1,a.k+1},d={-1,0,a.k+1},e={0,0,a.k+1};
+			for (cgra_node n : {a2,b2,c,d,e})
+			{
+				// position of neighbour
+				cgra_node na = n+a;
+				cgra_node nb = n+b;
+
+				if (na.i >= 0 && na.i < 3 && na.j >= 0 && na.j < 4 && _cgra_conf[na.k][na.i][na.j] == 0) ++freedoma;
+				if (nb.i >= 0 && nb.i < 3 && nb.j >= 0 && nb.j < 4 && _cgra_conf[na.k][nb.i][nb.j] == 0) ++freedomb;
+			}
+
+			return freedoma < freedomb;
+		}
+		else
+			return da > db;
 	}
 };
+
 cgra_node dist_from_deps::_dep1;
 cgra_node dist_from_deps::_dep2;
+uint32_t (*dist_from_deps::_cgra_conf)[3][4];
 
 typedef struct
 {
@@ -72,22 +105,6 @@ typedef struct
 ///
 void printGraph(const uint128_struct * instructions, uint32_t numInstructions);
 
-void sortByPriority(uint128_struct * instructions, uint32_t numInstructions);
-
-///
-/// \brief getNbDeps
-/// \param i
-/// \return number of WAW, RAW, and WAR dependencies of [i]
-///
-int getNbDeps(const uint128_struct &i);
-
-///
-/// \brief getLastDep
-/// \param i
-/// \return the last ID of an instruction using the same registers as [i]
-///
-int getLastDep(const uint128_struct &i);
-
 ///
 /// \brief setupSources computes the edges of the basic block's DFG
 /// \param instructions: the basic block
@@ -96,8 +113,29 @@ int getLastDep(const uint128_struct &i);
 ///
 void setupSources(const uint128_struct * instructions, source * sources, uint32_t numInstructions);
 
-bool route(const cgra_node& source, const cgra_node& target, uint32_t cgra_conf[3][4]);
+bool route(const cgra_node& source, const cgra_node& target, uint32_t (*cgra_conf)[3][4]);
 
+int findII(uint128_struct * instructions, source * sources, uint32_t numInstructions)
+{
+	int16_t * depth = new int16_t[numInstructions];
+	int16_t ret = 1;
+	for (uint32_t i = 0; i < numInstructions; ++i)
+	{
+		depth[i] = 1;
+	}
+
+	for (uint32_t i = 0; i < numInstructions; ++i)
+	{
+		if (sources[i].src1 != -1)
+			depth[i] = depth[sources[i].src1] + 1;
+		if (sources[i].src2 != -1)
+			depth[i] = std::max(depth[i], sources[i].src2);
+
+		ret = std::max(ret, depth[i]);
+	}
+
+	return ret;
+}
 
 void printConfig(uint32_t configuration[3][4]);
 
@@ -113,48 +151,61 @@ void CgraScheduler::schedule(CgraSimulator& cgra, uint128_struct * instructions,
 
 	printGraph(instructions, numInstructions);
 
-	uint32_t configuration[3][4] = {0};
 	source * sources = new source[numInstructions];
-	cgra_node * placeOfInstr = new cgra_node[numInstructions];
+	cgra_node * placeOfInstr = (new cgra_node[numInstructions+1])+1;
+
+	placeOfInstr[-1] = {-1,-1,-1};
 
 	setupSources(instructions, sources, numInstructions);
+	II = findII(instructions, sources, numInstructions);
+	std::cout << "II = " << II << std::endl;
+
+	uint32_t (*configuration)[3][4] = new uint32_t[II][3][4];
+	uint32_t (*new_conf)[3][4] = new uint32_t[II][3][4];
+	for (int i = 0; i < II; ++i)
+		for (int j = 0; j < 3; ++j)
+			for (int k = 0; k < 4; ++k)
+				configuration[i][j][k] = 0;
 
 	for (uint32_t instrId = 0; instrId < numInstructions; ++instrId)
 	{
+		//std::cout << "Placing instruction "
 		std::priority_queue<cgra_node, std::vector<cgra_node>, dist_from_deps> possible;
 		uint128_struct instruction = instructions[instrId];
 		bool routed = false; cgra_node place;
 
-		const cgra_node noSrc = {-1,-1};
 		dist_from_deps::init(
-					sources[instrId].src1 != -1 ? placeOfInstr[sources[instrId].src1] : noSrc
-				, sources[instrId].src2 != -1 ? placeOfInstr[sources[instrId].src2] : noSrc);
+					placeOfInstr[sources[instrId].src1]
+				, placeOfInstr[sources[instrId].src2]
+				, configuration);
 
 		// compute all available places, sorted by lexicographic order over
-		// cgra's dimensions, starting by the closest layer to the VLIW
-		for (int i = 0; i < 3; ++i)
+		// cgra's dimensions, starting by the earliest time layer,
+		// then the closest layer to the VLIW
+		for (int k = std::max(placeOfInstr[sources[instrId].src1].k, placeOfInstr[sources[instrId].src2].k)+1; k < II; ++k)
 		{
-			for (int j = 0; j < 4; ++j)
+			for (int i = 0; i < 3; ++i)
 			{
-				if (!configuration[i][j])
+				for (int j = 0; j < 4; ++j)
 				{
-					possible.push({ i, j });
+					if (!configuration[k][i][j])
+					{
+						possible.push({ i, j, k });
+					}
 				}
 			}
 		}
 
 		// try to place the instruction in [place]
 		// and route its operands
-		uint32_t new_conf[3][4];
 		while (!possible.empty())
 		{
 			routed = true;
 			place = possible.top();
 			possible.pop();
-			std::cout << "trying place " << place.i << "; " << place.j << std::endl;
 
-			std::memcpy(new_conf, configuration, 3*4*sizeof(uint32_t));
-			new_conf[place.i][place.j] = instrId+2;
+			std::memcpy(new_conf, configuration, II*3*4*sizeof(uint32_t));
+			new_conf[place.k][place.i][place.j] = instrId+2;
 
 			if (sources[instrId].src1 != -1)
 			{
@@ -181,13 +232,21 @@ void CgraScheduler::schedule(CgraSimulator& cgra, uint128_struct * instructions,
 		else
 		{
 			placeOfInstr[instrId] = place;
-			std::memcpy(configuration, new_conf, 3*4*sizeof(uint32_t));
-			printConfig(configuration);
+			std::memcpy(configuration, new_conf, II*3*4*sizeof(uint32_t));
+			//Log::printf(0, "Layer %d\n", place.k);
+			//printConfig(configuration[place.k]);
 		}
 	}
 
-	delete placeOfInstr;
-	delete sources;
+	for (int k = 0 ; k < II; ++k)
+	{
+		std::cout << "Layer " << k << "\n";
+		printConfig(configuration[k]);
+	}
+	delete[] configuration;
+	delete[] new_conf;
+	delete[] (placeOfInstr-1);
+	delete[] sources;
 }
 
 void printConfig(uint32_t configuration[3][4])
@@ -205,27 +264,6 @@ void printConfig(uint32_t configuration[3][4])
 		}
 		Log::printf(0, "\n");
 	}
-}
-
-int getLastDep(const uint128_struct& i)
-{
-	uint8_t deps[7];
-	uint8_t ret = 0;
-
-	deps[0] = i.word32 >> 16;
-	deps[1] = i.word32 >> 8;
-	deps[2] = i.word32 >> 0;
-	deps[3] = i.word0 >> 24;
-	deps[4] = i.word0 >> 16;
-	deps[5] = i.word0 >> 8;
-	deps[6] = i.word0 >> 0;
-
-	for (int i = 0; i < 7; ++i)
-	{
-		ret = std::max(ret, deps[i]);
-	}
-
-	return ret;
 }
 
 void setupSources(const uint128_struct * instructions, source * sources, uint32_t numInstructions)
@@ -254,27 +292,7 @@ void setupSources(const uint128_struct * instructions, source * sources, uint32_
 			if (!isImm && virtualRIn1_imm9 < 256)
 				sources[instrId].src2 = virtualRIn1_imm9;
 		}
-
-		std::cout << "deps[" << instrId << "] = " << sources[instrId].src1 << "; " << sources[instrId].src2 << "\n";
 	}
-}
-
-int getNbDeps(const uint128_struct& i)
-{
-	return ((i.word64>>0) & 7);
-}
-
-int compare(const void * i1p, const void * i2p)
-{
-	uint128_struct i1, i2;
-	i1 = *((uint128_struct*)i1p);
-	i2 = *((uint128_struct*)i2p);
-	return getLastDep(i1) - getLastDep(i2);
-}
-
-void sortByPriority(uint128_struct * instructions, uint32_t numInstructions)
-{
-	qsort(instructions, numInstructions, sizeof(uint128_struct), compare);
 }
 
 void printGraph(const uint128_struct *instructions, uint32_t numInstructions)
@@ -321,7 +339,7 @@ void printGraph(const uint128_struct *instructions, uint32_t numInstructions)
 
 class astar_node
 {
-	static astar_node _nodes[3][4];
+	static astar_node (*_nodes)[3][4];
 	cgra_node _from;
 	int _so_far;
 	int _priority;
@@ -332,15 +350,22 @@ public:
 
 	static void init()
 	{
-		for (int i = 0; i < 3; ++i)
+		if (_nodes)
+			delete[] _nodes;
+
+		_nodes = new astar_node[II][3][4];
+		for (int k = 0; k < II; ++k)
 		{
-			for (int j = 0; j < 4; ++j)
+			for (int i = 0; i < 3; ++i)
 			{
-				_nodes[i][j]._from = { i, j };
-				_nodes[i][j]._so_far = -1;
-				_nodes[i][j]._priority = -1;
-				_nodes[i][j]._open = 0;
-				_nodes[i][j]._closed = 0;
+				for (int j = 0; j < 4; ++j)
+				{
+					_nodes[k][i][j]._from = { i, j, k };
+					_nodes[k][i][j]._so_far = -1;
+					_nodes[k][i][j]._priority = -1;
+					_nodes[k][i][j]._open = 0;
+					_nodes[k][i][j]._closed = 0;
+				}
 			}
 		}
 	}
@@ -352,7 +377,7 @@ public:
 										 , int so_far
 										 , const cgra_node& target)
 	{
-		astar_node * n = &_nodes[source.i][source.j];
+		astar_node * n = &_nodes[source.k][source.i][source.j];
 		n->_open = open;
 		n->_closed = closed;
 		n->_from = from;
@@ -362,13 +387,13 @@ public:
 
 	static void open(const cgra_node& source, const cgra_node& neighbour, const cgra_node& target)
 	{
-		astar_node * n = &_nodes[source.i][source.j], * nei = &_nodes[neighbour.i][neighbour.j];
+		astar_node * n = &_nodes[source.k][source.i][source.j];
 		n->_open = 1;
 	}
 
 	static void update(const cgra_node& source, const cgra_node& neighbour, const cgra_node& target)
 	{
-		astar_node * n = &_nodes[source.i][source.j], * nei = &_nodes[neighbour.i][neighbour.j];
+		astar_node * n = &_nodes[source.k][source.i][source.j], * nei = &_nodes[neighbour.k][neighbour.i][neighbour.j];
 		if (n->_so_far < 0 || (n->_so_far > nei->_so_far + 1))
 		{
 			n->_from = neighbour;
@@ -379,15 +404,15 @@ public:
 
 	static void close(const cgra_node& node)
 	{
-		_nodes[node.i][node.j]._closed = 1;
+		_nodes[node.k][node.i][node.j]._closed = 1;
 	}
 
-	static void write_path(const cgra_node& target, uint32_t cgra_conf[3][4])
+	static void write_path(const cgra_node& target, uint32_t (*cgra_conf)[3][4])
 	{
-		const cgra_node n = _nodes[target.i][target.j]._from;
+		const cgra_node n = _nodes[target.k][target.i][target.j]._from;
 
 		// write node
-		if (cgra_conf[n.i][n.j] == 0)
+		if (cgra_conf[n.k][n.i][n.j] == 0)
 		{
 			char c;
 			if (target.i > n.i)
@@ -398,8 +423,10 @@ public:
 				c = '>';
 			else if (target.j < n.j)
 				c = '<';
+			else
+				c = '.';
 
-			cgra_conf[n.i][n.j] = c;
+			cgra_conf[n.k][n.i][n.j] = c;
 		}
 
 		// stop if start reached
@@ -411,17 +438,17 @@ public:
 
 	static bool is_open(const cgra_node& node)
 	{
-		return _nodes[node.i][node.j]._open;
+		return _nodes[node.k][node.i][node.j]._open;
 	}
 
 	static bool is_closed(const cgra_node& node)
 	{
-		return _nodes[node.i][node.j]._closed;
+		return _nodes[node.k][node.i][node.j]._closed;
 	}
 
 	static int priority(const cgra_node& node)
 	{
-		return _nodes[node.i][node.j]._priority;
+		return _nodes[node.k][node.i][node.j]._priority;
 	}
 
 };
@@ -453,7 +480,7 @@ static void print_state(uint32_t cgra_conf[3][4])
 	}
 }
 
-astar_node astar_node::_nodes[3][4];
+astar_node (*astar_node::_nodes)[3][4] = nullptr;
 
 bool operator<(const cgra_node& l, const cgra_node& r)
 {
@@ -467,7 +494,7 @@ bool operator<(const cgra_node& l, const cgra_node& r)
 /// \param cgra_conf
 /// \return
 ///
-bool route(const cgra_node& source, const cgra_node& target, uint32_t cgra_conf[3][4])
+bool route(const cgra_node& source, const cgra_node& target, uint32_t (*cgra_conf)[3][4])
 {
 	// initialization of nodes+priority queue
 	std::priority_queue<cgra_node, std::vector<cgra_node> > open;
@@ -493,13 +520,13 @@ bool route(const cgra_node& source, const cgra_node& target, uint32_t cgra_conf[
 		astar_node::close(current);
 
 		// for each neighbour
-		cgra_node a={0,1},b={1,0},c={0,-1},d={-1,0};
-		for (cgra_node n : {a,b,c,d})
+		cgra_node a={0,1,1},b={1,0,1},c={0,-1,1},d={-1,0,1},e={0,0,1};
+		for (cgra_node n : {a,b,c,d,e})
 		{
 			// position of neighbour
 			cgra_node nn = n+current;
 
-			if (nn.i >= 0 && nn.i < 3 && nn.j >= 0 && nn.j < 4)
+			if (nn.i >= 0 && nn.i < 3 && nn.j >= 0 && nn.j < 4 && nn.k < II)
 			{
 				// if neighbour already visited, do nothing
 				if (astar_node::is_closed(nn) || (cgra_conf[nn.i][nn.j] != 0 && !(nn == target)))
