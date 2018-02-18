@@ -51,6 +51,9 @@ unsigned char registerDependencies_sw[256];
 // for WAR dependencies
 unsigned int lastRead_sw[128];
 
+// for RAW dependencies
+unsigned int lastWrite_sw[128];
+
 // Scheduled instructions stages
 unsigned char instructionsStages_sw[256];
 
@@ -193,6 +196,7 @@ unsigned int irScheduler_scoreboard_sw(
 
 	for (int i = 0; i < 128; ++i) {
 		lastRead_sw[i] = 0;
+		lastWrite_sw[i] = 0;
 	}
 
 	while (instructionId_sw < basicBlockSize) {
@@ -319,6 +323,33 @@ unsigned int irScheduler_scoreboard_sw(
 
 		// WAR
 		earliest_place = max(earliest_place, lastRead_sw[dest]);
+
+		unsigned char shiftedOpcode = opCode>>4;
+
+		char isNop = (opCode == 0);
+		char isArith2 = (shiftedOpcode == 4 || shiftedOpcode == 5 || shiftedOpcode == 0);
+		char isLoad = (opCode>>3) == 0x2;
+		char isStore = (opCode>>3) == 0x3;
+		char isArith1 = (shiftedOpcode == 6 || shiftedOpcode == 7);
+		char isBranchWithReg = (opCode == VEX_CALLR) ||(opCode == VEX_GOTOR);
+		char isFPOneReg = (opCode == VEX_FP && (funct == VEX_FP_FCVTSW || funct == VEX_FP_FCVTSWU || funct == VEX_FP_FCVTWS
+				|| funct == VEX_FP_FCVTWUS || funct == VEX_FP_FMVWX || funct == VEX_FP_FMVXW || funct == VEX_FP_FCLASS));
+		char isFPTwoReg = opCode == VEX_FP && !isFPOneReg;
+		char isBranchWithTwoRegs = (opCode == VEX_BR) || (opCode == VEX_BRF) || (opCode == VEX_BGE) || (opCode == VEX_BLT) || (opCode == VEX_BGEU) || (opCode == VEX_BLTU);
+
+		if (isArith2 || isFPTwoReg){
+			earliest_place = max(earliest_place, lastWrite_sw[virtualRIn1_imm9]);
+			earliest_place = max(earliest_place, lastWrite_sw[virtualRIn2]);
+		}
+		else if (isStore || isBranchWithTwoRegs){
+			earliest_place = max(earliest_place, lastWrite_sw[virtualRIn2]);
+			earliest_place = max(earliest_place, lastWrite_sw[virtualRDest]);
+		}
+		else if (isArith1 || isLoad || isFPOneReg)
+			earliest_place = max(earliest_place, lastWrite_sw[virtualRIn2]);
+		else if (isBranchWithReg)
+			earliest_place = max(earliest_place, lastWrite_sw[virtualRDest]);
+
 
 		//**************************************************************
 		// Placing the instruction
@@ -455,6 +486,12 @@ unsigned int irScheduler_scoreboard_sw(
 			lastRead_sw[placeOfRin2] = lastPlaceOfInstr_sw;
 		if (useRin1)
 			lastRead_sw[placeOfRin1] = lastPlaceOfInstr_sw;
+
+		//We update last write
+		if (isArith2 || isFPTwoReg || isArith1 || isLoad || isFPOneReg){
+			lastWrite_sw[dest] = lastPlaceOfInstr_sw;
+		}
+
 		window_sw[offset(bestWindowOffset)][bestStageId] = createInstruction(irInstr96, irInstr64, modifiedRin1, modifiedRin2, modifiedRdest);
 		freeSlot_sw[offset(bestWindowOffset)][bestStageId] = false;
 
@@ -509,7 +546,7 @@ unsigned int irScheduler_scoreboard_sw(
 
 		if (opcode != 0 && (((spec & 0x2) && (opcode > 0x1f || opcode < VEX_STB))
 				|| (spec & 0x8)
-				|| ((spec & 0x1) && (opcode == VEX_BR || opcode == VEX_BRF || opcode == VEX_CALL || opcode == VEX_CALLR || opcode == VEX_GOTO || opcode == VEX_GOTOR || opcode == VEX_RETURN)))){
+				|| ((spec & 0x1) && (opcode == VEX_BR || opcode == VEX_BRF || opcode == VEX_BGE || opcode == VEX_BLT || opcode == VEX_BGEU || opcode == VEX_BLTU || opcode == VEX_CALL || opcode == VEX_CALLR || opcode == VEX_GOTO || opcode == VEX_GOTOR )))){
 
 			newSize++;
 

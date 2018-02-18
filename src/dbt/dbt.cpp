@@ -377,7 +377,9 @@ int main(int argc, char *argv[])
 	writeInt(dbtPlateform.vliwBinaries, 0*16, assembleIInstruction_sw(VEX_CALL, placeCode, 63));
 
 	initializeInsertionsMemory(size*4);
-
+	for (int oneInsertion=0; oneInsertion<placeCode; oneInsertion++){
+			Log::fprintf(0, stderr, "insert;%d\n", oneInsertion);
+	}
 	/********************************************************
 	 * First part of DBT: generating the first pass translation of binaries
 	 *******************************************************
@@ -408,7 +410,12 @@ int main(int argc, char *argv[])
 		placeCode =  translateOneSection(dbtPlateform, placeCode, addressStart, startAddressSource,endAddressSource);
 
 		buildBasicControlFlow(&dbtPlateform, oneSection,addressStart, startAddressSource, oldPlaceCode, placeCode, &application, &profiler);
-
+//
+//		int** insertions = (int**) malloc(sizeof(int **));
+//		int nbIns = getInsertionList(oneSection*1024, insertions);
+//		for (int oneInsertion=0; oneInsertion<nbIns; oneInsertion++){
+//				Log::fprintf(0, stderr, "insert;%d\n", (*insertions)[oneInsertion]+(*insertions)[-1]);
+//		}
 	}
 
 	for (int oneUnresolvedJump = 0; oneUnresolvedJump<unresolvedJumpsArray[0]; oneUnresolvedJump++){
@@ -416,7 +423,7 @@ int main(int argc, char *argv[])
 		unsigned int initialDestination = unresolvedJumpsArray[oneUnresolvedJump+1];
 		unsigned int type = unresolvedJumpsTypeArray[oneUnresolvedJump+1];
 
-		unsigned char isAbsolute = ((type & 0x7f) != VEX_BR) && ((type & 0x7f) != VEX_BRF);
+		unsigned char isAbsolute = ((type & 0x7f) != VEX_BR) && ((type & 0x7f) != VEX_BRF && (type & 0x7f) != VEX_BLTU) && ((type & 0x7f) != VEX_BGE && (type & 0x7f) != VEX_BGEU) && ((type & 0x7f) != VEX_BLT);
 		unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(&dbtPlateform, initialDestination);
 
 		if (destinationInVLIWFromNewMethod == -1){
@@ -425,7 +432,9 @@ int main(int argc, char *argv[])
 		}
 		else{
 			int immediateValue = (isAbsolute) ? (destinationInVLIWFromNewMethod) : ((destinationInVLIWFromNewMethod  - source));
-			writeInt(dbtPlateform.vliwBinaries, 16*(source), type + ((immediateValue & 0x7ffff)<<7));
+			int mask = (isAbsolute) ? 0x7ffff : 0x1fff;
+
+			writeInt(dbtPlateform.vliwBinaries, 16*(source), type + ((immediateValue & mask)<<7));
 
 			if (immediateValue > 0x7ffff){
 				Log::fprintf(LOG_ERROR, stderr, "error in immediate size...\n");
@@ -440,6 +449,8 @@ int main(int argc, char *argv[])
 	for (int i=endOfInitSection; i<placeCode; i++){
 		dbtPlateform.vexSimulator->typeInstr[i] = 0;
 	}
+
+
 
 	//We also add information on insertions
 	int insertionSize = 65536;

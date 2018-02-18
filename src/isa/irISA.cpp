@@ -501,7 +501,8 @@ char getOperands(unsigned int *bytecode, unsigned char index, short result[2]){
 	char isLoad = (opcode>>3) == 0x2;
 	char isStore = (opcode>>3) == 0x3;
 	char isArith1 = (shiftedOpcode == 6 || shiftedOpcode == 7);
-	char isBranchWithReg = (opcode == VEX_BR) || (opcode == VEX_BRF) ||(opcode == VEX_CALLR) ||(opcode == VEX_GOTOR);
+	char isBranchWithReg = (opcode == VEX_CALLR) ||(opcode == VEX_GOTOR);
+	char isBranchWithTwoRegs = (opcode == VEX_BR) || (opcode == VEX_BRF) || (opcode == VEX_BGE) || (opcode == VEX_BLT) || (opcode == VEX_BGEU) || (opcode == VEX_BLTU);
 
 	if (isNop)
 		return 0;
@@ -510,7 +511,7 @@ char getOperands(unsigned int *bytecode, unsigned char index, short result[2]){
 		result[1] = virtualRIn2;
 		return 2;
 	}
-	else if (isStore){
+	else if (isStore || isBranchWithTwoRegs){
 		result[0] = virtualRIn2;
 		result[1] = virtualRDest;
 		return 2;
@@ -545,7 +546,8 @@ void setOperands(unsigned int *bytecode, unsigned char index, short operands[2])
 	char isLoad = (opcode>>3) == 0x2;
 	char isStore = (opcode>>3) == 0x3;
 	char isArith1 = (shiftedOpcode == 6 || shiftedOpcode == 7);
-	char isBranchWithReg = (opcode == VEX_BR) || (opcode == VEX_BRF) ||(opcode == VEX_CALLR) ||(opcode == VEX_GOTOR);
+	char isBranchWithReg = (opcode == VEX_CALLR) ||(opcode == VEX_GOTOR);
+	char isBranchWithTwoRegs = (opcode == VEX_BR) || (opcode == VEX_BRF) || (opcode == VEX_BGE) || (opcode == VEX_BLT) || (opcode == VEX_BGEU) || (opcode == VEX_BLTU);
 
 	if (isNop){
 
@@ -556,7 +558,7 @@ void setOperands(unsigned int *bytecode, unsigned char index, short operands[2])
 		writeInt(bytecode, index*16+4, bytecodeWord64);
 		writeInt(bytecode, index*16+0, bytecodeWord96);
 	}
-	else if (isStore){
+	else if (isStore || isBranchWithTwoRegs){
 		bytecodeWord64 = (bytecodeWord64 & ~(0x1ff<<23)) | ((operands[0] & 0x1ff)<<23);//in2
 		bytecodeWord64 = (bytecodeWord64 & ~(0x1ff<<14)) | ((operands[1] & 0x1ff)<<14); //dest
 		writeInt(bytecode, index*16+4, bytecodeWord64);

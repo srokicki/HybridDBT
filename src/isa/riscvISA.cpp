@@ -175,7 +175,7 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction){
 		stream << "SYSTEM";
 	break;
 	default:
-		fprintf(stderr,"In default part of switch opcode, instr %x is not handled yet", (int) oneInstruction);
+		fprintf(stderr,"??? ", (int) oneInstruction);
 	break;
 	}
 

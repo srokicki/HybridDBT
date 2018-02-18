@@ -58,7 +58,7 @@ void RiscvSimulator::doStep(){
 	ac_int<32, false> ins = this->ldw(pc);
 
 	if (this->debugLevel>1){
-		fprintf(stderr,"%d;%x;%x", (int)n_inst, (int)pc, (int) ins);
+		fprintf(stderr,"%d;%x;%x", (int)cycle, (int)pc, (int) ins);
 		std::cerr << printDecodedInstrRISCV(ins);
 	}
 
@@ -123,6 +123,8 @@ void RiscvSimulator::doStep(){
 	ac_int<64, true> localLongResult;
 	ac_int<32, false> localDataaUnsigned, localDatabUnsigned;
 	ac_int<32, true> localResult;
+	unsigned int localInt;
+
 	float localFloat;
 
 	this->lastWrittenRegister = -1;
@@ -593,24 +595,22 @@ void RiscvSimulator::doStep(){
 			REG[10] = solveSyscall(REG[17], REG[10], REG[11], REG[12], REG[13]);
 		}
 		else {
-			fprintf(stderr, "Unresolved system instr funct3 = %d funct7 = %d\n", funct3, funct7);
+//			fprintf(stderr, "Unresolved system instr funct3 = %d funct7 = %d\n", funct3, funct7);
 		}
 	break;
 	//******************************************************************************************
 	//Treatment for: floating point operations
 	case RISCV_FLW:
-		localResult = 0;
-		for (int byte = 0; byte<funct3; byte++){
-			localResult.set_slc(byte*8, ldb(REG[rs1] + imm12_I_signed+byte));
-		}
-		memcpy(&(regf[rd]), &localResult, 4);
+		localInt = 0;
+		localInt = ldw(REG[rs1] + imm12_I_signed);
+		memcpy(&(regf[rd]), &localInt, 4);
 		break;
 	case RISCV_FSW:
-		localResult = 0;
-		memcpy(&localResult, &(regf[rs2]), 4);
-		for (int byte = 0; byte<funct3; byte++){
-			stw(REG[rs1] + imm12_S_signed, localResult.slc<8>(byte*8));
-		}
+		localInt = 0;
+		memcpy(&localInt, &(regf[rs2]), 4);
+
+		stw(REG[rs1] + imm12_S_signed, localInt);
+
 		break;
 	case RISCV_FMADD:
 		regf[rd] = regf[rs1] * regf[rs2] + regf[rs3];
@@ -643,7 +643,7 @@ void RiscvSimulator::doStep(){
 				regf[rd] = sqrt(regf[rs1]);
 				break;
 			case  RISCV_FP_FSGN:
-				localFloat = abs(regf[rs1]);
+				localFloat = fabs(regf[rs1]);
 				if (funct3 == RISCV_FP_FSGN_J){
 					if (regf[rs2]<0){
 						regf[rd] = -localFloat;
@@ -668,6 +668,7 @@ void RiscvSimulator::doStep(){
 						regf[rd] = localFloat;
 					}
 				}
+
 				break;
 			case  RISCV_FP_MINMAX:
 				if (funct3 == RISCV_FP_MINMAX_MIN)
@@ -677,16 +678,16 @@ void RiscvSimulator::doStep(){
 				break;
 			case  RISCV_FP_FCVTW:
 				if (rs2 == RISCV_FP_FCVTW_W){
-					regf[rd] = REG[rs1];
+					REG[rd] = regf[rs1];
 				}
 				else{
-					regf[rd] = (unsigned int) REG[rs1];
+					REG[rd] = (unsigned int) regf[rs1];
 				}
 				break;
 			case  RISCV_FP_FMVXFCLASS:
 				if (funct3 == RISCV_FP_FMVXFCLASS_FMVX){
-					memcpy(&localResult, &(regf[rs1]), 4);
-					REG[rd] = localResult;
+					memcpy(&localInt, &(regf[rs1]), 4);
+					REG[rd] = localInt;
 				}
 				else{
 					fprintf(stderr, "Fclass instruction is not handled in riscv simulator\n");
@@ -703,15 +704,15 @@ void RiscvSimulator::doStep(){
 				break;
 			case  RISCV_FP_FCVTS:
 				if (rs2 == RISCV_FP_FCVTS_W){
-					REG[rd] = regf[rs1];
+					regf[rd] = REG[rs1];
 				}
 				else{
-					REG[rd] = (unsigned int) regf[rs1];
+					regf[rd] = (unsigned int) REG[rs1];
 				}
 				break;
 			case  RISCV_FP_FMVW:
-				localResult = REG[rs1];
-				memcpy(&(regf[rd]),&localResult,  4);
+				localInt = REG[rs1];
+				memcpy(&(regf[rd]),&localInt,  4);
 				break;
 
 			default:
@@ -733,9 +734,15 @@ void RiscvSimulator::doStep(){
 	n_inst = n_inst + 1;
 	this->cycle++;
 
+
 	if (storedVerbose>1){
 		for (int i=0; i<32; i++){
 			fprintf(stderr,";%lx", (int64_t) REG[i]);
+		}
+		fprintf(stderr, "--");
+
+		for (int i=0; i<32; i++){
+			fprintf(stderr,";%f", regf[i]);
 		}
 		fprintf(stderr, "\n");
 	}

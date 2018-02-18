@@ -307,10 +307,10 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			ac_int<1, false> isLoadType = opcode == VEX_LDB | opcode == VEX_LDBU | opcode == VEX_LDH
 					| opcode == VEX_LDHU | opcode == VEX_LDW | opcode == VEX_LDWU | opcode == VEX_LDD;
 			ac_int<1, false> isStoreType = opcode == VEX_STB | opcode == VEX_STH | opcode == VEX_STW | opcode == VEX_STD;
-			ac_int<1, false> isBranchWithNoReg = opcode == VEX_GOTO | opcode == VEX_CALL | opcode == VEX_RETURN
+			ac_int<1, false> isBranchWithNoReg = opcode == VEX_GOTO | opcode == VEX_CALL
 					| opcode == VEX_STOP | opcode == VEX_ECALL;
-			ac_int<1, false> isBranchWithReg = opcode == VEX_GOTOR | opcode == VEX_CALLR | opcode == VEX_BR
-					| opcode == VEX_BRF;
+			ac_int<1, false> isBranchWithReg = opcode == VEX_GOTOR | opcode == VEX_CALLR;
+			ac_int<1, false> isBranchWithTwoReg = opcode == VEX_BR | opcode == VEX_BRF | opcode == VEX_BGE | opcode == VEX_BLT | opcode == VEX_BGEU | opcode == VEX_BLTU;
 			ac_int<1, false> isMovi = opcode == VEX_MOVI;
 			ac_int<1, false> isArith1 = opcode == VEX_NOT;
 			ac_int<1, false> isArith2 = (opcode.slc<3>(4) == 4 | opcode.slc<3>(4) == 5) & !isArith1;
@@ -322,9 +322,12 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			ac_int<1, false> isFLW = opcode == VEX_FLW || opcode == VEX_FLH || opcode == VEX_FLB;
 			ac_int<1, false> isFP = opcode == VEX_FP;
 
-			ac_int<1, false> isFloatRa = isFSW || isFMADD || (isFP && funct != VEX_FP_FCVTWS && funct != VEX_FP_FCVTWUS && funct != VEX_FP_FMVWX);
-			ac_int<1, false> isFloatDest = isFLW || isFMADD || (isFP && funct != VEX_FP_FCVTSW && funct != VEX_FP_FCVTSWU && funct != VEX_FP_FMVXW
-					&& funct != VEX_FP_FMIN && funct != VEX_FP_FMAX && funct != VEX_FP_FCLASS);
+			ac_int<1, false> isFloatRa = isFMADD || (isFP && funct != VEX_FP_FCVTSW && funct != VEX_FP_FCVTSWU && funct != VEX_FP_FMVWX);
+			ac_int<1, false> isFloatRb = isFSW || isFMADD || isFP;
+			ac_int<1, false> isFloatDest = isFLW || isFMADD || (isFP && funct != VEX_FP_FCVTWS && funct != VEX_FP_FCVTWUS && funct != VEX_FP_FEQ
+					&& funct != VEX_FP_FLT && funct != VEX_FP_FLE && funct != VEX_FP_FCLASS && funct != VEX_FP_FMVXW);
+			ac_int<1, false> enableRbFloat = isFSW || isFMADD || (isFP && funct != VEX_FP_FSQRT && funct != VEX_FP_FCVTWS && funct != VEX_FP_FCVTWUS
+					&& funct != VEX_FP_FMVXW && funct != VEX_FP_FCLASS && funct != VEX_FP_FCVTSW && funct != VEX_FP_FCVTSWU && funct != VEX_FP_FMVWX);
 
 
 			ac_int<1, false> pred1_ena = 0, pred2_ena = 0, dest_ena = 0;
@@ -335,7 +338,7 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 				pred1_ena = 1;
 
 			//Solving accessed register 2
-			if (isStoreType || isArith2 || isMultType || isFSW || isFP)
+			if (isStoreType || isArith2 || isMultType || isFSW || enableRbFloat || isBranchWithTwoReg)
 				pred2_ena = 1;
 
 
@@ -360,15 +363,15 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 				droppedInstruction = 1;
 			}
 
-			if (isFloatRa){
+			if (isFloatRa)
 				pred1_reg += 64;
-				if (pred2_ena)
-					pred2_reg += 64;
-			}
 
-			if (isFloatDest){
+			if (isFloatRb)
+				pred2_reg += 64;
+
+			if (isFloatDest)
 				dest_reg += 64;
-			}
+
 
 
 			numbersSuccessor[indexInCurrentBlock] = 0;
@@ -766,6 +769,13 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 				haveJump = 1;
 				jumpID = indexInCurrentBlock;
 
+			}
+			else if (isBranchWithTwoReg){
+
+				oneBytecode = assembleRiBytecodeInstruction_hw(0, 0, opcode, pred1, imm13, pred2, 0);
+
+				haveJump = 1;
+				jumpID = indexInCurrentBlock;
 			}
 			else if (isMovi){
 				oneBytecode = assembleIBytecodeInstruction_hw(2, alloc, opcode, destination, imm19, 0);

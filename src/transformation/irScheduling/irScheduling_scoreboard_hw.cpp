@@ -45,6 +45,9 @@ ac_int<8, false> registerDependencies[256];
 // for WAR dependencies
 ac_int<32, false> lastRead[128];
 
+// for RAW dependencies
+ac_int<32, false> lastWrite[128];
+
 // Scheduled instructions stages
 ac_int<8, false> instructionsStages[256];
 
@@ -328,6 +331,34 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 
 		// WAR
 		earliest_place = max(earliest_place, lastRead[dest]);
+
+		unsigned char shiftedOpcode = opCode>>4;
+
+		ac_int<1, false> isNop = (opCode == 0);
+		ac_int<1, false> isArith2 = (shiftedOpcode == 4 || shiftedOpcode == 5 || shiftedOpcode == 0);
+		ac_int<1, false> isLoad = (opCode>>3) == 0x2;
+		ac_int<1, false> isStore = (opCode>>3) == 0x3;
+		ac_int<1, false> isArith1 = (shiftedOpcode == 6 || shiftedOpcode == 7);
+		ac_int<1, false> isBranchWithReg = (opCode == VEX_CALLR) ||(opCode == VEX_GOTOR);
+		ac_int<1, false> isFPOneReg = (opCode == VEX_FP && (funct == VEX_FP_FCVTSW || funct == VEX_FP_FCVTSWU || funct == VEX_FP_FCVTWS
+				|| funct == VEX_FP_FCVTWUS || funct == VEX_FP_FMVWX || funct == VEX_FP_FMVXW || funct == VEX_FP_FCLASS));
+		ac_int<1, false> isFPTwoReg = opCode == VEX_FP && !isFPOneReg;
+		ac_int<1, false> isBranchWithTwoRegs = (opCode == VEX_BR) || (opCode == VEX_BRF) || (opCode == VEX_BGE) || (opCode == VEX_BLT) || (opCode == VEX_BGEU) || (opCode == VEX_BLTU);
+
+//		if (isArith2 || isFPTwoReg){
+//			earliest_place = max(earliest_place, lastWrite[virtualRIn1_imm9]);
+//			earliest_place = max(earliest_place, lastWrite[virtualRIn2]);
+//		}
+//		else if (isStore || isBranchWithTwoRegs){
+//			earliest_place = max(earliest_place, lastWrite[virtualRIn2]);
+//			earliest_place = max(earliest_place, lastWrite[virtualRDest]);
+//		}
+//		else if (isArith1 || isLoad || isFPOneReg)
+//			earliest_place = max(earliest_place, lastWrite[virtualRIn2]);
+//		else if (isBranchWithReg)
+//			earliest_place = max(earliest_place, lastWrite[virtualRDest]);
+
+
 		//**************************************************************
 		// Placing the instruction
 		//**************************************************************
@@ -580,7 +611,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 
 		if (opcode != 0 && ((spec[1] && (opcode > 0x1f || opcode < VEX_STB))
 				|| spec[3]
-				|| (spec[0] && (opcode == VEX_BR || opcode == VEX_BRF || opcode == VEX_CALL || opcode == VEX_CALLR || opcode == VEX_GOTO || opcode == VEX_GOTOR || opcode == VEX_RETURN)))){
+				|| (spec[0] && (opcode == VEX_BR || opcode == VEX_BRF || opcode == VEX_BGE || opcode == VEX_BLT || opcode == VEX_BGEU || opcode == VEX_BLTU || opcode == VEX_CALL || opcode == VEX_CALLR || opcode == VEX_GOTO || opcode == VEX_GOTOR)))){
 			newSize += (issue_width>4 ? 2 : 1);
 			if (issue_width <= 4) {
 				binaries[addressInBinaries + newSize-1] = 0;

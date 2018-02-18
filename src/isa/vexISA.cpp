@@ -124,7 +124,7 @@ unsigned int assembleRRInstruction_sw(char opcode, char regDest, char regA, char
 const char* opcodeNames[128] = {
 		"NOP", "-", "-", "MPYW", "DIVW", "DIVUW", "REMW", "REMUW", "MPYH", "MPYHSU", "MPYHU", "MPY", "DIV", "DIVU", "REM", "REMU",
 		"LDD", "LDW", "LDH", "LDHU", "LDB", "LDBU","LDWU", "?", "STB", "STH", "STW", "STD", "?", "?", "?", "?",
-		"?", "GOTO", "IGOTO", "CALL", "ICALL", "BR", "BRF", "RETURN", "MOVI", "AUIPC", "RECONFFS", "RECONFEXECUNIT", "SETCOND", "SETCONDF", "ECALL", "STOP",
+		"?", "GOTO", "IGOTO", "CALL", "ICALL", "BR", "BRF", "RETURN", "MOVI", "BLT", "RECONFFS", "BGE", "BLTU", "BGEU", "ECALL", "STOP",
 		"FLB", "FLH", "FLW", "FSB", "FSH", "FSW", "FMADD", "FMSUB", "FNMSUB", "FNMADD", "FP", "?", "?", "?", "?", "?",
 		"SET", "ADD", "NOR", "AND", "ANDC", "CMPLT", "CMPLTU", "CMPNE", "NOT", "OR", "SETF", "SH1ADD", "SH2ADD", "SH3ADD", "SH4ADD", "SLL",
 		"SRL", "SRA", "SUB", "XOR", "ADDW", "SUBW", "SLLW", "SRLW", "SRAW", "CMPEQ", "CMPGE", "CMPGEU", "CMPGT", "CMPGTU", "CMPLE", "CMPLEU",
@@ -133,12 +133,11 @@ const char* opcodeNames[128] = {
 
 
 const char* fpNames[32] = {
-		"FADD", "FSUB", "FADD","FSUB","FMUL","FDIV","FSQRT","FSGNJ","FSGNJN","FSGNJNX","FMIN","FMAX",
+		"FADD", "FSUB","FMUL","FDIV","FSQRT","FSGNJ","FSGNJN","FSGNJNX","FMIN","FMAX",
 "FCVTWS","FCVTWUS","FMVXW","FEQ","FLT","FLE","FCLASS","FCVTSW","FCVTSWU","FMVWX"};
 
 
 std::string printDecodedInstr(unsigned int instruction){
-
 
 
 	int RA = (instruction >> 26) & 0x3f;
@@ -152,8 +151,8 @@ std::string printDecodedInstr(unsigned int instruction){
 	int BEXT = (instruction >> 8) & 0x7;
 	short IMM9 = (instruction >> 11) & 0x1ff;
 
-	char isIType = (((OP >> 4) & 0x7) == 2);
-	char isImm = ((OP >> 4) & 0x7) == 1 || ((OP >> 4) & 0x7) == 6 || ((OP >> 4) & 0x7) == 7;
+	char isIType = (((OP >> 4) & 0x7) == 2) && (OP != VEX_BR) && (OP != VEX_BR) && (OP != VEX_BRF) && (OP != VEX_BGE) && (OP != VEX_BGEU) && (OP != VEX_BLT) && (OP != VEX_BLTU) ;
+	char isImm = ((OP >> 4) & 0x7) == 1 || ((OP >> 4) & 0x7) == 6 || ((OP >> 4) & 0x7) == 7 || (((OP >> 4) & 0x7) == 2);
 
 	std::stringstream stream;
 

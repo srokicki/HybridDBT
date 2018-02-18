@@ -12,9 +12,9 @@
 #define INCLUDES_TRANSFORMATION_FIRSTPASSTRANSLATOR_H_
 
 //Parameters:
-#define MEMORY_LATENCY 3
-#define MULT_LATENCY 3
-#define SIMPLE_LATENCY 2
+#define MEMORY_LATENCY 2
+#define MULT_LATENCY 2
+#define SIMPLE_LATENCY 1
 
 #ifndef __CATAPULT
 //Performance simulation

@@ -364,7 +364,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	binaSize = irScheduler(platform, 1, nbInstr, start, 32, platform->vliwInitialConfiguration);
 	start += binaSize ;
 
-	writeInt(platform->vliwBinaries, (start-2*increment)*16, assembleIInstruction_sw(VEX_BR, (-(binaSize-2*increment)), test2));
+	writeInt(platform->vliwBinaries, (start-2*increment)*16, assembleRiInstruction_sw(VEX_BRF, test2, 0, (-(binaSize-2*increment))));
 
 
 	/*********************************************************************************************************
@@ -397,7 +397,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -64, 256+test2, 0)); //9
 
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_ADDi, 256+33, 0*4*increment, 256+33, 0)); //10
+	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_ADDi, 256+33, 4*increment, 256+33, 0)); //10
 
 	nbInstr++;
 	write128(platform->bytecode, nbInstr*16, assembleIBytecodeInstruction(STAGE_CODE_CONTROL, 0, VEX_GOTOR, 1, 0, 0)); //11

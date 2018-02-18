@@ -146,28 +146,43 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 
 		char opcode = getOpcode(entryBlock->instructions, oneInstr);
 
-		//If we are unrolling a loop we invert the jump condition
-		if (entryBlock == secondBlock){
-			if (opcode == VEX_BR)
-				setOpcode(result->instructions, oneInstr, VEX_BRF);
-			else if (opcode == VEX_BRF)
-				setOpcode(result->instructions, oneInstr, VEX_BR);
-		}
+
 
 		//If it is a conditional branch, we mark the jump and the condition instr
-		if (opcode == VEX_BR || opcode == VEX_BRF){
+		if (opcode == VEX_BR || opcode == VEX_BRF || opcode == VEX_BGE || opcode == VEX_BLT || opcode == VEX_BGEU || opcode == VEX_BLTU){
 			indexOfJump = oneInstr;
-			short operands[2];
-			char nbOperands = getOperands(entryBlock->instructions, oneInstr, operands);
 
-			if (operands[0] >= 256){
-				if (lastWriteReg[operands[0]-256] != -1)
-					indexOfCondition = lastWriteReg[operands[0]-256];
+			//If we are unrolling a loop we invert the jump condition
+			if (entryBlock == secondBlock){
+				if (opcode == VEX_BR)
+					setOpcode(result->instructions, oneInstr, VEX_BRF);
+				else if (opcode == VEX_BRF)
+					setOpcode(result->instructions, oneInstr, VEX_BR);
+				else if (opcode == VEX_BGE)
+					setOpcode(result->instructions, oneInstr, VEX_BLT);
+				else if (opcode == VEX_BLT)
+					setOpcode(result->instructions, oneInstr, VEX_BGE);
+				else if (opcode == VEX_BGEU)
+					setOpcode(result->instructions, oneInstr, VEX_BLTU);
+				else if (opcode == VEX_BLTU)
+					setOpcode(result->instructions, oneInstr, VEX_BGEU);
+			}
+
+			if (useSetc){
+				short operands[2];
+				char nbOperands = getOperands(entryBlock->instructions, oneInstr, operands);
+
+				fprintf(stderr, "Error: truying to build a trace using setc while no code has been written to build the condition for the setc...\n");
+				exit(-1);
+				if (operands[0] >= 256){
+					if (lastWriteReg[operands[0]-256] != -1)
+						indexOfCondition = lastWriteReg[operands[0]-256];
+					else
+						indexOfCondition = operands[0];
+				}
 				else
 					indexOfCondition = operands[0];
 			}
-			else
-				indexOfCondition = operands[0];
 		}
 
 
@@ -274,7 +289,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 
 		}
 		//We check if there is a jump in the second block
-		if (opcode == VEX_GOTO || opcode == VEX_GOTOR || opcode == VEX_BRF || opcode == VEX_BR || opcode == VEX_CALL || opcode == VEX_CALLR){
+		if (opcode == VEX_GOTO || opcode == VEX_GOTOR || opcode == VEX_BRF || opcode == VEX_BR || opcode == VEX_BGE || opcode == VEX_BLT || opcode == VEX_BGEU || opcode == VEX_BLTU || opcode == VEX_CALL || opcode == VEX_CALLR){
 			if (indexOfSecondJump == -1 && indexOfJump != -1){
 				addControlDep(result->instructions, indexOfJump, oneInstr+sizeofEntryBlock);
 			}
@@ -302,7 +317,8 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 			if (lastWriteRegForSecond[oneReg]>=0){
 
 				char opcodeJump = getOpcode(entryBlock->instructions, indexOfJump);
-
+				fprintf(stderr, "Error: truying to build a trace using setc while no code has been written to choose the correct setc...\n");
+				exit(-1);
 				char opcodeCond;
 				if (opcodeJump == VEX_BR)
 					opcodeCond = VEX_SETc;
@@ -338,16 +354,23 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock){
 		//We correct the jump register if any
 		if (indexOfSecondJump != -1){
 
-		char jumpopcode = getOpcode(result->instructions, indexOfSecondJump);
-		if (jumpopcode == VEX_BR || jumpopcode == VEX_BRF){
-			short operands[2];
-			short nbOperand = getOperands(result->instructions, indexOfSecondJump, operands);
-			if (operands[0] < 256){
-				char physicalDest = getDestinationRegister(result->instructions, operands[0]);
-				operands[0] = lastWriteRegForSecond[physicalDest];
+			char jumpopcode = getOpcode(result->instructions, indexOfSecondJump);
+			if (jumpopcode == VEX_BR || jumpopcode == VEX_BRF || jumpopcode == VEX_BGE || jumpopcode == VEX_BLT || jumpopcode == VEX_BGEU || jumpopcode == VEX_BLTU){
+				short operands[2];
+				short nbOperand = getOperands(result->instructions, indexOfSecondJump, operands);
+				if (operands[0] < 256){
+					char physicalDest = getDestinationRegister(result->instructions, operands[0]);
+					operands[0] = lastWriteRegForSecond[physicalDest];
+					addDataDep(result->instructions, operands[0], indexOfSecondJump);
+				}
+				if (operands[1] < 256){
+					char physicalDest = getDestinationRegister(result->instructions, operands[1]);
+					operands[1] = lastWriteRegForSecond[physicalDest];
+					addDataDep(result->instructions, operands[1], indexOfSecondJump);
+				}
+
 				setOperands(result->instructions, indexOfSecondJump, operands);
-				addDataDep(result->instructions, operands[0], indexOfSecondJump);
-			}
+
 		}
 
 	#ifndef IR_SUCC

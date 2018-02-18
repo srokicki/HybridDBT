@@ -248,12 +248,11 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 		for (int oneJump = 0; oneJump<block->nbJumps; oneJump++){
 			char jumpOpcode = getOpcode(block->instructions, block->jumpIds[oneJump]);
 
-			if (jumpOpcode == VEX_BR || jumpOpcode == VEX_BRF){
+			if (jumpOpcode == VEX_BR || jumpOpcode == VEX_BRF || jumpOpcode == VEX_BGE || jumpOpcode == VEX_BLT || jumpOpcode == VEX_BGEU || jumpOpcode == VEX_BLTU){
 				//Conditional block (br)
 				int offset = (block->successors[oneJump]->vliwStartAddress - block->jumpPlaces[oneJump]);
 				unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
-				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((offset & 0x7ffff) << 7));
-
+				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfff0007f) | ((offset & 0x1fff) << 7));
 			}
 			else if (jumpOpcode == VEX_GOTO){
 					int dest = block->successors[oneJump]->vliwStartAddress;

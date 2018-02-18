@@ -109,7 +109,7 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 			if (newBlock->vliwEndAddress - 2*offsetInBinaries == oneJumpSource){
 				//We save the destination
 				newBlock->sourceDestination = oneJumpInitialDestination+(sectionStartAddress>>2);
-				unsigned char isAbsolute = ((oneJumpType & 0x7f) != VEX_BR) && ((oneJumpType & 0x7f) != VEX_BRF);
+				unsigned char isAbsolute = ((oneJumpType & 0x7f) != VEX_BR) && ((oneJumpType & 0x7f) != VEX_BRF && (oneJumpType & 0x7f) != VEX_BLTU) && ((oneJumpType & 0x7f) != VEX_BGE && (oneJumpType & 0x7f) != VEX_BGEU) && ((oneJumpType & 0x7f) != VEX_BLT);
 				unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(dbtPlateform, oneJumpInitialDestination+((sectionStartAddress>>2)-mipsStartAddress));
 
 				if (destinationInVLIWFromNewMethod == -1){
@@ -126,7 +126,8 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 				else{
 					//The jump can be resolved
 					int immediateValue = (isAbsolute) ? (destinationInVLIWFromNewMethod) : ((destinationInVLIWFromNewMethod  - oneJumpSource));
-					writeInt(dbtPlateform->vliwBinaries, 16*(oneJumpSource), oneJumpType + ((immediateValue & 0x7ffff)<<7));
+					int mask = (isAbsolute) ? 0x7ffff : 0x1fff;
+					writeInt(dbtPlateform->vliwBinaries, 16*(oneJumpSource), oneJumpType + ((immediateValue & mask)<<7));
 
 					if (destinationInVLIWFromNewMethod != 0){
 						unsigned int instructionBeforePreviousDestination = readInt(dbtPlateform->vliwBinaries, 16*(destinationInVLIWFromNewMethod-1)+12);
@@ -294,10 +295,9 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 		 ******************************************************************************************/
 
 		//We determine the kind of jump we face
-		bool isConditionalBranch = ((jumpInstruction & 0x7f) == VEX_BR) || ((jumpInstruction & 0x7f) == VEX_BRF);
+		bool isConditionalBranch = ((jumpInstruction & 0x7f) == VEX_BR) || ((jumpInstruction & 0x7f) == VEX_BRF) || ((jumpInstruction & 0x7f) == VEX_BLT) || ((jumpInstruction & 0x7f) == VEX_BGE) || ((jumpInstruction & 0x7f) == VEX_BLTU) || ((jumpInstruction & 0x7f) == VEX_BGEU);
 		bool isJump = (jumpInstruction & 0x7f) == VEX_GOTO;
 		bool isCall = (jumpInstruction & 0x7f) == VEX_CALL;
-		bool isReturn = (jumpInstruction & 0x7f) == VEX_RETURN;
 		bool isNothing = ((jumpInstruction & 0x7f) != VEX_CALL) && ((jumpInstruction & 0x7f) != VEX_CALLR) && ((jumpInstruction & 0x7f) != VEX_GOTOR) && ((jumpInstruction & 0x7f) != VEX_STOP);
 
 
@@ -379,10 +379,9 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 
 				unsigned int jumpInstruction = readInt(platform->vliwBinaries, (application->blocksInSections[oneSection][oneBlock]->vliwEndAddress-2*incrementInBinaries)*16);
 
-				bool isConditionalBranch = ((jumpInstruction & 0x7f) == VEX_BR) || ((jumpInstruction & 0x7f) == VEX_BRF);
+				bool isConditionalBranch = ((jumpInstruction & 0x7f) == VEX_BR) || ((jumpInstruction & 0x7f) == VEX_BRF) || ((jumpInstruction & 0x7f) == VEX_BLT) || ((jumpInstruction & 0x7f) == VEX_BGE) || ((jumpInstruction & 0x7f) == VEX_BLTU) || ((jumpInstruction & 0x7f) == VEX_BGEU);
 				bool isJump = (jumpInstruction & 0x7f) == VEX_GOTO;
 				bool isCall = (jumpInstruction & 0x7f) == VEX_CALL;
-				bool isReturn = (jumpInstruction & 0x7f) == VEX_RETURN;
 				bool isNothing = ((jumpInstruction & 0x7f) != VEX_CALL) && ((jumpInstruction & 0x7f) != VEX_CALLR) && ((jumpInstruction & 0x7f) != VEX_GOTOR) && ((jumpInstruction & 0x7f) != VEX_STOP);
 
 
