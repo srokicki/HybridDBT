@@ -601,11 +601,33 @@ void RiscvSimulator::doStep(){
 	//******************************************************************************************
 	//Treatment for: floating point operations
 	case RISCV_FLW:
+
+		//For modelling pipeline performances
+		if (rs1 == this->lastWrittenRegister){
+			if (this->lastIsLoad)
+				this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+			else
+				this->cycle += LOSS_PIPELINE_HAZARD;
+		}
+		this->lastWrittenRegister = rd+64;
+		this->lastIsLoad = true;
+
+
 		localInt = 0;
 		localInt = ldw(REG[rs1] + imm12_I_signed);
 		memcpy(&(regf[rd]), &localInt, 4);
 		break;
 	case RISCV_FSW:
+
+		//For modelling pipeline performances
+		if (rs1 == this->lastWrittenRegister || rs2 + 64 == this->lastWrittenRegister){
+			if (this->lastIsLoad)
+				this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+			else
+				this->cycle += LOSS_PIPELINE_HAZARD;
+		}
+		this->lastWrittenRegister = 0;
+
 		localInt = 0;
 		memcpy(&localInt, &(regf[rs2]), 4);
 
@@ -613,36 +635,135 @@ void RiscvSimulator::doStep(){
 
 		break;
 	case RISCV_FMADD:
+		//For modelling pipeline performances
+		if (rs1 + 64 == this->lastWrittenRegister || rs2 + 64 == this->lastWrittenRegister || rs3 + 64 == this->lastWrittenRegister){
+			if (this->lastIsLoad)
+				this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+			else
+				this->cycle += LOSS_PIPELINE_HAZARD;
+		}
+		this->lastWrittenRegister = rd+64;
+
 		regf[rd] = regf[rs1] * regf[rs2] + regf[rs3];
 		break;
 	case RISCV_FMSUB:
+
+		//For modelling pipeline performances
+		if (rs1 + 64 == this->lastWrittenRegister || rs2 + 64 == this->lastWrittenRegister || rs3 + 64 == this->lastWrittenRegister){
+			if (this->lastIsLoad)
+				this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+			else
+				this->cycle += LOSS_PIPELINE_HAZARD;
+		}
+		this->lastWrittenRegister = rd+64;
+
 		regf[rd] = regf[rs1] * regf[rs2] - regf[rs3];
 		break;
 	case RISCV_FNMSUB:
+
+		//For modelling pipeline performances
+		if (rs1 + 64 == this->lastWrittenRegister || rs2 + 64 == this->lastWrittenRegister || rs3 + 64 == this->lastWrittenRegister){
+			if (this->lastIsLoad)
+				this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+			else
+				this->cycle += LOSS_PIPELINE_HAZARD;
+		}
+		this->lastWrittenRegister = rd+64;
+
 		regf[rd] = -regf[rs1] * regf[rs2] + regf[rs3];
 		break;
 	case RISCV_FNMADD:
+
+		//For modelling pipeline performances
+		if (rs1 + 64 == this->lastWrittenRegister || rs2 + 64 == this->lastWrittenRegister || rs3 + 64 == this->lastWrittenRegister){
+			if (this->lastIsLoad)
+				this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+			else
+				this->cycle += LOSS_PIPELINE_HAZARD;
+		}
+		this->lastWrittenRegister = rd+64;
+
 		regf[rd] = -regf[rs1] * regf[rs2] - regf[rs3];
 		break;
 	case RISCV_FP:
 		switch (funct7)
 		{
 			case  RISCV_FP_ADD:
+
+				//For modelling pipeline performances
+				if (rs1 + 64 == this->lastWrittenRegister || rs2 + 64 == this->lastWrittenRegister){
+					if (this->lastIsLoad)
+						this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+					else
+						this->cycle += LOSS_PIPELINE_HAZARD;
+				}
+				this->lastWrittenRegister = rd+64;
+
 				regf[rd] = regf[rs1] + regf[rs2];
 				break;
 			case  RISCV_FP_SUB:
+
+				//For modelling pipeline performances
+				if (rs1 + 64 == this->lastWrittenRegister || rs2 + 64 == this->lastWrittenRegister){
+					if (this->lastIsLoad)
+						this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+					else
+						this->cycle += LOSS_PIPELINE_HAZARD;
+				}
+				this->lastWrittenRegister = rd+64;
+
 				regf[rd] = regf[rs1] - regf[rs2];
 				break;
 			case  RISCV_FP_MUL:
+
+				//For modelling pipeline performances
+				if (rs1 + 64 == this->lastWrittenRegister || rs2 + 64 == this->lastWrittenRegister){
+					if (this->lastIsLoad)
+						this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+					else
+						this->cycle += LOSS_PIPELINE_HAZARD;
+				}
+				this->lastWrittenRegister = rd+64;
+
 				regf[rd] = regf[rs1] * regf[rs2];
 				break;
 			case  RISCV_FP_DIV:
+
+				//For modelling pipeline performances
+				if (rs1 + 64 == this->lastWrittenRegister || rs2 + 64 == this->lastWrittenRegister){
+					if (this->lastIsLoad)
+						this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+					else
+						this->cycle += LOSS_PIPELINE_HAZARD;
+				}
+				this->lastWrittenRegister = rd+64;
+
 				regf[rd] = regf[rs1] / regf[rs2];
 				break;
 			case  RISCV_FP_SQRT:
+
+				//For modelling pipeline performances
+				if (rs1 + 64 == this->lastWrittenRegister){
+					if (this->lastIsLoad)
+						this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+					else
+						this->cycle += LOSS_PIPELINE_HAZARD;
+				}
+				this->lastWrittenRegister = rd+64;
+
 				regf[rd] = sqrt(regf[rs1]);
 				break;
 			case  RISCV_FP_FSGN:
+
+				//For modelling pipeline performances
+				if (rs1 + 64 == this->lastWrittenRegister){
+					if (this->lastIsLoad)
+						this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+					else
+						this->cycle += LOSS_PIPELINE_HAZARD;
+				}
+				this->lastWrittenRegister = rd+64;
+
 				localFloat = fabs(regf[rs1]);
 				if (funct3 == RISCV_FP_FSGN_J){
 					if (regf[rs2]<0){
@@ -671,12 +792,32 @@ void RiscvSimulator::doStep(){
 
 				break;
 			case  RISCV_FP_MINMAX:
+
+				//For modelling pipeline performances
+				if (rs1 + 64 == this->lastWrittenRegister || rs2 + 64 == this->lastWrittenRegister){
+					if (this->lastIsLoad)
+						this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+					else
+						this->cycle += LOSS_PIPELINE_HAZARD;
+				}
+				this->lastWrittenRegister = rd+64;
+
 				if (funct3 == RISCV_FP_MINMAX_MIN)
 					regf[rd] = MIN(regf[rs1], regf[rs2]);
 				else
 					regf[rd] = MAX(regf[rs1], regf[rs2]);
 				break;
 			case  RISCV_FP_FCVTW:
+
+				//For modelling pipeline performances
+				if (rs1 + 64 == this->lastWrittenRegister){
+					if (this->lastIsLoad)
+						this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+					else
+						this->cycle += LOSS_PIPELINE_HAZARD;
+				}
+				this->lastWrittenRegister = rd;
+
 				if (rs2 == RISCV_FP_FCVTW_W){
 					REG[rd] = regf[rs1];
 				}
@@ -685,6 +826,16 @@ void RiscvSimulator::doStep(){
 				}
 				break;
 			case  RISCV_FP_FMVXFCLASS:
+
+				//For modelling pipeline performances
+				if (rs1 + 64 == this->lastWrittenRegister){
+					if (this->lastIsLoad)
+						this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+					else
+						this->cycle += LOSS_PIPELINE_HAZARD;
+				}
+				this->lastWrittenRegister = rd;
+
 				if (funct3 == RISCV_FP_FMVXFCLASS_FMVX){
 					memcpy(&localInt, &(regf[rs1]), 4);
 					REG[rd] = localInt;
@@ -695,6 +846,16 @@ void RiscvSimulator::doStep(){
 				}
 				break;
 			case  RISCV_FP_FCMP:
+
+				//For modelling pipeline performances
+				if (rs1 + 64 == this->lastWrittenRegister || rs2 + 64 == this->lastWrittenRegister){
+					if (this->lastIsLoad)
+						this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+					else
+						this->cycle += LOSS_PIPELINE_HAZARD;
+				}
+				this->lastWrittenRegister = rd;
+
 				if (funct3 == RISCV_FP_FCMP_FEQ)
 					REG[rd] = regf[rs1] == regf[rs2];
 				else if (funct3 == RISCV_FP_FCMP_FLT)
@@ -703,6 +864,16 @@ void RiscvSimulator::doStep(){
 					REG[rd] = regf[rs1] <= regf[rs2];
 				break;
 			case  RISCV_FP_FCVTS:
+
+				//For modelling pipeline performances
+				if (rs1 == this->lastWrittenRegister){
+					if (this->lastIsLoad)
+						this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+					else
+						this->cycle += LOSS_PIPELINE_HAZARD;
+				}
+				this->lastWrittenRegister = rd+64;
+
 				if (rs2 == RISCV_FP_FCVTS_W){
 					regf[rd] = REG[rs1];
 				}
@@ -711,6 +882,16 @@ void RiscvSimulator::doStep(){
 				}
 				break;
 			case  RISCV_FP_FMVW:
+
+				//For modelling pipeline performances
+				if (rs1 == this->lastWrittenRegister){
+					if (this->lastIsLoad)
+						this->cycle += LOSS_PIPELINE_HAZARD_FORWARDED;
+					else
+						this->cycle += LOSS_PIPELINE_HAZARD;
+				}
+				this->lastWrittenRegister = rd+64;
+
 				localInt = REG[rs1];
 				memcpy(&(regf[rd]),&localInt,  4);
 				break;

@@ -377,9 +377,9 @@ int main(int argc, char *argv[])
 	writeInt(dbtPlateform.vliwBinaries, 0*16, assembleIInstruction_sw(VEX_CALL, placeCode, 63));
 
 	initializeInsertionsMemory(size*4);
-	for (int oneInsertion=0; oneInsertion<placeCode; oneInsertion++){
-			Log::fprintf(0, stderr, "insert;%d\n", oneInsertion);
-	}
+//	for (int oneInsertion=0; oneInsertion<placeCode; oneInsertion++){
+//			Log::fprintf(0, stderr, "insert;%d\n", oneInsertion);
+//	}
 	/********************************************************
 	 * First part of DBT: generating the first pass translation of binaries
 	 *******************************************************
@@ -410,7 +410,7 @@ int main(int argc, char *argv[])
 		placeCode =  translateOneSection(dbtPlateform, placeCode, addressStart, startAddressSource,endAddressSource);
 
 		buildBasicControlFlow(&dbtPlateform, oneSection,addressStart, startAddressSource, oldPlaceCode, placeCode, &application, &profiler);
-//
+
 //		int** insertions = (int**) malloc(sizeof(int **));
 //		int nbIns = getInsertionList(oneSection*1024, insertions);
 //		for (int oneInsertion=0; oneInsertion<nbIns; oneInsertion++){
@@ -458,7 +458,7 @@ int main(int argc, char *argv[])
 	int areaStartAddress = 0;
 
 	#ifndef __NIOS
-	dbtPlateform.vexSimulator->initializeDataMemory((unsigned char*) insertionsArray, 65536*4, 0x7000000);
+	dbtPlateform.vexSimulator->initializeDataMemory((unsigned char*) insertionsArray, 65536*4, 0x80000000);
 	#endif
 
 	#ifndef __NIOS
@@ -477,8 +477,16 @@ int main(int argc, char *argv[])
 	int abortCounter = 0;
 
 	float coef = 0;
-	runStatus = run(&dbtPlateform, 1000);
 
+	//We modelize the translation time
+
+	//SW version
+//	dbtPlateform.vexSimulator->cycle = 1000*425;
+//	runStatus = run(&dbtPlateform, size*425);
+
+	//HW version
+	dbtPlateform.vexSimulator->cycle = 1000;
+	runStatus = run(&dbtPlateform, size);
 
 	while (runStatus == 0){
 
@@ -594,7 +602,7 @@ int main(int argc, char *argv[])
 		}
 
 		int cyclesToRun = dbtPlateform.optimizationCycles - oldOptimizationCount;
-		if (oldOptimizationCount - dbtPlateform.optimizationCycles == 0)
+		if (cyclesToRun == 0)
 			cyclesToRun = 1000;
 
 		runStatus = run(&dbtPlateform, cyclesToRun);

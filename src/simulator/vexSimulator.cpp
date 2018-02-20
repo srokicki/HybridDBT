@@ -1379,7 +1379,7 @@ int VexSimulator::doStep(){
 
 #ifndef __CATAPULT
 
-	if (debugLevel >= 1 /* || (PC >= 4*22090 && PC < 4*22125) || (PC >= 4*458 && PC < 4*507)*/){
+	if (debugLevel >= 1/* || (PC >= 4*22090 && PC < 4*22125) || (PC >= 4*458 && PC < 4*507)*/){
 
 
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
@@ -1421,7 +1421,7 @@ int VexSimulator::doStep(){
 
 
 
-		for (int oneRegister =0; oneRegister<36; oneRegister++){
+		for (int oneRegister =0; oneRegister<38; oneRegister++){
 			fprintf(stderr, "%lx;", (long) REG[oneRegister]);
 		}
 		fprintf(stderr, ";;%lx;", (long) REG[63]);

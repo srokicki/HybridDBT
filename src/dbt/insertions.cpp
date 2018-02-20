@@ -192,11 +192,109 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 
 	char increment = (platform->vliwInitialIssueWidth>4) ? 2:1;
 
+
+
+
+	/*********************************************************************************************************
+	 * Generation of the hashmap block
+	 ********************************************************************************************************/
+
+	char nbInstr = 0;
+
+	write128(platform->bytecode, nbInstr*16, assembleIBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_MOVI, 256+37, 0x8, 0)); //0
+	nbInstr++;
+
+	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_SLLi, 0, 28, 256+37, 0)); //1
+	nbInstr++;
+
+	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_ANDi, 256+33, 0x70, 256+34, 0)); //2
+	nbInstr++;
+
+	write128(platform->bytecode, nbInstr*16, assembleRBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_SUB, 2, 1,  256+34, 0)); //3
+	nbInstr++;
+
+	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 3, -8,  256+35, 0)); //4
+	nbInstr++;
+
+	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 3, -16,  256+36, 0)); //5
+	nbInstr++;
+
+	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 3, -8, 256+33, 0)); //6
+	nbInstr++;
+
+	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_CONTROL, 0, VEX_BRF, 4, increment*3, 256+33, 0)); //7
+	nbInstr++;
+
+
+	unsigned int hashBytecode[6*4];
+	for (int oneBytecodeInstr = 0; oneBytecodeInstr < nbInstr; oneBytecodeInstr++){
+		hashBytecode[4*oneBytecodeInstr + 0] = readInt(platform->bytecode, 16*oneBytecodeInstr + 0);
+		hashBytecode[4*oneBytecodeInstr + 1] = readInt(platform->bytecode, 16*oneBytecodeInstr + 4);
+		hashBytecode[4*oneBytecodeInstr + 2] = readInt(platform->bytecode, 16*oneBytecodeInstr + 8);
+		hashBytecode[4*oneBytecodeInstr + 3] = readInt(platform->bytecode, 16*oneBytecodeInstr + 12);
+	}
+
+	addDataDep(hashBytecode, 0, 1);
+	addDataDep(hashBytecode, 1, 3);
+	addDataDep(hashBytecode, 2, 3);
+	addDataDep(hashBytecode, 3, 4);
+	addDataDep(hashBytecode, 3, 5);
+	addDataDep(hashBytecode, 3, 6);
+	addDataDep(hashBytecode, 4, 7);
+
+	addControlDep(hashBytecode, 4,6);
+	addControlDep(hashBytecode, 5,7);
+	addControlDep(hashBytecode, 6,7);
+
+
+	//We move instructions into bytecode memory
+	for (int oneBytecodeInstr = 0; oneBytecodeInstr<nbInstr; oneBytecodeInstr++){
+		writeInt(platform->bytecode, 16*oneBytecodeInstr + 0, hashBytecode[4*oneBytecodeInstr + 0]);
+		writeInt(platform->bytecode, 16*oneBytecodeInstr + 4, hashBytecode[4*oneBytecodeInstr + 1]);
+		writeInt(platform->bytecode, 16*oneBytecodeInstr + 8, hashBytecode[4*oneBytecodeInstr + 2]);
+		writeInt(platform->bytecode, 16*oneBytecodeInstr + 12, hashBytecode[4*oneBytecodeInstr + 3]);
+	}
+
+	int binaSize = irScheduler(platform, 1, nbInstr, start, 32, platform->vliwInitialConfiguration);
+	start += binaSize;
+
+
+	/*********************************************************************************************************
+	 * Generation of the hashmap block 2
+	 ********************************************************************************************************/
+
+	nbInstr = 0;
+
+	write128(platform->bytecode, nbInstr*16, assembleIBytecodeInstruction(STAGE_CODE_CONTROL, 0, VEX_GOTOR, 256+36, 0, 0)); //0
+	nbInstr++;
+
+	unsigned int hashBytecode2[6*4];
+	for (int oneBytecodeInstr = 0; oneBytecodeInstr < nbInstr; oneBytecodeInstr++){
+		hashBytecode2[4*oneBytecodeInstr + 0] = readInt(platform->bytecode, 16*oneBytecodeInstr + 0);
+		hashBytecode2[4*oneBytecodeInstr + 1] = readInt(platform->bytecode, 16*oneBytecodeInstr + 4);
+		hashBytecode2[4*oneBytecodeInstr + 2] = readInt(platform->bytecode, 16*oneBytecodeInstr + 8);
+		hashBytecode2[4*oneBytecodeInstr + 3] = readInt(platform->bytecode, 16*oneBytecodeInstr + 12);
+	}
+
+
+	//We move instructions into bytecode memory
+	for (int oneBytecodeInstr = 0; oneBytecodeInstr<nbInstr; oneBytecodeInstr++){
+		writeInt(platform->bytecode, 16*oneBytecodeInstr + 0, hashBytecode2[4*oneBytecodeInstr + 0]);
+		writeInt(platform->bytecode, 16*oneBytecodeInstr + 4, hashBytecode2[4*oneBytecodeInstr + 1]);
+		writeInt(platform->bytecode, 16*oneBytecodeInstr + 8, hashBytecode2[4*oneBytecodeInstr + 2]);
+		writeInt(platform->bytecode, 16*oneBytecodeInstr + 12, hashBytecode2[4*oneBytecodeInstr + 3]);
+	}
+
+	binaSize = irScheduler(platform, 1, nbInstr, start, 32, platform->vliwInitialConfiguration);
+	start += binaSize;
+
+
 	/*********************************************************************************************************
 	 * Generation of the first block, before the loop body
 	 ********************************************************************************************************/
 
-	char nbInstr = 0;
+
+	nbInstr = 0;
 
 	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -8, 256+offset_start, 0)); //0
 	nbInstr++;
@@ -222,9 +320,9 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	nbInstr++;
 	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_SLLi, 10, SHIFT_FOR_INSERTION_SECTION, 256+offset_start, 0)); //11
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleIBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_MOVI, 256+size, 0x7, 0)); //12
+	write128(platform->bytecode, nbInstr*16, assembleIBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_MOVI, 256+size, 0x8, 0)); //12
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_SLLi, 12, 24, 256+size, 0)); //13
+	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_SLLi, 12, 28, 256+size, 0)); //13
 	nbInstr++;
 	write128(platform->bytecode, nbInstr*16, assembleRBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_ADD, 13, 11, 256+offset_start, 0)); //14
 	nbInstr++;
@@ -282,7 +380,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 		writeInt(platform->bytecode, 16*oneBytecodeInstr + 12, startBytecode[4*oneBytecodeInstr + 3]);
 	}
 
-	int binaSize = irScheduler(platform, 1, nbInstr, start, 32, platform->vliwInitialConfiguration);
+	binaSize = irScheduler(platform, 1, nbInstr, start, 32, platform->vliwInitialConfiguration);
 	start += binaSize;
 
 	start += increment;
@@ -398,9 +496,12 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 
 	nbInstr++;
 	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_ADDi, 256+33, 4*increment, 256+33, 0)); //10
-
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleIBytecodeInstruction(STAGE_CODE_CONTROL, 0, VEX_GOTOR, 1, 0, 0)); //11
+
+	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+34, -16, 1, 0)); //11
+	nbInstr++;
+
+	write128(platform->bytecode, nbInstr*16, assembleIBytecodeInstruction(STAGE_CODE_CONTROL, 0, VEX_GOTOR, 1, 0, 0)); //12
 	nbInstr++;
 
 	unsigned int endBytecode[32*4];
@@ -413,16 +514,17 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 
 	addDataDep(endBytecode, 0, 1);
 	addDataDep(endBytecode, 1, 10);
-	addDataDep(endBytecode, 10, 11);
+	addDataDep(endBytecode, 10, 12);
 
 	addControlDep(endBytecode, 2,5);
 	addControlDep(endBytecode, 3,6);
 	addControlDep(endBytecode, 4,7);
 	addControlDep(endBytecode, 5,8);
-	addControlDep(endBytecode, 6,11);
-	addControlDep(endBytecode, 7,11);
-	addControlDep(endBytecode, 8,11);
-	addControlDep(endBytecode, 9,11);
+	addControlDep(endBytecode, 6,12);
+	addControlDep(endBytecode, 7,12);
+	addControlDep(endBytecode, 8,12);
+	addControlDep(endBytecode, 9,12);
+	addControlDep(endBytecode, 11,12);
 
 
 

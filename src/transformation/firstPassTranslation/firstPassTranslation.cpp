@@ -234,8 +234,11 @@ unsigned int firstPassTranslator(DBTPlateform *platform,
 	addInsertions((sectionStartAddress-sourceStartAddress)>>2, placeCode, platform->insertions, platform->insertions[0]);
 
 	//Modelization of optimization time : here we needed one cycle per generated instruction
-	platform->optimizationCycles += destinationIndex;
-	platform->optimizationEnergy += destinationIndex*0.44;
+//	platform->optimizationCycles += destinationIndex*425;
+//	platform->optimizationEnergy += destinationIndex*8800;
+
+	platform->optimizationCycles += destinationIndex*2;
+	platform->optimizationEnergy += destinationIndex*51;
 
 	return placeCode + destinationIndex;
 }

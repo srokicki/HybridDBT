@@ -22,10 +22,11 @@ unsigned char numberFreeRegister, char configuration){
 
 	//********************************************
 	//Modelization of optimization time : here we need 4 cycles to schedule one instruction
+//	platform->optimizationCycles += basicBlockSize*635;
+//	platform->optimizationEnergy += ((int)basicBlockSize)*4*5.46;
 
 	platform->optimizationCycles += basicBlockSize*4;
-	platform->optimizationEnergy += ((int)basicBlockSize)*4*5.46;
-
+	platform->optimizationEnergy += ((int)basicBlockSize)*109;
 
 	char issue_width = getIssueWidth(configuration)>4 ? 8 :4;
 	unsigned int way_specialisation = getConfigurationForScheduler(configuration);

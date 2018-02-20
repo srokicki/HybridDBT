@@ -12,8 +12,8 @@
 unsigned int schedulerConfigurations[16] = {0x00005e00,0x0000546c,0x00005ec4,0x006c54c4,0x00005ecc,0x040c5ec4,0,0,
 											0x00005e64,0x44605e04,0x00005e6c,0x40605ec4,0x006c5ec4,0x446c5ec4,0,0};
 char validConfigurations[12] = {0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12 ,13};
-float powerConsumptions[16] = {5.04, 7.12, 8.96, 11.03, 10.85, 12.87, 0, 0,
-		9.11, 9.24, 9.11, 11.13, 13.02, 15.04};
+float powerConsumptions[16] = {30.21, 42.67, 53.7, 66.11, 65.03, 77.13, 0, 0,
+		54.6, 55.38, 54.6, 66.71, 78.03, 90.14};
 
 
 char getIssueWidth(char configuration){
