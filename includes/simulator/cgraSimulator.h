@@ -14,10 +14,10 @@
  *  4  5  6  7
  *  8  9 10 11
  */
-class CgraSimulator : public GenericSimulator
+class CgraSimulator
 {
 public:
-	CgraSimulator(uint8_t *memory);
+	CgraSimulator(std::map<ac_int<64, false>, ac_int<8, true>> *memory, ac_int<64, true> * reg);
 
 	/**
 	 * @brief doStep executes all CGRA's FunctionalUnits
@@ -29,15 +29,22 @@ public:
 	 * @param config: a bitstream formated configuration
 	 * @param size: the size of the bitstream in bytes
 	 */
-	void configure(uint32_t *config, uint32_t size);
+	void configure(uint64_t *config);
 
 	/**
 	 * @brief print prints the CGRA's FunctionalUnits _out register
 	 */
 	void print();
+
+	/**
+	 * @brief units access the CGRA's FunctionalUnits
+	 * @return the units buffer
+	 */
+	const FunctionalUnit * units();
 private:
 	FunctionalUnit _units[12];
-	uint8_t * _memory;
+	std::map<ac_int<64, false>, ac_int<8, true>> * _memory;
+	ac_int<64, true> * _reg;
 };
 
 #endif // CGRASIMULATOR_H

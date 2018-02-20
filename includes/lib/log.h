@@ -41,8 +41,8 @@ public:
   template<class ... Ts>
   static void printf(char verbose, const char * format, Ts ... args)
   {
-    if (_verbose_level >= verbose)
-      std::fprintf(stderr, format, args ...);
+		if (_verbose_level >= verbose)
+			std::fprintf(stderr, format, args ...);
   }
 
   /**

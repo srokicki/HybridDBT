@@ -125,7 +125,7 @@ const char* opcodeNames[128] = {
 		"NOP", "-", "-", "MPYW", "DIVW", "DIVUW", "REMW", "REMUW", "MPYH", "MPYHSU", "MPYHU", "MPY", "DIV", "DIVU", "REM", "REMU",
 		"LDD", "LDW", "LDH", "LDHU", "LDB", "LDBU","LDWU", "?", "STB", "STH", "STW", "STD", "?", "?", "?", "?",
 		"?", "GOTO", "IGOTO", "CALL", "ICALL", "BR", "BRF", "RETURN", "MOVI", "AUIPC", "RECONFFS", "RECONFEXECUNIT", "SETCOND", "SETCONDF", "ECALL", "STOP",
-		"FLB", "FLH", "FLW", "FSB", "FSH", "FSW", "FMADD", "FMSUB", "FNMSUB", "FNMADD", "FP", "?", "?", "?", "?", "?",
+		"FLB", "FLH", "FLW", "FSB", "FSH", "FSW", "FMADD", "FMSUB", "FNMSUB", "FNMADD", "FP", "CGRA", "?", "?", "?", "?",
 		"SET", "ADD", "NOR", "AND", "ANDC", "CMPLT", "CMPLTU", "CMPNE", "NOT", "OR", "SETF", "SH1ADD", "SH2ADD", "SH3ADD", "SH4ADD", "SLL",
 		"SRL", "SRA", "SUB", "XOR", "ADDW", "SUBW", "SLLW", "SRLW", "SRAW", "CMPEQ", "CMPGE", "CMPGEU", "CMPGT", "CMPGTU", "CMPLE", "CMPLEU",
 		"?", "ADDi", "NORi", "ANDi", "ANDCi", "CMPLTi", "CMPLTUi", "CMPNEi", "NOTi", "ORi", "ORCi", "SH1ADDi", "SH2ADDi", "SH3ADDi", "SH4ADDi", "SLLi",
@@ -158,24 +158,32 @@ std::string printDecodedInstr(unsigned int instruction){
 	std::stringstream stream;
 
 	stream << opcodeNames[OP];
-	if (OP == VEX_FP){
-			stream << " " << fpNames[funct];
-	}
 
-	if (OP == 0){
-	}
-	else if (isIType)
-    stream << " r" << (int)RA << ", "  << (int)IMM19;
-	else if (isImm){
-    stream << " r" << (int)RB << "  = r" << (int)RA << " 0x";
-		stream << std::hex << IMM13_signed;
+	if (OP == VEX_CGRA)
+	{
+		stream << " " << IMM19;
 	}
 	else
-    stream << " r" << (int)RC << "  = r" << (int)RA << " r" << (int)RB;
+	{
+		if (OP == VEX_FP){
+			stream << " " << fpNames[funct];
+		}
 
-	std::string result(stream.str());
-	for (int addedSpace = result.size(); addedSpace < 20; addedSpace++)
-		result.append(" ");
+		if (OP == 0){
+		}
+		else if (isIType)
+			stream << " r" << (int)RA << ", "  << (int)IMM19;
+		else if (isImm){
+			stream << " r" << (int)RB << "  = r" << (int)RA << " 0x";
+			stream << std::hex << IMM13_signed;
+		}
+		else
+			stream << " r" << (int)RC << "  = r" << (int)RA << " r" << (int)RB;
+	}
+		std::string result(stream.str());
+		for (int addedSpace = result.size(); addedSpace < 20; addedSpace++)
+			result.append(" ");
+
 
 	return result;
 }

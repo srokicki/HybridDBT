@@ -19,6 +19,8 @@
 #include <isa/vexISA.h>
 #include <lib/endianness.h>
 
+#include <lib/log.h>
+
 template<int N> struct l2 { enum { value = 1 + l2<N/2>::value }; };
 template<> struct l2<1> { enum { value = 1 }; };
 
@@ -104,6 +106,12 @@ unsigned int createInstruction(unsigned int irInstr96, unsigned int irInstr64, u
 
 	unsigned int generatedInstruction = 0;
 	generatedInstruction |= opCode;
+
+	if (opCode == VEX_CGRA)
+	{
+		generatedInstruction += imm19 << 7;
+		return generatedInstruction;
+	}
 
 	if (typeCode == 0) { //The instruction is R type
 		generatedInstruction |= ((rIn2 & 0x3f)<<26);

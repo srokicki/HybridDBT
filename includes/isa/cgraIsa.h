@@ -3,34 +3,43 @@
 
 #include <isa/vexISA.h>
 
-/*
-#define CGRA_NOP 0x0
+constexpr uint64_t CGRA_IMM_LONG_MASK  = 0b11111111111111111111;
+constexpr uint64_t CGRA_IMM_SHORT_MASK = 0b00000001111111111111;
+constexpr uint64_t CGRA_REG_MASK       = 0b00000000000001111111;
+constexpr uint64_t CGRA_OPCODE_MASK    = 0b00000000000001111111;
 
-// Arithmetics
-#define CGRA_ADD 0x1
-#define CGRA_ADDi 0x9
-#define CGRA_SUB 0x2
-#define CGRA_SUBi 0xA
+constexpr int CGRA_OPCODE_BITS = 7;
+constexpr int CGRA_REG_BITS = 7;
+constexpr int CGRA_IMM_SHORT_BITS = 13;
+constexpr int CGRA_IMM_LONG_BITS = CGRA_IMM_SHORT_BITS + CGRA_REG_BITS;
+constexpr int CGRA_INSTRUCTION_BITS = CGRA_REG_BITS + CGRA_IMM_LONG_BITS + CGRA_OPCODE_BITS;
 
-#define CGRA_MUL 0x3
-#define CGRA_DIV 0x4
+constexpr int CGRA_IMM_OFFSET = CGRA_OPCODE_BITS;
+constexpr int CGRA_REG1_OFFSET = CGRA_IMM_OFFSET + CGRA_IMM_LONG_BITS;
+constexpr int CGRA_REG2_OFFSET = CGRA_REG1_OFFSET - CGRA_REG_BITS;
+constexpr int CGRA_REG3_OFFSET = CGRA_REG2_OFFSET - CGRA_REG_BITS;
 
-#define CGRA_LDi 0xB
-// End Arithmetics
+constexpr int CGRA_IMM_SHORT_MAX = 4096;
 
-// Routing instruction
-#define CGRA_RT  0xF
+constexpr uint8_t CGRA_CARRY = 0x80;
+constexpr uint8_t CGRA_RECONF_IF0 = 0x81;
 
-// Masks and Offsets for instruction parts
-#define IMM13 0xFFF80
-#define IMM16 0xFFFF0
-#define OP1   0x00070
-#define OP2   0x00380
+namespace cgra
+{
 
-#define OP1_OFF 4
-#define OP2_OFF 7
-#define IMM13_OFF 7
-#define IMM16_OFF 4
-*/
+uint8_t regA(const uint64_t& instruction);
+uint8_t regB(const uint64_t& instruction);
+uint8_t regC(const uint64_t& instruction);
+uint8_t opcode(const uint64_t& instruction);
+
+uint16_t immShort(const uint64_t& instruction);
+uint32_t immLong(const uint64_t& instruction);
+
+uint64_t vex2cgra(uint128_struct instruction, uint8_t src1 = 0xff, uint8_t src2 = 0xff);
+bool isEligible(uint32_t i1, uint32_t i2, uint32_t i3, uint32_t i4);
+
+std::string toString(uint64_t instruction);
+void printConfig(int verbose, const uint64_t * configuration);
+} // namespace cgra
 
 #endif // CGRAISA_H

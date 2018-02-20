@@ -1,5 +1,6 @@
 #include <simulator/functionalUnit.h>
 #include <isa/cgraIsa.h>
+#include <lib/log.h>
 
 FunctionalUnit::DIR reverse(FunctionalUnit::DIR d)
 {
@@ -9,42 +10,80 @@ FunctionalUnit::DIR reverse(FunctionalUnit::DIR d)
 	case FunctionalUnit::RIGHT: return FunctionalUnit::LEFT;
 	case FunctionalUnit::UP: return FunctionalUnit::DOWN;
 	case FunctionalUnit::DOWN: return FunctionalUnit::UP;
-	default: return FunctionalUnit::LEFT;
+	default: exit(-1);
 	}
 }
 
-FunctionalUnit::FunctionalUnit(uint8_t *memory)
-	: _memory(memory)
+FunctionalUnit::FunctionalUnit()
+	: _memory(nullptr), _reg(nullptr), _features(0), _out(0), _result(0)
 {
 	_neighbours[0] = this;
 	for (unsigned int i = 1; i < 5; ++i)
 		_neighbours[i] = nullptr;
-
-	_out = _result = 0;
 }
 
 void FunctionalUnit::run()
 {
-	uint32_t imm13, imm19, addr;
-	int32_t imm13_s;
-	FunctionalUnit * op1 = nullptr, * op2 = nullptr;
+	uint32_t imm_short, imm_long, addr;
+	int32_t imm_short_signed;
+	uint64_t va, vb, vc;
 	uint8_t opcode, isImm, ra, rb, rc;
 
-	ra = (_instruction >> 26) & 0x3f;
-	rb = (_instruction >> 20) & 0x3f;
-	rc = (_instruction >> 14) & 0x3f;
-	imm13 = (_instruction >> 7) & 0x1fff;
-	imm13_s = (imm13 > 4096) ? imm13 - 8192 : imm13;
-	imm19 = (_instruction >> 7) & 0x7ffff;
-	opcode = (_instruction >> 0) & 0x7f;
+	ra = cgra::regA(_instruction);
+	rb = cgra::regB(_instruction);
+	rc = cgra::regC(_instruction);
+
+	imm_short = cgra::immShort(_instruction);
+	imm_short_signed = (imm_short >= CGRA_IMM_SHORT_MAX) ? imm_short - (CGRA_IMM_SHORT_MAX << 1): imm_short;
+	imm_long = cgra::immLong(_instruction);
+
+	opcode = cgra::opcode(_instruction);
+
 	isImm = (((opcode >> 4) & 0x7) == 2);
 
-	addr = imm13_s + ra;
+	if (ra > 63 && _neighbours[ra-64])
+		va = _neighbours[ra-64]->_out;
+	else if (_reg)
+	{
+		va = _reg[ra];
+	}
+	else
+	{
+		Log::out(0) << "FunctionalUnit::doStep() wants to access register file but can't\n";
+		return;
+	}
 
-	op1 = _neighbours[ra];
 	if (!isImm)
-		op2 = _neighbours[rb];
+	{
+		if (rc > 63 && _neighbours[rc-64])
+			vc = _neighbours[rc-64]->_out;
+		else if (_reg)
+		{
+			vc = _reg[rc];
+		}
+		else
+		{
+			Log::out(0) << "FunctionalUnit::doStep() wants to access register file but can't\n";
+			return;
+		}
+	}
 
+	if (opcode == VEX_STB || opcode == VEX_STH || opcode == VEX_STW || opcode == VEX_STD)
+	{
+		if (rb > 63 && _neighbours[rb-64])
+			vb = _neighbours[rb-64]->_out;
+		else if (_reg)
+		{
+			vb = _reg[rb];
+		}
+		else
+		{
+			Log::out(0) << "FunctionalUnit::doStep() wants to access register file but can't\n";
+			return;
+		}
+	}
+
+	addr = imm_short_signed + va;
 	switch (opcode)
 	{
 	case VEX_NOP:
@@ -52,81 +91,119 @@ void FunctionalUnit::run()
 
 	// ARITHMETIC OPERATIONS
 	case VEX_ADD:
-		_result = op1->_out + op2->_out;
+	case VEX_ADDW:
+		_result = va + vc;
+		if (rb < 64 && _reg) _reg[rb] = _result;
 		break;
 	case VEX_ADDi:
-		_result = op1->_out + imm13;
+	case VEX_ADDWi:
+		_result = va + imm_short;
+		if (rb < 64 && _reg) _reg[rb] = _result;
 		break;
 	case VEX_SUB:
-		_result = op1->_out - op2->_out;
+		_result = va- vc;
+		if (rb < 64 && _reg) _reg[rb] = _result;
 		break;
 	case VEX_SUBi:
-		_result = op1->_out - imm13;
+		_result = va- imm_short;
+		if (rb < 64 && _reg) _reg[rb] = _result;
 		break;
 	case VEX_MPY:
-		_result = op1->_out * op2->_out;
+	case VEX_MPYH:
+	case VEX_MPYW:
+		if (this->_features & FEATURE_MULT)
+			_result = va* vc;
+		if (rb < 64 && _reg) _reg[rb] = _result;
 		break;
 	case VEX_SLL:
-		_result = op1->_out << op2->_out;
+		_result = va<< vc;
+		if (rb < 64 && _reg) _reg[rb] = _result;
 		break;
 	case VEX_SLLi:
-		_result = op1->_out << imm13;
+		_result = va<< imm_short;
+		if (rb < 64 && _reg) _reg[rb] = _result;
 		break;
 	case VEX_SRL:
-		_result = op1->_out >> op2->_out;
+		_result = va>> vc;
+		if (rb < 64 && _reg) _reg[rb] = _result;
 		break;
 	case VEX_SRLi:
-		_result = op1->_out >> imm13;
+		_result = va>> imm_short;
+		if (rb < 64 && _reg) _reg[rb] = _result;
 		break;
 	case VEX_OR:
-		_result = op1->_out | op2->_out;
+		_result = va| vc;
+		if (rb < 64 && _reg) _reg[rb] = _result;
 		break;
 	case VEX_ORi:
-		_result = op1->_out | imm13;
+		_result = va| imm_short;
+		if (rb < 64 && _reg) _reg[rb] = _result;
 		break;
 	case VEX_AND:
-		_result = op1->_out & op2->_out;
+		_result = va& vc;
+		if (rb < 64 && _reg) _reg[rb] = _result;
 		break;
 	case VEX_ANDi:
-		_result = op1->_out & imm13;
+		_result = va& imm_short;
+		if (rb < 64 && _reg) _reg[rb] = _result;
 		break;
 	case VEX_XOR:
-		_result = op1->_out ^ op2->_out;
+		_result = va^ vc;
+		if (rb < 64 && _reg) _reg[rb] = _result;
 		break;
 	case VEX_XORi:
-		_result = op1->_out ^ imm13;
-		break;
-
-	// MEMORY OPERATIONS
-	case VEX_LDD:
-		_result = _memory[addr] + (_memory[addr+1] << 8) + (_memory[addr+2] << 16) + (_memory[addr+3] << 24);
-		break;
-	case VEX_LDW:
-		_result = _memory[addr] + (_memory[addr+1] << 8) + (_memory[addr+2] << 16);
-		break;
-	case VEX_LDH:
-		_result = _memory[addr] + (_memory[addr+1] << 8);
-		break;
-	case VEX_LDB:
-		_result = _memory[addr];
-		break;
-
-	case VEX_STD:
-		_memory[addr+3] = (_result >> 24) & 0xff;
-	case VEX_STW:
-		_memory[addr+2] = (_result >> 16) & 0xff;
-	case VEX_STH:
-		_memory[addr+1] = (_result >>  8) & 0xff;
-	case VEX_STB:
-		_memory[addr+0] = (_result >>  0) & 0xff;
+		_result = va^ imm_short;
+		if (rb < 64 && _reg) _reg[rb] = _result;
 		break;
 
 	// CGRA OPERATIONS
-	case 0xFF:
-		_result = op1->_out;
+	case CGRA_CARRY:
+		_result = va;
 		break;
+	case CGRA_RECONF_IF0:
+		if (va == 0)
+		{
+
+		}
 	default:
 		break;
+	}
+
+	if (this->_features & FEATURE_MEM)
+	{
+		switch (opcode)
+		{
+		// MEMORY OPERATIONS
+		case VEX_LDD:
+			_result = (*_memory)[addr] + ((*_memory)[addr+1] << 8) + ((*_memory)[addr+2] << 16) + ((*_memory)[addr+3] << 24);
+			if (rb < 64 && _reg) _reg[rb] = _result;
+			break;
+		case VEX_LDW:
+			_result = (*_memory)[addr] + ((*_memory)[addr+1] << 8) + ((*_memory)[addr+2] << 16);
+			if (rb < 64 && _reg) _reg[rb] = _result;
+			break;
+		case VEX_LDH:
+			_result = (*_memory)[addr] + ((*_memory)[addr+1] << 8);
+			if (rb < 64 && _reg) _reg[rb] = _result;
+			break;
+		case VEX_LDB:
+			_result = (*_memory)[addr];
+			if (rb < 64 && _reg) _reg[rb] = _result;
+			break;
+
+		case VEX_STD:
+			(*_memory)[addr+3] = (vb >> 24) & 0xff;
+		case VEX_STW:
+			(*_memory)[addr+2] = (vb >> 16) & 0xff;
+		case VEX_STH:
+			(*_memory)[addr+1] = (vb >>  8) & 0xff;
+		case VEX_STB:
+			(*_memory)[addr+0] = (vb >>  0) & 0xff;
+			break;
+
+		default:
+			break;
+		}
 	}
 }
 
@@ -145,8 +222,25 @@ void FunctionalUnit::setInstruction(uint32_t instr)
 	_instruction = instr;
 }
 
-void FunctionalUnit::setMemory(uint8_t *memory)
+void FunctionalUnit::enableMult()
 {
+	_features |= FEATURE_MULT;
+}
+
+uint8_t FunctionalUnit::features() const
+{
+	return _features;
+}
+
+void FunctionalUnit::enableReg(ac_int<64, true> *reg)
+{
+	_features |= FEATURE_REG;
+	_reg = reg;
+}
+
+void FunctionalUnit::enableMem(std::map<ac_int<64, false>, ac_int<8, true> > *memory)
+{
+	_features |= FEATURE_MEM;
 	_memory = memory;
 }
 

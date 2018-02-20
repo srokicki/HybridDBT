@@ -7,6 +7,7 @@ set(SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/mipsSimulator.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/cgraSimulator.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/functionalUnit.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/vexCgraSimulator.cpp
    PARENT_SCOPE
 )
 
@@ -17,5 +18,6 @@ set(SOURCE_DBT
   ${CMAKE_CURRENT_SOURCE_DIR}/riscvSimulator.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/cgraSimulator.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/functionalUnit.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/vexCgraSimulator.cpp
    PARENT_SCOPE
 )

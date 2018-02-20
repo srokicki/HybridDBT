@@ -230,6 +230,11 @@ std::string printBytecodeInstruction(int index, unsigned int  instructionPart1, 
 
 	result << index << " : ";
 
+	if (opCode == VEX_CGRA)
+	{
+		return std::string("CGRA "+std::to_string(imm19)+"\n");
+	}
+
 	if (typeCode == 0){
 		//R type
 		result << opcodeNames[opCode] << " r" << virtualRDest << " = r" << virtualRIn2 << ", ";

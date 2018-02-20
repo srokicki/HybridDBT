@@ -12,6 +12,7 @@
 
 #include <lib/endianness.h>
 #include <simulator/vexSimulator.h>
+#include <simulator/vexCgraSimulator.h>
 #include <simulator/vexTraceSimulator.h>
 #include <simulator/riscvSimulator.h>
 
@@ -124,36 +125,8 @@ int run(DBTPlateform *platform, int nbCycle){
 	return platform->vexSimulator->doStep(nbCycle);
 }
 
-// ARTHUR
-bool isEligible(uint32_t i1, uint32_t i2, uint32_t i3, uint32_t i4)
-{
-	uint8_t opCode = ((i1>>19) & 0x7f);
-	static const uint8_t validOpCodes[] = {
-		VEX_ADD, VEX_ADDi,
-		VEX_MPY, VEX_LDD, VEX_STD, VEX_STB, VEX_STH, VEX_STW, VEX_LDW, VEX_LDB, VEX_LDH,
-		VEX_SUB, VEX_SUBi, VEX_SLL, VEX_SLLi,
-		VEX_AND, VEX_ANDi, VEX_XOR, VEX_XORi,
-		VEX_OR, VEX_ORi, VEX_SRL, VEX_SRLi
-	};
-	return std::find(validOpCodes, validOpCodes+sizeof(validOpCodes), opCode)
-			!= validOpCodes+sizeof(validOpCodes);
-}
-
 int main(int argc, char *argv[])
 {
-
-
-	CgraSimulator sim(nullptr);/*
-	sim.configure(dummy1, sizeof(dummy1));
-
-	for (int i = 0; i < 5; ++i)
-	{
-		std::cout << "================= Step " << i << " =================" << std::endl;
-		sim.doStep();
-		sim.print();
-	}
-*/
-
 	/*Parsing arguments of the commant
 	 *
 	 */
@@ -173,7 +146,6 @@ int main(int argc, char *argv[])
 
 	int VERBOSE = cfg.has("v") ? std::stoi(cfg["v"]) : 0;
 	int STATMODE = cfg.has("statmode") ? std::stoi(cfg["statmode"]) : 0;
-
 
 	Log::Init(VERBOSE, STATMODE);
 
@@ -305,7 +277,7 @@ int main(int argc, char *argv[])
 		dbtPlateform.vexSimulator = new VexTraceSimulator(dbtPlateform.vliwBinaries, tracer);
 	}
 	else
-		dbtPlateform.vexSimulator = new VexSimulator(dbtPlateform.vliwBinaries);
+		dbtPlateform.vexSimulator = new VexCgraSimulator(dbtPlateform.vliwBinaries);
 
 	dbtPlateform.vexSimulator->inStreams = inStreams;
 	dbtPlateform.vexSimulator->nbInStreams = nbInStreams;
@@ -360,10 +332,6 @@ int main(int argc, char *argv[])
 	 *
 	 *
 	 ********************************************************/
-
-	// ARTHUR BEGIN
-	std::set<IRBlock*> scheduled_so_far;
-	// ARTHUR END
 
 	for (int oneSection=0; oneSection<(size>>10)+1; oneSection++){
 
@@ -428,15 +396,15 @@ int main(int argc, char *argv[])
 	unsigned int instruction = assembleIInstruction_sw(VEX_CALL, translatedStartPC, 63);
 	writeInt(dbtPlateform.vliwBinaries, 0, instruction);
 
-
-
+	// ARTHUR BEGIN
+	bool cgra_pass = false;
+	// ARTHUR END
 
 	int runStatus=0;
 	int abortCounter = 0;
 
 	float coef = 0;
 	runStatus = run(&dbtPlateform, 1000);
-
 
 	while (runStatus == 0){
 
@@ -452,6 +420,94 @@ int main(int argc, char *argv[])
 					char oldPrevious = procedure->previousConfiguration;
 					char oldConf = procedure->configuration;
 
+					for (int oneBlock = 0; oneBlock < procedure->nbBlock; ++oneBlock)
+					{
+						IRBlock * block = procedure->blocks[oneBlock];
+						for (int oneSucc = 0; oneSucc < block->nbSucc; ++oneSucc)
+							if (block->successors[oneSucc] == block)//(block->sourceDestination == block->sourceStartAddress)
+							{
+								//Log::out(0) << "THIS IS AN INNER LOOP\n";
+								// test de l'eligibilite d'un bloc
+								// un bloc est eligible si ses instructions sont toutes implementables dans le CGRA
+								bool eligible = true;
+								uint128_struct * to_schedule = new uint128_struct[block->nbInstr];
+								int instrId;
+								for (instrId = 0; instrId < block->nbInstr; ++instrId)
+								{
+									to_schedule[instrId].word96 = readInt(block->instructions, instrId*16+0);
+									to_schedule[instrId].word64 = readInt(block->instructions, instrId*16+4);
+									to_schedule[instrId].word32 = readInt(block->instructions, instrId*16+8);
+									to_schedule[instrId].word0 = readInt(block->instructions, instrId*16+12);
+
+									if (!cgra::isEligible(to_schedule[instrId].word96
+																	,to_schedule[instrId].word64
+																	,to_schedule[instrId].word32
+																	,to_schedule[instrId].word0))
+										break;
+								}
+
+								// si eligible, on le transforme en configuration CGRA
+								if (instrId != 0)
+								{
+									// configuration du CGRA
+									CgraScheduler scheduler;
+									ac_int<32, false> calling_instr;
+									if (scheduler.schedule(*(dynamic_cast<VexCgraSimulator*>(dbtPlateform.vexSimulator)), to_schedule, instrId))
+									{
+										//Log::out(0) << "Schedule of " << block << " ok ! calling=" << calling_instr << "\n";
+										int id;
+
+										writeInt(block->instructions, 0, to_schedule[0].word96);
+										writeInt(block->instructions, 4, to_schedule[0].word64);
+										writeInt(block->instructions, 8, to_schedule[0].word32);
+										writeInt(block->instructions, 12, to_schedule[0].word0);
+
+										for (id = instrId; id < block->nbInstr; ++id)
+										{
+											uint128_struct instr;
+											instr.word96 = readInt(block->instructions, id*16+0);
+											instr.word64 = readInt(block->instructions, id*16+4);
+											instr.word32 = readInt(block->instructions, id*16+8);
+											instr.word0  = readInt(block->instructions, id*16+12);
+
+											#define MINUS(word,off,val) (std::max(0, (((int)word >> off) & 0xff)-val) << off)
+											instr.word32 = (instr.word32 & 0xff000000)
+													+ MINUS(instr.word32,16,instrId)
+													+ MINUS(instr.word32,8,instrId)
+													+ MINUS(instr.word32,0,instrId);
+
+											instr.word0 = MINUS(instr.word0,24,instrId)
+													+ MINUS(instr.word0,16,instrId)
+													+ MINUS(instr.word0,8,instrId)
+													+ MINUS(instr.word0,0,instrId);
+
+											writeInt(block->instructions, (id-instrId+1)*16+0, instr.word96);
+											writeInt(block->instructions, (id-instrId+1)*16+4, instr.word64);
+											writeInt(block->instructions, (id-instrId+1)*16+8, instr.word32);
+											writeInt(block->instructions, (id-instrId+1)*16+12, instr.word0);
+										}
+
+										block->nbInstr = block->nbInstr - instrId;
+										//Log::out(0) << "FINISHED SCHEDULING CGRA\n";
+									}
+									else
+									{
+										//Log::out(1) << "Schedule of " << block << " failed !\n";
+									}
+								}
+
+//								for (instrId = 0; instrId < block->nbInstr; ++instrId)
+//								{
+//									Log::out(0) << printBytecodeInstruction(instrId,
+//																													readInt(block->instructions, instrId*16+0),
+//																													readInt(block->instructions, instrId*16+4),
+//																													readInt(block->instructions, instrId*16+8),
+//																													readInt(block->instructions, instrId*16+12));
+//								}
+
+								delete[] to_schedule;
+							}
+					}
 					changeConfiguration(procedure);
 					if (procedure->configuration != oldConf || procedure->configurationScores[procedure->configuration] == 0){
 						IRProcedure *scheduledProcedure = rescheduleProcedure_schedule(&dbtPlateform, procedure, placeCode);
@@ -498,50 +554,6 @@ int main(int argc, char *argv[])
 			int profileResult = profiler.getProfilingInformation(oneBlock);
 			IRBlock* block = profiler.getBlock(oneBlock);
 
-
-			// ARTHUR BEGIN
-			// test de l'eligibilite d'un bloc
-			// un bloc est eligible si ses instructions sont toutes implementables dans le CGRA
-			if (block && (scheduled_so_far.find(block) == scheduled_so_far.end()))
-			{
-				scheduled_so_far.insert(block);
-				bool eligible = true;
-				uint128_struct * to_schedule = new uint128_struct[block->nbInstr-1];
-				for (int instrId = 0; instrId < block->nbInstr-1; ++instrId)
-				{
-					to_schedule[instrId].word96 = readInt(block->instructions, instrId*16+0);
-					to_schedule[instrId].word64 = readInt(block->instructions, instrId*16+4);
-					to_schedule[instrId].word32 = readInt(block->instructions, instrId*16+8);
-					to_schedule[instrId].word0 = readInt(block->instructions, instrId*16+12);
-
-					if (!isEligible(to_schedule[instrId].word96
-													,to_schedule[instrId].word64
-													,to_schedule[instrId].word32
-													,to_schedule[instrId].word0))
-						eligible = false;
-				}
-
-				// si eligible, on le transforme en configuration CGRA
-				if (eligible)
-				{
-					// configuration du CGRA
-					CgraScheduler scheduler;
-					if (scheduler.schedule(sim, to_schedule, block->nbInstr-1))
-					{
-						Log::out(1) << "Schedule of " << block << " ok !\n";
-					}
-					else
-					{
-						Log::out(1) << "Schedule of " << block << " failed !\n";
-					}
-				}
-
-				delete[] to_schedule;
-			}
-			// /////////////////////////////////////////////////
-			// ARTHUR END
-			// /////////////////////////////////////////////////
-
 			if ((MAX_PROC_COUNT==-1 || dbtPlateform.procedureOptCounter < MAX_PROC_COUNT) && block != NULL && OPTLEVEL >= 2 && profileResult >= 1 && (block->blockState == IRBLOCK_STATE_SCHEDULED || block->blockState == IRBLOCK_STATE_PROFILED)){
 
 				int errorCode = buildAdvancedControlFlow(&dbtPlateform, block, &application);
@@ -573,7 +585,6 @@ int main(int argc, char *argv[])
 
 				if (block != NULL){
 					if ((MAX_SCHEDULE_COUNT==-1 || dbtPlateform.blockScheduleCounter < MAX_SCHEDULE_COUNT) && OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress > 4  && block->blockState < IRBLOCK_STATE_SCHEDULED){
-
 
 						optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
 						dbtPlateform.blockScheduleCounter++;

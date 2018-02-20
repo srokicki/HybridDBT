@@ -148,7 +148,7 @@ class VexSimulator : public GenericSimulator {
 
 
 
-	private:
+	protected:
 
 	//Different parts of the execution
 	void doWB(struct MemtoWB memtoWB);
@@ -157,9 +157,9 @@ class VexSimulator : public GenericSimulator {
 	void doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem);
 	void doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem);
 	void doExMem(struct DCtoEx dctoEx, struct ExtoMem *extoMem);
-	void doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
+	virtual void doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
 	void doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
-	void doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
+	virtual void doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
 
 
 	struct MemtoWB memtoWB1;	struct MemtoWB memtoWB2;	struct MemtoWB memtoWB3;	struct MemtoWB memtoWB4;	struct MemtoWB memtoWB5; 	struct MemtoWB memtoWB6;	struct MemtoWB memtoWB7;	struct MemtoWB memtoWB8;

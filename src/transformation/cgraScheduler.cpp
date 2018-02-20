@@ -1,4 +1,5 @@
 #include <transformation/cgraScheduler.h>
+#include <isa/cgraIsa.h>
 #include <lib/log.h>
 #include <cstdio>
 
@@ -9,10 +10,11 @@
 #include <cstdlib>
 #include <cstring>
 
-#define LOG_LO 2
-#define LOG_HI 3
+#define LOG_LO 0
+#define LOG_HI 0
 
 int II;
+int currentII;
 
 typedef struct
 {
@@ -45,9 +47,9 @@ class dist_from_deps
 {
 	static cgra_node _dep1;
 	static cgra_node _dep2;
-	static uint32_t	 (*_cgra_conf)[3][4];
+	static uint64_t	 (*_cgra_conf)[3][4];
 public:
-	static void init(const cgra_node& dep1, const cgra_node& dep2, uint32_t (*cgra_conf)[3][4])
+	static void init(const cgra_node& dep1, const cgra_node& dep2, uint64_t (*cgra_conf)[3][4])
 	{
 		_dep1 = dep1;
 		_dep2 = dep2;
@@ -56,20 +58,22 @@ public:
 
 	bool operator() (const cgra_node& a, const cgra_node& b)
 	{
-		if (_dep1.i == -1)
-			return 0;
-
 		if (a.k != b.k)
 			return a.k > b.k;
 
-		int da = manhatan(a, _dep1), db = manhatan(b, _dep1);
+		int da = 0, db = 0;
+		if (_dep1.i != -1)
+		{
+			da = manhatan(a, _dep1);
+			db = manhatan(b, _dep1);
+		}
 		if (_dep2.i != -1)
 		{
 			da += manhatan(a, _dep2);
 			db += manhatan(b, _dep2);
 		}
 
-		if (da == db && a.k < II)
+		if (da == db && a.k < currentII)
 		{
 			int freedoma = 0, freedomb = 0;
 			const cgra_node a2={0,1,a.k+1},b2={1,0,a.k+1},c={0,-1,a.k+1},d={-1,0,a.k+1},e={0,0,a.k+1};
@@ -80,9 +84,8 @@ public:
 				cgra_node nb = n+b;
 
 				if (na.i >= 0 && na.i < 3 && na.j >= 0 && na.j < 4 && _cgra_conf[na.k][na.i][na.j] == 0) ++freedoma;
-				if (nb.i >= 0 && nb.i < 3 && nb.j >= 0 && nb.j < 4 && _cgra_conf[na.k][nb.i][nb.j] == 0) ++freedomb;
+				if (nb.i >= 0 && nb.i < 3 && nb.j >= 0 && nb.j < 4 && _cgra_conf[nb.k][nb.i][nb.j] == 0) ++freedomb;
 			}
-
 			return freedoma < freedomb;
 		}
 		else
@@ -92,7 +95,7 @@ public:
 
 cgra_node dist_from_deps::_dep1;
 cgra_node dist_from_deps::_dep2;
-uint32_t (*dist_from_deps::_cgra_conf)[3][4];
+uint64_t (*dist_from_deps::_cgra_conf)[3][4];
 
 typedef struct
 {
@@ -115,7 +118,7 @@ void printGraph(const uint128_struct * instructions, uint32_t numInstructions);
 ///
 void setupSources(const uint128_struct * instructions, source * sources, uint32_t numInstructions);
 
-bool route(const cgra_node& source, const cgra_node& target, uint32_t (*cgra_conf)[3][4]);
+bool route(const cgra_node& source, const cgra_node& target, uint64_t (*cgra_conf)[3][4], uint8_t *from);
 
 int findII(uint128_struct * instructions, source * sources, uint32_t numInstructions)
 {
@@ -139,16 +142,49 @@ int findII(uint128_struct * instructions, source * sources, uint32_t numInstruct
 	return ret;
 }
 
-void printConfig(int verbose, uint32_t configuration[3][4]);
+bool canPlace(const FunctionalUnit& u, uint128_struct i)
+{
+	uint8_t opcode = (i.word96 >> 19) & 0x7f;
+	uint16_t virtualRDest = ((i.word64>>14) & 0x1ff);
+	uint16_t virtualRIn2 = ((i.word64>>23) & 0x1ff);
+	uint16_t virtualRIn1_imm9 = ((i.word96>>0) & 0x1ff);
+	bool isImm = ((i.word96>>18) & 0x1);
+	bool ret = true;
+
+	if (opcode == VEX_MPY)
+		ret = ret && (u.features() & FunctionalUnit::FEATURE_MULT);
+
+	if (opcode == VEX_STB || opcode == VEX_STD || opcode == VEX_STH || opcode == VEX_STW ||
+			opcode == VEX_LDB || opcode == VEX_LDD || opcode == VEX_LDH || opcode == VEX_LDW)
+	{
+		ret = ret && (u.features() & FunctionalUnit::FEATURE_REG);
+		if (virtualRDest >= 256)
+		{
+			ret = ret && (u.features() & FunctionalUnit::FEATURE_REG);
+		}
+	}
+
+	if (virtualRIn2 >= 256)
+	{
+		ret = ret && (u.features() & FunctionalUnit::FEATURE_REG);
+	}
+
+	if (!isImm && virtualRIn1_imm9 >= 256)
+	{
+		ret = ret && (u.features() & FunctionalUnit::FEATURE_REG);
+	}
+
+	return ret;
+}
 
 CgraScheduler::CgraScheduler()
 {
 
 }
 
-bool CgraScheduler::schedule(CgraSimulator& cgra, uint128_struct * instructions, uint32_t numInstructions)
+bool CgraScheduler::schedule(VexCgraSimulator& cgra, uint128_struct * instructions, uint32_t numInstructions)
 {
-	Log::out(LOG_LO) << "calling SCHEDULE\n";
+	const FunctionalUnit * units = cgra.cgraSimulator.units();
 
 	printGraph(instructions, numInstructions);
 
@@ -159,118 +195,135 @@ bool CgraScheduler::schedule(CgraSimulator& cgra, uint128_struct * instructions,
 
 	setupSources(instructions, sources, numInstructions);
 	II = findII(instructions, sources, numInstructions);
-	Log::out(LOG_HI) << "II = " << II << "\n";
 
-	uint32_t (*configuration)[3][4] = new uint32_t[II][3][4];
-	uint32_t (*new_conf)[3][4] = new uint32_t[II][3][4];
-	for (int i = 0; i < II; ++i)
-		for (int j = 0; j < 3; ++j)
-			for (int k = 0; k < 4; ++k)
-				configuration[i][j][k] = 0;
-
-	for (uint32_t instrId = 0; instrId < numInstructions; ++instrId)
+	currentII = II;
+	while (currentII != II*2)
 	{
-		std::priority_queue<cgra_node, std::vector<cgra_node>, dist_from_deps> possible;
-		uint128_struct instruction = instructions[instrId];
+		// setup the scheduling space
+		uint64_t (*configuration)[3][4] = new uint64_t[currentII][3][4];
+		uint64_t (*new_conf)[3][4] = new uint64_t[currentII][3][4];
+		for (int i = 0; i < currentII; ++i)
+			for (int j = 0; j < 3; ++j)
+				for (int k = 0; k < 4; ++k)
+					configuration[i][j][k] = 0;
 
-		Log::out(LOG_LO) << "Placing instruction " << printBytecodeInstruction(instrId, instruction.word96, instruction.word64, instruction.word32, instruction.word0);
+		bool routed = true;
 
-		bool routed = false; cgra_node place;
-
-		dist_from_deps::init(
-					placeOfInstr[sources[instrId].src1]
-				, placeOfInstr[sources[instrId].src2]
-				, configuration);
-
-		// compute all available places, sorted by lexicographic order over
-		// cgra's dimensions, starting by the earliest time layer,
-		// then the closest layer to the VLIW
-		for (int k = std::max(placeOfInstr[sources[instrId].src1].k, placeOfInstr[sources[instrId].src2].k)+1; k < II; ++k)
+		// for each instruction to schedule
+		for (uint32_t instrId = 0; instrId < numInstructions; ++instrId)
 		{
-			for (int i = 0; i < 3; ++i)
+			if (currentII == II)
 			{
-				for (int j = 0; j < 4; ++j)
+				Log::out(0) << printBytecodeInstruction(0, instructions[instrId].word96, instructions[instrId].word64, instructions[instrId].word32, instructions[instrId].word0);
+			}
+			std::priority_queue<cgra_node, std::vector<cgra_node>, dist_from_deps> possible;
+			uint128_struct instruction = instructions[instrId];
+			uint8_t src1 = 0xff, src2 = 0xff;
+
+			routed = false; cgra_node place;
+
+			cgra_node n1 = placeOfInstr[sources[instrId].src1], n2 = placeOfInstr[sources[instrId].src2];
+
+			dist_from_deps::init(
+						n1
+						, n2
+						, configuration);
+
+			static const cgra_node errNode = {-1,-1,-1};
+
+			// compute all available places, sorted by priority given
+			// by [dist_from_deps] class
+			for (int k = std::max(n1.k, n2.k)+1; k < currentII; ++k)
+			{
+				for (int i = 0; i < 3; ++i)
 				{
-					if (!configuration[k][i][j])
+					for (int j = 0; j < 4; ++j)
 					{
-						possible.push({ i, j, k });
+						int kk = 0;
+						if (!(n1 == errNode))
+						{
+							kk = manhatan({i,j,n1.k},n1);
+							if (!(n2 == errNode))
+								kk = std::max(kk, manhatan({i,j,n2.k},n2));
+						}
+
+						if (k >= kk && !configuration[k][i][j] && canPlace(units[i*4+j], instruction))
+						{
+							possible.push({ i, j, k });
+						}
 					}
 				}
 			}
-		}
 
-		// try to place the instruction in [place]
-		// and route its operands
-		while (!possible.empty())
-		{
-			routed = true;
-			place = possible.top();
-			possible.pop();
-
-			std::memcpy(new_conf, configuration, II*3*4*sizeof(uint32_t));
-			new_conf[place.k][place.i][place.j] = instrId+2;
-
-			if (sources[instrId].src1 != -1)
+			// for each [place] in [possible], try to route the instruction's operands from its sources places to its place
+			while (!possible.empty())
 			{
-				if (!(routed = route(placeOfInstr[sources[instrId].src1], place, new_conf)))
-					continue;
+				routed = true;
+				place = possible.top();
+				possible.pop();
+
+				std::memcpy(new_conf, configuration, currentII*3*4*sizeof(uint64_t));
+				new_conf[place.k][place.i][place.j] = instrId+2;
+
+				// first route
+				if (!(n1 == errNode))
+				{
+					if (!(routed = route(n1, place, new_conf, &src1)))
+						continue;
+				}
+
+				// second route
+				if (!(n2 == errNode))
+				{
+					if (!(routed = route(n2, place, new_conf, &src2)))
+						continue;
+				}
+
+				if (routed)
+					break;
 			}
 
-			if (sources[instrId].src2 != -1)
+			// if all places fail, the scheduling is impossible
+			if (!routed)
 			{
-				if (!(routed = route(placeOfInstr[sources[instrId].src2], place, new_conf)))
-					continue;
-			}
-
-			if (routed)
 				break;
-		}
-
-		// if all places fail, the scheduling is impossible
-		if (!routed)
-		{
-			Log::fprintf(LOG_LO, stderr, "CgraScheduler::schedule(): Couldn't schedule basic block %p", instructions);
-			return false;
-		}
-		else
-		{
-			placeOfInstr[instrId] = place;
-			std::memcpy(configuration, new_conf, II*3*4*sizeof(uint32_t));
-
-			Log::printf(LOG_HI, "Layer %d\n", place.k);
-			printConfig(LOG_HI, configuration[place.k]);
-		}
-	}
-
-	for (int k = 0 ; k < II; ++k)
-	{
-		Log::out(LOG_LO) << "Layer " << k << "\n";
-		printConfig(LOG_LO, configuration[k]);
-	}
-
-	delete[] configuration;
-	delete[] new_conf;
-	delete[] (placeOfInstr-1);
-	delete[] sources;
-
-	return true;
-}
-
-void printConfig(int verbose, uint32_t configuration[3][4])
-{
-	for (int i = 0; i < 3; ++i)
-	{
-		for (int j = 0; j < 4; ++j)
-		{
-			if (configuration[i][j] == 0)
-				Log::printf(verbose, " X ;");
-			else if (configuration[i][j] < 20)
-				Log::printf(verbose, "%3d;", configuration[i][j]-2);
+			}
 			else
-				Log::printf(verbose, " %c ;", configuration[i][j]);
+			{
+				placeOfInstr[instrId] = place;
+				std::memcpy(configuration, new_conf, II*3*4*sizeof(uint64_t));
+				configuration[place.k][place.i][place.j] = cgra::vex2cgra(instruction, src1, src2);
+			}
 		}
-		Log::printf(verbose, "\n");
+
+		// if we leave the scheduling loop with [routed == true]
+		// then we managed to schedule the instructions into a CGRA configuration
+		if (routed)
+		{
+			delete[] (placeOfInstr-1);
+			delete[] sources;
+			int id = cgra.configurationCache.size();
+			cgra.configurationCache[id].configuration = (uint64_t*)configuration;
+			cgra.configurationCache[id].cycles = currentII;
+
+			instructions[0] = {0x3b << 19,id << 23,0,0};
+
+			for (int i = 0; i < currentII; ++i)
+			{
+				Log::out(0) << "LAYER " << i << "\n";
+				cgra::printConfig(0, (uint64_t*)(configuration[i]));
+			}
+			return true;
+		}
+
+		// if we haven't managed to schedule with this II, increase it and retry
+		delete[] new_conf;
+		currentII++;
 	}
+
+	// if we can't finish the schedule even with a big enough II
+	// it is because some path is blocked. We don't handle this case.
+	return false;
 }
 
 void setupSources(const uint128_struct * instructions, source * sources, uint32_t numInstructions)
@@ -286,10 +339,13 @@ void setupSources(const uint128_struct * instructions, source * sources, uint32_
 		uint8_t opCode = ((i.word96>>19) & 0x7f);
 		bool isImm = ((i.word96>>18) & 0x1);
 
-		if ((opCode == VEX_STB || opCode == VEX_STD || opCode == VEX_STH || opCode == VEX_STW)
-				&& virtualRDest < 256)
+		if ((opCode == VEX_STB || opCode == VEX_STD || opCode == VEX_STH || opCode == VEX_STW))
 		{
-			sources[instrId].src1 = virtualRDest;
+			if (virtualRIn2 < 256)
+				sources[instrId].src1 = virtualRIn2;
+
+			if (virtualRDest < 256)
+				sources[instrId].src2 = virtualRDest;
 		}
 		else
 		{
@@ -300,7 +356,6 @@ void setupSources(const uint128_struct * instructions, source * sources, uint32_
 				sources[instrId].src2 = virtualRIn1_imm9;
 		}
 
-		Log::printf(LOG_HI, "sources[%d] = (%d;%d)\n", instrId, sources[instrId].src1, sources[instrId].src2);
 	}
 }
 
@@ -419,26 +474,34 @@ public:
 		_nodes[node.k][node.i][node.j]._closed = 1;
 	}
 
-	static void write_path(const cgra_node& target, uint32_t (*cgra_conf)[3][4])
+	static void write_path(const cgra_node& target, uint64_t (*cgra_conf)[3][4], uint8_t *from = nullptr)
 	{
 		const cgra_node n = _nodes[target.k][target.i][target.j]._from;
 
 		// write node
-		if (cgra_conf[target.k][target.i][target.j] == 0)
+		if (cgra_conf[target.k][target.i][target.j] == 0 || from)
 		{
 			char c;
-			if (target.i > n.i)
-				c = '^';
-			else if (target.i < n.i)
-				c = 'V';
-			else if (target.j > n.j)
-				c = '<';
-			else if (target.j < n.j)
-				c = '>';
-			else
-				c = '.';
 
-			cgra_conf[target.k][target.i][target.j] = c;
+			if (target.i > n.i)
+				c = FunctionalUnit::UP;
+			else if (target.i < n.i)
+				c = FunctionalUnit::DOWN;
+			else if (target.j > n.j)
+				c = FunctionalUnit::LEFT;
+			else if (target.j < n.j)
+				c = FunctionalUnit::RIGHT;
+			else
+				c = 0;
+
+			c += 64;
+
+			if (from)
+			{
+				*from = c;
+			}
+			else
+				cgra_conf[target.k][target.i][target.j] = (c << 25) + 0x7f;
 		}
 
 		// stop if start reached
@@ -479,7 +542,7 @@ bool operator<(const cgra_node& l, const cgra_node& r)
 /// \param cgra_conf
 /// \return
 ///
-bool route(const cgra_node& source, const cgra_node& target, uint32_t (*cgra_conf)[3][4])
+bool route(const cgra_node& source, const cgra_node& target, uint64_t (*cgra_conf)[3][4], uint8_t * from)
 {
 	// initialization of nodes+priority queue
 	std::priority_queue<cgra_node, std::vector<cgra_node> > open;
@@ -496,7 +559,7 @@ bool route(const cgra_node& source, const cgra_node& target, uint32_t (*cgra_con
 		// target reached, configure path
 		if (current == target)
 		{
-			astar_node::write_path(target, cgra_conf);
+			astar_node::write_path(target, cgra_conf, from);
 			return true;
 		}
 

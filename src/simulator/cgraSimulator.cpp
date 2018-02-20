@@ -2,20 +2,27 @@
 
 #include <iostream>
 
-CgraSimulator::CgraSimulator(uint8_t * memory)
-	: _memory(memory)
+CgraSimulator::CgraSimulator(std::map<ac_int<64, false>, ac_int<8, true> > *memory, ac_int<64, true> *reg)
+	: _memory(memory), _reg(reg)
 {
 	//  0  1  2  3
 	//  4  5  6  7
 	//  8  9 10 11
 
-	for (unsigned int i = 0; i < 4; ++i)
+	for (unsigned int i = 0; i < 3; ++i)
 	{
-		for (unsigned int j = 0; j < 3; ++j)
+		for (unsigned int j = 0; j < 4; ++j)
 		{
-			unsigned int id = i+j*4;
+			unsigned int id = i*4+j;
 			FunctionalUnit * f = &_units[id];
-			f->setMemory(memory);
+			f->enableMult();
+
+			if (1/*i == 0 || i == 1*/)
+			{
+				f->enableMem(memory);
+				f->enableReg(_reg);
+			}
+
 			if (j > 0)
 				f->setNeighbour(FunctionalUnit::UP, &_units[id-4]);
 			if (i > 0)
@@ -37,7 +44,7 @@ void CgraSimulator::doStep()
 		u.commit();
 }
 
-void CgraSimulator::configure(uint32_t *config, uint32_t size)
+void CgraSimulator::configure(uint64_t *config)
 {
 	unsigned int num = 0;
 	while (num < 12)
@@ -58,4 +65,9 @@ void CgraSimulator::print()
 		}
 		std::cout << std::endl;
 	}
+}
+
+const FunctionalUnit *CgraSimulator::units()
+{
+	return _units;
 }

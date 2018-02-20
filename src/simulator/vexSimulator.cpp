@@ -804,7 +804,6 @@ void VexSimulator::doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<3, false> BEXT = ftoDC.instruction.slc<3>(8);
 
 
-
 	ac_int<1, false> isIType = (OP.slc<3>(4) == 2);
 	ac_int<1, false> isImm = OP.slc<3>(4) == 1 || OP.slc<3>(4) == 6 || OP.slc<3>(4) == 7 || OP == VEX_FLW || OP == VEX_FLH || OP == VEX_FLB || OP == VEX_FSW || OP == VEX_FSH || OP == VEX_FSB;
 

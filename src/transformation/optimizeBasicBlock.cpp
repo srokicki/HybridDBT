@@ -13,11 +13,12 @@
 #include <isa/vexISA.h>
 #include <isa/irISA.h>
 #include <simulator/vexSimulator.h>
+#include <simulator/vexCgraSimulator.h>
 #include <transformation/irScheduler.h>
 #include <transformation/irGenerator.h>
 #include <types.h>
 #include <transformation/reconfigureVLIW.h>
-
+#include <transformation/cgraScheduler.h>
 #include <lib/log.h>
 
 void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *application, unsigned int placeCode){
