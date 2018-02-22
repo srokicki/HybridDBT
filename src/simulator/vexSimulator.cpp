@@ -179,10 +179,10 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 		//The instruction is a memory access
 
 		if (extoMem.opCode == VEX_PROFILE){
-
+/*
 			if (this->profileResult[extoMem.result] != 255)
 				this->profileResult[extoMem.result]++;
-
+*/
 			memtoWB->WBena = 0;
 		}
 		else if (!extoMem.opCode[3]){

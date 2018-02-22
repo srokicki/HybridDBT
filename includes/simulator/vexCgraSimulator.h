@@ -18,6 +18,7 @@ public:
 	std::map<ac_int<19, false>, configuration_t> configurationCache;
 	int cgraCycles;
 	int currentConf;
+	int cgraStall;
 	CgraSimulator cgraSimulator;
 	VexCgraSimulator(unsigned int * bin);
 
