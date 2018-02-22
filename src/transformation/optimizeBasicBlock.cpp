@@ -296,25 +296,6 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		block->vliwEndAddress = basicBlockStart + binaSize;
 	}
 	else{
-		Log::printf(LOG_SCHEDULE_BLOCK,"*************************************************************************\n");
-
-		for (int i=placeCode-10;i<placeCode+binaSize;i++){
-			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
-			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
-			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
-			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
-
-
-			if (platform->vliwInitialIssueWidth>4){
-				Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
-				Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
-				Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
-				Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
-				i++;
-			}
-			Log::printf(LOG_SCHEDULE_BLOCK,"\n");
-		}
-
 		Log::printf(LOG_SCHEDULE_BLOCK, "Schedule is dropped (%d cycles)\n", binaSize);
 	}
 
