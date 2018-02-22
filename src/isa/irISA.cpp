@@ -808,14 +808,20 @@ int getNbInstr(IRProcedure *procedure, int type){
 void IRBlock::print(FILE * output)
 {
 	fprintf(output, "digraph cgra {");
-	for (uint32_t i = 0; i < numInstructions; ++i)
+	for (uint32_t i = 0; i < this->nbInstr; ++i)
 	{
-		uint8_t opCode = ((instructions[i].word96>>19) & 0x7f);
-		uint8_t typeCode = ((instructions[i].word96>>28) & 0x3);
-		bool isImm = ((instructions[i].word96>>18) & 0x1);
-		uint16_t src1 = ((instructions[i].word96>>0) & 0x1ff);
-		uint16_t src2 = ((instructions[i].word64>>23) & 0x1ff);
-		uint16_t dst  = ((instructions[i].word64>>14) & 0x1ff);
+		uint32_t instruction96, instruction64, instruction32, instruction0;
+		instruction96 = readInt(instructions, i*16+0);
+		instruction64 = readInt(instructions, i*16+4);
+		instruction32 = readInt(instructions, i*16+8);
+		instruction0 = readInt(instructions, i*16+12);
+
+		uint8_t opCode = ((instruction96>>19) & 0x7f);
+		uint8_t typeCode = ((instruction96>>28) & 0x3);
+		bool isImm = ((instruction96>>18) & 0x1);
+		uint16_t src1 = ((instruction96>>0) & 0x1ff);
+		uint16_t src2 = ((instruction64>>23) & 0x1ff);
+		uint16_t dst  = ((instruction64>>14) & 0x1ff);
 
 		fprintf(output, "i%d [label=%s];", i, opcodeNames[opCode]);
 
