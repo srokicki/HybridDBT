@@ -714,6 +714,49 @@ void addControlDep(unsigned int *bytecode, unsigned char index, unsigned char su
 }
 
 
+
+/**************************************************************
+ * Function clearControlDep
+ * This function will remove all control predecessor of a given IR instruction
+ * Arguments are :
+ * - ir is the memory containing the IR
+ * - index is the index of the instruction to clear in the IR block
+ **************************************************************/
+
+void clearControlDep(unsigned int *ir, unsigned char index){
+	unsigned int irWord0 = readInt(ir, index*16+12);
+	unsigned int irWord32 = readInt(ir, index*16+8);
+	unsigned int irWord64 = readInt(ir, index*16+4);
+
+	char nbDSucc = ((irWord64>>3) & 7);
+	char nbSucc = ((irWord64>>0) & 7);
+	char nbCSucc = nbSucc - nbDSucc;
+
+	//The mask to apply on the higher incomplete list of control dep
+	unsigned int mask = (0xffffffff << ((nbCSucc & 0x3)<<3));
+fprintf(stderr, "mask is %x\n", mask);
+	if (nbCSucc >= 4){
+		//We clear completely word0 and apply the mask to word32
+		irWord0 = 0;
+		irWord32 &= mask;
+	}
+	else{
+		//We apply the mask to word0
+		irWord0 &= mask;
+	}
+
+	//We update the number of predecessors: it is now only the number of data predecessors as
+	// all control pred have been removed
+	irWord64 = (irWord64 & 0xfffffff8) | nbDSucc;
+
+	writeInt(ir, index*16+12, irWord0);
+	writeInt(ir, index*16+8, irWord32);
+	writeInt(ir, index*16+4, irWord64);
+
+	fprintf(stderr, "Instruction %d has been cleared %x %x %x\n", index, irWord64, irWord32, irWord0);
+}
+
+
 #endif
 
 void addOffsetToDep(unsigned int *bytecode, unsigned char index, unsigned char offset){

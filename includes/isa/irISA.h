@@ -209,6 +209,7 @@ void setDestinationRegister(unsigned int *bytecode, unsigned char index, short n
 void setAlloc(unsigned int *bytecode, unsigned char index, char newAlloc);
 void addDataDep(unsigned int *bytecode, unsigned char index, unsigned char successor);
 void addControlDep(unsigned int *bytecode, unsigned char index, unsigned char successor);
+void clearControlDep(unsigned int *ir, unsigned char index);
 void addOffsetToDep(unsigned int *bytecode, unsigned char index, unsigned char offset);
 char getStageCode(unsigned int *bytecode, unsigned char index);
 
