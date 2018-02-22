@@ -680,6 +680,13 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 					oneSuperBlock->nbJumps = 0;
 					oneSuperBlock->instructions = NULL;
 
+
+					for (int i=0; i<block->nbInstr; i++){
+						Log::printf(LOG_SCHEDULE_PROC, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+					}
+
+					memoryDisambiguation(platform, block);
+
 					delete oneSuperBlock;
 
 					changeMade=1;

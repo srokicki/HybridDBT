@@ -10,150 +10,82 @@
 #include <isa/vexISA.h>
 #include <lib/endianness.h>
 #include <lib/log.h>
+#include <transformation/memoryDisambiguation.h>
 
-void memoryDisambiguation(DBTPlateform *platform, IRBlock *block){
+MemoryDependencyGraph::MemoryDependencyGraph(IRBlock *block){
+	this->size = 0;
 
-	char *idMem = (char*) malloc(block->nbInstr*sizeof(char));
-	bool *isStore = (bool*) malloc(block->nbInstr*sizeof(bool));
-	bool *deps = (bool*) malloc(block->nbInstr * block->nbInstr * sizeof(bool));
-
-	for (int oneDep = 0; oneDep<block->nbInstr*block->nbInstr; oneDep++){
-		deps[oneDep] = false;
-	}
-
-	for (int i=0; i<block->nbInstr; i++){
-		Log::printf(LOG_SCHEDULE_PROC, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
-	}
-	int nbMem = 0;
 	for (int oneInstruction = 0; oneInstruction<block->nbInstr; oneInstruction++){
 		int opcode = getOpcode(block->instructions, oneInstruction);
-		if ((opcode >> 3) == (VEX_STW>>3)){
-			idMem[nbMem] = oneInstruction;
-			isStore[nbMem] = true;
-			for (int oneOtherInstr = 0; oneOtherInstr<nbMem; oneOtherInstr++){
-				deps[oneOtherInstr*block->nbInstr] = true;
-			}
+		if ((opcode >> 3) == (VEX_STW>>3) || (opcode >> 3) == (VEX_LDW>>3) || opcode == VEX_FSW || opcode == VEX_FLW)
+			this->size++;
+	}
 
-			unsigned int bytecodeWord0 = readInt(block->instructions, oneInstruction*16+12);
-			unsigned int bytecodeWord32 = readInt(block->instructions, oneInstruction*16+8);
-			unsigned int bytecodeWord64 = readInt(block->instructions, oneInstruction*16+4);
+	this->idMem = (char*) malloc(this->size*sizeof(char));
+	this->isStore = (bool*) malloc(this->size*sizeof(bool));
+	this->graph = (bool*) malloc(this->size * this->size * sizeof(bool));
 
-			char nbDSucc = ((bytecodeWord64>>3) & 7);
-			char nbSucc = ((bytecodeWord64>>0) & 7);
-			char nbCSucc = nbSucc - nbDSucc;
+	for (int oneDep = 0; oneDep<this->size*this->size; oneDep++){
+		this->graph[oneDep] = false;
+	}
 
-			char newNbCSucc = 0;
+	for (int oneInstruction = 0; oneInstruction<block->nbInstr; oneInstruction++){
+		int opcode = getOpcode(block->instructions, oneInstruction);
+		if ((opcode >> 3) == (VEX_STW>>3) || opcode == VEX_FSW){
+			this->idMem[this->size] = oneInstruction;
+			this->isStore[this->size] = true;
+			for (int oneOtherInstr = 0; oneOtherInstr<this->size; oneOtherInstr++)
+				this->graph[oneOtherInstr*this->size] = true;
 
-			for (int oneControlSuccessor = 0; oneControlSuccessor < nbCSucc; oneControlSuccessor++){
-				int predId;
-				if (oneControlSuccessor>4){
-					predId = (bytecodeWord32 >> ((oneControlSuccessor-4) * 8)) & 0xff;;
 
-					fprintf(stderr, "instr %d has %d as pred \n", oneInstruction, predId);
-
-					//					writeInt(bytecode, successor*16+8, bytecodeWord32);
-				}
-				else{
-					predId = (bytecodeWord0 >> (oneControlSuccessor * 8)) & 0xff;
-					fprintf(stderr, "instr %d has %d as pred \n", oneInstruction, predId);
-
-//					writeInt(bytecode, successor*16+12, bytecodeWord0);
-				}
-
-				char predOpcode = getOpcode(block->instructions, predId);
-				if ((predOpcode >> 4) != (VEX_LDW>>4)){
-					if (oneControlSuccessor != newNbCSucc){
-						if (newNbCSucc>3)
-							bytecodeWord32 |= (predId<<((nbCSucc-4)*8));
-						else
-							bytecodeWord0 |= (predId<<((nbCSucc)*8));
-
-					}
-					newNbCSucc++;
-				}
-			}
-			bytecodeWord64 = (bytecodeWord64 & 0xfffffff8) | (nbDSucc + newNbCSucc);
-
-			writeInt(block->instructions, oneInstruction*16+12,bytecodeWord0);
-			writeInt(block->instructions, oneInstruction*16+8, bytecodeWord32);
-			writeInt(block->instructions, oneInstruction*16+4, bytecodeWord64);
-
-			nbMem++;
+			clearControlDep(block->instructions, oneInstruction);
 		}
-		else if ((opcode >> 3) == (VEX_LDW>>3)){
-			idMem[nbMem] = oneInstruction;
-			isStore[nbMem] = false;
-			for (int oneOtherInstr = 0; oneOtherInstr<nbMem; oneOtherInstr++){
-				if (isStore[oneOtherInstr])
-					deps[oneOtherInstr*block->nbInstr] = true;
-			}
-
-			unsigned int bytecodeWord0 = readInt(block->instructions, oneInstruction*16+12);
-						unsigned int bytecodeWord32 = readInt(block->instructions, oneInstruction*16+8);
-						unsigned int bytecodeWord64 = readInt(block->instructions, oneInstruction*16+4);
-
-						char nbDSucc = ((bytecodeWord64>>3) & 7);
-						char nbSucc = ((bytecodeWord64>>0) & 7);
-						char nbCSucc = nbSucc - nbDSucc;
-
-						char newNbCSucc = 0;
-
-						for (int oneControlSuccessor = 0; oneControlSuccessor < nbCSucc; oneControlSuccessor++){
-							int predId;
-							if (oneControlSuccessor>4){
-								predId = (bytecodeWord32 >> ((oneControlSuccessor-4) * 8)) & 0xff;;
-
-								fprintf(stderr, "instr %d has %d as pred \n", oneInstruction, predId);
-
-								//					writeInt(bytecode, successor*16+8, bytecodeWord32);
-							}
-							else{
-								predId = (bytecodeWord0 >> (oneControlSuccessor * 8)) & 0xff;
-								fprintf(stderr, "instr %d has %d as pred \n", oneInstruction, predId);
-
-			//					writeInt(bytecode, successor*16+12, bytecodeWord0);
-							}
-
-							char predOpcode = getOpcode(block->instructions, predId);
-							if ((predOpcode >> 4) != (VEX_LDW>>4)){
-								if (oneControlSuccessor != newNbCSucc){
-									if (newNbCSucc>3)
-										bytecodeWord32 |= (predId<<((nbCSucc-4)*8));
-									else
-										bytecodeWord0 |= (predId<<((nbCSucc)*8));
-
-								}
-								newNbCSucc++;
-							}
-						}
-						bytecodeWord64 = (bytecodeWord64 & 0xfffffff8) | (nbDSucc + newNbCSucc);
-
-						writeInt(block->instructions, oneInstruction*16+12,bytecodeWord0);
-						writeInt(block->instructions, oneInstruction*16+8, bytecodeWord32);
-						writeInt(block->instructions, oneInstruction*16+4, bytecodeWord64);
+		else if ((opcode >> 3) == (VEX_LDW>>3) || opcode == VEX_FLW){
+			this->idMem[size] = oneInstruction;
+			this->isStore[size] = false;
+			for (int oneOtherInstr = 0; oneOtherInstr<this->size; oneOtherInstr++)
+				if (this->isStore[oneOtherInstr])
+					this->graph[oneOtherInstr*this->size] = true;
 
 
-
-
-			nbMem++;
+			clearControlDep(block->instructions, oneInstruction);
 		}
 	}
-	for (int oneInstr=0; oneInstr<nbMem; oneInstr++){
-		fprintf(stderr, "%2d ", idMem[oneInstr]);
+}
+
+MemoryDependencyGraph::~MemoryDependencyGraph(){
+	free(this->graph);
+	free(this->idMem);
+	free(this->isStore);
+}
+
+void MemoryDependencyGraph::print(){
+	fprintf(stderr, "size is %d\n", size);
+	for (int oneInstr=0; oneInstr<this->size; oneInstr++){
+		fprintf(stderr, "%2d ", this->idMem[oneInstr]);
 	}
 	fprintf(stderr, "\n");
-	for (int oneInstr=0; oneInstr<nbMem; oneInstr++){
-		fprintf(stderr, "%3d ", idMem[oneInstr]);
+	for (int oneInstr=0; oneInstr<this->size; oneInstr++){
+		fprintf(stderr, "%3d ", this->idMem[oneInstr]);
 		for (int oneOtherInstr = 0; oneOtherInstr<oneInstr; oneOtherInstr++){
-			fprintf(stderr, " %d  ", deps[oneInstr*block->nbInstr + oneOtherInstr]?1:0);
+			fprintf(stderr, " %d  ", graph[oneInstr*this->size + oneOtherInstr]?1:0);
 		}
 		fprintf(stderr, "\n");
 	}
+}
 
-	for (int i=0; i<block->nbInstr; i++){
-		Log::printf(LOG_SCHEDULE_PROC, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
-	}
+void MemoryDependencyGraph::transitiveReduction(){
 
+}
 
-	exit(-1);
+void MemoryDependencyGraph::applyGraph(IRBlock *block){
+
+}
+
+void memoryDisambiguation(DBTPlateform *platform, IRBlock *block){
+	MemoryDependencyGraph *graph = new MemoryDependencyGraph(block);
+
+	graph->print();
+
+	delete graph;
 }
