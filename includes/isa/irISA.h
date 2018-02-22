@@ -52,7 +52,11 @@ public:
 
 	unsigned int procedureState;	//A value to store its state (optimized/translated or other things like that)
 
-	void print();
+	/**
+	 * @brief print: prints the procedure's CFG in .dot format in a file
+	 * @param output: the file to print in
+	 */
+	void print(FILE *output);
 	IRProcedure(IRBlock *entryBlock, int nbBlock);
 
 };
@@ -101,6 +105,12 @@ public:
 
 	IRBlock(int startAddress, int endAddress, int section);
 	~IRBlock();
+
+	/**
+	 * @brief print: prints the block's DFG in .dot format in a file
+	 * @param output: the file to print in
+	 */
+	void print(FILE *output);
 };
 
 /* Definition of different states possible for the IRBlock:

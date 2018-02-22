@@ -292,28 +292,28 @@ IRProcedure::IRProcedure(IRBlock *entryBlock, int nbBlock){
 }
 
 
-void IRProcedure::print(){
+void IRProcedure::print(FILE * output){
 	/********************************************************************************************
 	 * This procedure is a debug procedure that will print a CDFG representation of the procedure
 	 *
 	 ********************************************************************************************/
 
-	fprintf(stderr, "digraph{\n");
+	fprintf(output, "digraph{\n");
 	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
-		fprintf(stderr, "node_%d[label=\"node %d - size %d  - nbJump %d place %lx\"];\n",this->blocks[oneBlockInProcedure]->sourceStartAddress,  this->blocks[oneBlockInProcedure]->vliwStartAddress, this->blocks[oneBlockInProcedure]->nbInstr, this->blocks[oneBlockInProcedure]->nbJumps, this->blocks[oneBlockInProcedure]);
+		fprintf(output, "node_%d[label=\"node %d - size %d  - nbJump %d place %lx\"];\n",this->blocks[oneBlockInProcedure]->sourceStartAddress,  this->blocks[oneBlockInProcedure]->vliwStartAddress, this->blocks[oneBlockInProcedure]->nbInstr, this->blocks[oneBlockInProcedure]->nbJumps, this->blocks[oneBlockInProcedure]);
 	}
 	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
 
 		for (int oneSuccessor = 0; oneSuccessor<this->blocks[oneBlockInProcedure]->nbSucc; oneSuccessor++){
-			fprintf(stderr, "node_%d -> node_%d;\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->successors[oneSuccessor]->sourceStartAddress);
+			fprintf(output, "node_%d -> node_%d;\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->successors[oneSuccessor]->sourceStartAddress);
 		}
 
 	}
-	fprintf(stderr, "}\n");
+	fprintf(output, "}\n");
 
 	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock-1; oneBlockInProcedure++){
 		if (this->blocks[oneBlockInProcedure]->sourceEndAddress != this->blocks[oneBlockInProcedure+1]->sourceStartAddress){
-			fprintf(stderr, "test block 1 %d to %d and block 2 is %d to %d\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->sourceEndAddress, this->blocks[oneBlockInProcedure+1]->sourceStartAddress, this->blocks[oneBlockInProcedure+1]->sourceEndAddress);
+			fprintf(output, "test block 1 %d to %d and block 2 is %d to %d\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->sourceEndAddress, this->blocks[oneBlockInProcedure+1]->sourceStartAddress, this->blocks[oneBlockInProcedure+1]->sourceEndAddress);
 		}
 	}
 }
@@ -803,4 +803,43 @@ int getNbInstr(IRProcedure *procedure, int type){
 
 
 	return result;
+}
+
+void IRBlock::print(FILE * output)
+{
+	fprintf(output, "digraph cgra {");
+	for (uint32_t i = 0; i < numInstructions; ++i)
+	{
+		uint8_t opCode = ((instructions[i].word96>>19) & 0x7f);
+		uint8_t typeCode = ((instructions[i].word96>>28) & 0x3);
+		bool isImm = ((instructions[i].word96>>18) & 0x1);
+		uint16_t src1 = ((instructions[i].word96>>0) & 0x1ff);
+		uint16_t src2 = ((instructions[i].word64>>23) & 0x1ff);
+		uint16_t dst  = ((instructions[i].word64>>14) & 0x1ff);
+
+		fprintf(output, "i%d [label=%s];", i, opcodeNames[opCode]);
+
+		if (typeCode == 0)
+		{
+			if (opCode == VEX_STD || opCode == VEX_STW || opCode == VEX_STH || opCode == VEX_STB)
+				if (dst < 256)
+					fprintf(output, "i%d -> i%d;", dst, i);
+				else
+					fprintf(output, "r%d -> i%d;", dst-256, i);
+
+			if (src2 < 256)
+				fprintf(output, "i%d -> i%d;", src2, i);
+			else
+				fprintf(output, "r%d -> i%d;", src2-256, i);
+
+			if (!isImm)
+			{
+				if (src1 < 256)
+					fprintf(output, "i%d -> i%d;", src1, i);
+				else
+					fprintf(output, "r%d -> i%d;", src1-256, i);
+			}
+		}
+	}
+	fprintf(output, "}");
 }
