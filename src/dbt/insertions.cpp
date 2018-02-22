@@ -226,7 +226,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	nbInstr++;
 
 
-	unsigned int hashBytecode[6*4];
+	unsigned int hashBytecode[8*4];
 	for (int oneBytecodeInstr = 0; oneBytecodeInstr < nbInstr; oneBytecodeInstr++){
 		hashBytecode[4*oneBytecodeInstr + 0] = readInt(platform->bytecode, 16*oneBytecodeInstr + 0);
 		hashBytecode[4*oneBytecodeInstr + 1] = readInt(platform->bytecode, 16*oneBytecodeInstr + 4);
