@@ -182,10 +182,10 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 			bool isLoadType = opcode == VEX_LDB | opcode == VEX_LDBU | opcode == VEX_LDH
 					| opcode == VEX_LDHU | opcode == VEX_LDW | opcode == VEX_LDWU | opcode == VEX_LDD;
 			bool isStoreType = opcode == VEX_STB | opcode == VEX_STH | opcode == VEX_STW | opcode == VEX_STD;
-			bool isBranchWithNoReg = opcode == VEX_GOTO | opcode == VEX_CALL | opcode == VEX_RETURN
+			bool isBranchWithNoReg = opcode == VEX_GOTO | opcode == VEX_CALL
 					| opcode == VEX_STOP | opcode == VEX_ECALL;
-			bool isBranchWithReg = opcode == VEX_GOTOR | opcode == VEX_CALLR | opcode == VEX_BR
-					| opcode == VEX_BRF;
+			bool isBranchWithReg = opcode == VEX_GOTOR | opcode == VEX_CALLR;
+			bool isBranchWithTwoReg = opcode == VEX_BR | opcode == VEX_BRF | opcode == VEX_BGE | opcode == VEX_BLT | opcode == VEX_BGEU | opcode == VEX_BLTU;
 			bool isMovi = opcode == VEX_MOVI;
 			bool isArith1 = opcode == VEX_NOT;
 			bool isArith2 = (((opcode>>4) & 0x7) == 4 | ((opcode>>4) & 0x7) == 5) & !isArith1;
@@ -197,9 +197,12 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 			bool isFLW = opcode == VEX_FLW || opcode == VEX_FLH || opcode == VEX_FLB;
 			bool isFP = opcode == VEX_FP;
 
-			bool isFloatRa = isFSW || isFMADD || (isFP && funct != VEX_FP_FCVTWS && funct != VEX_FP_FCVTWUS && funct != VEX_FP_FMVWX);
-			bool isFloatDest = isFLW || isFMADD || (isFP && funct != VEX_FP_FCVTSW && funct != VEX_FP_FCVTSWU && funct != VEX_FP_FMVXW
-					&& funct != VEX_FP_FMIN && funct != VEX_FP_FMAX && funct != VEX_FP_FCLASS);
+			bool isFloatRa = isFMADD || (isFP && funct != VEX_FP_FCVTSW && funct != VEX_FP_FCVTSWU && funct != VEX_FP_FMVWX);
+			bool isFloatRb = isFSW || isFMADD || isFP;
+			bool isFloatDest = isFLW || isFMADD || (isFP && funct != VEX_FP_FCVTWS && funct != VEX_FP_FCVTWUS && funct != VEX_FP_FEQ
+					&& funct != VEX_FP_FLT && funct != VEX_FP_FLE && funct != VEX_FP_FCLASS  && funct != VEX_FP_FMVXW);
+			bool enableRbFloat = isFSW || isFMADD || (isFP && funct != VEX_FP_FSQRT && funct != VEX_FP_FCVTWS && funct != VEX_FP_FCVTWUS
+					&& funct != VEX_FP_FMVXW && funct != VEX_FP_FCLASS && funct != VEX_FP_FCVTSW && funct != VEX_FP_FCVTSWU && funct != VEX_FP_FMVWX);
 
 
 			bool pred1_ena = 0, pred2_ena = 0, dest_ena = 0;
@@ -210,7 +213,7 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 				pred1_ena = 1;
 
 			//Solving accessed register 2
-			if (isStoreType || isArith2 || isMultType || isFSW || isFP)
+			if (isStoreType || isArith2 || isMultType || isFSW || enableRbFloat || isBranchWithTwoReg)
 				pred2_ena = 1;
 
 
@@ -235,15 +238,15 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 				droppedInstruction_sw = 1;
 			}
 
-			if (isFloatRa){
+			if (isFloatRa)
 				pred1_reg += 64;
-				if (pred2_ena)
-					pred2_reg += 64;
-			}
 
-			if (isFloatDest){
+			if (isFloatRb)
+				pred2_reg += 64;
+
+			if (isFloatDest)
 				dest_reg += 64;
-			}
+
 
 
 			numbersSuccessor[indexInCurrentBlock] = 0;
@@ -624,6 +627,12 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 				haveJump = 1;
 				jumpID = indexInCurrentBlock;
 
+			}
+			else if (isBranchWithTwoReg){
+				oneBytecodeStruct = assembleRiBytecodeInstruction(0, 0, opcode, pred1, imm13, pred2, 0);
+
+				haveJump = 1;
+				jumpID = indexInCurrentBlock;
 			}
 			else if (isMovi){
 				oneBytecodeStruct = assembleIBytecodeInstruction(2, alloc, opcode, destination, imm19, 0);

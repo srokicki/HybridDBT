@@ -52,7 +52,11 @@ public:
 
 	unsigned int procedureState;	//A value to store its state (optimized/translated or other things like that)
 
-	void print();
+	/**
+	 * @brief print: prints the procedure's CFG in .dot format in a file
+	 * @param output: the file to print in
+	 */
+	void print(FILE *output);
 	IRProcedure(IRBlock *entryBlock, int nbBlock);
 
 };
@@ -101,6 +105,12 @@ public:
 
 	IRBlock(int startAddress, int endAddress, int section);
 	~IRBlock();
+
+	/**
+	 * @brief print: prints the block's DFG in .dot format in a file
+	 * @param output: the file to print in
+	 */
+	void print(FILE *output);
 };
 
 /* Definition of different states possible for the IRBlock:
@@ -209,6 +219,7 @@ void setDestinationRegister(unsigned int *bytecode, unsigned char index, short n
 void setAlloc(unsigned int *bytecode, unsigned char index, char newAlloc);
 void addDataDep(unsigned int *bytecode, unsigned char index, unsigned char successor);
 void addControlDep(unsigned int *bytecode, unsigned char index, unsigned char successor);
+void clearControlDep(unsigned int *ir, unsigned char index);
 void addOffsetToDep(unsigned int *bytecode, unsigned char index, unsigned char offset);
 char getStageCode(unsigned int *bytecode, unsigned char index);
 

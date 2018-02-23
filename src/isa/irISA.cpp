@@ -297,28 +297,28 @@ IRProcedure::IRProcedure(IRBlock *entryBlock, int nbBlock){
 }
 
 
-void IRProcedure::print(){
+void IRProcedure::print(FILE * output){
 	/********************************************************************************************
 	 * This procedure is a debug procedure that will print a CDFG representation of the procedure
 	 *
 	 ********************************************************************************************/
 
-	fprintf(stderr, "digraph{\n");
+	fprintf(output, "digraph{\n");
 	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
-		fprintf(stderr, "node_%d[label=\"node %d - size %d  - nbJump %d place %lx\"];\n",this->blocks[oneBlockInProcedure]->sourceStartAddress,  this->blocks[oneBlockInProcedure]->vliwStartAddress, this->blocks[oneBlockInProcedure]->nbInstr, this->blocks[oneBlockInProcedure]->nbJumps, this->blocks[oneBlockInProcedure]);
+		fprintf(output, "node_%d[label=\"node %d - size %d  - nbJump %d place %lx\"];\n",this->blocks[oneBlockInProcedure]->sourceStartAddress,  this->blocks[oneBlockInProcedure]->vliwStartAddress, this->blocks[oneBlockInProcedure]->nbInstr, this->blocks[oneBlockInProcedure]->nbJumps, this->blocks[oneBlockInProcedure]);
 	}
 	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
 
 		for (int oneSuccessor = 0; oneSuccessor<this->blocks[oneBlockInProcedure]->nbSucc; oneSuccessor++){
-			fprintf(stderr, "node_%d -> node_%d;\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->successors[oneSuccessor]->sourceStartAddress);
+			fprintf(output, "node_%d -> node_%d;\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->successors[oneSuccessor]->sourceStartAddress);
 		}
 
 	}
-	fprintf(stderr, "}\n");
+	fprintf(output, "}\n");
 
 	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock-1; oneBlockInProcedure++){
 		if (this->blocks[oneBlockInProcedure]->sourceEndAddress != this->blocks[oneBlockInProcedure+1]->sourceStartAddress){
-			fprintf(stderr, "test block 1 %d to %d and block 2 is %d to %d\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->sourceEndAddress, this->blocks[oneBlockInProcedure+1]->sourceStartAddress, this->blocks[oneBlockInProcedure+1]->sourceEndAddress);
+			fprintf(output, "test block 1 %d to %d and block 2 is %d to %d\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->sourceEndAddress, this->blocks[oneBlockInProcedure+1]->sourceStartAddress, this->blocks[oneBlockInProcedure+1]->sourceEndAddress);
 		}
 	}
 }
@@ -506,7 +506,8 @@ char getOperands(unsigned int *bytecode, unsigned char index, short result[2]){
 	char isLoad = (opcode>>3) == 0x2;
 	char isStore = (opcode>>3) == 0x3;
 	char isArith1 = (shiftedOpcode == 6 || shiftedOpcode == 7);
-	char isBranchWithReg = (opcode == VEX_BR) || (opcode == VEX_BRF) ||(opcode == VEX_CALLR) ||(opcode == VEX_GOTOR);
+	char isBranchWithReg = (opcode == VEX_CALLR) ||(opcode == VEX_GOTOR);
+	char isBranchWithTwoRegs = (opcode == VEX_BR) || (opcode == VEX_BRF) || (opcode == VEX_BGE) || (opcode == VEX_BLT) || (opcode == VEX_BGEU) || (opcode == VEX_BLTU);
 
 	if (isNop)
 		return 0;
@@ -515,7 +516,7 @@ char getOperands(unsigned int *bytecode, unsigned char index, short result[2]){
 		result[1] = virtualRIn2;
 		return 2;
 	}
-	else if (isStore){
+	else if (isStore || isBranchWithTwoRegs){
 		result[0] = virtualRIn2;
 		result[1] = virtualRDest;
 		return 2;
@@ -550,7 +551,8 @@ void setOperands(unsigned int *bytecode, unsigned char index, short operands[2])
 	char isLoad = (opcode>>3) == 0x2;
 	char isStore = (opcode>>3) == 0x3;
 	char isArith1 = (shiftedOpcode == 6 || shiftedOpcode == 7);
-	char isBranchWithReg = (opcode == VEX_BR) || (opcode == VEX_BRF) ||(opcode == VEX_CALLR) ||(opcode == VEX_GOTOR);
+	char isBranchWithReg = (opcode == VEX_CALLR) ||(opcode == VEX_GOTOR);
+	char isBranchWithTwoRegs = (opcode == VEX_BR) || (opcode == VEX_BRF) || (opcode == VEX_BGE) || (opcode == VEX_BLT) || (opcode == VEX_BGEU) || (opcode == VEX_BLTU);
 
 	if (isNop){
 
@@ -561,7 +563,7 @@ void setOperands(unsigned int *bytecode, unsigned char index, short operands[2])
 		writeInt(bytecode, index*16+4, bytecodeWord64);
 		writeInt(bytecode, index*16+0, bytecodeWord96);
 	}
-	else if (isStore){
+	else if (isStore || isBranchWithTwoRegs){
 		bytecodeWord64 = (bytecodeWord64 & ~(0x1ff<<23)) | ((operands[0] & 0x1ff)<<23);//in2
 		bytecodeWord64 = (bytecodeWord64 & ~(0x1ff<<14)) | ((operands[1] & 0x1ff)<<14); //dest
 		writeInt(bytecode, index*16+4, bytecodeWord64);
@@ -717,6 +719,49 @@ void addControlDep(unsigned int *bytecode, unsigned char index, unsigned char su
 }
 
 
+
+/**************************************************************
+ * Function clearControlDep
+ * This function will remove all control predecessor of a given IR instruction
+ * Arguments are :
+ * - ir is the memory containing the IR
+ * - index is the index of the instruction to clear in the IR block
+ **************************************************************/
+
+void clearControlDep(unsigned int *ir, unsigned char index){
+	unsigned int irWord0 = readInt(ir, index*16+12);
+	unsigned int irWord32 = readInt(ir, index*16+8);
+	unsigned int irWord64 = readInt(ir, index*16+4);
+
+	char nbDSucc = ((irWord64>>3) & 7);
+	char nbSucc = ((irWord64>>0) & 7);
+	char nbCSucc = nbSucc - nbDSucc;
+
+	//The mask to apply on the higher incomplete list of control dep
+	unsigned int mask = (0xffffffff << ((nbCSucc & 0x3)<<3));
+fprintf(stderr, "mask is %x\n", mask);
+	if (nbCSucc >= 4){
+		//We clear completely word0 and apply the mask to word32
+		irWord0 = 0;
+		irWord32 &= mask;
+	}
+	else{
+		//We apply the mask to word0
+		irWord0 &= mask;
+	}
+
+	//We update the number of predecessors: it is now only the number of data predecessors as
+	// all control pred have been removed
+	irWord64 = (irWord64 & 0xfffffff8) | nbDSucc;
+
+	writeInt(ir, index*16+12, irWord0);
+	writeInt(ir, index*16+8, irWord32);
+	writeInt(ir, index*16+4, irWord64);
+
+	fprintf(stderr, "Instruction %d has been cleared %x %x %x\n", index, irWord64, irWord32, irWord0);
+}
+
+
 #endif
 
 void addOffsetToDep(unsigned int *bytecode, unsigned char index, unsigned char offset){
@@ -763,4 +808,49 @@ int getNbInstr(IRProcedure *procedure, int type){
 
 
 	return result;
+}
+
+void IRBlock::print(FILE * output)
+{
+	fprintf(output, "digraph cgra {");
+	for (uint32_t i = 0; i < this->nbInstr; ++i)
+	{
+		uint32_t instruction96, instruction64, instruction32, instruction0;
+		instruction96 = readInt(instructions, i*16+0);
+		instruction64 = readInt(instructions, i*16+4);
+		instruction32 = readInt(instructions, i*16+8);
+		instruction0 = readInt(instructions, i*16+12);
+
+		uint8_t opCode = ((instruction96>>19) & 0x7f);
+		uint8_t typeCode = ((instruction96>>28) & 0x3);
+		bool isImm = ((instruction96>>18) & 0x1);
+		uint16_t src1 = ((instruction96>>0) & 0x1ff);
+		uint16_t src2 = ((instruction64>>23) & 0x1ff);
+		uint16_t dst  = ((instruction64>>14) & 0x1ff);
+
+		fprintf(output, "i%d [label=%s];", i, opcodeNames[opCode]);
+
+		if (typeCode == 0)
+		{
+			if (opCode == VEX_STD || opCode == VEX_STW || opCode == VEX_STH || opCode == VEX_STB)
+				if (dst < 256)
+					fprintf(output, "i%d -> i%d;", dst, i);
+				else
+					fprintf(output, "r%d -> i%d;", dst-256, i);
+
+			if (src2 < 256)
+				fprintf(output, "i%d -> i%d;", src2, i);
+			else
+				fprintf(output, "r%d -> i%d;", src2-256, i);
+
+			if (!isImm)
+			{
+				if (src1 < 256)
+					fprintf(output, "i%d -> i%d;", src1, i);
+				else
+					fprintf(output, "r%d -> i%d;", src1-256, i);
+			}
+		}
+	}
+	fprintf(output, "}");
 }

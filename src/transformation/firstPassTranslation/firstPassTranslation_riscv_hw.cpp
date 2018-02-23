@@ -282,9 +282,17 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 				rd=63;
 
 			if (opcode == RISCV_FMADD || opcode == RISCV_FMSUB || opcode == RISCV_FNMADD || opcode == RISCV_FNMSUB ||
-					opcode == RISCV_FP && (funct7 != RISCV_FP_FCVTW && funct7 != RISCV_FP_FMVW)){
+					(opcode == RISCV_FP && (funct7 != RISCV_FP_FCVTS && funct7 != RISCV_FP_FMVW))){
 				rs1 += 64;
 			}
+
+			if (opcode == RISCV_FSW || opcode == RISCV_FMADD || opcode == RISCV_FMSUB || opcode == RISCV_FNMADD || opcode == RISCV_FNMSUB ||
+					(opcode == RISCV_FP && funct7 != RISCV_FP_SQRT && funct7 != RISCV_FP_FCVTW && funct7 != RISCV_FP_FMVXFCLASS
+							&& funct7 != RISCV_FP_FCVTS && funct7 != RISCV_FP_FMVW)){
+				rs2 += 64;
+			}
+
+			ac_int<1, false> isRdFloat = (funct7 != RISCV_FP_FCVTW) && (funct7 != RISCV_FP_FCMP) && (funct7 != RISCV_FP_FMVXFCLASS);
 
 			/***************************************************************/
 			/*  We assemble the instruction  							   */
@@ -401,6 +409,34 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 				//cycle to prevent an insertion. Otherwise, we have to do the insertion...
 
 				//TODO RISCV immediates are on 20 bits whereas we only handle 19-bit immediates...
+
+
+//				previousLatency = lastLatency;
+//				previousWrittenRegister = lastWrittenRegister;
+//				lastWrittenRegister = rd;
+//				lastLatency = SIMPLE_LATENCY;
+//
+//
+//				char bit31 = imm31_12>>31;
+//				char bit30 = ((imm31_12>>30)&0x1);
+//
+//				if (bit31 != bit30){
+//					binaries = assembleIInstruction_sw(VEX_MOVUI, (imm31_12>>14) & 0x7ffff, rd);
+//					nextInstruction = assembleRiInstruction_sw(VEX_SH2ADDi, rd, rd, (imm31_12>>12)&0x3);
+//
+//					//Mark the insertion
+//					nextInstruction_rd = rd;
+//					nextInstruction_rs1 = rd;
+//					nextInstruction_rs2 = 0;
+//
+//					nextInstruction_stage = 0;
+//					enableNextInstruction = true;
+//				}
+//				else {
+//					binaries = assembleIInstruction_sw(VEX_MOVUI, (imm31_12>>12) & 0x7ffff, rd);
+//				}
+//				std::cerr << printDecodedInstrRISCV(oneInstruction) << "   " << printDecodedInstr(binaries) << "\n";
+
 
 				previousLatency = lastLatency;
 				previousWrittenRegister = lastWrittenRegister;
@@ -554,7 +590,7 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 
 				//First we fill information on block boundaries
 
-				if (rs2 == 0 && (funct3 == RISCV_BR_BEQ || funct3 == RISCV_BR_BNE)){
+//				if (rs2 == 0 && (funct3 == RISCV_BR_BEQ || funct3 == RISCV_BR_BNE)){
 					//This is a comparison to zero
 					setBoundaries1 = 1;
 					boundary1 = ((imm13_signed>>2)+indexInSourceBinaries);
@@ -562,41 +598,42 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 					setBoundaries2 = 1;
 					boundary2 = indexInSourceBinaries + 1;//Only plus one because in riscv next instr is not executed
 
-					binaries = assembleIInstruction((funct3 == RISCV_BR_BEQ) ? VEX_BRF : VEX_BR, rs2, rs1);
+					binaries = assembleRiInstruction(functBindingBR[funct3], rs2, rs1, 0);
 
 					unresolved_jump_src = indexInDestinationBinaries;
 					unresolved_jump_type = binaries;
 					setUnresolvedJump = 1;
-				}
-				else{
 
-					previousLatency = lastLatency;
-					previousWrittenRegister = lastWrittenRegister;
-					lastWrittenRegister = 32;
-					lastLatency = SIMPLE_LATENCY;
-
-					setBoundaries1 = 1;
-					boundary1 = ((imm13_signed>>2)+indexInSourceBinaries);
-					setBoundaries2 = 1;
-					boundary2 = indexInSourceBinaries + 1;//Only plus one because in riscv next instr is not executed
-
-
-					binaries = assembleRInstruction(functBindingBR[funct3], 32, rs1, rs2); //TODO check order
-
-					nextInstruction = assembleIInstruction(VEX_BR, 0, 32);
-
-					nextInstruction_stage = 0;
-					enableNextInstruction = 1;
-					nextInstruction_rd = 0;
-					nextInstruction_rs1 = 32;
-					nextInstruction_rs2 = 0;
-
-					unresolved_jump_src = indexInDestinationBinaries+2*incrementInDest;
-					unresolved_jump_type = nextInstruction;
-					setUnresolvedJump = 1;
-
-
-				}
+//				}
+//				else{
+//
+//					previousLatency = lastLatency;
+//					previousWrittenRegister = lastWrittenRegister;
+//					lastWrittenRegister = 32;
+//					lastLatency = SIMPLE_LATENCY;
+//
+//					setBoundaries1 = 1;
+//					boundary1 = ((imm13_signed>>2)+indexInSourceBinaries);
+//					setBoundaries2 = 1;
+//					boundary2 = indexInSourceBinaries + 1;//Only plus one because in riscv next instr is not executed
+//
+//
+//					binaries = assembleRInstruction(functBindingBR[funct3], 32, rs1, rs2); //TODO check order
+//
+//					nextInstruction = assembleRiInstruction(VEX_BRF, 32, 0,0);
+//
+//					nextInstruction_stage = 0;
+//					enableNextInstruction = 1;
+//					nextInstruction_rd = 0;
+//					nextInstruction_rs1 = 32;
+//					nextInstruction_rs2 = 0;
+//
+//					unresolved_jump_src = indexInDestinationBinaries+2*incrementInDest;
+//					unresolved_jump_type = nextInstruction;
+//					setUnresolvedJump = 1;
+//
+//
+//				}
 
 				//In order to deal with the fact that RISCV do not execute the isntruction following a branch,
 				//we have to insert nop
@@ -720,13 +757,9 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 				previousWrittenRegister = lastWrittenRegister;
 				lastWrittenRegister = 64+rd; //the written reg is a float reg
 				lastLatency = MEMORY_LATENCY;
-//TODO
-				if (funct3 == 4)
-					binaries = assembleRiInstruction(VEX_FLW, rd, rs1, imm12_I_signed);
-				else if (funct3 == 4)
-					binaries = assembleRiInstruction(VEX_FLH, rd, rs1, imm12_I_signed);
-				else
-					binaries = assembleRiInstruction(VEX_FLB, rd, rs1, imm12_I_signed);
+
+				binaries = assembleRiInstruction(VEX_FLW, rd, rs1, imm12_I_signed);
+
 
 				stage = stageMem;
 			}
@@ -736,13 +769,8 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 				previousWrittenRegister = lastWrittenRegister;
 				lastWrittenRegister = rd;
 				lastLatency = 0;
-//TODO
-				if (funct3 == 4)
-					binaries = assembleRiInstruction(VEX_FSW, rs2, rs1, imm12_S_signed);
-				else if (funct3 == 2)
-					binaries = assembleRiInstruction(VEX_FSH, rs2, rs1, imm12_S_signed);
-				else
-					binaries = assembleRiInstruction(VEX_FSB, rs2, rs1, imm12_S_signed);
+
+				binaries = assembleRiInstruction(VEX_FSW, rs2, rs1, imm12_S_signed);
 
 				stage = stageMem;
 
@@ -769,7 +797,9 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 
 				previousLatency = lastLatency;
 				previousWrittenRegister = lastWrittenRegister;
-				lastWrittenRegister = rd+64;
+				lastWrittenRegister = rd;
+				if (isRdFloat)
+					lastWrittenRegister += 64;
 				lastLatency = MULT_LATENCY;
 
 				ac_int<5, false> funct = 0;
@@ -789,6 +819,7 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 						break;
 					case  RISCV_FP_SQRT:
 						funct = VEX_FP_FSQRT;
+						rs2 = rs1;
 						break;
 					case  RISCV_FP_FSGN:
 						if (funct3 == RISCV_FP_FSGN_J)
@@ -809,17 +840,19 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 							funct = VEX_FP_FCVTWS;
 						else
 							funct = VEX_FP_FCVTWUS;
+
+						rs2 = rs1;
 						break;
 					case  RISCV_FP_FMVXFCLASS:
 						if (funct3 == RISCV_FP_FMVXFCLASS_FMVX){
-							lastWrittenRegister = rd;
 							funct = VEX_FP_FMVXW;
 						}
 						else
 							funct = VEX_FP_FCLASS;
+
+						rs2 = rs1;
 						break;
 					case  RISCV_FP_FCMP:
-						lastWrittenRegister = rd;
 						if (funct3 == RISCV_FP_FCMP_FEQ)
 							funct = VEX_FP_FEQ;
 						else if (funct3 == RISCV_FP_FCMP_FLT)
@@ -828,19 +861,22 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 							funct = VEX_FP_FLE;
 						break;
 					case  RISCV_FP_FCVTS:
-						lastWrittenRegister = rd;
-						if (rs2 == RISCV_FP_FCVTS_W)
+						if (rs2 == RISCV_FP_FCVTS_W){
 							funct = VEX_FP_FCVTSW;
-						else
+						}
+						else{
 							funct = VEX_FP_FCVTSWU;
+						}
+						rs2 = rs1;
 						break;
 					case  RISCV_FP_FMVW:
 						funct = VEX_FP_FMVWX;
+						rs2 = rs1;
 						break;
 				}
 
 
-				binaries = assembleFPInstruction(VEX_FP, funct, rd, rs2, rs1);
+				binaries = assembleFPInstruction(VEX_FP, funct, rd, rs1, rs2);
 				stage=stageMult;
 
 			}
@@ -940,7 +976,7 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 
 
 	char remainingLatency = (lastLatency > previousLatency) ? lastLatency : previousLatency;
-	indexInDestinationBinaries += remainingLatency * incrementInDest;
+//	indexInDestinationBinaries += remainingLatency * incrementInDest;
 	for (int oneRemainingLatency = 0; oneRemainingLatency<remainingLatency; oneRemainingLatency++){
 		insertions[1+localNumberInsertions++] = indexInDestinationBinaries;
 		indexInDestinationBinaries += incrementInDest;

@@ -50,13 +50,13 @@
 #define VEX_CALLR 0x24
 #define VEX_BR 0x25
 #define VEX_BRF 0x26
-#define VEX_RETURN 0x27
+#define VEX_MOVUI 0x27
 #define VEX_MOVI 0x28
-#define VEX_AUIPC 0x29
+#define VEX_BLT 0x29
 #define VEX_RECONFFS 0x2a
-#define VEX_RECONFEXECUNIT 0x2b
-#define VEX_SETCOND 0x2c
-#define VEX_SETCONDF 0x2d
+#define VEX_BGE 0x2b
+#define VEX_BLTU 0x2c
+#define VEX_BGEU 0x2d
 #define VEX_ECALL 0x2e
 #define VEX_STOP 0x2f
 
@@ -92,7 +92,6 @@
 #define VEX_FP_FCVTSW 17
 #define VEX_FP_FCVTSWU 18
 #define VEX_FP_FMVWX 19
-
 
 
 

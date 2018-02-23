@@ -43,7 +43,10 @@ ac_int<4, false> windowShift;
 ac_int<8, false> registerDependencies[256];
 
 // for WAR dependencies
-ac_int<32, false> lastRead[128];
+ac_int<32, true> lastRead[128];
+
+// for RAW dependencies
+ac_int<32, true> lastWrite[128];
 
 // Scheduled instructions stages
 ac_int<8, false> instructionsStages[256];
@@ -84,7 +87,7 @@ ac_int<WINDOW_SIZE_L2+1, false> offset(ac_int<WINDOW_SIZE_L2+1, false> off) {
  * @param the bytecode instruction
  * @return the VEX instruction
  */
-ac_int<32, false> createInstruction(ac_int<50, false> instruction) {
+ac_int<32, false> createInstruction(ac_int<50, false> instruction, ac_int<6, false> operand1, ac_int<6, false> operand2, ac_int<6, false> dest) {
 
 	// Type of Functional Unit needed by this instruction
 	ac_int<2, false> unitType = getType(instruction);
@@ -110,7 +113,7 @@ ac_int<32, false> createInstruction(ac_int<50, false> instruction) {
 	//We generate the instruction
 	ac_int<32, false> generatedInstruction = 0;
 	generatedInstruction.set_slc(0, opCode);
-	generatedInstruction.set_slc(26, ac_int<6>(virtualRIn2));
+	generatedInstruction.set_slc(26, ac_int<6>(operand2));
 
 	if (typeCode == 0) { //The instruction is R type
 
@@ -123,21 +126,33 @@ ac_int<32, false> createInstruction(ac_int<50, false> instruction) {
 
 		if (isImm) {
 			generatedInstruction.set_slc(7, imm13);
-			generatedInstruction.set_slc(20, ac_int<6>(virtualRDest));
+
+			if ((opCode >> 3) == (VEX_STW>>3) || opCode == VEX_FSW){
+				generatedInstruction.set_slc(20, operand1);
+			}
+			else {
+				generatedInstruction.set_slc(20, dest);
+			}
 		}
 		else{
-			generatedInstruction.set_slc(14, ac_int<6>(virtualRDest));
-			generatedInstruction.set_slc(20, ac_int<6>(virtualRIn1_imm9));
+			generatedInstruction.set_slc(14, dest);
+			generatedInstruction.set_slc(20, operand1);
 		}
 	}
 	else { //The instruction is I Type
-		if (opCode == 0x28) {
-			generatedInstruction.set_slc(26, ac_int<6>(virtualRDest));
+		if (opCode == VEX_MOVI || opCode == VEX_CALL) {
+			generatedInstruction.set_slc(7, imm19);
+			generatedInstruction.set_slc(26, dest);
+		}
+		else if (opCode == VEX_BR || opCode == VEX_BRF || opCode == VEX_BGE || opCode == VEX_BLT || opCode == VEX_BGEU || opCode == VEX_BLTU){
+			generatedInstruction.set_slc(26, operand1);
+			generatedInstruction.set_slc(20, operand2);
+
 		}
 		else{
-			generatedInstruction.set_slc(26, ac_int<6>(virtualRDest));
+			generatedInstruction.set_slc(7, imm19);
+			generatedInstruction.set_slc(26, operand1);
 		}
-		generatedInstruction.set_slc(7, imm19);
 	}
 
 	return generatedInstruction;
@@ -207,6 +222,8 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 
 	for (ac_int<l2<64>::value+1, false> i = 0; i < 128; ++i) {
 		lastRead[i] = 0;
+		lastWrite[i] = -1;
+
 	}
 
 	while (instructionId < basicBlockSize) {
@@ -328,6 +345,61 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 
 		// WAR
 		earliest_place = max(earliest_place, lastRead[dest]);
+
+		unsigned char shiftedOpcode = opCode>>4;
+
+		ac_int<1, false> isNop = (opCode == 0);
+		ac_int<1, false> isITypeWithDest = (opCode == VEX_MOVI || opCode == VEX_CALL);
+		ac_int<1, false> isArith2 = (shiftedOpcode == 4 || shiftedOpcode == 5 || shiftedOpcode == 0);
+		ac_int<1, false> isLoad = (opCode>>3) == 0x2;
+		ac_int<1, false> isStore = (opCode>>3) == 0x3;
+		ac_int<1, false> isArith1 = (shiftedOpcode == 6 || shiftedOpcode == 7);
+		ac_int<1, false> isBranchWithReg = (opCode == VEX_CALLR) ||(opCode == VEX_GOTOR);
+		ac_int<1, false> isFPOneReg = (opCode == VEX_FP && (funct == VEX_FP_FCVTSW || funct == VEX_FP_FCVTSWU || funct == VEX_FP_FCVTWS
+				|| funct == VEX_FP_FCVTWUS || funct == VEX_FP_FMVWX || funct == VEX_FP_FMVXW || funct == VEX_FP_FCLASS));
+		ac_int<1, false> isFPTwoReg = opCode == VEX_FP && !isFPOneReg;
+		ac_int<1, false> isBranchWithTwoRegs = (opCode == VEX_BR) || (opCode == VEX_BRF) || (opCode == VEX_BGE) || (opCode == VEX_BLT) || (opCode == VEX_BGEU) || (opCode == VEX_BLTU);
+
+		if (!isNop && !isStore && !isBranchWithReg && ! isBranchWithTwoRegs){
+			earliest_place = max(earliest_place, lastWrite[dest]+1);
+			earliest_place = max(earliest_place, lastRead[dest]);
+		}
+
+		ac_int<9, false> operand1 = virtualRIn1_imm9;
+		ac_int<9, false> operand2 = typeCode == 2 ? virtualRDest : virtualRIn2;
+
+		ac_int<1, false> useOperand1 = 0;
+		ac_int<1, false> useOperand2 = 0;
+
+		if (isArith2 || isFPTwoReg){
+			operand2 = virtualRIn2;
+
+			useOperand1 = 1;
+			useOperand2 = 1;
+		}
+		else if (isStore || isBranchWithTwoRegs){
+			operand1 = virtualRDest;
+			operand2 = virtualRIn2;
+			useOperand1 = 1;
+			useOperand2 = 1;
+		}
+		else if (isArith1 || isLoad || isFPOneReg){
+			operand2 = virtualRIn2;
+			useOperand2 = 1;
+		}
+		else if (isBranchWithReg){
+			operand1 = virtualRDest;
+			useOperand1 = 1;
+		}
+
+		ac_int<6, false> placeOfOperand1, placeOfOperand2;
+
+		if (useOperand1)
+			placeOfOperand1 = placeOfRegisters[operand1];
+
+		if (useOperand2)
+			placeOfOperand2 = placeOfRegisters[operand2];
+
 		//**************************************************************
 		// Placing the instruction
 		//**************************************************************
@@ -417,47 +489,33 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		instruction.set_slc(0, ac_int<9, false>(dest));
 		placeOfRegisters[instructionId] = dest;
 
-		ac_int<9, false> rin1 = virtualRIn1_imm9;
-		ac_int<9, false> rin2 = typeCode == 2 ? virtualRDest : virtualRIn2;
-		ac_int<6, false> placeOfRin1 = placeOfRegisters[rin1];
 
-		ac_int<6, false> placeOfRin2 = placeOfRegisters[rin2];
+		ac_int<8, false> operand1Dep = registerDependencies[operand1.slc<8>(0)];
+		ac_int<8, false> operand2Dep = registerDependencies[operand2.slc<8>(0)];
 
-		ac_int<8, false> rin1Dep = registerDependencies[rin1.slc<8>(0)];
-		ac_int<8, false> rin2Dep = registerDependencies[rin2.slc<8>(0)];
 
-		ac_int<1, false> useRin1 = (typeCode == 0 && !isImm) && (opCode != VEX_FP || (opCode == VEX_FP && funct != VEX_FP_FCVTSW && funct != VEX_FP_FCVTSWU && funct != VEX_FP_FCVTWS && funct != VEX_FP_FCVTWUS && funct != VEX_FP_FMVWX && funct != VEX_FP_FMVXW && funct != VEX_FP_FCLASS));
-		ac_int<1, false> useRin2 = typeCode == 0 || (typeCode == 2 && opCode != VEX_MOVI && opCode != VEX_GOTO && opCode != VEX_CALL);
-		if (useRin2) {
-			if (typeCode != 2)
-				instruction.set_slc(9, placeOfRin2);
-			else
-				instruction.set_slc(0, placeOfRin2);
-		}
+		if (useOperand1) {
 
-		if (useRin1) {
-			instruction.set_slc(18, placeOfRin1);
-
-			if (!rin1[8] && rin1 == rin2) {
-				 rin1Dep -= 2;
+			if (!operand1[8] && operand1 == operand2) {
+				operand1Dep -= 2;
 			} else {
-				if (!rin1[8])
-					rin1Dep--;
+				if (!operand1[8])
+					operand1Dep--;
 
-				if (!rin2[8])
-					rin2Dep--;
+				if (!operand2[8])
+					operand2Dep--;
 			}
-		} else if (!rin2[8]) {
-			rin2Dep--;
+		} else if (!operand2[8]) {
+			operand2Dep--;
 		}
 
-		registerDependencies[rin1.slc<8>(0)] = rin1Dep;
-		registerDependencies[rin2.slc<8>(0)] = rin2Dep;
+		registerDependencies[operand1.slc<8>(0)] = operand1Dep;
+		registerDependencies[operand2.slc<8>(0)] = operand2Dep;
 
-		if (useRin1 && !rin1[8] && rin1Dep == 0)
-			freeRegisters[numberFreeRegister++] = placeOfRin1;
-		if (useRin2 && !rin2[8] && rin2Dep == 0)
-			freeRegisters[numberFreeRegister++] = placeOfRin2;
+		if (useOperand1 && !operand1[8] && operand1Dep == 0)
+			freeRegisters[numberFreeRegister++] = placeOfOperand1;
+		if (useOperand2 && !operand2[8] && operand2Dep == 0)
+			freeRegisters[numberFreeRegister++] = placeOfOperand2;
 
 		//***********************************************************************
 		// !Place found : Write binaries + shift the window + correct placement
@@ -517,13 +575,20 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		lastInstructionStage = bestStageId;
 		instructionsStages[instructionId] = bestStageId;
 
-		if (useRin2)
-			lastRead[placeOfRin2] = lastPlaceOfInstr;
-		if (useRin1)
-			lastRead[placeOfRin1] = lastPlaceOfInstr;
+		if (useOperand2){
+			lastRead[placeOfOperand2] = max(lastPlaceOfInstr, lastRead[placeOfOperand2]);
+		}
+		if (useOperand1){
+			lastRead[placeOfOperand1] = max(lastPlaceOfInstr,lastRead[placeOfOperand1]);
+		}
 
-		window[offset(bestWindowOffset)][bestStageId] = createInstruction(instruction);
+		if (!isNop && !isStore && !isBranchWithReg && ! isBranchWithTwoRegs)
+			lastWrite[dest] = max(lastPlaceOfInstr,lastWrite[dest]);
+
+		window[offset(bestWindowOffset)][bestStageId] = createInstruction(instruction, placeOfOperand1, placeOfOperand2, dest);
 		freeSlot[offset(bestWindowOffset)][bestStageId] = 0;
+
+
 
 		if (instruction.slc<2>(48) == 0) {
 			haveJump = 1;
@@ -580,7 +645,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 
 		if (opcode != 0 && ((spec[1] && (opcode > 0x1f || opcode < VEX_STB))
 				|| spec[3]
-				|| (spec[0] && (opcode == VEX_BR || opcode == VEX_BRF || opcode == VEX_CALL || opcode == VEX_CALLR || opcode == VEX_GOTO || opcode == VEX_GOTOR || opcode == VEX_RETURN)))){
+				|| (spec[0] && (opcode == VEX_BR || opcode == VEX_BRF || opcode == VEX_BGE || opcode == VEX_BLT || opcode == VEX_BGEU || opcode == VEX_BLTU || opcode == VEX_CALL || opcode == VEX_CALLR || opcode == VEX_GOTO || opcode == VEX_GOTOR)))){
 			newSize += (issue_width>4 ? 2 : 1);
 			if (issue_width <= 4) {
 				binaries[addressInBinaries + newSize-1] = 0;

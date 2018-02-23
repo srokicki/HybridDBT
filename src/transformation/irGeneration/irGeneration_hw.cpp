@@ -307,10 +307,10 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			ac_int<1, false> isLoadType = opcode == VEX_LDB | opcode == VEX_LDBU | opcode == VEX_LDH
 					| opcode == VEX_LDHU | opcode == VEX_LDW | opcode == VEX_LDWU | opcode == VEX_LDD;
 			ac_int<1, false> isStoreType = opcode == VEX_STB | opcode == VEX_STH | opcode == VEX_STW | opcode == VEX_STD;
-			ac_int<1, false> isBranchWithNoReg = opcode == VEX_GOTO | opcode == VEX_CALL | opcode == VEX_RETURN
+			ac_int<1, false> isBranchWithNoReg = opcode == VEX_GOTO | opcode == VEX_CALL
 					| opcode == VEX_STOP | opcode == VEX_ECALL;
-			ac_int<1, false> isBranchWithReg = opcode == VEX_GOTOR | opcode == VEX_CALLR | opcode == VEX_BR
-					| opcode == VEX_BRF;
+			ac_int<1, false> isBranchWithReg = opcode == VEX_GOTOR | opcode == VEX_CALLR;
+			ac_int<1, false> isBranchWithTwoReg = opcode == VEX_BR | opcode == VEX_BRF | opcode == VEX_BGE | opcode == VEX_BLT | opcode == VEX_BGEU | opcode == VEX_BLTU;
 			ac_int<1, false> isMovi = opcode == VEX_MOVI;
 			ac_int<1, false> isArith1 = opcode == VEX_NOT;
 			ac_int<1, false> isArith2 = (opcode.slc<3>(4) == 4 | opcode.slc<3>(4) == 5) & !isArith1;
@@ -322,9 +322,12 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			ac_int<1, false> isFLW = opcode == VEX_FLW || opcode == VEX_FLH || opcode == VEX_FLB;
 			ac_int<1, false> isFP = opcode == VEX_FP;
 
-			ac_int<1, false> isFloatRa = isFSW || isFMADD || (isFP && funct != VEX_FP_FCVTWS && funct != VEX_FP_FCVTWUS && funct != VEX_FP_FMVWX);
-			ac_int<1, false> isFloatDest = isFLW || isFMADD || (isFP && funct != VEX_FP_FCVTSW && funct != VEX_FP_FCVTSWU && funct != VEX_FP_FMVXW
-					&& funct != VEX_FP_FMIN && funct != VEX_FP_FMAX && funct != VEX_FP_FCLASS);
+			ac_int<1, false> isFloatRa = isFMADD || (isFP && funct != VEX_FP_FCVTSW && funct != VEX_FP_FCVTSWU && funct != VEX_FP_FMVWX);
+			ac_int<1, false> isFloatRb = isFSW || isFMADD || isFP;
+			ac_int<1, false> isFloatDest = isFLW || isFMADD || (isFP && funct != VEX_FP_FCVTWS && funct != VEX_FP_FCVTWUS && funct != VEX_FP_FEQ
+					&& funct != VEX_FP_FLT && funct != VEX_FP_FLE && funct != VEX_FP_FCLASS && funct != VEX_FP_FMVXW);
+			ac_int<1, false> enableRbFloat = isFSW || isFMADD || (isFP && funct != VEX_FP_FSQRT && funct != VEX_FP_FCVTWS && funct != VEX_FP_FCVTWUS
+					&& funct != VEX_FP_FMVXW && funct != VEX_FP_FCLASS && funct != VEX_FP_FCVTSW && funct != VEX_FP_FCVTSWU && funct != VEX_FP_FMVWX);
 
 
 			ac_int<1, false> pred1_ena = 0, pred2_ena = 0, dest_ena = 0;
@@ -335,7 +338,7 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 				pred1_ena = 1;
 
 			//Solving accessed register 2
-			if (isStoreType || isArith2 || isMultType || isFSW || isFP)
+			if (isStoreType || isArith2 || isMultType || isFSW || enableRbFloat || isBranchWithTwoReg)
 				pred2_ena = 1;
 
 
@@ -360,15 +363,15 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 				droppedInstruction = 1;
 			}
 
-			if (isFloatRa){
+			if (isFloatRa)
 				pred1_reg += 64;
-				if (pred2_ena)
-					pred2_reg += 64;
-			}
 
-			if (isFloatDest){
+			if (isFloatRb)
+				pred2_reg += 64;
+
+			if (isFloatDest)
 				dest_reg += 64;
-			}
+
 
 
 			numbersSuccessor[indexInCurrentBlock] = 0;
@@ -425,54 +428,8 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 
 			if (pred1_ena){
 
-				pred1_global = (temp_pred1 < 0);
-
-				if (pred1_global){ //If value comes from global register
-
-					if (pred1_global_access < 0){ //If value is not assigned yet, we allocate the value from globalVariableCounter
-
-						temp_pred1 = globalVariableCounter;
-						pred1_global_access = globalVariableCounter++;
-					}
-					else{ //Otherwise we use the already allocated value
-
-						temp_pred1 = pred1_global_access;
-					}
-
-
-
-					pred1_global_value = temp_pred1;
-
-					//** We also mark this node as a reader of the global value. Should this value be modified
-					//** in the block, we will add dependencies
-
-
-					if (lastReaderOnGlobalCounter_access_pred1 < 3){
-						lastReaderOnGlobalCounter_access_pred1++;
-						//** We handle successors: if the value in a global register has been written in the same
-						//** basic block, we add a dependency from the writer node to this instruction.
-						if (lastWriterOnGlobal_access_pred1 >= 0){
-							pred1_succ_ena = 1;
-							pred1_succ_isData = 1;
-							pred1_succ_src = lastWriterOnGlobal_access_pred1;
-						}
-					}
-					else{
-
-						int readerToEvince = lastReaderOnGlobal_value_pred1;
-						pred1_succ_ena = 1;
-						pred1_succ_src = readerToEvince;
-					}
-					lastReaderOnGlobal_value_pred1 = indexInCurrentBlock;
-
-					lastReaderOnGlobalPlaceToWrite_access_pred1++;
-					if (lastReaderOnGlobalPlaceToWrite_access_pred1 == 3)
-						lastReaderOnGlobalPlaceToWrite_access_pred1 = 0;
-
-
-					//We use the last writer as a source and not the global variable
-					if (lastWriterOnGlobal_access_pred1 != -1)
-						temp_pred1 = lastWriterOnGlobal_access_pred1;
+				if (temp_pred1 < 0){ //If value comes from global register
+					temp_pred1 = pred1_global_access;
 				}
 				else{
 					//We are facing a simple data dependency
@@ -482,9 +439,6 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 				}
 
 				pred1 = temp_pred1;
-
-
-
 			}
 
 
@@ -506,45 +460,8 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			if (pred2_ena){
 
 				//To gather succ information on different path
-				pred2_global = (temp_pred2 < 0);
-				if (pred2_global){ //If value comes from global register
-					if (pred2_global_access < 0){
-						temp_pred2 = globalVariableCounter;
-						pred2_global_access = globalVariableCounter++;
-					}
-					else
-						temp_pred2 = pred2_global_access;
-
-
-					pred2_global_value = temp_pred2;
-
-					//If the global register has been used in the current block, we add a control dependency
-
-					if (!(pred1_global && pred1_global_address == pred2_global_address)){
-						if (lastReaderOnGlobalCounter_access_pred2 < 3){
-							lastReaderOnGlobalCounter_access_pred2++;
-							if (lastWriterOnGlobal_access_pred2 >= 0){
-								pred2_succ_ena = 1;
-								pred2_succ_isData = 1;
-								pred2_succ_src = lastWriterOnGlobal_access_pred2;
-							}
-						}
-						else{
-							int readerToEvince = lastReaderOnGlobal_value_pred2;
-							pred2_succ_ena = 1;
-							pred2_succ_src = readerToEvince;
-						}
-						lastReaderOnGlobal_value_pred2 = indexInCurrentBlock;
-						lastReaderOnGlobalPlaceToWrite_access_pred2++;
-						if (lastReaderOnGlobalPlaceToWrite_access_pred2 == 3)
-							lastReaderOnGlobalPlaceToWrite_access_pred2 = 0;
-
-					}
-
-
-					//We use the last writer as a source and not the global variable
-					if (lastWriterOnGlobal_access_pred2 != -1)
-						temp_pred2 = lastWriterOnGlobal_access_pred2;
+				if (temp_pred2 < 0){ //If value comes from global register
+					temp_pred2 = pred2_global_access;
 				}
 				else{
 					//We are facing a simple data dependency
@@ -554,10 +471,6 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 				}
 
 				pred2 = temp_pred2;
-
-
-
-				predecessors[indexInCurrentBlock][numbersPredecessor[indexInCurrentBlock]++] = pred2;
 			}
 
 
@@ -617,15 +530,11 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			dest_global_access = (dest_global_address == pred1_global_address) ? pred1_global_access : dest_global_access;
 			dest_global_access = (dest_global_address == pred2_global_address) ? pred2_global_access : dest_global_access;
 
-			if (dest_reg >=FIRST_RENAME & dest_reg <LAST_RENAME)
-				dest_global_access = -1;
-
 			if (dest_ena) {
 
-				if (lastWriterOnMemoryReg == dest_reg)
-					lastWriterOnMemoryRegUnchanged = 0;
+				registers[dest_reg] = indexInCurrentBlock;
 
-				if (dest_global_access < 0 || insertMove_ena){
+				if (dest_global_access < 0){
 
 					registers[dest_reg] = indexInCurrentBlock;
 
@@ -633,29 +542,11 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 					currentRegistresUsageWord[dest_reg] = 1;
 				}
 				else{
-
-
 					alloc = 0;
 					temp_destination = dest_global_access;
-					lastWriterOnGlobal_access_dest = indexInCurrentBlock;
-
-					if (lastReaderOnGlobalCounter_access_dest >= 1 && lastReaderOnGlobal_value_dest_1 != indexInCurrentBlock){
-						global_succ_ena_1 = 1;
-						global_succ_src_1 = lastReaderOnGlobal_value_dest_1;
-					}
-					if (lastReaderOnGlobalCounter_access_dest >= 2 && lastReaderOnGlobal_value_dest_2 != indexInCurrentBlock){
-						global_succ_ena_2 = 1;
-						global_succ_src_2 = lastReaderOnGlobal_value_dest_2;
-					}
-					if (lastReaderOnGlobalCounter_access_dest >= 3 && lastReaderOnGlobal_value_dest_3 != indexInCurrentBlock){
-						global_succ_ena_3 = 1;
-						global_succ_src_3 = lastReaderOnGlobal_value_dest_3;
-					}
-
-					lastReaderOnGlobalCounter_access_dest = 0;
-					lastReaderOnGlobalPlaceToWrite_access_dest = 0;
 
 				}
+
 			}
 			else {
 				alloc=0;
@@ -766,6 +657,13 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 				haveJump = 1;
 				jumpID = indexInCurrentBlock;
 
+			}
+			else if (isBranchWithTwoReg){
+
+				oneBytecode = assembleRiBytecodeInstruction_hw(0, 0, opcode, pred1, imm13, pred2, 0);
+
+				haveJump = 1;
+				jumpID = indexInCurrentBlock;
 			}
 			else if (isMovi){
 				oneBytecode = assembleIBytecodeInstruction_hw(2, alloc, opcode, destination, imm19, 0);
