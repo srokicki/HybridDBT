@@ -186,7 +186,8 @@ bool CgraScheduler::schedule(VexCgraSimulator& cgra, uint128_struct * instructio
 {
 	const FunctionalUnit * units = cgra.cgraSimulator.units();
 
-	printGraph(instructions, numInstructions);
+	Log::out(0) << "Hello\n";
+	//printGraph(instructions, numInstructions);
 
 	source * sources = new source[numInstructions];
 	cgra_node * placeOfInstr = (new cgra_node[numInstructions+1])+1;

@@ -420,6 +420,8 @@ int main(int argc, char *argv[])
 					char oldPrevious = procedure->previousConfiguration;
 					char oldConf = procedure->configuration;
 
+					Log::out(0) << "AZDAZD\n";
+					// ARTHUR BEGIN
 					for (int oneBlock = 0; oneBlock < procedure->nbBlock; ++oneBlock)
 					{
 						IRBlock * block = procedure->blocks[oneBlock];
@@ -454,7 +456,7 @@ int main(int argc, char *argv[])
 									ac_int<32, false> calling_instr;
 									if (scheduler.schedule(*(dynamic_cast<VexCgraSimulator*>(dbtPlateform.vexSimulator)), to_schedule, instrId))
 									{
-										//Log::out(0) << "Schedule of " << block << " ok ! calling=" << calling_instr << "\n";
+										Log::out(0) << "Schedule of " << block << " ok ! calling=" << calling_instr << "\n";
 										int id;
 
 										writeInt(block->instructions, 0, to_schedule[0].word96);
@@ -508,6 +510,7 @@ int main(int argc, char *argv[])
 								delete[] to_schedule;
 							}
 					}
+					// ARTHUR END
 					changeConfiguration(procedure);
 					if (procedure->configuration != oldConf || procedure->configurationScores[procedure->configuration] == 0){
 						IRProcedure *scheduledProcedure = rescheduleProcedure_schedule(&dbtPlateform, procedure, placeCode);

@@ -3,13 +3,13 @@
 #include <isa/cgraIsa.h>
 
 VexCgraSimulator::VexCgraSimulator(unsigned int *bin)
-	: VexSimulator(bin), currentConf(-1), cgraCycles(0), cgraStall(0), cgraSimulator(&this->memory, this->REG)
+	: VexSimulator(bin), currentConf(-1), cgraCycles(0), cgraStall(0), cgraSimulator(&this->memory, this->REG), configurationCache{}
 {
 }
 
 int VexCgraSimulator::doStep(){
 
-	if (currentConf != -1 && cgraCycles != configurationCache[currentConf].cycles)
+	if (currentConf != -1 && configurationCache.find(currentConf) != configurationCache.end() && cgraCycles != configurationCache.at(currentConf).cycles)
 	{
 		//Log::out(0) << "RUNNING CONFIG\n";
 		uint64_t * conf = configurationCache[currentConf].configuration+cgraCycles*3*4;
@@ -17,15 +17,16 @@ int VexCgraSimulator::doStep(){
 		cgraSimulator.configure(conf);
 		cgraSimulator.doStep();
 		cgraCycles++;
-
+		Log::out(5) << "FUCK\n";
 		if (cgraCycles == configurationCache[currentConf].cycles)
 		{
+			Log::out(5) << "CGRA finished executing\n";
 			currentConf = -1;
 			cgraCycles = 0;
 		}
 	}
 
-	if ((cgraCycles != 0 && cgraStall <= 5) || (cgraCycles == 0 && cgraStall <= 9))
+	if ((cgraCycles != 0 && cgraStall <= 5) || (cgraCycles == 0 && cgraStall > 0 && cgraStall <= 9))
 		cgraStall++;
 	else
 		cgraStall = 0;
@@ -195,7 +196,7 @@ int VexCgraSimulator::doStep(){
 		if (ftoDC8.instruction != 0)
 			nbInstr++;
 
-		//nbCycleType[typeInstr[(int) PC/4]]++;
+		nbCycleType[typeInstr[(int) PC/4]]++;
 
 
 	}
@@ -270,11 +271,17 @@ void VexCgraSimulator::doDC(FtoDC ftoDC, DCtoEx *dctoEx)
 	ac_int<7, false> OP = ftoDC.instruction.slc<7>(0);
 	ac_int<19, false> IMM19_u = ftoDC.instruction.slc<19>(7);
 
-	if (OP == 0x3b)
+	if (OP == VEX_CGRA)
 	{
-		Log::out(0) << "Has a CGRA instr\n";
 		currentConf = IMM19_u;
+		Log::out(0) << "currentConf=" << currentConf << " we have confs: ";
+		for (auto x : configurationCache)
+		{
+			Log::out(0) << "(" << x.first << "; " << x.second.cycles << ") ";
+		}
+		Log::out(0) << "\n";
 		cgraCycles = 0;
+		cgraStall = 2;
 		return;
 	}
 
@@ -286,10 +293,11 @@ void VexCgraSimulator::doDCBr(FtoDC ftoDC, DCtoEx *dctoEx)
 	ac_int<7, false> OP = ftoDC.instruction.slc<7>(0);
 	ac_int<19, false> IMM19_u = ftoDC.instruction.slc<19>(7);
 
-	if (OP == 0x3b)
+	if (OP == VEX_CGRA)
 	{
 		currentConf = IMM19_u;
 		cgraCycles = 0;
+		cgraStall = 2;
 		return;
 	}
 

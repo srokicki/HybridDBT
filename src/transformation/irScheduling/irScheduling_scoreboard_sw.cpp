@@ -109,6 +109,7 @@ unsigned int createInstruction(unsigned int irInstr96, unsigned int irInstr64, u
 
 	if (opCode == VEX_CGRA)
 	{
+		Log::out(0) << "We are scheduling a CGRA instruction\n";
 		generatedInstruction += imm19 << 7;
 		return generatedInstruction;
 	}

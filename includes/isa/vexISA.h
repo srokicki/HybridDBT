@@ -71,7 +71,6 @@
 #define VEX_FNMSUB 0x38
 #define VEX_FNMADD 0x39
 #define VEX_FP 0x3a
-#define VEX_CGRA 0x3b
 
 #define VEX_FP_FADD 0
 #define VEX_FP_FSUB 1
@@ -150,6 +149,8 @@
 #define VEX_SUBi 0x72
 #define VEX_XORi 0x73
 #define VEX_ADDWi 0x74
+
+#define VEX_CGRA 0x75
 
 #define VEX_SLLWi 0x76
 #define VEX_SRLWi 0x77

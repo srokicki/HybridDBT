@@ -35,6 +35,7 @@
 #include <cmath>
 #include <map>
 
+#include <lib/log.h>
 
 using namespace std;
 #endif
