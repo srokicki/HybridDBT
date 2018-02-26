@@ -12,7 +12,7 @@
 class MemoryDependencyGraph{
 public:
 	int size;
-	char *idMem;
+	unsigned char *idMem;
 	bool *graph;
 	bool *isStore;
 
@@ -21,6 +21,8 @@ public:
 
 	void print();
 	void transitiveReduction();
+	void reduceArity();
+
 	void applyGraph(IRBlock *block);
 
 };
