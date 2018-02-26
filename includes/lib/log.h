@@ -8,8 +8,9 @@
 #include <isa/irISA.h>
 
 //Definition of debug level symbols
-#define LOG_SCHEDULE_BLOCK 3
-#define LOG_SCHEDULE_PROC 2
+#define LOG_SCHEDULE_BLOCK 6
+#define LOG_SCHEDULE_PROC 5
+#define LOG_MEMORY_DISAMBIGUATION 4
 #define LOG_WARNING 1
 #define LOG_ERROR 0
 

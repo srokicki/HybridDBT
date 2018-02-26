@@ -17,6 +17,8 @@
 #include <transformation/reconfigureVLIW.h>
 #include <transformation/buildTraces.h>
 #include <transformation/rescheduleProcedure.h>
+#include <transformation/memoryDisambiguation.h>
+
 #include <lib/debugFunctions.h>
 
 #include <isa/vexISA.h>
@@ -207,6 +209,9 @@ int main(int argc, char *argv[])
 
 	int MAX_SCHEDULE_COUNT = cfg.has("ms") ? std::stoi(cfg["ms"]) : -1;
 	int MAX_PROC_COUNT = cfg.has("mp") ? std::stoi(cfg["mp"]) : -1;
+	MAX_DISAMB_COUNT = cfg.has("md") ? std::stoi(cfg["md"]) : -1;
+
+	fprintf(stderr, "md is %d\n", cfg.has("md") ? std::stoi(cfg["md"]) : -1);
 
 	if (cfg.has("i"))
 	{

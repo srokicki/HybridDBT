@@ -12,6 +12,8 @@
 #include <lib/log.h>
 #include <transformation/memoryDisambiguation.h>
 
+int MAX_DISAMB_COUNT = -1;
+
 MemoryDependencyGraph::MemoryDependencyGraph(IRBlock *block){
 	this->size = 0;
 	this->idMem = (unsigned char*) malloc(block->nbInstr*sizeof(unsigned char));
@@ -22,7 +24,6 @@ MemoryDependencyGraph::MemoryDependencyGraph(IRBlock *block){
 		if ((opcode >> 3) == (VEX_STW>>3) || (opcode >> 3) == (VEX_LDW>>3) || opcode == VEX_FSW || opcode == VEX_FLW){
 			this->idMem[size] = oneInstruction;
 			this->isStore[size] = (opcode >> 3) == (VEX_STW>>3) || opcode == VEX_FSW;
-			fprintf(stderr, "adding at %d %d\n", size, oneInstruction);
 			this->size++;
 		}
 	}
@@ -55,18 +56,17 @@ MemoryDependencyGraph::~MemoryDependencyGraph(){
 }
 
 void MemoryDependencyGraph::print(){
-	fprintf(stderr, "size is %d\n", size);
-	fprintf(stderr, "    ");
+	Log::fprintf(LOG_MEMORY_DISAMBIGUATION, stderr, "    ");
 	for (int oneInstr=0; oneInstr<this->size; oneInstr++){
-		fprintf(stderr, "%3u ", (unsigned int) this->idMem[oneInstr]);
+		Log::fprintf(LOG_MEMORY_DISAMBIGUATION, stderr, "%3u ", (unsigned int) this->idMem[oneInstr]);
 	}
-	fprintf(stderr, "\n");
+	Log::fprintf(LOG_MEMORY_DISAMBIGUATION, stderr, "\n");
 	for (int oneInstr=0; oneInstr<this->size; oneInstr++){
-		fprintf(stderr, "%3d  ", this->idMem[oneInstr]);
+		Log::fprintf(LOG_MEMORY_DISAMBIGUATION, stderr, "%3d  ", this->idMem[oneInstr]);
 		for (int oneOtherInstr = 0; oneOtherInstr<oneInstr; oneOtherInstr++){
-			fprintf(stderr, "%d   ", graph[oneInstr*this->size + oneOtherInstr]?1:0);
+			Log::fprintf(LOG_MEMORY_DISAMBIGUATION, stderr, "%d   ", graph[oneInstr*this->size + oneOtherInstr]?1:0);
 		}
-		fprintf(stderr, "\n");
+		Log::fprintf(LOG_MEMORY_DISAMBIGUATION, stderr, "\n");
 	}
 }
 
@@ -172,7 +172,6 @@ void basicMemorySimplification(IRBlock *block, MemoryDependencyGraph *graph){
 
 				if (operandsInstr[0] == operandsPred[0]){
 					graph->graph[oneMemInstruction * graph->size + onePredecessor] = false;
-					fprintf(stderr, "Can remove a dep between %d and %d...\n", predecessor, memInstruction);
 				}
 			}
 		}
@@ -181,24 +180,33 @@ void basicMemorySimplification(IRBlock *block, MemoryDependencyGraph *graph){
 
 
 void memoryDisambiguation(DBTPlateform *platform, IRBlock *block){
-	MemoryDependencyGraph *graph = new MemoryDependencyGraph(block);
+	if (MAX_DISAMB_COUNT > 0){
+		MemoryDependencyGraph *graph = new MemoryDependencyGraph(block);
 
-	graph->print();
+		graph->print();
 
-	Log::printf(LOG_SCHEDULE_PROC, "\n Before disambiguation: \n");
-	for (int i=0; i<block->nbInstr; i++){
-		Log::printf(LOG_SCHEDULE_PROC, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+
+		// We print debug
+		Log::printf(LOG_MEMORY_DISAMBIGUATION, "************************************************************\n");
+		Log::printf(LOG_MEMORY_DISAMBIGUATION, "*****             Memory disambiguation process       ******\n");
+		Log::printf(LOG_MEMORY_DISAMBIGUATION, "************************************************************\n");
+		Log::printf(LOG_MEMORY_DISAMBIGUATION, "Before disambiguation: \n");
+		for (int i=0; i<block->nbInstr; i++)
+			Log::printf(LOG_SCHEDULE_PROC, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+
+		//We perform disambiguation and apply it
+		basicMemorySimplification(block, graph);
+		graph->applyGraph(block);
+
+		//We print debug
+		Log::printf(LOG_MEMORY_DISAMBIGUATION, "\n After disambiguation: \n");
+		for (int i=0; i<block->nbInstr; i++)
+			Log::printf(LOG_MEMORY_DISAMBIGUATION, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+
+		Log::printf(LOG_MEMORY_DISAMBIGUATION, "************************************************************\n");
+
+		//We cleanout
+		delete graph;
+		MAX_DISAMB_COUNT--;
 	}
-
-	basicMemorySimplification(block, graph);
-	graph->applyGraph(block);
-
-	Log::printf(LOG_SCHEDULE_PROC, "\n After disambiguation: \n");
-	for (int i=0; i<block->nbInstr; i++){
-		Log::printf(LOG_SCHEDULE_PROC, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
-	}
-
-
-	delete graph;
-	exit(-1);
 }
