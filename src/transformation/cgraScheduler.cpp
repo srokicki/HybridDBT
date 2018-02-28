@@ -47,19 +47,32 @@ class dist_from_deps
 {
 	static cgra_node _dep1;
 	static cgra_node _dep2;
+	static uint8_t _opcode;
 	static uint64_t	 (*_cgra_conf)[3][4];
 public:
-	static void init(const cgra_node& dep1, const cgra_node& dep2, uint64_t (*cgra_conf)[3][4])
+	static void init(const cgra_node& dep1, const cgra_node& dep2, uint64_t (*cgra_conf)[3][4], uint8_t opcode)
 	{
 		_dep1 = dep1;
 		_dep2 = dep2;
 		_cgra_conf = cgra_conf;
+		_opcode = opcode;
+
+		Log::out(0) << opcodeNames[opcode] << " has " << (_dep1.i != -1)+(_dep2.i != -1) << " dependencies.\n";
 	}
 
 	bool operator() (const cgra_node& a, const cgra_node& b)
 	{
+
+		if (!(_opcode == VEX_STB || _opcode == VEX_STD || _opcode == VEX_STH || _opcode == VEX_STW ||
+				_opcode == VEX_LDB || _opcode == VEX_LDD || _opcode == VEX_LDH || _opcode == VEX_LDW))
+			if (a.i == 0 && a.j == 1)
+				return 1;
+			else if (b.i == 0 && b.j == 1)
+				return 0;
+
 		if (a.k != b.k)
 			return a.k > b.k;
+
 
 		int da = 0, db = 0;
 		if (_dep1.i != -1)
@@ -95,6 +108,7 @@ public:
 
 cgra_node dist_from_deps::_dep1;
 cgra_node dist_from_deps::_dep2;
+uint8_t dist_from_deps::_opcode;
 uint64_t (*dist_from_deps::_cgra_conf)[3][4];
 
 typedef struct
@@ -116,7 +130,7 @@ void printGraph(const uint128_struct * instructions, uint32_t numInstructions);
 /// \param sources: the "from" edges of each instruction
 /// \param numInstructions: the basic block's size
 ///
-void setupSources(const uint128_struct * instructions, source * sources, uint32_t numInstructions);
+void setupSources(const uint128_struct * instructions, source * sources, int16_t *global, uint32_t numInstructions);
 
 bool route(const cgra_node& source, const cgra_node& target, uint64_t (*cgra_conf)[3][4], uint8_t *from);
 
@@ -124,22 +138,26 @@ int findII(uint128_struct * instructions, source * sources, uint32_t numInstruct
 {
 	int16_t * depth = new int16_t[numInstructions];
 	int16_t ret = 1;
-	for (uint32_t i = 0; i < numInstructions; ++i)
-	{
-		depth[i] = 1;
-	}
+	int16_t nbMem = 0;
 
 	for (uint32_t i = 0; i < numInstructions; ++i)
 	{
+		uint8_t opcode = ((instructions[i].word96) >> 19) & 0x7f;
+		if (opcode == VEX_STB || opcode == VEX_STH || opcode == VEX_STW || opcode == VEX_STD
+				|| opcode == VEX_LDB || opcode == VEX_LDH || opcode == VEX_LDW || opcode == VEX_LDD)
+			nbMem++;
+
+		depth[i] = 1;
 		if (sources[i].src1 != -1)
 			depth[i] = depth[sources[i].src1] + 1;
 		if (sources[i].src2 != -1)
 			depth[i] = std::max((int)depth[i], depth[sources[i].src2] + 1);
 
+
 		ret = std::max(ret, depth[i]);
 	}
 
-	return ret;
+	return std::max(ret, nbMem);
 }
 
 bool canPlace(const FunctionalUnit& u, uint128_struct i)
@@ -157,24 +175,112 @@ bool canPlace(const FunctionalUnit& u, uint128_struct i)
 	if (opcode == VEX_STB || opcode == VEX_STD || opcode == VEX_STH || opcode == VEX_STW ||
 			opcode == VEX_LDB || opcode == VEX_LDD || opcode == VEX_LDH || opcode == VEX_LDW)
 	{
-		ret = ret && (u.features() & FunctionalUnit::FEATURE_REG);
+		ret = ret && (u.features() & FunctionalUnit::FEATURE_MEM);
 		if (virtualRDest >= 256)
 		{
 			ret = ret && (u.features() & FunctionalUnit::FEATURE_REG);
 		}
 	}
-
-	if (virtualRIn2 >= 256)
+	else
 	{
-		ret = ret && (u.features() & FunctionalUnit::FEATURE_REG);
-	}
+		if (virtualRIn2 >= 256)
+		{
+			ret = ret && (u.features() & FunctionalUnit::FEATURE_REG);
+		}
 
-	if (!isImm && virtualRIn1_imm9 >= 256)
-	{
-		ret = ret && (u.features() & FunctionalUnit::FEATURE_REG);
-	}
+		if (!isImm && virtualRIn1_imm9 >= 256)
+		{
+			ret = ret && (u.features() & FunctionalUnit::FEATURE_REG);
+		}
 
+		if (virtualRDest >= 256)
+		{
+			ret = ret && (u.features() & FunctionalUnit::FEATURE_REG);
+		}
+	}
 	return ret;
+}
+
+void printTikz(uint64_t (* configuration)[3][4], unsigned int ii)
+{
+	static const std::string tabs[6] = { "black", "yellow", "red", "blue", "green", "orange" };
+	std::cout << "\\begin{tikzpicture}\n";
+
+	for (unsigned int depth = 0; depth < ii; ++depth)
+	{
+
+		std::cout
+				<< "\\begin{scope}\n"
+				<< "\\pgftransformcm{1}{0}{0.4}{0.5}{\\pgfpoint{0cm}{"<<0-(int)(depth*4)<<"cm}}\n";
+		for (unsigned int i = 0; i < 3; ++i)
+		{
+
+			for (unsigned int j = 0; j < 4; ++j)
+			{
+				auto instr = configuration[depth][i][j];
+				auto opcode = cgra::opcode(instr);
+				auto ra = cgra::regA(instr);
+				auto rb = cgra::regB(instr);
+				auto rc = cgra::regC(instr);
+
+				bool isImm = (((opcode >> 4) & 0x7) == 2);
+				unsigned int id = i*4+j;
+				std::cout << "\\node (n"<< depth << i << j <<") at (" << i*2 << "," << j*2 << ") [circle,fill="<<(instr ? "gray" : tabs[depth])<<"] {};\n";
+				if (ra > 63)
+				{
+					std::cout << "\\draw[black,very thick] (n" << depth << i << j << ") -- (n" << depth-1;
+					switch (ra-64)
+					{
+					case 0: std::cout << i << j; break;
+					case 1: std::cout << i << j-1; break;
+					case 2: std::cout << i << j+1; break;
+					case 3: std::cout << i-1 << j; break;
+					case 4: std::cout << i+1 << j; break;
+					default:
+						std::cout << "ERROR DRAWING TIKZ\n";
+						exit(-1);
+					}
+					std::cout << ");\n";
+				}
+
+				if (!isImm && rc > 63)
+				{
+					std::cout << "\\draw[black,very thick] (n" << depth << i << j << ") -- (n" << depth-1;
+					switch (rc-64)
+					{
+					case 0: std::cout << i << j; break;
+					case 1: std::cout << i << j-1; break;
+					case 2: std::cout << i << j+1; break;
+					case 3: std::cout << i-1 << j; break;
+					case 4: std::cout << i+1 << j; break;
+					default:
+						std::cout << "ERROR DRAWING TIKZ\n";
+						exit(-1);
+					}
+					std::cout << ");\n";
+				}
+				if ((opcode == VEX_STB || opcode == VEX_STD || opcode == VEX_STH || opcode == VEX_STW) && rb > 63)
+				{
+					std::cout << "\\draw[black,very thick] (n" << depth << i << j << ") -- (n" << depth-1;
+					switch (rb-64)
+					{
+					case 0: std::cout << i << j; break;
+					case 1: std::cout << i << j-1; break;
+					case 2: std::cout << i << j+1; break;
+					case 3: std::cout << i-1 << j; break;
+					case 4: std::cout << i+1 << j; break;
+					default:
+						std::cout << "ERROR DRAWING TIKZ\n";
+						exit(-1);
+					}
+					std::cout << ");\n";
+				}
+			}
+
+		}
+		std::cout << "\\end{scope}\n";
+	}
+	std::cout << "\\end{tikzpicture}\n";
 }
 
 CgraScheduler::CgraScheduler()
@@ -186,15 +292,18 @@ bool CgraScheduler::schedule(VexCgraSimulator& cgra, uint128_struct * instructio
 {
 	const FunctionalUnit * units = cgra.cgraSimulator.units();
 
-	Log::out(0) << "Hello\n";
+	Log::out(2) << "Hello\n";
 	//printGraph(instructions, numInstructions);
 
 	source * sources = new source[numInstructions];
+	int16_t * global = new int16_t[numInstructions];
 	cgra_node * placeOfInstr = (new cgra_node[numInstructions+1])+1;
+
+	uint8_t lastRead[64] = {0};
 
 	placeOfInstr[-1] = {-1,-1,-1};
 
-	setupSources(instructions, sources, numInstructions);
+	setupSources(instructions, sources, global, numInstructions);
 	II = findII(instructions, sources, numInstructions);
 
 	currentII = II;
@@ -215,7 +324,7 @@ bool CgraScheduler::schedule(VexCgraSimulator& cgra, uint128_struct * instructio
 		{
 			if (currentII == II)
 			{
-				Log::out(0) << printBytecodeInstruction(0, instructions[instrId].word96, instructions[instrId].word64, instructions[instrId].word32, instructions[instrId].word0);
+				Log::out(2) << printBytecodeInstruction(0, instructions[instrId].word96, instructions[instrId].word64, instructions[instrId].word32, instructions[instrId].word0);
 			}
 			std::priority_queue<cgra_node, std::vector<cgra_node>, dist_from_deps> possible;
 			uint128_struct instruction = instructions[instrId];
@@ -228,13 +337,20 @@ bool CgraScheduler::schedule(VexCgraSimulator& cgra, uint128_struct * instructio
 			dist_from_deps::init(
 						n1
 						, n2
-						, configuration);
+						, configuration
+						, ((instruction.word96) >> 19) & 0x7f);
 
 			static const cgra_node errNode = {-1,-1,-1};
 
+			uint8_t nameDependency = 0;
+			if (global[instrId] != -1)
+			{
+				nameDependency = lastRead[global[instrId]];
+			}
+
 			// compute all available places, sorted by priority given
 			// by [dist_from_deps] class
-			for (int k = std::max(n1.k, n2.k)+1; k < currentII; ++k)
+			for (int k = std::max(std::max(n1.k, n2.k)+1, (int)nameDependency); k < currentII; ++k)
 			{
 				for (int i = 0; i < 3; ++i)
 				{
@@ -250,6 +366,7 @@ bool CgraScheduler::schedule(VexCgraSimulator& cgra, uint128_struct * instructio
 
 						if (k >= kk && !configuration[k][i][j] && canPlace(units[i*4+j], instruction))
 						{
+							Log::out(0) << i << "," << j << "," << k << "\n";
 							possible.push({ i, j, k });
 						}
 					}
@@ -293,7 +410,16 @@ bool CgraScheduler::schedule(VexCgraSimulator& cgra, uint128_struct * instructio
 			{
 				placeOfInstr[instrId] = place;
 				std::memcpy(configuration, new_conf, II*3*4*sizeof(uint64_t));
-				configuration[place.k][place.i][place.j] = cgra::vex2cgra(instruction, src1, src2);
+				uint16_t read1 = 64, read2 = 64;
+				configuration[place.k][place.i][place.j] = cgra::vex2cgra(instruction, src1, src2, &read1, &read2);
+				if (read1 != 64)
+				{
+					lastRead[read1] = place.k;
+				}
+				if (read2 != 64)
+				{
+					lastRead[read2] = place.k;
+				}
 			}
 		}
 
@@ -307,13 +433,15 @@ bool CgraScheduler::schedule(VexCgraSimulator& cgra, uint128_struct * instructio
 			cgra.configurationCache[id].configuration = (uint64_t*)configuration;
 			cgra.configurationCache[id].cycles = currentII;
 
-			instructions[0] = {0x3b << 19,id << 23,0,0};
+			instructions[0] = {VEX_CGRA << 19,id << 23,0,0};
 
 			for (int i = 0; i < currentII; ++i)
 			{
 				Log::out(0) << "LAYER " << i << "\n";
 				cgra::printConfig(0, (uint64_t*)(configuration[i]));
 			}
+
+			printTikz(configuration, currentII);
 			return true;
 		}
 
@@ -324,10 +452,11 @@ bool CgraScheduler::schedule(VexCgraSimulator& cgra, uint128_struct * instructio
 
 	// if we can't finish the schedule even with a big enough II
 	// it is because some path is blocked. We don't handle this case.
+	Log::out(0) << "CANNOT SCHEDULE with II = " << II*2 << "\n";
 	return false;
 }
 
-void setupSources(const uint128_struct * instructions, source * sources, uint32_t numInstructions)
+void setupSources(const uint128_struct * instructions, source * sources, int16_t * global, uint32_t numInstructions)
 {
 	for (uint32_t instrId = 0; instrId < numInstructions; ++instrId)
 	{
@@ -340,23 +469,35 @@ void setupSources(const uint128_struct * instructions, source * sources, uint32_
 		uint8_t opCode = ((i.word96>>19) & 0x7f);
 		bool isImm = ((i.word96>>18) & 0x1);
 
+		global[instrId] = virtualRDest;
 		if ((opCode == VEX_STB || opCode == VEX_STD || opCode == VEX_STH || opCode == VEX_STW))
 		{
 			if (virtualRIn2 < 256)
+			{
 				sources[instrId].src1 = virtualRIn2;
+				global[virtualRIn2] = -1;
+			}
 
 			if (virtualRDest < 256)
+			{
 				sources[instrId].src2 = virtualRDest;
+				global[virtualRDest] = -1;
+			}
 		}
 		else
 		{
 			if (virtualRIn2 < 256)
+			{
 				sources[instrId].src1 = virtualRIn2;
+				global[virtualRIn2] = -1;
+			}
 
 			if (!isImm && virtualRIn1_imm9 < 256)
+			{
 				sources[instrId].src2 = virtualRIn1_imm9;
+				global[virtualRIn1_imm9] = -1;
+			}
 		}
-
 	}
 }
 
@@ -421,8 +562,8 @@ public:
 		if (_nodes)
 			delete[] _nodes;
 
-		_nodes = new astar_node[II][3][4];
-		for (int k = 0; k < II; ++k)
+		_nodes = new astar_node[currentII][3][4];
+		for (int k = 0; k < currentII; ++k)
 		{
 			for (int i = 0; i < 3; ++i)
 			{
@@ -482,7 +623,7 @@ public:
 		// write node
 		if (cgra_conf[target.k][target.i][target.j] == 0 || from)
 		{
-			char c;
+			uint8_t c;
 
 			if (target.i > n.i)
 				c = FunctionalUnit::UP;
@@ -502,7 +643,9 @@ public:
 				*from = c;
 			}
 			else
-				cgra_conf[target.k][target.i][target.j] = (c << 25) + 0x7f;
+			{
+				cgra_conf[target.k][target.i][target.j] = (((uint64_t)c) << CGRA_REG1_OFFSET) + CGRA_CARRY;
+			}
 		}
 
 		// stop if start reached
@@ -575,11 +718,13 @@ bool route(const cgra_node& source, const cgra_node& target, uint64_t (*cgra_con
 			// position of neighbour
 			cgra_node nn = n+current;
 
-			if (nn.i >= 0 && nn.i < 3 && nn.j >= 0 && nn.j < 4 && nn.k < II)
+			if (nn.i >= 0 && nn.i < 3 && nn.j >= 0 && nn.j < 4 && nn.k < currentII)
 			{
 				// if neighbour already visited, do nothing
 				if (astar_node::is_closed(nn) || (cgra_conf[nn.k][nn.i][nn.j] != 0 && !(nn == target)))
+				{
 					continue;
+				}
 
 				if (!astar_node::is_open(nn))
 				{

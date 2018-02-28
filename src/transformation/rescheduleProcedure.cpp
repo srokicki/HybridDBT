@@ -140,7 +140,6 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 #else
 			result->blocks[oneBlock]->jumpPlaces[oneJump] = incrementInBinaries*((int) platform->placeOfInstr[block->jumpIds[oneJump]])+writePlace;
 #endif
-
 		}
 
 		if (1){
@@ -253,14 +252,18 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 		IRBlock *block = procedure->blocks[oneBlock];
 
 		for (int oneJump = 0; oneJump<block->nbJumps; oneJump++){
+			// retrieve the type of jump from the jumpId in the IR
 			char jumpOpcode = getOpcode(block->instructions, block->jumpIds[oneJump]);
 
+			// if it is a relative jump
 			if (jumpOpcode == VEX_BR || jumpOpcode == VEX_BRF || jumpOpcode == VEX_BGE || jumpOpcode == VEX_BLT || jumpOpcode == VEX_BGEU || jumpOpcode == VEX_BLTU){
 				//Conditional block (br)
 				int offset = (block->successors[oneJump]->vliwStartAddress - block->jumpPlaces[oneJump]);
 				unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
+				Log::out(2) << "For " << opcodeNames[jumpOpcode] << " new offset = " << offset << "\n";
 				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfff0007f) | ((offset & 0x1fff) << 7));
 			}
+			// if it is an absolute jump
 			else if (jumpOpcode == VEX_GOTO){
 					int dest = block->successors[oneJump]->vliwStartAddress;
 					unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);

@@ -38,6 +38,17 @@ foreach(oneExecutable ${EXECUTABLE})
     
     add_executable(dbt ${SOURCE} ${oneExecutable})
     set_target_properties(dbt PROPERTIES COMPILE_DEFINITIONS "__HW_SIM")
+  elseif(execName MATCHES "cgra")
+      add_executable(cgra ${SOURCE} ${oneExecutable})
+      target_link_libraries(cgra
+          /home/ablanleu/Documents/utils/pcm/cpucounters.o
+          /home/ablanleu/Documents/utils/pcm/msr.o
+          /home/ablanleu/Documents/utils/pcm/pci.o
+          /home/ablanleu/Documents/utils/pcm/utils.o
+          /home/ablanleu/Documents/utils/pcm/client_bw.o)
+      include_directories(/home/ablanleu/Documents/utils/pcm/)
+
+      set_target_properties(cgra PROPERTIES COMPILE_DEFINITIONS "__HW_SIM")
   else()
 	  add_executable(${execName} ${SOURCE} ${oneExecutable})
 	  set_target_properties(${execName} PROPERTIES COMPILE_DEFINITIONS "__SW")

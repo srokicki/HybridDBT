@@ -174,7 +174,7 @@ std::string printDecodedInstr(unsigned int instruction){
 			stream << " r" << (int)RA << ", "  << (int)IMM19;
 		else if (isImm){
 			stream << " r" << (int)RB << "  = r" << (int)RA << " 0x";
-			stream << std::hex << IMM13_signed;
+			stream << IMM13_signed;
 		}
 		else
 			stream << " r" << (int)RC << "  = r" << (int)RA << " r" << (int)RB;

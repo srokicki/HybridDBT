@@ -5,10 +5,10 @@
 
 constexpr uint64_t CGRA_IMM_LONG_MASK  = 0b11111111111111111111;
 constexpr uint64_t CGRA_IMM_SHORT_MASK = 0b00000001111111111111;
+constexpr uint64_t CGRA_OPCODE_MASK    = 0b00000000000011111111;
 constexpr uint64_t CGRA_REG_MASK       = 0b00000000000001111111;
-constexpr uint64_t CGRA_OPCODE_MASK    = 0b00000000000001111111;
 
-constexpr int CGRA_OPCODE_BITS = 7;
+constexpr int CGRA_OPCODE_BITS = 8;
 constexpr int CGRA_REG_BITS = 7;
 constexpr int CGRA_IMM_SHORT_BITS = 13;
 constexpr int CGRA_IMM_LONG_BITS = CGRA_IMM_SHORT_BITS + CGRA_REG_BITS;
@@ -35,7 +35,7 @@ uint8_t opcode(const uint64_t& instruction);
 uint16_t immShort(const uint64_t& instruction);
 uint32_t immLong(const uint64_t& instruction);
 
-uint64_t vex2cgra(uint128_struct instruction, uint8_t src1 = 0xff, uint8_t src2 = 0xff);
+uint64_t vex2cgra(uint128_struct instruction, uint8_t src1 = 0xff, uint8_t src2 = 0xff, uint16_t * read1 = nullptr, uint16_t * read2 = nullptr);
 bool isEligible(uint32_t i1, uint32_t i2, uint32_t i3, uint32_t i4);
 
 std::string toString(uint64_t instruction);

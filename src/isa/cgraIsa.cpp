@@ -36,7 +36,7 @@ uint8_t opcode(const uint64_t& instruction)
 	return instruction & CGRA_OPCODE_MASK;
 }
 
-uint64_t vex2cgra(uint128_struct instruction, uint8_t src1, uint8_t src2)
+uint64_t vex2cgra(uint128_struct instruction, uint8_t src1, uint8_t src2, uint16_t * read1, uint16_t * read2)
 {
 	uint64_t ret = (instruction.word96 >> 19) & CGRA_OPCODE_MASK;
 	uint16_t imm_short = instruction.word96 & CGRA_IMM_SHORT_MASK;
@@ -58,14 +58,26 @@ uint64_t vex2cgra(uint128_struct instruction, uint8_t src1, uint8_t src2)
 		r2 = virtualRDest;
 
 		if (src1 != 0xff)
+		{
 			ret += (src1 & CGRA_REG_MASK) << CGRA_REG1_OFFSET;
+		}
 		else
+		{
 			ret += (r1 & CGRA_REG_MASK) << CGRA_REG1_OFFSET;
+			if (read1)
+				*read1 = r1;
+		}
 
 		if (src2 != 0xff)
+		{
 			ret += (src2 & CGRA_REG_MASK) << CGRA_REG2_OFFSET;
+		}
 		else
+		{
 			ret += (r2 & CGRA_REG_MASK) << CGRA_REG2_OFFSET;
+			if (read2)
+				*read2 = r2;
+		}
 
 		ret += imm_short << CGRA_IMM_OFFSET;
 	}
@@ -76,16 +88,28 @@ uint64_t vex2cgra(uint128_struct instruction, uint8_t src1, uint8_t src2)
 		r3 = virtualRDest;
 
 		if (src1 != 0xff)
+		{
 			ret += (src1 & CGRA_REG_MASK) << CGRA_REG1_OFFSET;
+		}
 		else
+		{
 			ret += (r1 & CGRA_REG_MASK) << CGRA_REG1_OFFSET;
+			if (read1)
+				*read1 = r1;
+		}
 
 		if (!isImm)
 		{
 			if (src2 != 0xff)
+			{
 				ret += (src2 & CGRA_REG_MASK) << CGRA_REG3_OFFSET;
+			}
 			else
+			{
 				ret += (r2 & CGRA_REG_MASK) << CGRA_REG3_OFFSET;
+				if (read2)
+					*read2 = r2;
+			}
 		}
 		else
 		{
@@ -93,7 +117,7 @@ uint64_t vex2cgra(uint128_struct instruction, uint8_t src1, uint8_t src2)
 		}
 
 		if (r3 >= 256)
-			ret += (r3 & 0x7f) << CGRA_REG2_OFFSET;
+			ret += (r3 & CGRA_REG_MASK) << CGRA_REG2_OFFSET;
 	}
 	return ret;
 }
@@ -124,10 +148,18 @@ std::string toString(uint64_t instruction)
 
 	char isImm = ((op >> 4) & 0x7) == 1 || ((op >> 4) & 0x7) == 6 || ((op >> 4) & 0x7) == 7;
 
-	ss << opcodeNames[op];
+	ss << (op == CGRA_CARRY ? "CARRY" : (op == CGRA_RECONF_IF0 ? "RECONF" : opcodeNames[op]));
 
 	if (op == 0)
 	{
+	}
+	else if (op == CGRA_CARRY)
+	{
+		ss << " from n" << (int)(ra-64);
+	}
+	else if (op == CGRA_RECONF_IF0)
+	{
+		ss << " if n" << (int)(ra-64) << "=0";
 	}
 	else if (op == VEX_STB || op == VEX_STD || op == VEX_STH || op == VEX_STW)
 	{

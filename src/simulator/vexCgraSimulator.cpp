@@ -9,29 +9,26 @@ VexCgraSimulator::VexCgraSimulator(unsigned int *bin)
 
 int VexCgraSimulator::doStep(){
 
-	if (currentConf != -1 && configurationCache.find(currentConf) != configurationCache.end() && cgraCycles != configurationCache.at(currentConf).cycles)
+	if (currentConf != -1 && cgraCycles != configurationCache.at(currentConf).cycles)
 	{
-		//Log::out(0) << "RUNNING CONFIG\n";
 		uint64_t * conf = configurationCache[currentConf].configuration+cgraCycles*3*4;
 		//cgra::printConfig(0, conf);
 		cgraSimulator.configure(conf);
 		cgraSimulator.doStep();
 		cgraCycles++;
-		Log::out(5) << "FUCK\n";
 		if (cgraCycles == configurationCache[currentConf].cycles)
 		{
-			Log::out(5) << "CGRA finished executing\n";
 			currentConf = -1;
 			cgraCycles = 0;
+			debugLevel = 1;
 		}
+		cycle++;
 	}
 
-	if ((cgraCycles != 0 && cgraStall <= 5) || (cgraCycles == 0 && cgraStall > 0 && cgraStall <= 9))
-		cgraStall++;
-	else
-		cgraStall = 0;
+	if (currentConf == -1 && cgraStall > 0)
+		cgraStall--;
 
-	if (cgraStall < 5 || cgraStall > 9)
+	if (cgraStall < 1)
 	{
 		doWB(memtoWB2);
 		doWB(memtoWB3);
@@ -47,7 +44,7 @@ int VexCgraSimulator::doStep(){
 	//													 //
 	///////////////////////////////////////////////////////
 
-	if (cgraStall < 3 || cgraStall > 7)
+	if (cgraStall < 3)
 	{
 		doEx(dctoEx1, &extoMem1);
 		doExMult(dctoEx2, &extoMem2);
@@ -72,7 +69,7 @@ int VexCgraSimulator::doStep(){
 
 
 
-	if (cgraStall < 4 || cgraStall > 8)
+	if (cgraStall < 2)
 	{
 		doMemNoMem(extoMem1, &memtoWB1);
 		doMemNoMem(extoMem3, &memtoWB3);
@@ -95,7 +92,7 @@ int VexCgraSimulator::doStep(){
 	//  												 //
 	///////////////////////////////////////////////////////
 
-	if (cgraStall < 5 || cgraStall > 9)
+	if (cgraStall < 1)
 	{
 		doWB(memtoWB1);
 		doWB(memtoWB4);
@@ -110,7 +107,7 @@ int VexCgraSimulator::doStep(){
 	//													 //
 	///////////////////////////////////////////////////////
 
-	if (cgraStall < 2 || cgraStall > 6)
+	if (cgraStall < 4)
 	{
 		NEXT_PC = PC+4;
 		if (this->issueWidth > 4)
@@ -141,13 +138,16 @@ int VexCgraSimulator::doStep(){
 		if(stop == 1){
 			return PC;
 		}
+/*
+		if (cgraStall > 0)
+			NEXT_PC = PC;*/
 	}
 	///////////////////////////////////////////////////////
 	//                       F                           //
 	///////////////////////////////////////////////////////
 
 
-	if (cgraStall < 1 || cgraStall > 5)
+	if (cgraStall < 5)
 	{
 		// Retrieving new instruction
 
@@ -197,13 +197,11 @@ int VexCgraSimulator::doStep(){
 			nbInstr++;
 
 		nbCycleType[typeInstr[(int) PC/4]]++;
-
-
 	}
 
 	int pcValueForDebug = PC;
 
-	if (cgraStall < 1)
+	if (cgraStall < 5)
 	{
 		// Next instruction
 		PC = NEXT_PC;
@@ -212,9 +210,11 @@ int VexCgraSimulator::doStep(){
 
 	// DISPLAY
 
-	if (debugLevel >= 1/* || currentConf != -1*/){
+	if (0){//cgraStall > 0){//debugLevel >= 1/* || currentConf != -1*/){
 
-		std::cerr << "THE CGRA STALL VALUE IS: " << cgraStall << "\n";
+		if (debugLevel == 2)
+			std::cerr << "BEFORE CGRA\n";
+		std::cerr << cgraStall << "  ";
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
 		if (this->unitActivation[0])
 			std::cerr << "\033[1;31m" << printDecodedInstr(ftoDC1.instruction) << "\033[0m;";
@@ -261,8 +261,10 @@ int VexCgraSimulator::doStep(){
 
 		fprintf(stderr, "\n");
 
+		debugLevel = 0;
 	}
 
+	//Log::out(0) << "cgraStall = " << cgraStall << "     cgraCycle = " << cgraCycles << "       PC = " << PC << "\n";
 	return 0;
 }
 
@@ -273,15 +275,11 @@ void VexCgraSimulator::doDC(FtoDC ftoDC, DCtoEx *dctoEx)
 
 	if (OP == VEX_CGRA)
 	{
+		NEXT_PC = PC;
 		currentConf = IMM19_u;
-		Log::out(0) << "currentConf=" << currentConf << " we have confs: ";
-		for (auto x : configurationCache)
-		{
-			Log::out(0) << "(" << x.first << "; " << x.second.cycles << ") ";
-		}
-		Log::out(0) << "\n";
 		cgraCycles = 0;
-		cgraStall = 2;
+		cgraStall = 5;
+		debugLevel = 2;
 		return;
 	}
 
@@ -295,9 +293,11 @@ void VexCgraSimulator::doDCBr(FtoDC ftoDC, DCtoEx *dctoEx)
 
 	if (OP == VEX_CGRA)
 	{
+		NEXT_PC = PC;
 		currentConf = IMM19_u;
 		cgraCycles = 0;
-		cgraStall = 2;
+		cgraStall = 5;
+		debugLevel = 2;
 		return;
 	}
 

@@ -15,6 +15,7 @@
 #include <simulator/genericSimulator.h>
 #include <lib/dbtProfiling.h>
 
+#include <lib/log.h>
 
 void GenericSimulator::initialize(int argc, char** argv){
 
@@ -79,7 +80,7 @@ void GenericSimulator::stw(ac_int<64, false> addr, ac_int<32, true> value){
 	this->stb(addr+2, value.slc<8>(16));
 	this->stb(addr+1, value.slc<8>(8));
 	this->stb(addr+0, value.slc<8>(0));
-
+	//Log::fprintf(0, stdout, "VEX: Writing byte %d at: %x\n", value, addr);
 }
 
 void GenericSimulator::std(ac_int<64, false> addr, ac_int<64, true> value){

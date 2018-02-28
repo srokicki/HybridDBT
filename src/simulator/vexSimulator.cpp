@@ -182,10 +182,10 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 		//The instruction is a memory access
 
 		if (extoMem.opCode == VEX_PROFILE){
-/*
+
 			if (this->profileResult[extoMem.result] != 255)
 				this->profileResult[extoMem.result]++;
-*/
+
 			memtoWB->WBena = 0;
 		}
 		else if (!extoMem.opCode[3]){
@@ -1093,12 +1093,14 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 
 			case VEX_BR :
 				dctoEx->opCode = 0;
+				Log::out(2) << "BR: " << regValueA << " vs " << regValueB << "\n";
 				if(regValueA == regValueB)
 					NEXT_PC = PC + 4*IMM13_s -4*incrementInstrMem;
 				break;	// BR
 
 			case VEX_BRF :
 				dctoEx->opCode = 0;
+				Log::out(2) << "BRF: " << regValueA << " vs " << regValueB << "\n";
 				if(regValueA != regValueB)
 					NEXT_PC = PC + 4*IMM13_s -4*incrementInstrMem;
 				break;	// BRF
@@ -1302,6 +1304,7 @@ int VexSimulator::doStep(){
 		return PC;
 	}
 
+	Log::out(2) << "NEXT_PC=" << NEXT_PC << "\n";
 	///////////////////////////////////////////////////////
 	//                       F                           //
 	///////////////////////////////////////////////////////

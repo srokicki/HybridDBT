@@ -694,7 +694,7 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			}
 			else{
 				#ifndef __CATAPULT
-				printf("While generating IR, this case should never happen... %x\n", oneInstruction);
+				printf("While generating IR, this case should never happen... %x; opcode=%s\n", oneInstruction, opcodeNames[opcode]);
 				#endif
 			}
 

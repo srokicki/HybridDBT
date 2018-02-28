@@ -47,7 +47,7 @@ public:
 	 */
 	void setNeighbour(DIR d, FunctionalUnit * u);
 
-	void setInstruction(uint32_t instr);
+	void setInstruction(uint64_t instr);
 
 	void enableMult();
 	void enableMem(std::map<ac_int<64, false>, ac_int<8, true> > * memory);
@@ -64,6 +64,8 @@ private:
 	uint32_t _result;
 	uint32_t _out;
 	uint64_t _instruction;
+
+	bool _reg_write;
 
 	std::map<ac_int<64, false>, ac_int<8, true> > * _memory;
 	ac_int<64, true> * _reg;

@@ -42,6 +42,10 @@ public:
 	 */
 	const FunctionalUnit * units();
 private:
+
+	static constexpr unsigned int height = 3;
+	static constexpr unsigned int width = 4;
+
 	FunctionalUnit _units[12];
 	std::map<ac_int<64, false>, ac_int<8, true>> * _memory;
 	ac_int<64, true> * _reg;

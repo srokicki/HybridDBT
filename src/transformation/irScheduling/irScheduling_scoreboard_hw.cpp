@@ -113,45 +113,52 @@ ac_int<32, false> createInstruction(ac_int<50, false> instruction, ac_int<6, fal
 	//We generate the instruction
 	ac_int<32, false> generatedInstruction = 0;
 	generatedInstruction.set_slc(0, opCode);
-	generatedInstruction.set_slc(26, ac_int<6>(operand2));
 
-	if (typeCode == 0) { //The instruction is R type
+	if (opCode == VEX_CGRA)
+	{
+		generatedInstruction.set_slc(7, imm19);
+	}
+	else
+	{
+		generatedInstruction.set_slc(26, ac_int<6>(operand2));
+		if (typeCode == 0) { //The instruction is R type
 
 
-		if (opCode == VEX_FP){
-			generatedInstruction.set_slc(7, funct);
+			if (opCode == VEX_FP){
+				generatedInstruction.set_slc(7, funct);
 
-		}
+			}
 
 
-		if (isImm) {
-			generatedInstruction.set_slc(7, imm13);
+			if (isImm) {
+				generatedInstruction.set_slc(7, imm13);
 
-			if ((opCode >> 3) == (VEX_STW>>3) || opCode == VEX_FSW){
+				if ((opCode >> 3) == (VEX_STW>>3) || opCode == VEX_FSW){
+					generatedInstruction.set_slc(20, operand1);
+				}
+				else {
+					generatedInstruction.set_slc(20, dest);
+				}
+			}
+			else{
+				generatedInstruction.set_slc(14, dest);
 				generatedInstruction.set_slc(20, operand1);
 			}
-			else {
-				generatedInstruction.set_slc(20, dest);
+		}
+		else { //The instruction is I Type
+			if (opCode == VEX_MOVI || opCode == VEX_CALL) {
+				generatedInstruction.set_slc(7, imm19);
+				generatedInstruction.set_slc(26, dest);
 			}
-		}
-		else{
-			generatedInstruction.set_slc(14, dest);
-			generatedInstruction.set_slc(20, operand1);
-		}
-	}
-	else { //The instruction is I Type
-		if (opCode == VEX_MOVI || opCode == VEX_CALL) {
-			generatedInstruction.set_slc(7, imm19);
-			generatedInstruction.set_slc(26, dest);
-		}
-		else if (opCode == VEX_BR || opCode == VEX_BRF || opCode == VEX_BGE || opCode == VEX_BLT || opCode == VEX_BGEU || opCode == VEX_BLTU){
-			generatedInstruction.set_slc(26, operand1);
-			generatedInstruction.set_slc(20, operand2);
+			else if (opCode == VEX_BR || opCode == VEX_BRF || opCode == VEX_BGE || opCode == VEX_BLT || opCode == VEX_BGEU || opCode == VEX_BLTU){
+				generatedInstruction.set_slc(26, operand1);
+				generatedInstruction.set_slc(20, operand2);
 
-		}
-		else{
-			generatedInstruction.set_slc(7, imm19);
-			generatedInstruction.set_slc(26, operand1);
+			}
+			else{
+				generatedInstruction.set_slc(7, imm19);
+				generatedInstruction.set_slc(26, operand1);
+			}
 		}
 	}
 

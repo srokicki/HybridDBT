@@ -89,9 +89,9 @@ public:
 	short jumpID;					//Index of the jump instruction in the block's list of instruction
 	unsigned int jumpPlace; 		//Address of the jump instruction in the VLIW memory
 
-	char nbJumps;
-	unsigned char *jumpIds;
-	unsigned int *jumpPlaces;
+	char nbJumps; // number of jumps in the VLIW binary
+	unsigned char *jumpIds; // Ids of the different jumps in the IR
+	unsigned int *jumpPlaces; // Place of the different jumps in the VLIW binary
 
 	unsigned int *instructions;			//A pointer to an array of uint128 describing the instructions
 	int nbInstr;					//The number of instructions
@@ -110,7 +110,7 @@ public:
 	 * @brief print: prints the block's DFG in .dot format in a file
 	 * @param output: the file to print in
 	 */
-	void print(FILE *output);
+	void print(FILE *output, FILE *instr_file);
 };
 
 /* Definition of different states possible for the IRBlock:

@@ -1,7 +1,3 @@
-#include <simulator/cgraSimulator.h>
-#include <transformation/cgraScheduler.h>
-#include <isa/cgraIsa.h>
-
 #include <dbt/dbtPlateform.h>
 #include <dbt/insertions.h>
 #include <dbt/profiling.h>
@@ -22,10 +18,12 @@
 #include <transformation/reconfigureVLIW.h>
 #include <transformation/buildTraces.h>
 #include <transformation/rescheduleProcedure.h>
+#include <transformation/cgraScheduler.h>
 #include <lib/debugFunctions.h>
 
 #include <isa/vexISA.h>
 #include <isa/riscvISA.h>
+#include <isa/cgraIsa.h>
 
 #include <lib/config.h>
 #include <lib/log.h>
@@ -33,10 +31,14 @@
 #include <lib/threadedDebug.h>
 #include <transformation/firstPassTranslation.h>
 
-#include <lib/elfFile.h>
+#include <cpucounters.h>
 
-#include <algorithm>
-#include <set>
+#ifndef __NIOS
+#include <lib/elfFile.h>
+#else
+#include <system.h>
+#endif
+
 
 void printStats(unsigned int size, short* blockBoundaries){
 
@@ -59,18 +61,20 @@ int translateOneSection(DBTPlateform &dbtPlateform, unsigned int placeCode, int 
 	int previousPlaceCode = placeCode;
 	unsigned int size = (sectionEndAddress - sectionStartAddress)>>2;
 	placeCode = firstPassTranslator(&dbtPlateform,
-																	size,
-																	sourceStartAddress,
-																	sectionStartAddress,
-																	placeCode);
+			size,
+			sourceStartAddress,
+			sectionStartAddress,
+			placeCode);
 
 
 
-	return placeCode;
+		return placeCode;
 }
 
 
 void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressStart, unsigned int &size, unsigned int &pcStart, DBTPlateform *platform){
+
+#ifndef __NIOS
 	//We open the elf file and search for the section that is of interest for us
 	ElfFile elfFile(path);
 
@@ -119,23 +123,72 @@ void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressS
 
 		}
 	}
+
+
+
+#else
+//	read(0, &addressStart, sizeof(int));
+//	read(0, &size, sizeof(int));
+	addressStart = tmp_addressStart;
+	size = tmp_size;
+	code = tmp_code;
+//	code = (unsigned char*) malloc(size*sizeof(unsigned char));
+//
+//	for (int oneByte = 0; oneByte<size; oneByte++){
+//		read(0, &code[oneByte], sizeof(char));
+//	}
+
+	size = size/4;
+#endif
+}
+int cnt = 0;
+int run(DBTPlateform *platform, int nbCycle){
+#ifndef __NIOS
+
+
+	return platform->vexSimulator->doStep(nbCycle);
+
+#else
+	Log::printf(0, "starting run\n");
+
+//#define ALT_CI_COMPONENT_RUN_0(A,B) __builtin_custom_inii(ALT_CI_COMPONENT_RUN_0_N,(A),(B))
+//#define ALT_CI_COMPONENT_RUN_0_1(A,B) __builtin_custom_inii(ALT_CI_COMPONENT_RUN_0_1_N,(A),(B))
+//#define ALT_CI_COMPONENT_RUN_0_1_N 0x4
+//#define ALT_CI_COMPONENT_RUN_0_2(A,B) __builtin_custom_inii(ALT_CI_COMPONENT_RUN_0_2_N,(A),(B))
+//#define ALT_CI_COMPONENT_RUN_0_2_N 0x5
+//#define ALT_CI_COMPONENT_RUN_0_3(A,B) __builtin_custom_inii(ALT_CI_COMPONENT_RUN_0_3_N,(A),(B))
+
+	int start = 0;
+	 ALT_CI_COMPONENT_RUN_0(0,0);
+	 int status = ALT_CI_COMPONENT_RUN_0_2(0,0);
+	 if ((status & 0x3) == 1)
+		 return 0;
+	 ALT_CI_COMPONENT_RUN_0_1(0,0);
+	 ALT_CI_COMPONENT_RUN_0(0,0);
+	 return (ALT_CI_COMPONENT_RUN_0_3(0,0))>>2;
+
+
+#endif
+
 }
 
-int run(DBTPlateform *platform, int nbCycle){
-	return platform->vexSimulator->doStep(nbCycle);
-}
+
 
 int main(int argc, char *argv[])
 {
+/*
+	PCM * m = PCM::getInstance();
+	if (m->program() != PCM::Success) return -1;
+	*/
 	/*Parsing arguments of the commant
 	 *
 	 */
 
 	static std::map<std::string, FILE*> ios =
 	{
-		{ "stdin", stdin },
-		{ "stdout", stdout },
-		{ "stderr", stderr }
+	{ "stdin", stdin },
+	{ "stdout", stdout },
+	{ "stderr", stderr }
 	};
 
 	Config cfg(argc, argv);
@@ -146,6 +199,7 @@ int main(int argc, char *argv[])
 
 	int VERBOSE = cfg.has("v") ? std::stoi(cfg["v"]) : 0;
 	int STATMODE = cfg.has("statmode") ? std::stoi(cfg["statmode"]) : 0;
+
 
 	Log::Init(VERBOSE, STATMODE);
 
@@ -266,6 +320,10 @@ int main(int argc, char *argv[])
 	for (int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
 		dbtPlateform.placeOfRegisters[256+64+onePlaceOfRegister] = onePlaceOfRegister;
 
+
+
+	#ifndef __NIOS
+
 	ThreadedDebug * dbg = nullptr;
 	TraceQueue * tracer = nullptr;
 	if (cfg.has("trace")) {
@@ -285,6 +343,8 @@ int main(int argc, char *argv[])
 	dbtPlateform.vexSimulator->nbOutStreams = nbOutStreams;
 
 	setVLIWConfiguration(dbtPlateform.vexSimulator, dbtPlateform.vliwInitialConfiguration);
+
+	#endif
 
 	unsigned char* code;
 	unsigned int addressStart;
@@ -324,7 +384,9 @@ int main(int argc, char *argv[])
 	writeInt(dbtPlateform.vliwBinaries, 0*16, assembleIInstruction_sw(VEX_CALL, placeCode, 63));
 
 	initializeInsertionsMemory(size*4);
-
+//	for (int oneInsertion=0; oneInsertion<placeCode; oneInsertion++){
+//			Log::fprintf(0, stderr, "insert;%d\n", oneInsertion);
+//	}
 	/********************************************************
 	 * First part of DBT: generating the first pass translation of binaries
 	 *******************************************************
@@ -332,6 +394,11 @@ int main(int argc, char *argv[])
 	 *
 	 *
 	 ********************************************************/
+
+	for (int i=0; i<placeCode; i++){
+		dbtPlateform.vexSimulator->typeInstr[i] = 3;
+	}
+	int endOfInitSection = placeCode;
 
 	for (int oneSection=0; oneSection<(size>>10)+1; oneSection++){
 
@@ -351,6 +418,11 @@ int main(int argc, char *argv[])
 
 		buildBasicControlFlow(&dbtPlateform, oneSection,addressStart, startAddressSource, oldPlaceCode, placeCode, &application, &profiler);
 
+//		int** insertions = (int**) malloc(sizeof(int **));
+//		int nbIns = getInsertionList(oneSection*1024, insertions);
+//		for (int oneInsertion=0; oneInsertion<nbIns; oneInsertion++){
+//				Log::fprintf(0, stderr, "insert;%d\n", (*insertions)[oneInsertion]+(*insertions)[-1]);
+//		}
 	}
 
 	for (int oneUnresolvedJump = 0; oneUnresolvedJump<unresolvedJumpsArray[0]; oneUnresolvedJump++){
@@ -358,7 +430,7 @@ int main(int argc, char *argv[])
 		unsigned int initialDestination = unresolvedJumpsArray[oneUnresolvedJump+1];
 		unsigned int type = unresolvedJumpsTypeArray[oneUnresolvedJump+1];
 
-		unsigned char isAbsolute = ((type & 0x7f) != VEX_BR) && ((type & 0x7f) != VEX_BRF);
+		unsigned char isAbsolute = ((type & 0x7f) != VEX_BR) && ((type & 0x7f) != VEX_BRF && (type & 0x7f) != VEX_BLTU) && ((type & 0x7f) != VEX_BGE && (type & 0x7f) != VEX_BGEU) && ((type & 0x7f) != VEX_BLT);
 		unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(&dbtPlateform, initialDestination);
 
 		if (destinationInVLIWFromNewMethod == -1){
@@ -367,7 +439,9 @@ int main(int argc, char *argv[])
 		}
 		else{
 			int immediateValue = (isAbsolute) ? (destinationInVLIWFromNewMethod) : ((destinationInVLIWFromNewMethod  - source));
-			writeInt(dbtPlateform.vliwBinaries, 16*(source), type + ((immediateValue & 0x7ffff)<<7));
+			int mask = (isAbsolute) ? 0x7ffff : 0x1fff;
+
+			writeInt(dbtPlateform.vliwBinaries, 16*(source), type + ((immediateValue & mask)<<7));
 
 			if (immediateValue > 0x7ffff){
 				Log::fprintf(LOG_ERROR, stderr, "error in immediate size...\n");
@@ -379,32 +453,47 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	for (int i=0; i<placeCode; i++){
+	for (int i=endOfInitSection; i<placeCode; i++){
 		dbtPlateform.vexSimulator->typeInstr[i] = 0;
 	}
+
+
 
 	//We also add information on insertions
 	int insertionSize = 65536;
 	int areaCodeStart=1;
 	int areaStartAddress = 0;
 
-	dbtPlateform.vexSimulator->initializeDataMemory((unsigned char*) insertionsArray, 65536*4, 0x7000000);
+	#ifndef __NIOS
+	dbtPlateform.vexSimulator->initializeDataMemory((unsigned char*) insertionsArray, 65536*4, 0x80000000);
+	#endif
+
+	#ifndef __NIOS
 	dbtPlateform.vexSimulator->initializeRun(0, localArgc, localArgv);
+	#endif
 
 	//We change the init code to jump at the correct place
 	unsigned int translatedStartPC = solveUnresolvedJump(&dbtPlateform, (pcStart-addressStart)>>2);
 	unsigned int instruction = assembleIInstruction_sw(VEX_CALL, translatedStartPC, 63);
 	writeInt(dbtPlateform.vliwBinaries, 0, instruction);
 
-	// ARTHUR BEGIN
-	bool cgra_pass = false;
-	// ARTHUR END
+
+
 
 	int runStatus=0;
 	int abortCounter = 0;
 
 	float coef = 0;
-	runStatus = run(&dbtPlateform, 1000);
+
+	//We modelize the translation time
+
+	//SW version
+//	dbtPlateform.vexSimulator->cycle = 1000*425;
+//	runStatus = run(&dbtPlateform, size*425);
+
+	//HW version
+	dbtPlateform.vexSimulator->cycle = 1000;
+	runStatus = run(&dbtPlateform, size);
 
 	while (runStatus == 0){
 
@@ -420,97 +509,6 @@ int main(int argc, char *argv[])
 					char oldPrevious = procedure->previousConfiguration;
 					char oldConf = procedure->configuration;
 
-					Log::out(0) << "AZDAZD\n";
-					// ARTHUR BEGIN
-					for (int oneBlock = 0; oneBlock < procedure->nbBlock; ++oneBlock)
-					{
-						IRBlock * block = procedure->blocks[oneBlock];
-						for (int oneSucc = 0; oneSucc < block->nbSucc; ++oneSucc)
-							if (block->successors[oneSucc] == block)//(block->sourceDestination == block->sourceStartAddress)
-							{
-								//Log::out(0) << "THIS IS AN INNER LOOP\n";
-								// test de l'eligibilite d'un bloc
-								// un bloc est eligible si ses instructions sont toutes implementables dans le CGRA
-								bool eligible = true;
-								uint128_struct * to_schedule = new uint128_struct[block->nbInstr];
-								int instrId;
-								for (instrId = 0; instrId < block->nbInstr; ++instrId)
-								{
-									to_schedule[instrId].word96 = readInt(block->instructions, instrId*16+0);
-									to_schedule[instrId].word64 = readInt(block->instructions, instrId*16+4);
-									to_schedule[instrId].word32 = readInt(block->instructions, instrId*16+8);
-									to_schedule[instrId].word0 = readInt(block->instructions, instrId*16+12);
-
-									if (!cgra::isEligible(to_schedule[instrId].word96
-																	,to_schedule[instrId].word64
-																	,to_schedule[instrId].word32
-																	,to_schedule[instrId].word0))
-										break;
-								}
-
-								// si eligible, on le transforme en configuration CGRA
-								if (instrId != 0)
-								{
-									// configuration du CGRA
-									CgraScheduler scheduler;
-									ac_int<32, false> calling_instr;
-									if (scheduler.schedule(*(dynamic_cast<VexCgraSimulator*>(dbtPlateform.vexSimulator)), to_schedule, instrId))
-									{
-										Log::out(0) << "Schedule of " << block << " ok ! calling=" << calling_instr << "\n";
-										int id;
-
-										writeInt(block->instructions, 0, to_schedule[0].word96);
-										writeInt(block->instructions, 4, to_schedule[0].word64);
-										writeInt(block->instructions, 8, to_schedule[0].word32);
-										writeInt(block->instructions, 12, to_schedule[0].word0);
-
-										for (id = instrId; id < block->nbInstr; ++id)
-										{
-											uint128_struct instr;
-											instr.word96 = readInt(block->instructions, id*16+0);
-											instr.word64 = readInt(block->instructions, id*16+4);
-											instr.word32 = readInt(block->instructions, id*16+8);
-											instr.word0  = readInt(block->instructions, id*16+12);
-
-											#define MINUS(word,off,val) (std::max(0, (((int)word >> off) & 0xff)-val) << off)
-											instr.word32 = (instr.word32 & 0xff000000)
-													+ MINUS(instr.word32,16,instrId)
-													+ MINUS(instr.word32,8,instrId)
-													+ MINUS(instr.word32,0,instrId);
-
-											instr.word0 = MINUS(instr.word0,24,instrId)
-													+ MINUS(instr.word0,16,instrId)
-													+ MINUS(instr.word0,8,instrId)
-													+ MINUS(instr.word0,0,instrId);
-
-											writeInt(block->instructions, (id-instrId+1)*16+0, instr.word96);
-											writeInt(block->instructions, (id-instrId+1)*16+4, instr.word64);
-											writeInt(block->instructions, (id-instrId+1)*16+8, instr.word32);
-											writeInt(block->instructions, (id-instrId+1)*16+12, instr.word0);
-										}
-
-										block->nbInstr = block->nbInstr - instrId;
-										//Log::out(0) << "FINISHED SCHEDULING CGRA\n";
-									}
-									else
-									{
-										//Log::out(1) << "Schedule of " << block << " failed !\n";
-									}
-								}
-
-//								for (instrId = 0; instrId < block->nbInstr; ++instrId)
-//								{
-//									Log::out(0) << printBytecodeInstruction(instrId,
-//																													readInt(block->instructions, instrId*16+0),
-//																													readInt(block->instructions, instrId*16+4),
-//																													readInt(block->instructions, instrId*16+8),
-//																													readInt(block->instructions, instrId*16+12));
-//								}
-
-								delete[] to_schedule;
-							}
-					}
-					// ARTHUR END
 					changeConfiguration(procedure);
 					if (procedure->configuration != oldConf || procedure->configurationScores[procedure->configuration] == 0){
 						IRProcedure *scheduledProcedure = rescheduleProcedure_schedule(&dbtPlateform, procedure, placeCode);
@@ -589,6 +587,7 @@ int main(int argc, char *argv[])
 				if (block != NULL){
 					if ((MAX_SCHEDULE_COUNT==-1 || dbtPlateform.blockScheduleCounter < MAX_SCHEDULE_COUNT) && OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress > 4  && block->blockState < IRBLOCK_STATE_SCHEDULED){
 
+
 						optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
 						dbtPlateform.blockScheduleCounter++;
 
@@ -608,16 +607,162 @@ int main(int argc, char *argv[])
 				break;
 
 		}
+		// ARTHUR BEGIN
+
+
+		if (OPTLEVEL >= 2)
+		{
+			for (unsigned int procId = 0; procId < application.numberProcedures; ++procId)
+			{
+				IRProcedure * proc = application.procedures[procId];
+				bool opt_performed = false;
+				for (int blockId = 0; blockId < proc->nbBlock; ++blockId)
+				{
+					IRBlock * block = proc->blocks[blockId];
+					for (int succId = 0; succId < block->nbSucc; ++succId)
+						if (block->successors[succId] == block)//(block->sourceDestination == block->sourceStartAddress)
+						{
+							// test de l'eligibilite d'un bloc
+							// un bloc est eligible si ses instructions sont toutes implementables dans le CGRA
+							bool eligible = true;
+							uint128_struct * to_schedule = new uint128_struct[block->nbInstr];
+							int instrId;
+							for (instrId = 0; instrId < block->nbInstr; ++instrId)
+							{
+								to_schedule[instrId].word96 = readInt(block->instructions, instrId*16+0);
+								to_schedule[instrId].word64 = readInt(block->instructions, instrId*16+4);
+								to_schedule[instrId].word32 = readInt(block->instructions, instrId*16+8);
+								to_schedule[instrId].word0 = readInt(block->instructions, instrId*16+12);
+
+								if (!cgra::isEligible(to_schedule[instrId].word96
+																,to_schedule[instrId].word64
+																,to_schedule[instrId].word32
+																,to_schedule[instrId].word0))
+									break;
+
+								//Log::out(0) << printBytecodeInstruction(instrId, to_schedule[instrId].word96, to_schedule[instrId].word64, to_schedule[instrId].word32, to_schedule[instrId].word0);
+							}
+
+							// si eligible, on le transforme en configuration CGRA
+							if (instrId != 0)
+							{
+								//SystemCounterState state_before = getSystemCounterState();
+								opt_performed = true;
+								// configuration du CGRA
+								CgraScheduler scheduler;
+								VexCgraSimulator * sim = (dynamic_cast<VexCgraSimulator*>(dbtPlateform.vexSimulator));
+								if (scheduler.schedule(*sim, to_schedule, instrId))
+								{
+									Log::out(2) << "Schedule of " << block << " ok !\n";
+									int id;
+/*
+									FILE * f = fopen(std::string("/home/ablanleu/Documents/stage/xdot/cgra"+std::to_string(sim->configurationCache.size()-1)+".dot").c_str(), "w");
+									FILE * f2 = fopen(std::string("/home/ablanleu/Documents/stage/xdot/cgra"+std::to_string(sim->configurationCache.size()-1)+".txt").c_str(), "w");
+									IRBlock b(0,0,0);
+									b.instructions = block->instructions;
+									b.nbInstr = instrId;
+									b.print(f, f2);
+									fclose(f);
+									fclose(f2);
+*/
+									//cgra::printConfig(0, sim->configurationCache[sim->configurationCache.size()-1].configuration);
+
+
+									for (id = instrId; id < block->nbInstr; ++id)
+									{
+										uint128_struct instr;
+										instr.word96 = readInt(block->instructions, id*16+0);
+										instr.word64 = readInt(block->instructions, id*16+4);
+										instr.word32 = readInt(block->instructions, id*16+8);
+										instr.word0  = readInt(block->instructions, id*16+12);
+
+										short virtualRDest = ((instr.word64>>14) & 0x1ff);
+										short virtualRIn2 = ((instr.word64>>23) & 0x1ff);
+										short virtualRIn1 = ((instr.word96>>0) & 0x1ff);
+
+										virtualRDest = virtualRDest < instrId ? ((readInt(block->instructions, virtualRDest*16+4) >> 14) & 0x1ff)
+																													: (virtualRDest >= 256 ? virtualRDest : virtualRDest - instrId + 1);
+
+										virtualRIn2 = virtualRIn2 < instrId ? ((readInt(block->instructions, virtualRIn2*16+4) >> 14) & 0x1ff)
+																												: (virtualRIn2 >= 256 ? virtualRIn2 : virtualRIn2 - instrId + 1);
+
+										if (!((instr.word96 >> 18) & 0x1))
+										virtualRIn1 = virtualRIn1 < instrId ? ((readInt(block->instructions, virtualRIn1*16+4) >> 14) & 0x1ff)
+																												: (virtualRIn1 >= 256 ? virtualRIn1 : virtualRIn1 - instrId + 1);
+
+										instr.word64 = (instr.word64 & 0b00000000000000000011111111111111) | (virtualRDest << 14) | (virtualRIn2 << 23);
+										instr.word96 = (instr.word96 & 0b11111111111111111111111000000000) | (virtualRIn1);
+
+										#define MINUS(word,off,val) (std::max(0, (((int)word >> off) & 0xff)-(val)) << off)
+										instr.word32 = (instr.word32 & 0xff000000)
+												+ MINUS(instr.word32,16,instrId-1)
+												+ MINUS(instr.word32,8,instrId-1)
+												+ MINUS(instr.word32,0,instrId-1);
+
+										instr.word0 = MINUS(instr.word0,24,instrId-1)
+												+ MINUS(instr.word0,16,instrId-1)
+												+ MINUS(instr.word0,8,instrId-1)
+												+ MINUS(instr.word0,0,instrId-1);
+
+										writeInt(block->instructions, (id)*16+0, instr.word96);
+										writeInt(block->instructions, (id)*16+4, instr.word64);
+										writeInt(block->instructions, (id)*16+8, instr.word32);
+										writeInt(block->instructions, (id)*16+12, instr.word0);
+									}
+
+									for (unsigned int jumpId = 0; jumpId < block->nbJumps; ++jumpId)
+										block->jumpIds[jumpId] -= instrId - 1;
+
+									writeInt(block->instructions, 0, to_schedule[0].word96);
+									writeInt(block->instructions, 4, to_schedule[0].word64);
+									writeInt(block->instructions, 8, to_schedule[0].word32);
+									writeInt(block->instructions, 12, to_schedule[0].word0);
+
+									block->nbInstr = block->nbInstr - instrId + 1;
+									for (unsigned int id = 1; id < block->nbInstr; ++id)
+									{
+										writeInt(block->instructions, id*16+0, readInt(block->instructions, (id+instrId-1)*16+0));
+										writeInt(block->instructions, id*16+4, readInt(block->instructions, (id+instrId-1)*16+4));
+										writeInt(block->instructions, id*16+8, readInt(block->instructions, (id+instrId-1)*16+8));
+										writeInt(block->instructions, id*16+12, readInt(block->instructions, (id+instrId-1)*16+12));
+									}
+
+									for (instrId = 0; instrId < block->nbInstr; ++instrId)
+									{
+										Log::out(2) << printBytecodeInstruction(instrId,
+																														readInt(block->instructions, instrId*16+0),
+																														readInt(block->instructions, instrId*16+4),
+																														readInt(block->instructions, instrId*16+8),
+																														readInt(block->instructions, instrId*16+12));
+									}
+								}
+/*
+								SystemCounterState state_after = getSystemCounterState();
+								std::cout << "INSTRUCTIONS TAKEN: " << getInstructionsRetired(state_before, state_after) << std::endl;
+								*/
+							}
+
+							delete[] to_schedule;
+						}
+				}
+
+				if (opt_performed)
+				{
+					Log::out(2) << "Scheduling procedure\n";
+					placeCode = rescheduleProcedure(&dbtPlateform, proc, placeCode);
+				}
+			}
+		}
+		// ARTHUR END
 
 		int cyclesToRun = dbtPlateform.optimizationCycles - oldOptimizationCount;
-		if (oldOptimizationCount - dbtPlateform.optimizationCycles == 0)
+		if (cyclesToRun == 0)
 			cyclesToRun = 1000;
 
 		runStatus = run(&dbtPlateform, cyclesToRun);
 
 
 	}
-
 	//We clean the last performance counters
 	dbtPlateform.vexSimulator->timeInConfig[dbtPlateform.vexSimulator->currentConfig] += (dbtPlateform.vexSimulator->cycle - dbtPlateform.vexSimulator->lastReconf);
 
@@ -628,6 +773,10 @@ int main(int argc, char *argv[])
 	int nbProc = 0;
 
 
+
+
+	//We print profiling result
+	#ifndef __NIOS
 	delete dbtPlateform.vexSimulator;
 
 	if (dbg)
@@ -637,6 +786,7 @@ int main(int argc, char *argv[])
 		delete tracer;
 
 	free(code);
+	#endif
 
 	delete localArgv;
 

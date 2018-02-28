@@ -810,9 +810,11 @@ int getNbInstr(IRProcedure *procedure, int type){
 	return result;
 }
 
-void IRBlock::print(FILE * output)
+void IRBlock::print(FILE * output, FILE * instr_file)
 {
 	fprintf(output, "digraph cgra {");
+
+	bool redirect[this->nbInstr] = { false };
 	for (uint32_t i = 0; i < this->nbInstr; ++i)
 	{
 		uint32_t instruction96, instruction64, instruction32, instruction0;
@@ -820,6 +822,8 @@ void IRBlock::print(FILE * output)
 		instruction64 = readInt(instructions, i*16+4);
 		instruction32 = readInt(instructions, i*16+8);
 		instruction0 = readInt(instructions, i*16+12);
+
+		fprintf(instr_file, "%s\n", printBytecodeInstruction(i, instruction96, instruction64, instruction32, instruction0).c_str());
 
 		uint8_t opCode = ((instruction96>>19) & 0x7f);
 		uint8_t typeCode = ((instruction96>>28) & 0x3);
@@ -834,22 +838,41 @@ void IRBlock::print(FILE * output)
 		{
 			if (opCode == VEX_STD || opCode == VEX_STW || opCode == VEX_STH || opCode == VEX_STB)
 				if (dst < 256)
+				{
 					fprintf(output, "i%d -> i%d;", dst, i);
+					redirect[dst] = true;
+				}
 				else
 					fprintf(output, "r%d -> i%d;", dst-256, i);
 
 			if (src2 < 256)
+			{
 				fprintf(output, "i%d -> i%d;", src2, i);
+				redirect[src2] = true;
+			}
 			else
 				fprintf(output, "r%d -> i%d;", src2-256, i);
 
 			if (!isImm)
 			{
 				if (src1 < 256)
+				{
 					fprintf(output, "i%d -> i%d;", src1, i);
+					redirect[src1] = true;
+				}
 				else
 					fprintf(output, "r%d -> i%d;", src1-256, i);
 			}
+		}
+	}
+
+	for (int i = 0; i < this->nbInstr; ++i)
+	{
+		if (!redirect[i])
+		{
+			uint32_t instruction64 = readInt(instructions, i*16+4);
+			uint16_t dst  = ((instruction64>>14) & 0x1ff);
+			fprintf(output, "i%d -> r%d;", i, dst-256);
 		}
 	}
 	fprintf(output, "}");

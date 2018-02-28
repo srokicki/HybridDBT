@@ -15,7 +15,7 @@ FunctionalUnit::DIR reverse(FunctionalUnit::DIR d)
 }
 
 FunctionalUnit::FunctionalUnit()
-	: _memory(nullptr), _reg(nullptr), _features(0), _out(0), _result(0)
+	: _memory(nullptr), _reg(nullptr), _features(0), _out(0), _result(0), _reg_write(false)
 {
 	_neighbours[0] = this;
 	for (unsigned int i = 1; i < 5; ++i)
@@ -41,15 +41,28 @@ void FunctionalUnit::run()
 
 	isImm = (((opcode >> 4) & 0x7) == 2);
 
-	if (ra > 63 && _neighbours[ra-64])
-		va = _neighbours[ra-64]->_out;
+	if (_instruction == 0)
+		return;
+
+	if (ra > 63)
+	{
+		if (_neighbours[ra-64])
+		{
+			va = _neighbours[ra-64]->_out;
+		}
+		else
+		{
+			Log::out(2) << "FunctionalUnit::doStep() " << opcodeNames[opcode] << "wants to access unknown neighbour\n";
+			return;
+		}
+	}
 	else if (_reg)
 	{
 		va = _reg[ra];
 	}
 	else
 	{
-		Log::out(0) << "FunctionalUnit::doStep() wants to access register file but can't\n";
+		Log::out(2) << "FunctionalUnit::doStep() " << opcodeNames[opcode] << "wants to access register file but can't\n";
 		return;
 	}
 
@@ -63,10 +76,12 @@ void FunctionalUnit::run()
 		}
 		else
 		{
-			Log::out(0) << "FunctionalUnit::doStep() wants to access register file but can't\n";
+			Log::out(2) << "FunctionalUnit::doStep() " << opcodeNames[opcode] << "wants to access register file but can't\n";
 			return;
 		}
 	}
+
+	_reg_write = false;
 
 	if (opcode == VEX_STB || opcode == VEX_STH || opcode == VEX_STW || opcode == VEX_STD)
 	{
@@ -78,7 +93,7 @@ void FunctionalUnit::run()
 		}
 		else
 		{
-			Log::out(0) << "FunctionalUnit::doStep() wants to access register file but can't\n";
+			Log::out(2) << "FunctionalUnit::doStep() " << opcodeNames[opcode] << "wants to access register file but can't\n";
 			return;
 		}
 	}
@@ -93,67 +108,69 @@ void FunctionalUnit::run()
 	case VEX_ADD:
 	case VEX_ADDW:
 		_result = va + vc;
-		if (rb < 64 && _reg) _reg[rb] = _result;
+		_reg_write = true;
 		break;
 	case VEX_ADDi:
 	case VEX_ADDWi:
 		_result = va + imm_short;
-		if (rb < 64 && _reg) _reg[rb] = _result;
+		_reg_write = true;
 		break;
 	case VEX_SUB:
 		_result = va- vc;
-		if (rb < 64 && _reg) _reg[rb] = _result;
+		_reg_write = true;
 		break;
 	case VEX_SUBi:
 		_result = va- imm_short;
-		if (rb < 64 && _reg) _reg[rb] = _result;
+		_reg_write = true;
 		break;
 	case VEX_MPY:
 	case VEX_MPYH:
 	case VEX_MPYW:
 		if (this->_features & FEATURE_MULT)
-			_result = va* vc;
-		if (rb < 64 && _reg) _reg[rb] = _result;
+		{
+			_result = va * vc;
+		}
+		_reg_write = true;
 		break;
 	case VEX_SLL:
 		_result = va<< vc;
-		if (rb < 64 && _reg) _reg[rb] = _result;
+		_reg_write = true;
 		break;
 	case VEX_SLLi:
 		_result = va<< imm_short;
-		if (rb < 64 && _reg) _reg[rb] = _result;
+		_reg_write = true;
 		break;
 	case VEX_SRL:
 		_result = va>> vc;
-		if (rb < 64 && _reg) _reg[rb] = _result;
+		_reg_write = true;
 		break;
 	case VEX_SRLi:
 		_result = va>> imm_short;
-		if (rb < 64 && _reg) _reg[rb] = _result;
+		_reg_write = true;
 		break;
 	case VEX_OR:
 		_result = va| vc;
-		if (rb < 64 && _reg) _reg[rb] = _result;
+		_reg_write = true;
 		break;
 	case VEX_ORi:
 		_result = va| imm_short;
-		if (rb < 64 && _reg) _reg[rb] = _result;
+		_reg_write = true;
 		break;
 	case VEX_AND:
 		_result = va& vc;
-		if (rb < 64 && _reg) _reg[rb] = _result;
+		_reg_write = true;
 		break;
 	case VEX_ANDi:
 		_result = va& imm_short;
-		if (rb < 64 && _reg) _reg[rb] = _result;
+		_reg_write = true;
 		break;
 	case VEX_XOR:
 		_result = va^ vc;
-		if (rb < 64 && _reg) _reg[rb] = _result;
+		_reg_write = true;
 		break;
 	case VEX_XORi:
 		_result = va^ imm_short;
-		if (rb < 64 && _reg) _reg[rb] = _result;
+		_reg_write = true;
 		break;
 
 	// CGRA OPERATIONS
@@ -175,25 +192,31 @@ void FunctionalUnit::run()
 		{
 		// MEMORY OPERATIONS
 		case VEX_LDD:
-			_result = (*_memory)[addr] + ((*_memory)[addr+1] << 8) + ((*_memory)[addr+2] << 16) + ((*_memory)[addr+3] << 24);
-			if (rb < 64 && _reg) _reg[rb] = _result;
+			Log::out(2) << "FunctionalUnit::run() VEX_LDD not implemented yet.\n";
+			exit(-1);
+			//_result = (*_memory)[addr] + ((*_memory)[addr+1] << 8) + ((*_memory)[addr+2] << 16) + ((*_memory)[addr+3] << 24);
+			//_reg_write = true;
 			break;
 		case VEX_LDW:
-			_result = (*_memory)[addr] + ((*_memory)[addr+1] << 8) + ((*_memory)[addr+2] << 16);
-			if (rb < 64 && _reg) _reg[rb] = _result;
+			_result = ((*_memory)[addr] & 0xff) + (((*_memory)[addr+1] << 8) & 0xff00) + (((*_memory)[addr+2] << 16) & 0xff0000) + (((*_memory)[addr+3] << 24) & 0xff000000);
+			_reg_write = true;
 			break;
 		case VEX_LDH:
 			_result = (*_memory)[addr] + ((*_memory)[addr+1] << 8);
-			if (rb < 64 && _reg) _reg[rb] = _result;
+			_reg_write = true;
 			break;
 		case VEX_LDB:
 			_result = (*_memory)[addr];
-			if (rb < 64 && _reg) _reg[rb] = _result;
+			_reg_write = true;
 			break;
 
 		case VEX_STD:
-			(*_memory)[addr+3] = (vb >> 24) & 0xff;
+			Log::out(2) << "FunctionalUnit::run() VEX_STD not implemented yet.\n";
+			exit(-1);
+			break;
 		case VEX_STW:
+			//Log::fprintf(0, stdout, "FU: Writing byte %d at: %x\n", vb, addr);
+			(*_memory)[addr+3] = (vb >> 24) & 0xff;
 			(*_memory)[addr+2] = (vb >> 16) & 0xff;
 		case VEX_STH:
 			(*_memory)[addr+1] = (vb >>  8) & 0xff;
@@ -210,6 +233,13 @@ void FunctionalUnit::run()
 void FunctionalUnit::commit()
 {
 	_out = _result;
+	if (_reg_write)
+	{
+		uint8_t rb = cgra::regB(_instruction);
+		//Log::out(2) << "FunctionalUnit::commit() Writing " <<  _result << " in register " << (int)rb << "\n";
+		if (rb < 64 && _reg)
+			_reg[rb] = _result;
+	}
 }
 
 void FunctionalUnit::setNeighbour(FunctionalUnit::DIR d, FunctionalUnit *u)
@@ -217,7 +247,7 @@ void FunctionalUnit::setNeighbour(FunctionalUnit::DIR d, FunctionalUnit *u)
 	_neighbours[d] = u;
 }
 
-void FunctionalUnit::setInstruction(uint32_t instr)
+void FunctionalUnit::setInstruction(uint64_t instr)
 {
 	_instruction = instr;
 }
