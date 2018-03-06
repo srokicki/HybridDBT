@@ -11,7 +11,7 @@ int VexCgraSimulator::doStep(){
 
 	if (currentConf != -1 && cgraCycles != configurationCache.at(currentConf).cycles)
 	{
-		uint64_t * conf = configurationCache[currentConf].configuration+cgraCycles*3*4;
+		uint64_t * conf = configurationCache[currentConf].configuration+cgraCycles*CgraSimulator::height*CgraSimulator::width;
 		//cgra::printConfig(0, conf);
 		cgraSimulator.configure(conf);
 		cgraSimulator.doStep();
@@ -212,9 +212,6 @@ int VexCgraSimulator::doStep(){
 
 	if (0){//cgraStall > 0){//debugLevel >= 1/* || currentConf != -1*/){
 
-		if (debugLevel == 2)
-			std::cerr << "BEFORE CGRA\n";
-		std::cerr << cgraStall << "  ";
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
 		if (this->unitActivation[0])
 			std::cerr << "\033[1;31m" << printDecodedInstr(ftoDC1.instruction) << "\033[0m;";

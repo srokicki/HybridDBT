@@ -576,7 +576,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		//****************************************************************
 
 
-		lastPlaceOfInstr = windowPosition + bestWindowOffset;
+		lastPlaceOfInstr = windowPosition + bestWindowOffset + (opCode == VEX_CGRA ? 1 : 0);
 		placeOfInstr[instructionId] = windowPosition + bestWindowOffset;
 
 		lastInstructionStage = bestStageId;

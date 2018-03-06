@@ -176,10 +176,7 @@ int run(DBTPlateform *platform, int nbCycle){
 
 int main(int argc, char *argv[])
 {
-/*
-	PCM * m = PCM::getInstance();
-	if (m->program() != PCM::Success) return -1;
-	*/
+
 	/*Parsing arguments of the commant
 	 *
 	 */
@@ -193,7 +190,17 @@ int main(int argc, char *argv[])
 
 	Config cfg(argc, argv);
 
+	PCM * m = nullptr;
+	if (cfg.has("pcm"))
+	{
+		m = PCM::getInstance();
+		if (m->program() != PCM::Success)
+		{
+			m = nullptr;
+		}
+	}
 
+	CgraScheduler * scheduler = cfg.has("edge") ? (CgraScheduler*)new EdgeCentricScheduler() : (CgraScheduler*)new NodeCentricScheduler();
 
 	int CONFIGURATION = cfg.has("c") ? std::stoi(cfg["c"]) : 2;
 
@@ -642,29 +649,29 @@ int main(int argc, char *argv[])
 
 								//Log::out(0) << printBytecodeInstruction(instrId, to_schedule[instrId].word96, to_schedule[instrId].word64, to_schedule[instrId].word32, to_schedule[instrId].word0);
 							}
-
 							// si eligible, on le transforme en configuration CGRA
 							if (instrId != 0)
 							{
-								//SystemCounterState state_before = getSystemCounterState();
+								SystemCounterState state_before;
+								if (m)
+									state_before = getSystemCounterState();
 								opt_performed = true;
 								// configuration du CGRA
-								CgraScheduler scheduler;
 								VexCgraSimulator * sim = (dynamic_cast<VexCgraSimulator*>(dbtPlateform.vexSimulator));
-								if (scheduler.schedule(*sim, to_schedule, instrId))
+								if (scheduler->schedule(*sim, to_schedule, instrId))
 								{
-									Log::out(2) << "Schedule of " << block << " ok !\n";
+									//Log::out(2) << "Schedule of " << block << " ok !\n";
 									int id;
-/*
-									FILE * f = fopen(std::string("/home/ablanleu/Documents/stage/xdot/cgra"+std::to_string(sim->configurationCache.size()-1)+".dot").c_str(), "w");
-									FILE * f2 = fopen(std::string("/home/ablanleu/Documents/stage/xdot/cgra"+std::to_string(sim->configurationCache.size()-1)+".txt").c_str(), "w");
-									IRBlock b(0,0,0);
-									b.instructions = block->instructions;
-									b.nbInstr = instrId;
-									b.print(f, f2);
-									fclose(f);
-									fclose(f2);
-*/
+
+//									FILE * f = fopen(std::string("/home/ablanleu/Documents/stage/xdot/cgra"+std::to_string(sim->configurationCache.size()-1)+".dot").c_str(), "w");
+//									FILE * f2 = fopen(std::string("/home/ablanleu/Documents/stage/xdot/cgra"+std::to_string(sim->configurationCache.size()-1)+".txt").c_str(), "w");
+//									IRBlock b(0,0,0);
+//									b.instructions = block->instructions;
+//									b.nbInstr = instrId;
+//									b.print(f, f2);
+//									fclose(f);
+//									fclose(f2);
+
 									//cgra::printConfig(0, sim->configurationCache[sim->configurationCache.size()-1].configuration);
 
 
@@ -727,19 +734,22 @@ int main(int argc, char *argv[])
 										writeInt(block->instructions, id*16+12, readInt(block->instructions, (id+instrId-1)*16+12));
 									}
 
-									for (instrId = 0; instrId < block->nbInstr; ++instrId)
-									{
-										Log::out(2) << printBytecodeInstruction(instrId,
-																														readInt(block->instructions, instrId*16+0),
-																														readInt(block->instructions, instrId*16+4),
-																														readInt(block->instructions, instrId*16+8),
-																														readInt(block->instructions, instrId*16+12));
-									}
+//									for (instrId = 0; instrId < block->nbInstr; ++instrId)
+//									{
+//										Log::out(0) << printBytecodeInstruction(instrId,
+//																														readInt(block->instructions, instrId*16+0),
+//																														readInt(block->instructions, instrId*16+4),
+//																														readInt(block->instructions, instrId*16+8),
+//																														readInt(block->instructions, instrId*16+12));
+//									}
 								}
-/*
-								SystemCounterState state_after = getSystemCounterState();
-								std::cout << "INSTRUCTIONS TAKEN: " << getInstructionsRetired(state_before, state_after) << std::endl;
-								*/
+
+								if (m)
+								{
+									SystemCounterState state_after = getSystemCounterState();
+									std::cout << "INSTRUCTIONS TAKEN FOR A " << instrId << " INSTR BLOCK: " << getInstructionsRetired(state_before, state_after) << std::endl;
+								}
+
 							}
 
 							delete[] to_schedule;
@@ -754,6 +764,7 @@ int main(int argc, char *argv[])
 			}
 		}
 		// ARTHUR END
+
 
 		int cyclesToRun = dbtPlateform.optimizationCycles - oldOptimizationCount;
 		if (cyclesToRun == 0)

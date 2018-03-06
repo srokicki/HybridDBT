@@ -41,7 +41,9 @@ void FunctionalUnit::run()
 
 	isImm = (((opcode >> 4) & 0x7) == 2);
 
-	if (_instruction == 0)
+	_reg_write = false;
+
+	if (opcode == VEX_NOP)
 		return;
 
 	if (ra > 63)
@@ -80,8 +82,6 @@ void FunctionalUnit::run()
 			return;
 		}
 	}
-
-	_reg_write = false;
 
 	if (opcode == VEX_STB || opcode == VEX_STH || opcode == VEX_STW || opcode == VEX_STD)
 	{
@@ -200,6 +200,7 @@ void FunctionalUnit::run()
 		case VEX_LDW:
 			_result = ((*_memory)[addr] & 0xff) + (((*_memory)[addr+1] << 8) & 0xff00) + (((*_memory)[addr+2] << 16) & 0xff0000) + (((*_memory)[addr+3] << 24) & 0xff000000);
 			_reg_write = true;
+			Log::out(2) << "FU: LDW " << _result << "\n";
 			break;
 		case VEX_LDH:
 			_result = (*_memory)[addr] + ((*_memory)[addr+1] << 8);
@@ -215,7 +216,7 @@ void FunctionalUnit::run()
 			exit(-1);
 			break;
 		case VEX_STW:
-			//Log::fprintf(0, stdout, "FU: Writing byte %d at: %x\n", vb, addr);
+			Log::fprintf(2, stdout, "FU: Writing byte %d at: %x\n", vb, addr);
 			(*_memory)[addr+3] = (vb >> 24) & 0xff;
 			(*_memory)[addr+2] = (vb >> 16) & 0xff;
 		case VEX_STH:
@@ -236,9 +237,10 @@ void FunctionalUnit::commit()
 	if (_reg_write)
 	{
 		uint8_t rb = cgra::regB(_instruction);
-		//Log::out(2) << "FunctionalUnit::commit() Writing " <<  _result << " in register " << (int)rb << "\n";
 		if (rb < 64 && _reg)
+		{
 			_reg[rb] = _result;
+		}
 	}
 }
 

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <sstream>
 #include <lib/log.h>
+#include <simulator/cgraSimulator.h>
 
 namespace cgra
 {
@@ -211,13 +212,45 @@ std::string toString(uint64_t instruction)
 
 void printConfig(int verbose, const uint64_t * configuration)
 {
-	for (int i = 0; i < 3; ++i)
+	for (int i = 0; i < CgraSimulator::height; ++i)
 	{
-		for (int j = 0; j < 4; ++j)
+		for (int j = 0; j < CgraSimulator::width; ++j)
 		{
 			Log::out(verbose) << cgra::toString(configuration[i*4+j]);
 		}
 		Log::fprintf(verbose, stdout, "\n");
 	}
 }
+
+uint8_t direction(const cgra_node &from, const cgra_node &to)
+{
+	int8_t dv = from.i - to.i;
+	int8_t dh = from.j - to.j;
+
+	if (dh < 0)
+		return 1;
+	if (dh > 0)
+		return 2;
+	if (dv < 0)
+		return 3;
+	if (dv > 0)
+		return 4;
+	return 0;
+}
+
+cgra_node operator+(const cgra_node &l, const cgra_node &r)
+{
+	return { l.i+r.i, l.j+r.j, l.k+r.k };
+}
+
+bool operator==(const cgra_node &l, const cgra_node &r)
+{
+	return l.i == r.i && l.j == r.j && l.k == r.k;
+}
+
+bool operator!=(const cgra_node &l, const cgra_node &r)
+{
+	return !(l==r);
+}
+
 } // namespace cgra

@@ -27,6 +27,17 @@ constexpr uint8_t CGRA_RECONF_IF0 = 0x81;
 namespace cgra
 {
 
+typedef struct
+{
+	int32_t i;
+	int32_t j;
+	int32_t k;
+} cgra_node;
+
+cgra_node operator+(const cgra_node& l, const cgra_node& r);
+bool operator==(const cgra_node& l, const cgra_node& r);
+bool operator!=(const cgra_node& l, const cgra_node& r);
+
 uint8_t regA(const uint64_t& instruction);
 uint8_t regB(const uint64_t& instruction);
 uint8_t regC(const uint64_t& instruction);
@@ -40,6 +51,9 @@ bool isEligible(uint32_t i1, uint32_t i2, uint32_t i3, uint32_t i4);
 
 std::string toString(uint64_t instruction);
 void printConfig(int verbose, const uint64_t * configuration);
+
+uint8_t direction(const cgra_node& from, const cgra_node& to);
+
 } // namespace cgra
 
 #endif // CGRAISA_H
