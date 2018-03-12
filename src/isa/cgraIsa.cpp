@@ -132,7 +132,7 @@ bool isEligible(uint32_t i1, uint32_t i2, uint32_t i3, uint32_t i4)
 		VEX_SUB, VEX_SUBi, VEX_SLL, VEX_SLLi,
 		VEX_AND, VEX_ANDi, VEX_XOR, VEX_XORi,
 		VEX_OR, VEX_ORi, VEX_SRL, VEX_SRLi,
-		VEX_ADDW, VEX_ADDWi, /*VEX_BR, VEX_BRF,*/ VEX_CMPNE
+		VEX_ADDW, VEX_ADDWi,/* VEX_BR, VEX_BRF,*/ VEX_CMPNE
 	};
 	return std::find(validOpCodes, validOpCodes+sizeof(validOpCodes), opCode)
 			!= validOpCodes+sizeof(validOpCodes);

@@ -652,14 +652,20 @@ int main(int argc, char *argv[])
 							// si eligible, on le transforme en configuration CGRA
 							if (instrId != 0)
 							{
-								SystemCounterState state_before;
-								if (m)
-									state_before = getSystemCounterState();
 								opt_performed = true;
 								// configuration du CGRA
 								VexCgraSimulator * sim = (dynamic_cast<VexCgraSimulator*>(dbtPlateform.vexSimulator));
+								SystemCounterState state_before;
+								if (m)
+									state_before = getSystemCounterState();
 								if (scheduler->schedule(*sim, to_schedule, instrId))
 								{
+
+									if (m)
+									{
+										SystemCounterState state_after = getSystemCounterState();
+										std::cout << "INSTRUCTIONS TAKEN FOR A " << instrId << " INSTR BLOCK: " << getInstructionsRetired(state_before, state_after) << std::endl;
+									}
 									//Log::out(2) << "Schedule of " << block << " ok !\n";
 									int id;
 
@@ -742,12 +748,6 @@ int main(int argc, char *argv[])
 //																														readInt(block->instructions, instrId*16+8),
 //																														readInt(block->instructions, instrId*16+12));
 //									}
-								}
-
-								if (m)
-								{
-									SystemCounterState state_after = getSystemCounterState();
-									std::cout << "INSTRUCTIONS TAKEN FOR A " << instrId << " INSTR BLOCK: " << getInstructionsRetired(state_before, state_after) << std::endl;
 								}
 
 							}
