@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <simulator/genericSimulator.h>
 
+class CgraSimulator;
+
 /**
  * @brief The FunctionalUnit class represent a CGRA's FU
  *
@@ -22,7 +24,7 @@ class FunctionalUnit
 {
 public:
 
-	enum FEATURES : int { FEATURE_MEM = 1, FEATURE_REG = 2, FEATURE_MULT = 4 };
+	enum FEATURES : int { FEATURE_MEM = 1, FEATURE_REG = 2, FEATURE_MULT = 4, FEATURE_RECONF = 8 };
 
 	enum DIR : int { LEFT = 1, RIGHT = 2, UP = 3, DOWN = 4 };
 
@@ -52,6 +54,7 @@ public:
 	void enableMult();
 	void enableMem(std::map<ac_int<64, false>, ac_int<8, true> > * memory);
 	void enableReg(ac_int<64, true> *reg);
+	void enableReconf(CgraSimulator * sim);
 
 	uint8_t features() const;
 
@@ -66,6 +69,8 @@ private:
 	uint64_t _instruction;
 
 	bool _reg_write;
+
+	CgraSimulator * _sim;
 
 	std::map<ac_int<64, false>, ac_int<8, true> > * _memory;
 	ac_int<64, true> * _reg;

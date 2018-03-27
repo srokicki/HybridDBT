@@ -9,12 +9,17 @@ project (HybridDBT)
  
 # add the binary tree to the search path for include files
 include_directories(./includes)
+include_directories(/home/ablanleu/Documents/utils/pcm/)
+include_directories(/home/ablanleu/Documents/utils/papi/src/)
 
 #-fsanitize=address
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ggdb -std=c++11 -D__LINUX_API -D__USE_AC -D AC_NOT_USING_INTN -pthread ")
+LINK_DIRECTORIES(/home/ablanleu/Documents/utils/papi/src/)
+LINK_DIRECTORIES(/home/ablanleu/Documents/utils/papi/src/libpfm4/lib/)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lpapi -lpfm -O3 -ggdb -std=c++11 -D__LINUX_API -D__USE_AC -D AC_NOT_USING_INTN -pthread ")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 set (EXECUTABLE  "")
 
@@ -40,13 +45,6 @@ foreach(oneExecutable ${EXECUTABLE})
     set_target_properties(dbt PROPERTIES COMPILE_DEFINITIONS "__HW_SIM")
   elseif(execName MATCHES "cgra")
       add_executable(cgra ${SOURCE} ${oneExecutable})
-      target_link_libraries(cgra
-          /home/ablanleu/Documents/utils/pcm/cpucounters.o
-          /home/ablanleu/Documents/utils/pcm/msr.o
-          /home/ablanleu/Documents/utils/pcm/pci.o
-          /home/ablanleu/Documents/utils/pcm/utils.o
-          /home/ablanleu/Documents/utils/pcm/client_bw.o)
-      include_directories(/home/ablanleu/Documents/utils/pcm/)
 
       set_target_properties(cgra PROPERTIES COMPILE_DEFINITIONS "__HW_SIM")
   else()
@@ -55,6 +53,12 @@ foreach(oneExecutable ${EXECUTABLE})
 	  
   endif()
 
+  target_link_libraries(${execName}
+      /home/ablanleu/Documents/utils/pcm/cpucounters.o
+      /home/ablanleu/Documents/utils/pcm/msr.o
+      /home/ablanleu/Documents/utils/pcm/pci.o
+      /home/ablanleu/Documents/utils/pcm/utils.o
+      /home/ablanleu/Documents/utils/pcm/client_bw.o)
 endforeach(oneExecutable)
 
 

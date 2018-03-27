@@ -31,7 +31,7 @@
 #include <lib/threadedDebug.h>
 #include <transformation/firstPassTranslation.h>
 
-#include <cpucounters.h>
+#include <lib/pcmWrapper.h>
 
 #ifndef __NIOS
 #include <lib/elfFile.h>
@@ -177,6 +177,8 @@ int run(DBTPlateform *platform, int nbCycle){
 int main(int argc, char *argv[])
 {
 
+	int cgraConfs = 0;
+
 	/*Parsing arguments of the commant
 	 *
 	 */
@@ -190,15 +192,8 @@ int main(int argc, char *argv[])
 
 	Config cfg(argc, argv);
 
-	PCM * m = nullptr;
-	if (cfg.has("pcm"))
-	{
-		m = PCM::getInstance();
-		if (m->program() != PCM::Success)
-		{
-			m = nullptr;
-		}
-	}
+	if (cfg.has("papi"))
+		PcmWrapper::init();
 
 	CgraScheduler * scheduler = cfg.has("edge") ? (CgraScheduler*)new EdgeCentricScheduler() : (CgraScheduler*)new NodeCentricScheduler();
 
@@ -558,6 +553,7 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
+
 		for (int oneBlock = 0; oneBlock<profiler.getNumberProfiledBlocks(); oneBlock++){
 			int profileResult = profiler.getProfilingInformation(oneBlock);
 			IRBlock* block = profiler.getBlock(oneBlock);
@@ -614,16 +610,18 @@ int main(int argc, char *argv[])
 				break;
 
 		}
+
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// ARTHUR BEGIN
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-		if (OPTLEVEL >= 2)
+		if (OPTLEVEL >= 2 && cgraConfs < 2)
 		{
 			for (unsigned int procId = 0; procId < application.numberProcedures; ++procId)
 			{
 				IRProcedure * proc = application.procedures[procId];
 				bool opt_performed = false;
-				for (int blockId = 0; blockId < proc->nbBlock; ++blockId)
+				for (int blockId = 0; blockId < proc->nbBlock && cgraConfs < 2; ++blockId)
 				{
 					IRBlock * block = proc->blocks[blockId];
 					for (int succId = 0; succId < block->nbSucc; ++succId)
@@ -645,27 +643,24 @@ int main(int argc, char *argv[])
 																,to_schedule[instrId].word64
 																,to_schedule[instrId].word32
 																,to_schedule[instrId].word0))
+								{
+									Log::out(0) << printBytecodeInstruction(instrId, to_schedule[instrId].word96, to_schedule[instrId].word64, to_schedule[instrId].word32, to_schedule[instrId].word0);
+									Log::out(0) << "EST INVALIDE\n";
 									break;
+								}
 
-								//Log::out(0) << printBytecodeInstruction(instrId, to_schedule[instrId].word96, to_schedule[instrId].word64, to_schedule[instrId].word32, to_schedule[instrId].word0);
+								Log::out(0) << printBytecodeInstruction(instrId, to_schedule[instrId].word96, to_schedule[instrId].word64, to_schedule[instrId].word32, to_schedule[instrId].word0);
 							}
 							// si eligible, on le transforme en configuration CGRA
 							if (instrId != 0)
 							{
-								opt_performed = true;
 								// configuration du CGRA
+								PcmWrapper::startRecord();
 								VexCgraSimulator * sim = (dynamic_cast<VexCgraSimulator*>(dbtPlateform.vexSimulator));
-								SystemCounterState state_before;
-								if (m)
-									state_before = getSystemCounterState();
-								if (scheduler->schedule(*sim, to_schedule, instrId))
+								if (scheduler->schedule(sim->cgraSimulator, to_schedule, instrId))
 								{
-
-									if (m)
-									{
-										SystemCounterState state_after = getSystemCounterState();
-										std::cout << "INSTRUCTIONS TAKEN FOR A " << instrId << " INSTR BLOCK: " << getInstructionsRetired(state_before, state_after) << std::endl;
-									}
+									++cgraConfs;
+									opt_performed = true;
 									//Log::out(2) << "Schedule of " << block << " ok !\n";
 									int id;
 
@@ -684,6 +679,7 @@ int main(int argc, char *argv[])
 									for (id = instrId; id < block->nbInstr; ++id)
 									{
 										uint128_struct instr;
+
 										instr.word96 = readInt(block->instructions, id*16+0);
 										instr.word64 = readInt(block->instructions, id*16+4);
 										instr.word32 = readInt(block->instructions, id*16+8);
@@ -748,22 +744,27 @@ int main(int argc, char *argv[])
 //																														readInt(block->instructions, instrId*16+8),
 //																														readInt(block->instructions, instrId*16+12));
 //									}
+									PcmWrapper::stopRecord();
+
+									if (block->nbInstr == 1)
+										block->nbJumps = 0;
+
+									Log::out(0) << "CGRA Scheduled in " << PcmWrapper::getInstructionsRetired() << " instructions\n";
 								}
-
 							}
-
 							delete[] to_schedule;
 						}
 				}
 
 				if (opt_performed)
 				{
-					Log::out(2) << "Scheduling procedure\n";
 					placeCode = rescheduleProcedure(&dbtPlateform, proc, placeCode);
 				}
 			}
 		}
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// ARTHUR END
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 		int cyclesToRun = dbtPlateform.optimizationCycles - oldOptimizationCount;

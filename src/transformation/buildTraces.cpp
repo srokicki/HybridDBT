@@ -580,7 +580,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 
 			if (eligible && block->nbInstr + firstPredecessor->nbInstr < 220){
 
-
+/*
 				IRBlock *oneSuperBlock = superBlock(firstPredecessor, block);
 
 				if (oneSuperBlock == NULL){
@@ -651,7 +651,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 					 * The block CFG information should remain unchanged : only the number of instruction changes.
 					 * The place location will also be modified...
 					 **************************************************************************************************/
-
+/*
 
 					if (block->nbJumps == block->nbSucc)
 						continue;
@@ -684,7 +684,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 
 					changeMade=1;
 					break;
-
+*/
 				}
 
 

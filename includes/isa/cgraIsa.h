@@ -19,10 +19,11 @@ constexpr int CGRA_REG1_OFFSET = CGRA_IMM_OFFSET + CGRA_IMM_LONG_BITS;
 constexpr int CGRA_REG2_OFFSET = CGRA_REG1_OFFSET - CGRA_REG_BITS;
 constexpr int CGRA_REG3_OFFSET = CGRA_REG2_OFFSET - CGRA_REG_BITS;
 
-constexpr int CGRA_IMM_SHORT_MAX = 4096;
+constexpr int CGRA_IMM_SHORT_MAX = 4096; // 1 << 12
 
 constexpr uint8_t CGRA_CARRY = 0x80;
-constexpr uint8_t CGRA_RECONF_IF0 = 0x81;
+constexpr uint8_t CGRA_RECONF_IFEQ = 0x81;
+constexpr uint8_t CGRA_RECONF_IFNE = 0x82;
 
 namespace cgra
 {

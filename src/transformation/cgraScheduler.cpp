@@ -11,11 +11,18 @@
 #include <cstring>
 #include <stack>
 
+#include <lib/pcmWrapper.h>
+
 #define LOG_LO 0
 #define LOG_HI 0
 
+constexpr uint32_t MAX_DEPTH = 256;
+
 int II;
 int currentII;
+int EDGE_MULT;
+int16_t src_route;
+int16_t carry_value[MAX_DEPTH][CgraSimulator::height][CgraSimulator::width];
 
 using namespace cgra;
 
@@ -214,7 +221,7 @@ void printTikz(uint64_t (* configuration)[CgraSimulator::height][CgraSimulator::
 
 				bool isImm = (((opcode >> 4) & 0x7) == 2);
 				unsigned int id = i*CgraSimulator::width+j;
-				std::cout << "\\node (n"<< depth << i << j <<") at (" << i*2 << "," << j*2 << ") [circle,fill="<<(instr ? "gray" : tabs[depth])<<"] {};\n";
+				std::cout << "\\node (n"<< depth << i << j <<") at (" << i*2 << "," << j*2 << ") [circle,fill="<<(instr ? "gray" : tabs[depth%6])<<"] {};\n";
 				if (ra > 63)
 				{
 					std::cout << "\\draw[black,very thick] (n" << depth << i << j << ") -- (n" << depth-1;
@@ -226,8 +233,9 @@ void printTikz(uint64_t (* configuration)[CgraSimulator::height][CgraSimulator::
 					case 3: std::cout << i-1 << j; break;
 					case 4: std::cout << i+1 << j; break;
 					default:
-						std::cout << "ERROR DRAWING TIKZ\n";
-						exit(-1);
+//						std::cout << "ERROR DRAWING TIKZ\n";
+//						exit(-1);
+						break;
 					}
 					std::cout << ");\n";
 				}
@@ -243,8 +251,9 @@ void printTikz(uint64_t (* configuration)[CgraSimulator::height][CgraSimulator::
 					case 3: std::cout << i-1 << j; break;
 					case 4: std::cout << i+1 << j; break;
 					default:
-						std::cout << "ERROR DRAWING TIKZ\n";
-						exit(-1);
+//						std::cout << "ERROR DRAWING TIKZ\n";
+//						exit(-1);
+						break;
 					}
 					std::cout << ");\n";
 				}
@@ -259,8 +268,9 @@ void printTikz(uint64_t (* configuration)[CgraSimulator::height][CgraSimulator::
 					case 3: std::cout << i-1 << j; break;
 					case 4: std::cout << i+1 << j; break;
 					default:
-						std::cout << "ERROR DRAWING TIKZ\n";
-						exit(-1);
+//						std::cout << "ERROR DRAWING TIKZ\n";
+//						exit(-1);
+						break;
 					}
 					std::cout << ");\n";
 				}
@@ -277,9 +287,10 @@ NodeCentricScheduler::NodeCentricScheduler()
 
 }
 
-bool NodeCentricScheduler::schedule(VexCgraSimulator& cgra, uint128_struct * instructions, uint32_t numInstructions)
+bool NodeCentricScheduler::schedule(CgraSimulator& cgra, uint128_struct * instructions, uint32_t numInstructions)
 {
-	const FunctionalUnit * units = cgra.cgraSimulator.units();
+	EDGE_MULT = 1;
+	const FunctionalUnit * units = cgra.units();
 
 	//Log::out(2) << "Hello\n";
 	//printGraph(instructions, numInstructions);
@@ -298,23 +309,27 @@ bool NodeCentricScheduler::schedule(VexCgraSimulator& cgra, uint128_struct * ins
 	currentII = II;
 	while (currentII != II*2)
 	{
+		//Log::out(0) << "NODE SCHEDULING WITH currentII=" << currentII << "\n";
 		// setup the scheduling space
 		uint64_t (*configuration)[CgraSimulator::height][CgraSimulator::width] = new uint64_t[currentII][CgraSimulator::height][CgraSimulator::width];
 		uint64_t (*new_conf)[CgraSimulator::height][CgraSimulator::width] = new uint64_t[currentII][CgraSimulator::height][CgraSimulator::width];
-		for (int i = 0; i < currentII; ++i)
-			for (int j = 0; j < CgraSimulator::height; ++j)
-				for (int k = 0; k < CgraSimulator::width; ++k)
-					configuration[i][j][k] = 0;
+
+		for (unsigned int i = 0; i < currentII*CgraSimulator::height*CgraSimulator::width; ++i)
+		{
+			((int16_t*)carry_value)[i] = -1;
+		}
+
+		std::memset(configuration, 0, CgraSimulator::height*CgraSimulator::width*currentII*sizeof(uint64_t));
+		std::memset(new_conf, 0, CgraSimulator::height*CgraSimulator::width*currentII*sizeof(uint64_t));
 
 		bool routed = true;
 
 		// for each instruction to schedule
 		for (uint32_t instrId = 0; instrId < numInstructions; ++instrId)
 		{
-			if (currentII == II)
-			{
-				//Log::out(2) << printBytecodeInstruction(0, instructions[instrId].word96, instructions[instrId].word64, instructions[instrId].word32, instructions[instrId].word0);
-			}
+//			Log::out(0) << "Placing instruction "
+//					<< printBytecodeInstruction(instrId, instructions[instrId].word96, instructions[instrId].word64, instructions[instrId].word32, instructions[instrId].word0);
+
 			std::priority_queue<cgra_node, std::vector<cgra_node>, dist_from_deps> possible;
 			uint128_struct instruction = instructions[instrId];
 			uint8_t src1 = 0xff, src2 = 0xff;
@@ -369,26 +384,50 @@ bool NodeCentricScheduler::schedule(VexCgraSimulator& cgra, uint128_struct * ins
 				place = possible.top();
 				possible.pop();
 
+				int16_t (*carry_tmp)[CgraSimulator::height][CgraSimulator::width] = new int16_t[currentII][CgraSimulator::height][CgraSimulator::width];
+				std::memcpy(carry_tmp, carry_value, currentII*CgraSimulator::height*CgraSimulator::width*sizeof(int16_t));
 				std::memcpy(new_conf, configuration, currentII*CgraSimulator::height*CgraSimulator::width*sizeof(uint64_t));
-				new_conf[place.k][place.i][place.j] = instrId+2;
+				new_conf[place.k][place.i][place.j] = 0xffffffffffffffff;
 
 				// first route
 				if (!(n1 == errNode))
 				{
+					//Log::out(0) << "\tRouting n1=(" << n1.i << "," << n1.j << "," << n1.k << ")...\n";
+					src_route = sources[instrId].src1;
 					if (!(routed = route(n1, place, new_conf, &src1)))
+					{
+						//Log::out(0) << "\t\tFailed\n";
 						continue;
+					}
+					else
+					{
+						//Log::out(0) << "\t\tOk\n";
+					}
 				}
 
 				// second route
 				if (!(n2 == errNode))
 				{
+					//Log::out(0) << "\tRouting n2=(" << n2.i << "," << n2.j << "," << n2.k << ")...\n";
+					src_route = sources[instrId].src2;
 					if (!(routed = route(n2, place, new_conf, &src2)))
+					{
+						//Log::out(0) << "\t\tFailed\n";
 						continue;
+					}
+					else
+					{
+						//Log::out(0) << "\t\tOk\n";
+					}
 				}
 
 				if (routed)
 					break;
+
+				std::memcpy(carry_value, carry_tmp, currentII*CgraSimulator::height*CgraSimulator::width*sizeof(int16_t));
 			}
+
+
 
 			// if all places fail, the scheduling is impossible
 			if (!routed)
@@ -398,7 +437,8 @@ bool NodeCentricScheduler::schedule(VexCgraSimulator& cgra, uint128_struct * ins
 			else
 			{
 				placeOfInstr[instrId] = place;
-				std::memcpy(configuration, new_conf, II*CgraSimulator::height*CgraSimulator::width*sizeof(uint64_t));
+				std::memcpy(configuration, new_conf, currentII*CgraSimulator::height*CgraSimulator::width*sizeof(uint64_t));
+
 				uint16_t read1 = 64, read2 = 64;
 				configuration[place.k][place.i][place.j] = cgra::vex2cgra(instruction, src1, src2, &read1, &read2);
 				if (read1 != 64)
@@ -409,6 +449,14 @@ bool NodeCentricScheduler::schedule(VexCgraSimulator& cgra, uint128_struct * ins
 				{
 					lastRead[read2] = place.k;
 				}
+//				for (unsigned int i = 0; i < currentII; ++i)
+//				{
+//					for (unsigned int j = 0; j < CgraSimulator::width; ++j)
+//					{
+//						Log::out(0) << carry_value[i][0][j] << "      ";
+//					}
+//					Log::out(0) << "\n";
+//				}
 			}
 		}
 
@@ -418,16 +466,15 @@ bool NodeCentricScheduler::schedule(VexCgraSimulator& cgra, uint128_struct * ins
 		{
 			delete[] (placeOfInstr-1);
 			delete[] sources;
-			int id = cgra.configurationCache.size();
-			cgra.configurationCache[id].configuration = (uint64_t*)configuration;
-			cgra.configurationCache[id].cycles = currentII;
+			int id = cgra.registerConfiguration((uint64_t*)configuration, currentII);
 
 			instructions[0] = {VEX_CGRA << 19,id << 23,0,0};
 
-//			for (int i = 0; i < currentII; ++i)
+
+//			for (unsigned int i = 0; i < currentII; ++i)
 //			{
 //				Log::out(0) << "LAYER " << i << "\n";
-//				cgra::printConfig(0, (uint64_t*)(configuration[i]));
+//				printConfig(0, (uint64_t*)(configuration[i]));
 //			}
 
 			//printTikz(configuration, currentII);
@@ -536,12 +583,9 @@ void printGraph(const uint128_struct *instructions, uint32_t numInstructions)
 	fclose(f);
 }
 
-int16_t (*carry_value)[CgraSimulator::height][CgraSimulator::width];
-int16_t src1, src2;
-
-uint64_t (*conf)[CgraSimulator::height][CgraSimulator::width];
-uint64_t (*new_conf)[CgraSimulator::height][CgraSimulator::width];
-cgra_node (*take_from)[CgraSimulator::height][CgraSimulator::width];
+uint64_t conf[MAX_DEPTH][CgraSimulator::height][CgraSimulator::width];
+uint64_t new_conf[MAX_DEPTH][CgraSimulator::height][CgraSimulator::width];
+cgra_node take_from[MAX_DEPTH][CgraSimulator::height][CgraSimulator::width];
 
 class astar_node
 {
@@ -617,6 +661,7 @@ public:
 	{
 		const cgra_node n = _nodes[target.k % currentII][target.i][target.j]._from;
 
+		//Log::out(0) << "\t\tWe are at (" << target.i << "," << target.j << "," << target.k << ")\n";
 		// write node
 		if (cgra_conf[target.k % currentII][target.i][target.j] == 0 || from)
 		{
@@ -641,7 +686,7 @@ public:
 			}
 			else
 			{
-				carry_value[target.k % currentII][target.i][target.j] = src2;
+				carry_value[target.k % currentII][target.i][target.j] = src_route;
 				cgra_conf[target.k % currentII][target.i][target.j] = (((uint64_t)c) << CGRA_REG1_OFFSET) + CGRA_CARRY;
 			}
 		}
@@ -698,8 +743,10 @@ bool route(const cgra_node& source, const cgra_node& target, uint64_t (*cgra_con
 	{
 		cgra_node current = open.top();
 
+
+		//Log::out(0) << "carry_value["<<current.i<<"]["<<current.j<<"]["<<current.k<<"]=" << carry_value[current.k%currentII][current.i][current.j] << " | " << src_route << "\n";
 		// target reached, configure path
-		if (current == target || carry_value[current.k][current.i][current.j] == src2)
+		if (current == target/* || carry_value[current.k%currentII][current.i][current.j] == src_route*/)
 		{
 			astar_node::write_path(target, cgra_conf, from);
 			return true;
@@ -716,15 +763,17 @@ bool route(const cgra_node& source, const cgra_node& target, uint64_t (*cgra_con
 			// position of neighbour
 			cgra_node nn = n+current;
 
-			if (nn.i >= 0 && nn.i < CgraSimulator::height && nn.j >= 0 && nn.j < CgraSimulator::width&& nn.k < currentII*2)
+			if (nn.i >= 0 && nn.i < CgraSimulator::height && nn.j >= 0 && nn.j < CgraSimulator::width&& nn.k < currentII*EDGE_MULT)
 			{
 				// if neighbour already visited, or not available, do nothing
 				if (astar_node::is_closed(nn)
 						|| (cgra_conf[nn.k % currentII][nn.i][nn.j] != 0
-								&& !(nn == target || carry_value[nn.k % currentII][nn.i][nn.j] == src2)))
+								&& !(nn == target || carry_value[nn.k % currentII][nn.i][nn.j] == src_route)))
 				{
 					continue;
 				}
+
+				//Log::out(0) << carry_value[nn.k % currentII][nn.i][nn.j] << " | " << src_route << "\n";
 
 				if (!astar_node::is_open(nn))
 				{
@@ -759,10 +808,10 @@ bool is_special(uint128_struct instr)
 
 class possible_or_not
 {
-	static VexCgraSimulator * _cgra;
+	static CgraSimulator * _cgra;
 	static uint128_struct _instr;
 public:
-	static void init(VexCgraSimulator& cgra, uint128_struct instr)
+	static void init(CgraSimulator& cgra, uint128_struct instr)
 	{
 		_cgra = &cgra;
 		_instr = instr;
@@ -771,19 +820,21 @@ public:
 	bool operator()(const cgra_node& l, const cgra_node& r)
 	{
 		if (is_special(_instr))
-			return canPlace(_cgra->cgraSimulator.units()[l.i*CgraSimulator::width+l.j], _instr);
+			return canPlace(_cgra->units()[l.i*CgraSimulator::width+l.j], _instr);
 		else
-			return !(_cgra->cgraSimulator.units()[l.i*CgraSimulator::width+l.j].features() & (FunctionalUnit::FEATURE_MEM));
+			return !(_cgra->units()[l.i*CgraSimulator::width+l.j].features() & (FunctionalUnit::FEATURE_MEM));
 	}
 };
 
-VexCgraSimulator (*possible_or_not::_cgra);
+CgraSimulator (*possible_or_not::_cgra);
 uint128_struct possible_or_not::_instr;
 
 constexpr cgra_node noPlace = {-1,-1,-1};
 
-bool EdgeCentricScheduler::schedule(VexCgraSimulator &cgra, uint128_struct *instructions, uint32_t numInstructions)
+bool EdgeCentricScheduler::schedule(CgraSimulator &cgra, uint128_struct *instructions, uint32_t numInstructions)
 {
+	int16_t src1, src2;
+	EDGE_MULT = 2;
 	source * sources = new source[numInstructions];
 	int16_t * globals = new int16_t[numInstructions];
 	uint8_t * nbDeps = new uint8_t[numInstructions];
@@ -797,44 +848,21 @@ bool EdgeCentricScheduler::schedule(VexCgraSimulator &cgra, uint128_struct *inst
 
 	currentII = II = findII(instructions, sources, numInstructions);
 
-	conf = nullptr;
-	new_conf = nullptr;
-	take_from = nullptr;
-	carry_value = nullptr;
-
 	bool routed;
 
 	unsigned int theId = 0;
+
+	std::memset(conf, 0, MAX_DEPTH*CgraSimulator::height*CgraSimulator::width*sizeof(uint64_t));
+
+	for (unsigned int k = 0; k < MAX_DEPTH; ++k)
+		for (unsigned int i = 0; i < CgraSimulator::height; ++i)
+			for (unsigned int j = 0; j < CgraSimulator::width; ++j)
+				carry_value[k][i][j] = -1;
+
 	while (currentII < II*2)
 	{
 		// initialize configuration space
-		uint64_t (*tmp)[CgraSimulator::height][CgraSimulator::width] = new uint64_t[currentII][CgraSimulator::height][CgraSimulator::width];
-		int16_t (*carry_tmp)[CgraSimulator::height][CgraSimulator::width] = new int16_t[currentII][CgraSimulator::height][CgraSimulator::width];
-
-		std::memset(tmp, 0, currentII*CgraSimulator::height*CgraSimulator::width*sizeof(uint64_t));
-		std::memset(carry_tmp, -1, currentII*CgraSimulator::height*CgraSimulator::width*sizeof(int16_t));
-		if (conf)
-		{
-			std::memcpy(tmp, conf, (currentII-1)*CgraSimulator::height*CgraSimulator::width*sizeof(uint64_t));
-			delete[] conf;
-		}
-
-		if (carry_value)
-		{
-			std::memcpy(carry_tmp, carry_value, (currentII-1)*CgraSimulator::height*CgraSimulator::width*sizeof(int16_t));
-			delete[] carry_value;
-		}
-
-		carry_value = carry_tmp;
-		conf = tmp;		
-		if (new_conf)
-			delete[] new_conf;
-		new_conf = new uint64_t[currentII][CgraSimulator::height][CgraSimulator::width];
 		std::memset(new_conf, 0, currentII*CgraSimulator::height*CgraSimulator::width*sizeof(uint64_t));
-
-		if (take_from)
-			delete[] take_from;
-		take_from = new cgra_node[currentII][CgraSimulator::height][CgraSimulator::width];
 		std::memset(take_from, 0, currentII*CgraSimulator::height*CgraSimulator::width*sizeof(cgra_node));
 
 		//Log::out(0) << "New scheduling space with II=" << currentII << "\n";
@@ -856,6 +884,7 @@ bool EdgeCentricScheduler::schedule(VexCgraSimulator &cgra, uint128_struct *inst
 		// while there is an instruction to place
 		for (; theId < numInstructions; ++theId)
 		{
+			uint8_t nameDependency = 0;
 			// chose instruction
 			uint128_struct theInstr = instructions[theId];
 			uint8_t from = 0xff;
@@ -896,6 +925,16 @@ bool EdgeCentricScheduler::schedule(VexCgraSimulator &cgra, uint128_struct *inst
 
 				routed = false;
 
+
+				if (globals[src1] != -1)
+					nameDependency = lastRead[globals[src1]];
+				if (globals[src2] != -1)
+					nameDependency = std::max(nameDependency, (uint8_t)lastRead[globals[src2]]);
+				if (theId == numInstructions-1)
+				{
+					nameDependency = currentII-1;
+					EDGE_MULT = 1;
+				}
 				// browse all possible routes from the source
 				std::priority_queue<cgra_node, std::vector<cgra_node>, possible_or_not> possible;
 				cgra_node thePlace = placeOfInstr[src1];
@@ -906,7 +945,7 @@ bool EdgeCentricScheduler::schedule(VexCgraSimulator &cgra, uint128_struct *inst
 				for (cgra_node displacement : {up,down,left,right,center})
 				{
 					cgra_node path = thePlace + displacement;
-					if (path.i >= 0 && path.i < CgraSimulator::height && path.j >= 0 && path.j < CgraSimulator::width && path.k < currentII * 2
+					if (path.i >= 0 && path.i < CgraSimulator::height && path.j >= 0 && path.j < CgraSimulator::width && path.k < currentII * EDGE_MULT
 							&& (conf[path.k % currentII][path.i][path.j] == 0 || carry_value[path.k % currentII][path.i][path.j] == src1))
 					{
 						possible.push(path);
@@ -916,10 +955,10 @@ bool EdgeCentricScheduler::schedule(VexCgraSimulator &cgra, uint128_struct *inst
 				}
 
 				//Log::out(0) << "\tStarting to search in " << possible.size() << " nodes\n";
-				// for each possible places
+				/// for each possible places
 				while (!possible.empty())
 				{
-					// we will work on [new_conf] to schedule the instruction
+					/// we will work on [new_conf] to schedule the instruction
 					std::memcpy(new_conf, conf, currentII*CgraSimulator::height*CgraSimulator::width*sizeof(uint64_t));
 
 					place = possible.top();
@@ -927,7 +966,7 @@ bool EdgeCentricScheduler::schedule(VexCgraSimulator &cgra, uint128_struct *inst
 					//Log::out(0) << "\tTrying place (" << place.i << ", " << place.j << ", " << place.k << ")...\n";
 					possible.pop();
 
-					if (!canPlace(cgra.cgraSimulator.units()[place.i*CgraSimulator::width+place.j],theInstr))
+					if (!canPlace(cgra.units()[place.i*CgraSimulator::width+place.j],theInstr) || place.k < nameDependency)
 					{
 						//Log::out(0) << "\t\tPlace (" << place.i << ", " << place.j << ", " << place.k << ") is not valid.\n";
 					}
@@ -935,11 +974,11 @@ bool EdgeCentricScheduler::schedule(VexCgraSimulator &cgra, uint128_struct *inst
 					{
 
 						routed = true;
-						// for each path, try to route other operands, if any
+						/// for each path, try to route other operands, if any
 						if (src2 != -1)
 						{
 							//Log::out(0) << "\t\tTrying to route from [src2] to (" << place.i << ", " << place.j << ", " << place.k << ").\n";
-							// reserve current [src1] path
+							/// reserve current [src1] path
 							cgra_node backward = take_from[place.k % currentII][place.i][place.j];
 							while (backward != placeOfInstr[src1])
 							{
@@ -948,21 +987,22 @@ bool EdgeCentricScheduler::schedule(VexCgraSimulator &cgra, uint128_struct *inst
 								backward = take_from[backward.k % currentII][backward.i][backward.j];
 							}
 
-							// try to route [src2]
+							/// try to route [src2]
+							src_route = src2;
 							routed = route(placeOfInstr[sources[theId].src2], place, new_conf, &from);
 						}
 					}
 
-					// if we managed to route the instruction, we can place it
+					/// if we managed to route the instruction, we can place it
 					if (routed)
 						break;
 
-					// else, we add new possible places, and continue browsing them
+					/// else, we add new possible places, and continue browsing them
 					cgra_node up={-1,0,1},down={1,0,1},left={0,-1,1},right={0,1,1},center={0,0,1};
 					for (cgra_node displacement : {up,down,left,right,center})
 					{
 						cgra_node path = place + displacement;
-						if (path.i >= 0 && path.i < CgraSimulator::height && path.j >= 0 && path.j < CgraSimulator::width && path.k < currentII * 2
+						if (path.i >= 0 && path.i < CgraSimulator::height && path.j >= 0 && path.j < CgraSimulator::width && path.k < currentII * EDGE_MULT
 								&& (new_conf[path.k % currentII][path.i][path.j] == 0 || carry_value[path.k % currentII][path.i][path.j] == src1) && (take_from[path.k % currentII][path.i][path.j] == noPlace))
 						{
 							possible.push(path);
@@ -976,7 +1016,6 @@ bool EdgeCentricScheduler::schedule(VexCgraSimulator &cgra, uint128_struct *inst
 			}
 			else // if (sources[theId].src1 != -1)
 			{
-				uint8_t nameDependency = 0;
 				if (globals[theId] != -1)
 				{
 					nameDependency = lastRead[globals[theId]];
@@ -989,7 +1028,7 @@ bool EdgeCentricScheduler::schedule(VexCgraSimulator &cgra, uint128_struct *inst
 					{
 						for (unsigned int j = 0; j < CgraSimulator::width && !routed; ++j)
 						{
-							if (conf[k%currentII][i][j] == 0 && canPlace(cgra.cgraSimulator.units()[i*CgraSimulator::width+j],instructions[theId]))
+							if (conf[k%currentII][i][j] == 0 && canPlace(cgra.units()[i*CgraSimulator::width+j],instructions[theId]))
 							{
 								place = {i,j,k};
 								routed = true;
@@ -1066,28 +1105,97 @@ bool EdgeCentricScheduler::schedule(VexCgraSimulator &cgra, uint128_struct *inst
 		currentII++;
 	} // while (currentII < II*2)
 
-	delete[] new_conf;
-	delete[] take_from;
 	if (routed)
 	{
-		// if properly configured, commit configuration
-		auto id = cgra.configurationCache.size();
-		cgra.configurationCache[id].cycles = currentII;
-		cgra.configurationCache[id].configuration = (uint64_t*)conf;
+		std::vector<uint8_t> before;
+		std::vector<uint8_t> after;
+		int32_t size = 0;
+
+		for (unsigned int i = 0 ;i < numInstructions; ++i)
+		{
+			if (placeOfInstr[i].k < currentII)
+			{
+				before.push_back(i);
+			}
+			else
+			{
+				after.push_back(i);
+			}
+			size = std::max((int32_t)size, placeOfInstr[i].k);
+		}
+
+		uint64_t (*commited)[CgraSimulator::height][CgraSimulator::width] = new uint64_t[currentII+size+1][CgraSimulator::height][CgraSimulator::width];
+		std::memset(commited, 0, (currentII+size+1)*CgraSimulator::height*CgraSimulator::width*sizeof(uint64_t));
+		for (uint8_t b : before)
+		{
+			cgra_node place = placeOfInstr[b];
+			commited[place.k][place.i][place.j] = conf[place.k][place.i][place.j];
+			for (unsigned int k = place.k; k < size+1; ++k)
+			{
+				for (unsigned int i = 0; i < CgraSimulator::height; ++i)
+				{
+					for (unsigned int j = 0; j < CgraSimulator::width; ++j)
+					{
+						if (carry_value[k][i][j] == b)
+						{
+							commited[k][i][j] = conf[k][i][j];
+						}
+						else if (k >= currentII && carry_value[k % currentII][i][j] == b)
+						{
+							commited[currentII+k][i][j] = conf[k % currentII][i][j];
+						}
+					}
+				}
+			}
+		}
+
+		std::memcpy((void*)(commited[currentII]), conf, currentII*CgraSimulator::height*CgraSimulator::width*sizeof(uint64_t));
+		for (uint8_t a : after)
+		{
+			cgra_node place = placeOfInstr[a];
+			commited[currentII+place.k][place.i][place.j] = conf[place.k % currentII][place.i][place.j];
+			for (unsigned int k = currentII+(place.k+1); k < currentII+size+1; ++k)
+			{
+				for (unsigned int i = 0; i < CgraSimulator::height; ++i)
+				{
+					for (unsigned int j = 0; j < CgraSimulator::width; ++j)
+					{
+						if (carry_value[k][i][j] == a)
+						{
+							commited[k][i][j] = conf[k % currentII][i][j];
+						}
+					}
+				}
+			}
+		}
+
+		/// if properly configured, commit configuration
+		auto id = cgra.registerConfiguration((uint64_t*)commited, currentII+size);
 
 		instructions[0] = {VEX_CGRA << 19,id << 23,0,0};
-		//Log::out(0) << "Block scheduled\n";
-		for (unsigned int i = 0; i < currentII; ++i)
-						{
-							//Log::out(0) << "LAYER " << i << "\n";
-							//printConfig(0, (uint64_t*)(conf[i]));
-						}
+
+		cgra_node br_place = placeOfInstr[numInstructions-1];
+		uint8_t br_op = cgra::opcode(commited[br_place.k][br_place.i][br_place.j]);
+
+		commited[br_place.k][br_place.i][br_place.j] = (commited[br_place.k][br_place.i][br_place.j] & ~((CGRA_IMM_SHORT_MASK << CGRA_IMM_OFFSET) | CGRA_OPCODE_MASK))
+				+ (br_op == CGRA_RECONF_IFEQ ? CGRA_RECONF_IFNE : CGRA_RECONF_IFEQ)
+				+ (currentII << (CGRA_IMM_OFFSET+1));
+		commited[br_place.k+currentII][br_place.i][br_place.j] = (commited[br_place.k+currentII][br_place.i][br_place.j] & ~((CGRA_IMM_SHORT_MASK << CGRA_IMM_OFFSET) | CGRA_OPCODE_MASK))
+				+ br_op
+				+ (currentII << CGRA_IMM_OFFSET);
+
+		Log::out(0) << "Block scheduled ****************************************************************************\n";
+		for (unsigned int i = 0; i < currentII+size+1; ++i)
+		{
+			Log::out(0) << "********************************************* LAYER " << i << " ***************************************\n";
+			printConfig(0, (uint64_t*)(commited[i]));
+		}
+		//printTikz(commited, currentII+size);
 		return true;
 	}
 	else
 	{
 		Log::out(0) << "Failed to schedule block\n";
-		delete[] conf;
 		return false;
 	}
 }

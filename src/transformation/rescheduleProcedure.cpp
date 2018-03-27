@@ -94,6 +94,7 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 		}
 
 
+
 		//We move instructions into bytecode memory
 		for (int oneBytecodeInstr = 0; oneBytecodeInstr<block->nbInstr; oneBytecodeInstr++){
 			writeInt(platform->bytecode, 16*oneBytecodeInstr + 0, block->instructions[4*oneBytecodeInstr + 0]);
@@ -144,22 +145,22 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 		if (1){
 			for (int i=result->blocks[oneBlock]->vliwStartAddress;i<result->blocks[oneBlock]->vliwEndAddress;i++){
-				Log::printf(LOG_SCHEDULE_PROC,"%d ", i);
+				Log::fprintf(LOG_SCHEDULE_PROC, stdout,"%d ", i);
 
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
+				Log::fprintf(LOG_SCHEDULE_PROC, stdout,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
+				Log::fprintf(LOG_SCHEDULE_PROC, stdout,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
+				Log::fprintf(LOG_SCHEDULE_PROC, stdout,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
+				Log::fprintf(LOG_SCHEDULE_PROC, stdout,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
 
 
 				if (platform->vliwInitialIssueWidth>4){
-					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
-					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
-					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
-					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
+					Log::fprintf(LOG_SCHEDULE_PROC, stdout,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
+					Log::fprintf(LOG_SCHEDULE_PROC, stdout,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
+					Log::fprintf(LOG_SCHEDULE_PROC, stdout,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
+					Log::fprintf(LOG_SCHEDULE_PROC, stdout,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
 					i++;
 				}
-				Log::printf(LOG_SCHEDULE_PROC,"\n");
+				Log::fprintf(LOG_SCHEDULE_PROC, stdout,"\n");
 			}
 		}
 		if ((isReturnBlock || isCallBlock) && readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1] + 16*incrementInBinaries) != 0){

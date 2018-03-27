@@ -1,6 +1,7 @@
 #include <simulator/functionalUnit.h>
 #include <isa/cgraIsa.h>
 #include <lib/log.h>
+#include <simulator/cgraSimulator.h>
 
 FunctionalUnit::DIR reverse(FunctionalUnit::DIR d)
 {
@@ -15,7 +16,7 @@ FunctionalUnit::DIR reverse(FunctionalUnit::DIR d)
 }
 
 FunctionalUnit::FunctionalUnit()
-	: _memory(nullptr), _reg(nullptr), _features(0), _out(0), _result(0), _reg_write(false)
+	: _memory(nullptr), _reg(nullptr), _features(0), _out(0), _result(0), _reg_write(false), _sim(nullptr)
 {
 	_neighbours[0] = this;
 	for (unsigned int i = 1; i < 5; ++i)
@@ -26,7 +27,7 @@ void FunctionalUnit::run()
 {
 	uint32_t imm_short, imm_long, addr;
 	int32_t imm_short_signed;
-	uint64_t va, vb, vc;
+	int64_t va, vb, vc;
 	uint8_t opcode, isImm, ra, rb, rc;
 
 	ra = cgra::regA(_instruction);
@@ -54,7 +55,7 @@ void FunctionalUnit::run()
 		}
 		else
 		{
-			Log::out(2) << "FunctionalUnit::doStep() " << opcodeNames[opcode] << "wants to access unknown neighbour\n";
+			Log::out(2) << "FunctionalUnit::doStep() " << opcodeNames[opcode] << " wants to access unknown neighbour\n";
 			return;
 		}
 	}
@@ -64,11 +65,11 @@ void FunctionalUnit::run()
 	}
 	else
 	{
-		Log::out(2) << "FunctionalUnit::doStep() " << opcodeNames[opcode] << "wants to access register file but can't\n";
+		Log::out(2) << "FunctionalUnit::doStep() " << opcodeNames[opcode] << " wants to access register file but can't\n";
 		return;
 	}
 
-	if (!isImm)
+	if (!isImm && opcode != CGRA_CARRY)
 	{
 		if (rc > 63 && _neighbours[rc-64])
 			vc = _neighbours[rc-64]->_out;
@@ -78,12 +79,12 @@ void FunctionalUnit::run()
 		}
 		else
 		{
-			Log::out(2) << "FunctionalUnit::doStep() " << opcodeNames[opcode] << "wants to access register file but can't\n";
+			Log::out(2) << "FunctionalUnit::doStep() " << opcodeNames[opcode] << " wants to access register file but can't\n";
 			return;
 		}
 	}
 
-	if (opcode == VEX_STB || opcode == VEX_STH || opcode == VEX_STW || opcode == VEX_STD)
+	if (opcode == VEX_STB || opcode == VEX_STH || opcode == VEX_STW || opcode == VEX_STD || opcode == CGRA_RECONF_IFEQ || opcode == CGRA_RECONF_IFNE)
 	{
 		if (rb > 63 && _neighbours[rb-64])
 			vb = _neighbours[rb-64]->_out;
@@ -93,7 +94,7 @@ void FunctionalUnit::run()
 		}
 		else
 		{
-			Log::out(2) << "FunctionalUnit::doStep() " << opcodeNames[opcode] << "wants to access register file but can't\n";
+			Log::out(2) << "FunctionalUnit::doStep() " << opcodeNames[opcode] << " wants to access register file but can't\n";
 			return;
 		}
 	}
@@ -116,6 +117,7 @@ void FunctionalUnit::run()
 		_reg_write = true;
 		break;
 	case VEX_SUB:
+	case VEX_SUBW:
 		_result = va- vc;
 		_reg_write = true;
 		break;
@@ -133,35 +135,35 @@ void FunctionalUnit::run()
 		_reg_write = true;
 		break;
 	case VEX_SLL:
-		_result = va<< vc;
+		_result = va << vc;
 		_reg_write = true;
 		break;
 	case VEX_SLLi:
-		_result = va<< imm_short;
+		_result = va << imm_short;
 		_reg_write = true;
 		break;
 	case VEX_SRL:
-		_result = va>> vc;
+		_result = va >> vc;
 		_reg_write = true;
 		break;
 	case VEX_SRLi:
-		_result = va>> imm_short;
+		_result = va >> imm_short;
 		_reg_write = true;
 		break;
 	case VEX_OR:
-		_result = va| vc;
+		_result = va | vc;
 		_reg_write = true;
 		break;
 	case VEX_ORi:
-		_result = va| imm_short;
+		_result = va | imm_short;
 		_reg_write = true;
 		break;
 	case VEX_AND:
-		_result = va& vc;
+		_result = va & vc;
 		_reg_write = true;
 		break;
 	case VEX_ANDi:
-		_result = va& imm_short;
+		_result = va & imm_short;
 		_reg_write = true;
 		break;
 	case VEX_XOR:
@@ -177,11 +179,18 @@ void FunctionalUnit::run()
 	case CGRA_CARRY:
 		_result = va;
 		break;
-	case CGRA_RECONF_IF0:
-		if (va == 0)
+	case CGRA_RECONF_IFEQ:
+		if (va == vb)
 		{
-
+			_sim->_cgra_cycles = imm_short-1;
 		}
+		break;
+	case CGRA_RECONF_IFNE:
+		if (va != vb)
+		{
+			_sim->_cgra_cycles = imm_short-1;
+		}
+		break;
 	default:
 		break;
 	}
@@ -268,6 +277,12 @@ void FunctionalUnit::enableReg(ac_int<64, true> *reg)
 {
 	_features |= FEATURE_REG;
 	_reg = reg;
+}
+
+void FunctionalUnit::enableReconf(CgraSimulator *sim)
+{
+	_features |= FEATURE_RECONF;
+	_sim = sim;
 }
 
 void FunctionalUnit::enableMem(std::map<ac_int<64, false>, ac_int<8, true> > *memory)

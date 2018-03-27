@@ -12,6 +12,7 @@
 #include <isa/irISA.h>
 #include <isa/vexISA.h>
 #include <transformation/irScheduler.h>
+#include <lib/log.h>
 
 template<int N> struct l2 { enum { value = 1 + l2<N/2>::value }; };
 template<> struct l2<1> { enum { value = 1 }; };

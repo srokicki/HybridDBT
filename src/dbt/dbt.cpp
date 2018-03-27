@@ -35,6 +35,7 @@
 #include <system.h>
 #endif
 
+#include <lib/pcmWrapper.h>
 
 void printStats(unsigned int size, short* blockBoundaries){
 
@@ -173,6 +174,7 @@ int run(DBTPlateform *platform, int nbCycle){
 int main(int argc, char *argv[])
 {
 
+	PcmWrapper::init();
 	/*Parsing arguments of the commant
 	 *
 	 */

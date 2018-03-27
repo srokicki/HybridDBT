@@ -7,6 +7,7 @@ set(SOURCE
    ${CMAKE_CURRENT_SOURCE_DIR}/traceQueue.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/threadedDebug.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/log.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/pcmWrapper.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/dbtProfiling.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/tikzDrawer.cpp
    PARENT_SCOPE

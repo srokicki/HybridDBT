@@ -3,40 +3,30 @@
 #include <isa/cgraIsa.h>
 
 VexCgraSimulator::VexCgraSimulator(unsigned int *bin)
-	: VexSimulator(bin), currentConf(-1), cgraCycles(0), cgraStall(0), cgraSimulator(&this->memory, this->REG), configurationCache{}
+	: VexSimulator(bin), cgraStall(0), cgraSimulator(&this->memory, this->REG), cgraRunning(false)
 {
 }
 
 int VexCgraSimulator::doStep(){
 
-	if (currentConf != -1 && cgraCycles != configurationCache.at(currentConf).cycles)
-	{
-		uint64_t * conf = configurationCache[currentConf].configuration+cgraCycles*CgraSimulator::height*CgraSimulator::width;
-		//cgra::printConfig(0, conf);
-		cgraSimulator.configure(conf);
-		cgraSimulator.doStep();
-		cgraCycles++;
-		if (cgraCycles == configurationCache[currentConf].cycles)
-		{
-			currentConf = -1;
-			cgraCycles = 0;
-			debugLevel = 1;
-		}
-		cycle++;
+	cgraRunning = false;
+	if (cgraStall == 5){
+		//cgraSimulator.print();
+		cgraRunning = cgraSimulator.doStep();
 	}
 
-	if (currentConf == -1 && cgraStall > 0)
-		cgraStall--;
+	if (!cgraRunning && cgraStall == 5)
+		cgraStall = 0;
 
-	if (cgraStall < 1)
+	if (cgraStall > 0 && cgraStall < 5)
 	{
-		doWB(memtoWB2);
-		doWB(memtoWB3);
-		doWB(memtoWB7);
-		doWB(memtoWB8);
+		cgraStall++;
 	}
 
-
+	doWB(memtoWB2);
+	doWB(memtoWB3);
+	doWB(memtoWB7);
+	doWB(memtoWB8);
 
 	///////////////////////////////////////////////////////
 	//													 //
@@ -44,18 +34,14 @@ int VexCgraSimulator::doStep(){
 	//													 //
 	///////////////////////////////////////////////////////
 
-	if (cgraStall < 3)
-	{
-		doEx(dctoEx1, &extoMem1);
-		doExMult(dctoEx2, &extoMem2);
-		doExMult(dctoEx3, &extoMem3);
-		doEx(dctoEx4, &extoMem4);
-		doEx(dctoEx5, &extoMem5);
-		doEx(dctoEx6, &extoMem6);
-		doEx(dctoEx7, &extoMem7);
-		doExMult(dctoEx8, &extoMem8);
-	}
-
+	doEx(dctoEx1, &extoMem1);
+	doExMult(dctoEx2, &extoMem2);
+	doExMult(dctoEx3, &extoMem3);
+	doEx(dctoEx4, &extoMem4);
+	doEx(dctoEx5, &extoMem5);
+	doEx(dctoEx6, &extoMem6);
+	doEx(dctoEx7, &extoMem7);
+	doExMult(dctoEx8, &extoMem8);
 
 
 	///////////////////////////////////////////////////////
@@ -65,25 +51,17 @@ int VexCgraSimulator::doStep(){
 	///////////////////////////////////////////////////////
 
 
+	doMemNoMem(extoMem1, &memtoWB1);
+	doMemNoMem(extoMem3, &memtoWB3);
+	doMemNoMem(extoMem4, &memtoWB4);
+	doMemNoMem(extoMem5, &memtoWB5);
+	doMemNoMem(extoMem6, &memtoWB6);
+	doMemNoMem(extoMem8, &memtoWB8);
 
+	doMem(extoMem2, &memtoWB2);
+	doMem(extoMem7, &memtoWB7);
 
-
-
-	if (cgraStall < 2)
-	{
-		doMemNoMem(extoMem1, &memtoWB1);
-		doMemNoMem(extoMem3, &memtoWB3);
-		doMemNoMem(extoMem4, &memtoWB4);
-		doMemNoMem(extoMem5, &memtoWB5);
-		doMemNoMem(extoMem6, &memtoWB6);
-		doMemNoMem(extoMem8, &memtoWB8);
-
-		doMem(extoMem2, &memtoWB2);
-		doMem(extoMem7, &memtoWB7);
-
-		//		doMem(extoMem6, &memtoWB6, DATA0, DATA1, DATA2, DATA3);
-	}
-
+	//		doMem(extoMem6, &memtoWB6, DATA0, DATA1, DATA2, DATA3);
 
 
 	///////////////////////////////////////////////////////
@@ -92,13 +70,10 @@ int VexCgraSimulator::doStep(){
 	//  												 //
 	///////////////////////////////////////////////////////
 
-	if (cgraStall < 1)
-	{
-		doWB(memtoWB1);
-		doWB(memtoWB4);
-		doWB(memtoWB5);
-		doWB(memtoWB6);
-	}
+	doWB(memtoWB1);
+	doWB(memtoWB4);
+	doWB(memtoWB5);
+	doWB(memtoWB6);
 
 
 	///////////////////////////////////////////////////////
@@ -107,101 +82,92 @@ int VexCgraSimulator::doStep(){
 	//													 //
 	///////////////////////////////////////////////////////
 
-	if (cgraStall < 4)
-	{
-		NEXT_PC = PC+4;
-		if (this->issueWidth > 4)
-			NEXT_PC += 4;
+	NEXT_PC = PC+4;
+	if (this->issueWidth > 4)
+		NEXT_PC += 4;
 
-		doDCBr(ftoDC1, &dctoEx1);
+	doDCBr(ftoDC1, &dctoEx1);
 
-		doDCMem(ftoDC2, &dctoEx2);
+	doDCMem(ftoDC2, &dctoEx2);
 
-		doDC(ftoDC3, &dctoEx3);
-		doDC(ftoDC4, &dctoEx4);
+	doDC(ftoDC3, &dctoEx3);
+	doDC(ftoDC4, &dctoEx4);
 
-		doDC(ftoDC5, &dctoEx5);
-		doDC(ftoDC6, &dctoEx6);
+	doDC(ftoDC5, &dctoEx5);
+	doDC(ftoDC6, &dctoEx6);
 
-		doDCMem(ftoDC7, &dctoEx7);
+	doDCMem(ftoDC7, &dctoEx7);
 
-		doDC(ftoDC8, &dctoEx8);
+	doDC(ftoDC8, &dctoEx8);
 
-		ac_int<7, false> OP1 = ftoDC1.instruction.slc<7>(0);
+	ac_int<7, false> OP1 = ftoDC1.instruction.slc<7>(0);
 
-		// If the operation code is 0x2f then the processor stops
-		if(OP1 == 0x2F){
-			stop = 1;
-			NEXT_PC = PC;
-		}
-		// If the operation code is 0x2f then the processor stops
-		if(stop == 1){
-			return PC;
-		}
-/*
-		if (cgraStall > 0)
-			NEXT_PC = PC;*/
+	// If the operation code is 0x2f then the processor stops
+	if(OP1 == 0x2F){
+		stop = 1;
+		NEXT_PC = PC;
 	}
+	// If the operation code is 0x2f then the processor stops
+	if(stop == 1){
+		return PC;
+	}
+
 	///////////////////////////////////////////////////////
 	//                       F                           //
 	///////////////////////////////////////////////////////
 
 
-	if (cgraStall < 5)
-	{
-		// Retrieving new instruction
-
-		ac_int<64, false> secondLoadAddress = (PC>>2)+1;
+	// Retrieving new instruction
+	ac_int<64, false> secondLoadAddress = (PC>>2)+1;
 
 
-		ac_int<32, false> instructions[8];
-		instructions[0] = RI[(int) PC+0];
-		instructions[1] = RI[(int) PC+1];
-		instructions[2] = RI[(int) PC+2];
-		instructions[3] = RI[(int) PC+3];
-		instructions[4] = RI[(int) PC+4];
-		instructions[5] = RI[(int) PC+5];
-		instructions[6] = RI[(int) PC+6];
-		instructions[7] = RI[(int) PC+7];
+	ac_int<32, false> instructions[8];
+	instructions[0] = RI[(int) PC+0];
+	instructions[1] = RI[(int) PC+1];
+	instructions[2] = RI[(int) PC+2];
+	instructions[3] = RI[(int) PC+3];
+	instructions[4] = RI[(int) PC+4];
+	instructions[5] = RI[(int) PC+5];
+	instructions[6] = RI[(int) PC+6];
+	instructions[7] = RI[(int) PC+7];
 
-		ac_int<32, false> nopInstr = 0;
+	ac_int<32, false> nopInstr = 0;
 
-		// Redirect instructions to thier own ways
+	// Redirect instructions to thier own ways
 
-		ftoDC1.instruction = instructions[0];
-		ftoDC2.instruction = this->unitActivation[1] ? instructions[1] : nopInstr;
-		ftoDC3.instruction = this->unitActivation[2] ? instructions[2] : nopInstr;
-		ftoDC4.instruction = this->unitActivation[3] ? instructions[3] : nopInstr;
+	ftoDC1.instruction = !cgraStall ? instructions[0] : nopInstr;
+	ftoDC2.instruction = this->unitActivation[1] && !cgraStall ? instructions[1] : nopInstr;
+	ftoDC3.instruction = this->unitActivation[2] && !cgraStall ? instructions[2] : nopInstr;
+	ftoDC4.instruction = this->unitActivation[3] && !cgraStall ? instructions[3] : nopInstr;
 
-		ftoDC5.instruction = this->unitActivation[4] ? instructions[4] : nopInstr;
-		ftoDC6.instruction = this->unitActivation[5] ? (this->muxValues[0] ? instructions[1] : instructions[5]) : nopInstr;
-		ftoDC7.instruction = this->unitActivation[6] ? (this->muxValues[1] ? instructions[2] : instructions[6]) : nopInstr;
-		ftoDC8.instruction = this->unitActivation[7] ? (this->muxValues[2] ? instructions[3] : instructions[7]) : nopInstr;
+	ftoDC5.instruction = this->unitActivation[4] && !cgraStall ? instructions[4] : nopInstr;
+	ftoDC6.instruction = this->unitActivation[5] && !cgraStall ? (this->muxValues[0] ? instructions[1] : instructions[5]) : nopInstr;
+	ftoDC7.instruction = this->unitActivation[6] && !cgraStall ? (this->muxValues[1] ? instructions[2] : instructions[6]) : nopInstr;
+	ftoDC8.instruction = this->unitActivation[7] && !cgraStall ? (this->muxValues[2] ? instructions[3] : instructions[7]) : nopInstr;
 
-		//We increment IPc counters
-		if (ftoDC1.instruction != 0)
-			nbInstr++;
-		if (ftoDC2.instruction != 0)
-			nbInstr++;
-		if (ftoDC3.instruction != 0)
-			nbInstr++;
-		if (ftoDC4.instruction != 0)
-			nbInstr++;
-		if (ftoDC5.instruction != 0)
-			nbInstr++;
-		if (ftoDC6.instruction != 0)
-			nbInstr++;
-		if (ftoDC7.instruction != 0)
-			nbInstr++;
-		if (ftoDC8.instruction != 0)
-			nbInstr++;
+	//We increment IPc counters
+	if (ftoDC1.instruction != 0)
+		nbInstr++;
+	if (ftoDC2.instruction != 0)
+		nbInstr++;
+	if (ftoDC3.instruction != 0)
+		nbInstr++;
+	if (ftoDC4.instruction != 0)
+		nbInstr++;
+	if (ftoDC5.instruction != 0)
+		nbInstr++;
+	if (ftoDC6.instruction != 0)
+		nbInstr++;
+	if (ftoDC7.instruction != 0)
+		nbInstr++;
+	if (ftoDC8.instruction != 0)
+		nbInstr++;
 
-		nbCycleType[typeInstr[(int) PC/4]]++;
-	}
+	nbCycleType[typeInstr[(int) PC/4]]++;
 
 	int pcValueForDebug = PC;
 
-	if (cgraStall < 5)
+	if (!cgraStall)
 	{
 		// Next instruction
 		PC = NEXT_PC;
@@ -272,10 +238,8 @@ void VexCgraSimulator::doDC(FtoDC ftoDC, DCtoEx *dctoEx)
 
 	if (OP == VEX_CGRA)
 	{
-		NEXT_PC = PC;
-		currentConf = IMM19_u;
-		cgraCycles = 0;
-		cgraStall = 5;
+		cgraSimulator.start(IMM19_u);
+		cgraStall = 1;
 		debugLevel = 2;
 		return;
 	}
@@ -290,10 +254,8 @@ void VexCgraSimulator::doDCBr(FtoDC ftoDC, DCtoEx *dctoEx)
 
 	if (OP == VEX_CGRA)
 	{
-		NEXT_PC = PC;
-		currentConf = IMM19_u;
-		cgraCycles = 0;
-		cgraStall = 5;
+		cgraSimulator.start(IMM19_u);
+		cgraStall = 1;
 		debugLevel = 2;
 		return;
 	}

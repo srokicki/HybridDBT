@@ -53,10 +53,13 @@ uint64_t vex2cgra(uint128_struct instruction, uint8_t src1, uint8_t src2, uint16
 	uint16_t r1 = 0xffff, r2 = 0xffff, r3 = 0xffff;
 	uint8_t opCode = ((instruction.word96>>19) & 0x7f);
 
-	if (opCode == VEX_STB || opCode == VEX_STD || opCode == VEX_STH || opCode == VEX_STW)
+	if (opCode == VEX_STB || opCode == VEX_STD || opCode == VEX_STH || opCode == VEX_STW || (opCode == VEX_BR || opCode == VEX_BRF))
 	{
 		r1 = virtualRIn2;
 		r2 = virtualRDest;
+
+		if (opCode == VEX_BR) ret = CGRA_RECONF_IFEQ;
+		if (opCode == VEX_BRF) ret = CGRA_RECONF_IFNE;
 
 		if (src1 != 0xff)
 		{
@@ -132,7 +135,7 @@ bool isEligible(uint32_t i1, uint32_t i2, uint32_t i3, uint32_t i4)
 		VEX_SUB, VEX_SUBi, VEX_SLL, VEX_SLLi,
 		VEX_AND, VEX_ANDi, VEX_XOR, VEX_XORi,
 		VEX_OR, VEX_ORi, VEX_SRL, VEX_SRLi,
-		VEX_ADDW, VEX_ADDWi,/* VEX_BR, VEX_BRF,*/ VEX_CMPNE
+		VEX_ADDW, VEX_ADDWi, VEX_BR, VEX_BRF, VEX_CMPNE, VEX_SUBW
 	};
 	return std::find(validOpCodes, validOpCodes+sizeof(validOpCodes), opCode)
 			!= validOpCodes+sizeof(validOpCodes);
@@ -149,7 +152,7 @@ std::string toString(uint64_t instruction)
 
 	char isImm = ((op >> 4) & 0x7) == 1 || ((op >> 4) & 0x7) == 6 || ((op >> 4) & 0x7) == 7;
 
-	ss << (op == CGRA_CARRY ? "CARRY" : (op == CGRA_RECONF_IF0 ? "RECONF" : opcodeNames[op]));
+	ss << (op == CGRA_CARRY ? "CARRY" : (op == CGRA_RECONF_IFEQ || op == CGRA_RECONF_IFNE ? "RECONF" : opcodeNames[op]));
 
 	if (op == 0)
 	{
@@ -158,9 +161,35 @@ std::string toString(uint64_t instruction)
 	{
 		ss << " from n" << (int)(ra-64);
 	}
-	else if (op == CGRA_RECONF_IF0)
+	else if (op == CGRA_RECONF_IFEQ)
 	{
-		ss << " if n" << (int)(ra-64) << "=0";
+		if (ra > 63)
+			ss << " n" << (int)(ra-64);
+		else
+			ss << " r" << (int)(ra);
+
+		ss << "==";
+
+		if (rb > 63)
+			ss << "n" << (int)(rb-64);
+		else
+			ss << "r" << (int)(rb);
+		ss << " PC=" << imm_short;
+	}
+	else if (op == CGRA_RECONF_IFNE)
+	{
+		if (ra > 63)
+			ss << " n" << (int)(ra-64);
+		else
+			ss << " r" << (int)(ra);
+
+		ss << "!=";
+
+		if (rb > 63)
+			ss << "n" << (int)(rb-64);
+		else
+			ss << "r" << (int)(rb);
+		ss << " PC=" << imm_short;
 	}
 	else if (op == VEX_STB || op == VEX_STD || op == VEX_STH || op == VEX_STW)
 	{
