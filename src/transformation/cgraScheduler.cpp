@@ -172,7 +172,7 @@ bool canPlace(const FunctionalUnit& u, uint128_struct i)
 			opcode == VEX_LDB || opcode == VEX_LDD || opcode == VEX_LDH || opcode == VEX_LDW)
 	{
 		ret = ret && (u.features() & FunctionalUnit::FEATURE_MEM);
-		if (virtualRDest >= 256)
+		if (virtualRDest >= 256 && !(i.word96 & 0x08000000))
 		{
 			ret = ret && (u.features() & FunctionalUnit::FEATURE_REG);
 		}
@@ -189,7 +189,7 @@ bool canPlace(const FunctionalUnit& u, uint128_struct i)
 			ret = ret && (u.features() & FunctionalUnit::FEATURE_REG);
 		}
 
-		if (virtualRDest >= 256)
+		if (virtualRDest >= 256 && !(i.word96 & 0x08000000))
 		{
 			ret = ret && (u.features() & FunctionalUnit::FEATURE_REG);
 		}
@@ -1101,6 +1101,12 @@ bool EdgeCentricScheduler::schedule(CgraSimulator &cgra, uint128_struct *instruc
 		if (routed)
 			break;
 
+		Log::out(0) << "Block scheduled ****************************************************************************\n";
+		for (unsigned int i = 0; i < currentII; ++i)
+		{
+			Log::out(0) << "********************************************* LAYER " << i << " ***************************************\n";
+			printConfig(0, (uint64_t*)(conf[i]));
+		}
 		//Log::out(0) << "Couldn't schedule with II=" << currentII << " incrementing ...\n";
 		currentII++;
 	} // while (currentII < II*2)

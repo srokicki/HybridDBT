@@ -13,6 +13,8 @@
 #include <transformation/rescheduleProcedure.h>
 #include <lib/log.h>
 
+#include <transformation/localRegisterAnalysis.h>
+
 /******************************************************************************************
  ******************************  Reschedule Procedure
  ******************************************************************************************
@@ -121,6 +123,7 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 			for (int i=0; i<block->nbInstr; i++)
 				Log::printf(LOG_SCHEDULE_PROC,"%s ", printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12)).c_str());
 		}
+
 
 
 		//We call the scheduler

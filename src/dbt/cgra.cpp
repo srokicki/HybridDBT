@@ -19,6 +19,7 @@
 #include <transformation/buildTraces.h>
 #include <transformation/rescheduleProcedure.h>
 #include <transformation/cgraScheduler.h>
+#include <transformation/localRegisterAnalysis.h>
 #include <lib/debugFunctions.h>
 
 #include <isa/vexISA.h>
@@ -624,6 +625,7 @@ int main(int argc, char *argv[])
 				for (int blockId = 0; blockId < proc->nbBlock && cgraConfs < 2; ++blockId)
 				{
 					IRBlock * block = proc->blocks[blockId];
+					localRegisterAnalysis(block);
 					for (int succId = 0; succId < block->nbSucc; ++succId)
 						if (block->successors[succId] == block)//(block->sourceDestination == block->sourceStartAddress)
 						{

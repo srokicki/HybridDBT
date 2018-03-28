@@ -3,6 +3,7 @@
 #include <sstream>
 #include <lib/log.h>
 #include <simulator/cgraSimulator.h>
+#include <iomanip>
 
 namespace cgra
 {
@@ -135,7 +136,8 @@ bool isEligible(uint32_t i1, uint32_t i2, uint32_t i3, uint32_t i4)
 		VEX_SUB, VEX_SUBi, VEX_SLL, VEX_SLLi,
 		VEX_AND, VEX_ANDi, VEX_XOR, VEX_XORi,
 		VEX_OR, VEX_ORi, VEX_SRL, VEX_SRLi,
-		VEX_ADDW, VEX_ADDWi, VEX_BR, VEX_BRF, VEX_CMPNE, VEX_SUBW
+		VEX_ADDW, VEX_ADDWi, VEX_BR, VEX_BRF, VEX_CMPNE, VEX_SUBW,
+		VEX_SRAW, VEX_SRAWi, VEX_SRA, VEX_SRAi, VEX_SRLW, VEX_SRLWi
 	};
 	return std::find(validOpCodes, validOpCodes+sizeof(validOpCodes), opCode)
 			!= validOpCodes+sizeof(validOpCodes);
@@ -234,8 +236,10 @@ std::string toString(uint64_t instruction)
 		}
 	}
 
-	while (ss.str().size() < 25)
-		ss << " ";
+	std::string s = ss.str();
+	ss.str("");
+	ss.clear();
+	ss << std::setw(25) << s;
 	return ss.str();
 }
 

@@ -143,11 +143,35 @@ void FunctionalUnit::run()
 		_reg_write = true;
 		break;
 	case VEX_SRL:
-		_result = va >> vc;
+		_result = (uint64_t)(va) >> vc;
 		_reg_write = true;
 		break;
 	case VEX_SRLi:
+		_result = (uint64_t)(va) >> imm_short;
+		_reg_write = true;
+		break;
+	case VEX_SRLW:
+		_result = (uint32_t)(va & 0xffffffff) >> vc;
+		_reg_write = true;
+		break;
+	case VEX_SRLWi:
+		_result = (uint32_t)(va & 0xffffffff) >> imm_short;
+		_reg_write = true;
+		break;
+	case VEX_SRA:
+		_result = va >> vc;
+		_reg_write = true;
+		break;
+	case VEX_SRAW:
+		_result = (int32_t)(va) >> vc;
+		_reg_write = true;
+		break;
+	case VEX_SRAi:
 		_result = va >> imm_short;
+		_reg_write = true;
+		break;
+	case VEX_SRAWi:
+		_result = (int32_t)(va) >> imm_short;
 		_reg_write = true;
 		break;
 	case VEX_OR:
