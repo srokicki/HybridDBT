@@ -147,8 +147,19 @@ void MemoryDependencyGraph::applyGraph(IRBlock *block){
 	this->print();
 
 	//We remove previous dependencies
-	for (int oneMemoryInstr = 0; oneMemoryInstr<this->size; oneMemoryInstr++)
+	for (int oneMemoryInstr = 0; oneMemoryInstr<this->size; oneMemoryInstr++){
+		unsigned char pred[7];
+		char nbPred = getControlDep(block->instructions, this->idMem[oneMemoryInstr], pred);
 		clearControlDep(block->instructions, this->idMem[oneMemoryInstr]);
+
+		for (int onePred = 0; onePred < nbPred; onePred++){
+			char opcode = getOpcode(block->instructions, pred[onePred]);
+			if (!((opcode >> 4) == 1 || opcode == VEX_FLW || opcode == VEX_FSW)){
+				addControlDep(block->instructions, pred[onePred], this->idMem[oneMemoryInstr]);
+			}
+		}
+
+	}
 
 	//We add dependencies when needed
 	for (int oneMemoryInstr = 0; oneMemoryInstr<this->size; oneMemoryInstr++)
@@ -170,7 +181,11 @@ void basicMemorySimplification(IRBlock *block, MemoryDependencyGraph *graph){
 				getOperands(block->instructions, predecessor, operandsPred);
 				getOperands(block->instructions, memInstruction, operandsInstr);
 
-				if (operandsInstr[0] == operandsPred[0]){
+				int immediateValuePred, immediateValueInstr;
+				getImmediateValue(block->instructions, predecessor, &immediateValuePred);
+				getImmediateValue(block->instructions, memInstruction, &immediateValueInstr);
+
+				if (operandsInstr[0] == operandsPred[0] && immediateValueInstr != immediateValuePred){
 					graph->graph[oneMemInstruction * graph->size + onePredecessor] = false;
 				}
 			}
@@ -180,7 +195,7 @@ void basicMemorySimplification(IRBlock *block, MemoryDependencyGraph *graph){
 
 
 void memoryDisambiguation(DBTPlateform *platform, IRBlock *block){
-	if (MAX_DISAMB_COUNT > 0){
+	if (MAX_DISAMB_COUNT == -1 || MAX_DISAMB_COUNT > 0){
 		MemoryDependencyGraph *graph = new MemoryDependencyGraph(block);
 
 		graph->print();
@@ -192,7 +207,7 @@ void memoryDisambiguation(DBTPlateform *platform, IRBlock *block){
 		Log::printf(LOG_MEMORY_DISAMBIGUATION, "************************************************************\n");
 		Log::printf(LOG_MEMORY_DISAMBIGUATION, "Before disambiguation: \n");
 		for (int i=0; i<block->nbInstr; i++)
-			Log::printf(LOG_SCHEDULE_PROC, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+			Log::printf(LOG_MEMORY_DISAMBIGUATION, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
 
 		//We perform disambiguation and apply it
 		basicMemorySimplification(block, graph);
