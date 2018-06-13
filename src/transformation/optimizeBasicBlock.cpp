@@ -288,7 +288,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 
 		for (int i=basicBlockStart;i<basicBlockEnd;i++){
-			platform->vexSimulator->typeInstr[i] = 1;
+			platform->vexSimulator->typeInstr[i-1+incrementInBinaries] = 1;
 		}
 
 
