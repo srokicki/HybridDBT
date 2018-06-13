@@ -447,7 +447,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 		}
 		Log::printf(LOG_SCHEDULE_PROC,"\n");
 
-		platform->vexSimulator->typeInstr[i] = 2;
+		platform->vexSimulator->typeInstr[i-1+incrementInBinaries] = 2;
 	}
 	//*************************************************************************
 
