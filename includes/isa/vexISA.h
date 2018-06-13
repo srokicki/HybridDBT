@@ -187,6 +187,7 @@ unsigned int  assembleRRInstruction_sw(char opcode, char regDest, char regA, cha
 
 #ifndef __CATAPULT
 extern const char* opcodeNames[128];
+extern const char* fpNames[32];
 std::string printDecodedInstr(unsigned int instruction);
 #endif
 
