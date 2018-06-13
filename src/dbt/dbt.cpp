@@ -353,6 +353,7 @@ int main(int argc, char *argv[])
 	//We read the binaries
 	readSourceBinaries(binaryFile, code, addressStart, size, pcStart, &dbtPlateform);
 
+
 	if (size > MEMORY_SIZE){
 		Log::printf(LOG_ERROR, "ERROR: Size of source binaries is %d. Current implementation only accept size lower then %d\n", size, MEMORY_SIZE);
 		exit(-1);
@@ -362,7 +363,7 @@ int main(int argc, char *argv[])
 	int numberOfSections = 1 + (size>>10);
 	IRApplication application = IRApplication(numberOfSections);
 	Profiler profiler = Profiler(&dbtPlateform);
-
+	application.numberInstructions = size;
 
 
 
@@ -561,7 +562,6 @@ int main(int argc, char *argv[])
 
 				if (!errorCode){
 					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
-
 					placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
 					dbtPlateform.procedureOptCounter++;
 
@@ -583,7 +583,7 @@ int main(int argc, char *argv[])
 				IRBlock* block = application.blocksInSections[oneSection][oneBlock];
 
 				if (block != NULL){
-					if ((MAX_SCHEDULE_COUNT==-1 || dbtPlateform.blockScheduleCounter < MAX_SCHEDULE_COUNT) && OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress > 4  && block->blockState < IRBLOCK_STATE_SCHEDULED){
+					if ((MAX_SCHEDULE_COUNT==-1 || dbtPlateform.blockScheduleCounter < MAX_SCHEDULE_COUNT) && OPTLEVEL >= 1 && (block->sourceEndAddress - block->sourceStartAddress > 4 || (block->sourceDestination != -1 && block->sourceDestination <= block->sourceStartAddress) )  && block->blockState < IRBLOCK_STATE_SCHEDULED){
 
 
 						optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);

@@ -114,16 +114,18 @@ public:
 		  Log::fprintf(0, stdout, "\t\t Number of cycle spent on system code : %d\n", platform->vexSimulator->nbCycleType[3]);
 
 		  Log::fprintf(0, stdout, "\t -----------------------------------------------------\n");
-		  Log::fprintf(0, stdout, "\t Stats for optimization level 0:\n");
+		  Log::fprintf(0, stdout, "\t Stats for optimization level 0\n");
 		  Log::fprintf(0, stdout, "\t\t Number of cycle spent one level 0 code : %d\n", platform->vexSimulator->nbCycleType[0]);
+		  Log::fprintf(0, stdout, "\t\t Number of instruction scheduled: %d\n", application->numberInstructions);
+
 
 		  Log::fprintf(0, stdout, "\t -----------------------------------------------------\n");
-		  Log::fprintf(0, stdout, "\t Stats for optimization level 1:\n");
+		  Log::fprintf(0, stdout, "\t Stats for optimization level 1\n");
 		  Log::fprintf(0, stdout, "\t\t Number of cycle spent one level 1 code: %d\n", platform->vexSimulator->nbCycleType[1]);
 		  Log::fprintf(0, stdout, "\t\t Number of block scheduled: %d\n", platform->blockScheduleCounter);
 
 		  Log::fprintf(0, stdout, "\t -----------------------------------------------------\n");
-		  Log::fprintf(0, stdout, "\t Stats for optimization level 2:\n");
+		  Log::fprintf(0, stdout, "\t Stats for optimization level 2\n");
 		  Log::fprintf(0, stdout, "\t\t Number of cycle spent one level 2 code : %d\n", platform->vexSimulator->nbCycleType[2]);
 		  Log::fprintf(0, stdout, "\t\t Number of procedure optimized: %d\n", platform->procedureOptCounter);
 		  Log::fprintf(0, stdout, "\t\t Number of trace construction: %d\n", platform->traceConstructionCounter);
