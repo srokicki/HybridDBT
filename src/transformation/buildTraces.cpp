@@ -565,6 +565,9 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 	 *
 	 */
 
+	IRBlock *blocksToAdd[10];
+	int nbBlocksToAdd = 0;
+
 	int nbBlock = 0;
 	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
 		if (procedure->blocks[oneBlock]->nbInstr != 0){
@@ -593,7 +596,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 			if (block->nbJumps + 1 == block->nbSucc && block->nbSucc == 2 && block->successor1 == block){
 				block->blockState = IRBLOCK_PERFECT_LOOP;
 
-				if (block->nbInstr<100){
+				if (block->nbInstr<100 && nbBlocksToAdd < 10){
 					/**************************************************************************************************
 					 * In this situation, we are unrolling a loop.
 					 **************************************************************************************************
@@ -606,6 +609,15 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 						continue;
 
 					block->blockState = IRBLOCK_UNROLLED;
+
+					fprintf(stderr, "******************************************************************\n");
+					fprintf(stderr, "******************** Perfect loop identified *********************\n");
+					fprintf(stderr, "******************** %8x  ---  %8x *********************\n", (unsigned int) block->sourceStartAddress, (unsigned int) block->sourceEndAddress);
+					fprintf(stderr, "******************************************************************\n");
+
+					for (int i=0; i<block->nbInstr; i++){
+						Log::printf(0, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+					}
 
 					getReadWriteRegisters(block, readRegs, writeRegs);
 					int nbIgnoredRegs = 0;
@@ -644,8 +656,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 					oneSuperBlock->instructions = NULL;
 
 					fprintf(stderr, "******************************************************************\n");
-					fprintf(stderr, "******************** Perfect loop identified *********************\n");
-					fprintf(stderr, "******************** %8x  ---  %8x *********************\n", (unsigned int) block->sourceStartAddress, (unsigned int) block->sourceEndAddress);
+					fprintf(stderr, "********************     Modified loop       *********************\n");
 					fprintf(stderr, "******************************************************************\n");
 
 					for (int i=0; i<block->nbInstr; i++){
@@ -655,52 +666,35 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 					//We generate a block for the loop termination
 					if (nbIgnoredRegs>0){
 
+						IRBlock *newBlock = new IRBlock(0,0,block->section);
+						newBlock->sourceStartAddress = block->successors[block->nbSucc-1]->sourceStartAddress - 1;
+						newBlock->sourceEndAddress = newBlock->sourceStartAddress + 1;
 
-						//TODO going through the successor to insert the set instructions
-						IRBlock *successor = block->successors[block->nbSucc-1];
-						unsigned int *newInstructionOfSucc = (unsigned int*) malloc((successor->nbInstr + nbIgnoredRegs)*4*sizeof(unsigned int));
-						memcpy(&newInstructionOfSucc[4*nbIgnoredRegs], successor->instructions, 4*sizeof(unsigned int)*successor->nbInstr);
-
-
-						free(successor->instructions);
-						successor->instructions = newInstructionOfSucc;
-						successor->nbInstr+=nbIgnoredRegs;
-
+						newBlock->instructions = (unsigned int*) malloc(nbIgnoredRegs * 4 * sizeof(unsigned int));
+						newBlock->nbInstr = nbIgnoredRegs;
 
 						unsigned int availableReg = 256+34;
 						unsigned int instructionId = 0;
 						for (int oneReg=0; oneReg<128; oneReg++){
 							if (writeRegs[oneReg]){
-								write128(successor->instructions, instructionId*16, assembleRBytecodeInstruction(2, 0, VEX_ADD, writeRegs[oneReg], 256, 256+oneReg, 0));
+								write128(newBlock->instructions, instructionId*16, assembleRBytecodeInstruction(2, 0, VEX_ADD, writeRegs[oneReg], 256, 256+oneReg, 0));
 								availableReg++;
 								instructionId++;
 							}
 						}
 
-						//We may count the number of read to write it in the IR
 
-						for (int oneInstr = nbIgnoredRegs; oneInstr<successor->nbInstr; oneInstr++){
-							short operands[2];
-							char nbOperand = getOperands(block->instructions, oneInstr, operands);
-							bool changed = false;
-							for (int oneOperand = 0; oneOperand<nbOperand; oneOperand++){
-								if (writeRegs[operands[oneOperand]]){
-									changed = true;
-									operands[oneOperand] = writeRegs[operands[oneOperand]] - 256 - 34;
-								}
-							}
-
-							if (changed)
-								setOperands(block->instructions, oneInstr, operands);
-						}
+						newBlock->successors[0] = block->successors[block->nbSucc-1];
+						block->successors[block->nbSucc-1] = newBlock;
+						blocksToAdd[nbBlocksToAdd] = newBlock;
+						nbBlocksToAdd++;
 
 						fprintf(stderr, "********************   Successor identified  *********************\n");
 						fprintf(stderr, "******************************************************************\n");
 
-						for (int i=0; i<successor->nbInstr; i++){
-							Log::printf(0, "%s ", printBytecodeInstruction(i, readInt(successor->instructions, i*16+0), readInt(successor->instructions, i*16+4), readInt(successor->instructions, i*16+8), readInt(successor->instructions, i*16+12)).c_str());
+						for (int i=0; i<newBlock->nbInstr; i++){
+							Log::printf(0, "%s ", printBytecodeInstruction(i, readInt(newBlock->instructions, i*16+0), readInt(newBlock->instructions, i*16+4), readInt(newBlock->instructions, i*16+8), readInt(newBlock->instructions, i*16+12)).c_str());
 						}
-
 					}
 
 
@@ -710,7 +704,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 					memoryDisambiguation(platform, block);
 
 					delete oneSuperBlock;
-					break;
 
 				}
 
@@ -853,73 +846,84 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 
 
 			}
-			//WARNING: cannot unroll blocks with a call or a goto at the end
-			//A good way to check is to see if block has one less jump than successor
-			else if (block->nbJumps + 1 == block->nbSucc && block->nbSucc == 2 && block->successor1 == block && block->nbInstr<100){
-					/**************************************************************************************************
-					 * In this situation, we are unrolling a loop.
-					 **************************************************************************************************
-					 * The block CFG information should remain unchanged : only the number of instruction changes.
-					 * The place location will also be modified...
-					 **************************************************************************************************/
-
-
-					if (block->nbJumps == block->nbSucc)
-						continue;
-
-					if (block->blockState == IRBLOCK_UNROLLED)
-						continue;
-
-					block->blockState = IRBLOCK_UNROLLED;
-
-
-//					IRBlock *oneSuperBlock = superBlock(block, block->successor1);
-//
-//					platform->unrollingCounter++;
-//
-//					block->nbInstr = oneSuperBlock->nbInstr;
-//
-//					unsigned int *oldInstruction = block->instructions;
-//					block->instructions = oneSuperBlock->instructions;
-//					oneSuperBlock->instructions = oldInstruction;
-//
-//					block->jumpID = oneSuperBlock->jumpID;
-//					block->jumpIds = oneSuperBlock->jumpIds;
-//					block->nbJumps = oneSuperBlock->nbJumps;
-//					block->jumpPlaces = oneSuperBlock->jumpPlaces;
-//					block->nbSucc = oneSuperBlock->nbSucc;
-//					for (int oneSuccessor = 0; oneSuccessor<10; oneSuccessor++)
-//						block->successors[oneSuccessor] = oneSuperBlock->successors[oneSuccessor];
-//
-//					oneSuperBlock->nbJumps = 0;
-//					oneSuperBlock->instructions = NULL;
+//			//WARNING: cannot unroll blocks with a call or a goto at the end
+//			//A good way to check is to see if block has one less jump than successor
+//			else if (block->nbJumps + 1 == block->nbSucc && block->nbSucc == 2 && block->successor1 == block && block->nbInstr<100){
+//					/**************************************************************************************************
+//					 * In this situation, we are unrolling a loop.
+//					 **************************************************************************************************
+//					 * The block CFG information should remain unchanged : only the number of instruction changes.
+//					 * The place location will also be modified...
+//					 **************************************************************************************************/
 //
 //
-					fprintf(stderr, "******************************************************************\n");
-					fprintf(stderr, "******************** Perfect loop identified *********************\n");
-					fprintf(stderr, "******************** %8x  ---  %8x *********************\n", (unsigned int) block->sourceStartAddress, (unsigned int) block->sourceEndAddress);
-					fprintf(stderr, "******************************************************************\n");
-
-					for (int i=0; i<block->nbInstr; i++){
-						Log::printf(0, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
-					}
+//					if (block->nbJumps == block->nbSucc)
+//						continue;
 //
-//					memoryDisambiguation(platform, block);
+//					if (block->blockState == IRBLOCK_UNROLLED)
+//						continue;
 //
-//					delete oneSuperBlock;
-
-					changeMade=1;
-					break;
-
-				}
+//					block->blockState = IRBLOCK_UNROLLED;
+//
+//
+////					IRBlock *oneSuperBlock = superBlock(block, block->successor1);
+////
+////					platform->unrollingCounter++;
+////
+////					block->nbInstr = oneSuperBlock->nbInstr;
+////
+////					unsigned int *oldInstruction = block->instructions;
+////					block->instructions = oneSuperBlock->instructions;
+////					oneSuperBlock->instructions = oldInstruction;
+////
+////					block->jumpID = oneSuperBlock->jumpID;
+////					block->jumpIds = oneSuperBlock->jumpIds;
+////					block->nbJumps = oneSuperBlock->nbJumps;
+////					block->jumpPlaces = oneSuperBlock->jumpPlaces;
+////					block->nbSucc = oneSuperBlock->nbSucc;
+////					for (int oneSuccessor = 0; oneSuccessor<10; oneSuccessor++)
+////						block->successors[oneSuccessor] = oneSuperBlock->successors[oneSuccessor];
+////
+////					oneSuperBlock->nbJumps = 0;
+////					oneSuperBlock->instructions = NULL;
+////
+////
+//					fprintf(stderr, "******************************************************************\n");
+//					fprintf(stderr, "******************** Perfect loop identified *********************\n");
+//					fprintf(stderr, "******************** %8x  ---  %8x *********************\n", (unsigned int) block->sourceStartAddress, (unsigned int) block->sourceEndAddress);
+//					fprintf(stderr, "******************************************************************\n");
+//
+//					for (int i=0; i<block->nbInstr; i++){
+//						Log::printf(0, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+//					}
+////
+////					memoryDisambiguation(platform, block);
+////
+////					delete oneSuperBlock;
+//
+//					changeMade=1;
+//					break;
+//
+//				}
 
 
 		}
 
 	}
-	IRBlock **newBlocks = (IRBlock**)  malloc(nbBlock*sizeof(IRBlock*));
+	IRBlock **newBlocks = (IRBlock**)  malloc((nbBlock + nbBlocksToAdd)*sizeof(IRBlock*));
 	int index = 0;
+	int blockToAddId = 0;
 	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
+
+		//We may insert here one of the new blocks
+		if (blockToAddId < nbBlocksToAdd && blocksToAdd[blockToAddId]->sourceStartAddress < procedure->blocks[oneBlock]->sourceStartAddress){
+			newBlocks[index] = blocksToAdd[blockToAddId];
+			blocksToAdd[blockToAddId]->reference = &(newBlocks[index]);
+			index++;
+			blockToAddId++;
+		}
+
+		//If it is not empty, we insert the block from the procedure
 		if (procedure->blocks[oneBlock]->nbInstr != 0){
 			newBlocks[index] = procedure->blocks[oneBlock];
 			procedure->blocks[oneBlock]->reference = &(newBlocks[index]);
