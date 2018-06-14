@@ -170,6 +170,9 @@ struct uint128_struct assembleRiBytecodeInstruction(char stageCode, char isAlloc
 		char opcode, short regA, short imm13, short regDest, unsigned char nbDep);
 struct uint128_struct assembleIBytecodeInstruction(char stageCode, char isAlloc,
 		char opcode, short reg, int imm19, unsigned char nbDep);
+struct uint128_struct assembleMemoryBytecodeInstruction(char stageCode, char isAlloc,
+		char opcode, short regA, short imm12, bool isSpec, char specId,
+		short regDest, unsigned char nbDep);
 
 
 #ifndef __SW

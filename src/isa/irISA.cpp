@@ -86,6 +86,37 @@ struct uint128_struct assembleRiBytecodeInstruction(char stageCode, char isAlloc
 	return result;
 }
 
+struct uint128_struct assembleMemoryBytecodeInstruction(char stageCode, char isAlloc,
+		char opcode, short regA, short imm12, bool isSpec, char specId,
+		short regDest, unsigned char nbDep){
+
+	struct uint128_struct result = {0, 0, 0, 0};
+	char isImm = 1;
+
+	//Node: Type is zero: no need to write it for real.
+
+	result.word96 += ((stageCode & 0x3) << 30);
+	result.word96 += ((isAlloc & 0x1) << 27);
+	result.word96 += ((opcode & 0x7f) << 19);
+	result.word96 += ((isImm & 0x1) << 18);
+
+	if (isSpec){
+		result.word96 += ((specId & 0x1f) << 1);
+		result.word96 += ((imm12 & 0x07f) << 6);
+	}
+	else{
+		result.word96 += ((imm12 & 0x0fff) << 1);
+	}
+	result.word96 += (((isSpec ? 1 : 0) & 0x1) << 0);
+
+
+	result.word64 += ((regA & 0x1ff) << 23);
+	result.word64 += ((regDest & 0x1ff) << 14);
+	result.word64 += ((nbDep & 0xff) << 6);
+
+	return result;
+}
+
 struct uint128_struct assembleIBytecodeInstruction(char stageCode, char isAlloc,
 		char opcode, short reg, int imm19, unsigned char nbDep){
 

@@ -465,6 +465,8 @@ void VexSimulator::doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 	extoMem->dest = dctoEx.dest;
 	extoMem->opCode = dctoEx.opCode;
 	extoMem->memValue = dctoEx.memValue;
+	extoMem->isSpec = dctoEx.isSpec;
+	extoMem->funct = dctoEx.funct;
 
 	if (dctoEx.opCode == VEX_FLB || dctoEx.opCode == VEX_FLH || dctoEx.opCode == VEX_FLW){
 		extoMem->isFloat = 1;
@@ -673,6 +675,9 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 	extoMem->dest = dctoEx.dest;
 	extoMem->opCode = dctoEx.opCode;
 	extoMem->memValue = dctoEx.memValue;
+	extoMem->isSpec = dctoEx.isSpec;
+	extoMem->funct = dctoEx.funct;
+
 	extoMem->isFloat = 0;
 	float localFloat;
 
@@ -905,6 +910,10 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<19, true> IMM19_s = ftoDC.instruction.slc<19>(7);
 	ac_int<13, false> IMM13_u = ftoDC.instruction.slc<13>(7);
 	ac_int<13, true> IMM13_s = ftoDC.instruction.slc<13>(7);
+	ac_int<12, false> IMM12_u = ftoDC.instruction.slc<12>(8);
+	ac_int<12, true> IMM12_s = ftoDC.instruction.slc<12>(8);
+	ac_int<17, true> IMM7_s = ftoDC.instruction.slc<7>(13);
+
 	ac_int<9, false> IMM9_u = ftoDC.instruction.slc<9>(11);
 	ac_int<9, true> IMM9_s = ftoDC.instruction.slc<9>(11);
 
@@ -958,10 +967,27 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 
 		if (isImm){
 			dctoEx->dest = RB;
-			if (isUnsigned)
-				dctoEx->datab = IMM13_u;
-			else
-				dctoEx->datab = IMM13_s;
+			if ((OP>>4) == 0x1){
+				dctoEx->isSpec = ftoDC.instruction[7];
+				if (!ftoDC.instruction[7]){
+					if (isUnsigned)
+						dctoEx->datab = IMM12_u;
+					else
+						dctoEx->datab = IMM12_s;
+				}
+				else{
+					if (isUnsigned)
+						dctoEx->datab = IMM12_u;
+					else
+						dctoEx->datab = IMM12_s;
+				}
+			}
+			else{
+				if (isUnsigned)
+					dctoEx->datab = IMM13_u;
+				else
+					dctoEx->datab = IMM13_s;
+			}
 		}
 		else{
 			dctoEx->dest = RC;
@@ -972,15 +998,19 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	if (OP == VEX_FNMADD || OP == VEX_FMADD || OP == VEX_FNMSUB || OP == VEX_FMSUB){
 		dctoEx->dest = RD;
 	}
+	ac_int<64, false> address;
+	if (ftoDC.instruction[7]){
+		address = IMM7_s + regValueA;
+	}
+	else
+		address = IMM12_s + regValueA;
 
-	ac_int<64, false> address = IMM13_s + regValueA;
 
 	if ((OP.slc<3>(4) == 1 || OP == VEX_FLW || OP == VEX_FLH || OP == VEX_FLB) && (address != 0x10009000 || !OP[3])){
 		//If we are in a memory access, the access is initiated here
 		#ifdef __CATAPULT
 		dctoEx->memValue = ldd(address & 0xfffffffffffffff8, memory0, memory1, memory2, memory3, memory4, memory5, memory6, memory7);
 		#else
-
 		dctoEx->memValue = this->ldd(address & 0xfffffffffffffff8);
 
 		#endif

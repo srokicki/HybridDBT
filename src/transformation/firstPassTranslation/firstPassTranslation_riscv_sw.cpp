@@ -449,7 +449,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 				lastLatency = MEMORY_LATENCY;
 
 				//Memory access operations.
-				binaries = assembleRiInstruction_sw(functBindingLD_sw[funct3], rd, rs1, imm12_I_signed);
+				binaries = assembleMemoryInstruction_sw(functBindingLD_sw[funct3], rd, rs1, imm12_I_signed, false, 0);
 				stage = stageMem;
 
 
@@ -461,7 +461,7 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 				lastWrittenRegister = rd;
 				lastLatency = 0;
 
-				binaries = assembleRiInstruction_sw(functBindingST_sw[funct3], rs2, rs1, imm12_S_signed);
+				binaries = assembleMemoryInstruction_sw(functBindingST_sw[funct3], rs2, rs1, imm12_S_signed, false, 0);
 				stage = stageMem;
 			}
 			else if (opcode == RISCV_JAL){
@@ -697,11 +697,11 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 				lastLatency = MEMORY_LATENCY;
 //TODO
 				if (funct3 == 4)
-					binaries = assembleRiInstruction_sw(VEX_FLW, rd, rs1, imm12_I_signed);
+					binaries = assembleMemoryInstruction_sw(VEX_FLW, rd, rs1, imm12_I_signed, false, 0);
 				else if (funct3 == 4)
-					binaries = assembleRiInstruction_sw(VEX_FLH, rd, rs1, imm12_I_signed);
+					binaries = assembleMemoryInstruction_sw(VEX_FLH, rd, rs1, imm12_I_signed, false, 0);
 				else
-					binaries = assembleRiInstruction_sw(VEX_FLB, rd, rs1, imm12_I_signed);
+					binaries = assembleMemoryInstruction_sw(VEX_FLB, rd, rs1, imm12_I_signed, false, 0);
 
 				stage = stageMem;
 			}
@@ -713,11 +713,11 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 				lastLatency = 0;
 //TODO
 				if (funct3 == 4)
-					binaries = assembleRiInstruction_sw(VEX_FSW, rs2, rs1, imm12_S_signed);
+					binaries = assembleMemoryInstruction_sw(VEX_FSW, rs2, rs1, imm12_S_signed, false, 0);
 				else if (funct3 == 2)
-					binaries = assembleRiInstruction_sw(VEX_FSH, rs2, rs1, imm12_S_signed);
+					binaries = assembleMemoryInstruction_sw(VEX_FSH, rs2, rs1, imm12_S_signed, false, 0);
 				else
-					binaries = assembleRiInstruction_sw(VEX_FSB, rs2, rs1, imm12_S_signed);
+					binaries = assembleMemoryInstruction_sw(VEX_FSB, rs2, rs1, imm12_S_signed, false, 0);
 
 				stage = stageMem;
 
