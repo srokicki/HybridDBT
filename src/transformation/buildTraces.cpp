@@ -316,7 +316,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 			nbLastMemInstr = 0;
 		}
 
-		if (nbLastMemInstr > 0 && shiftedOpcode == (VEX_LDD>>3)){
+		if (lastStore != -1 && nbLastMemInstr > 0 && shiftedOpcode == (VEX_LDD>>3)){
 			//For the first 4 load instr we add a dependency to ensure the correctness
 			if (nbLastMemInstr == 4){
 				addControlDep(result->instructions, lastMemInstr[placeLastMemInstr], sizeofEntryBlock+oneInstr);
