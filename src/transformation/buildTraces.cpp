@@ -704,7 +704,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 					memoryDisambiguation(platform, block);
 
 					delete oneSuperBlock;
-
 				}
 
 			}

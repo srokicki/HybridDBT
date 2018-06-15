@@ -193,9 +193,42 @@ void basicMemorySimplification(IRBlock *block, MemoryDependencyGraph *graph){
 	}
 }
 
+void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph){
+	//A good candidate is a list of loads which all depends on a given set of stores
+fprintf(stderr, "test\n");
+	//We find a store with an ID strictly greater than 0
+	int index = 0;
+	bool found = false;
+	while (!found && index < graph->size){
+		fprintf(stderr, "test %d\n", index);
+
+		if (graph->isStore[index] && graph->idMem[index] > 0){
+			found = true;
+		}
+		index++;
+	}
+
+	if (found){
+		int storeIndex = index-1;
+		bool isSpec = false;
+
+		while (index < graph->size && !graph->isStore[index]){
+			block->instructions[4*graph->idMem[index]] |= 0x40000;
+			graph->graph[index*graph->size + storeIndex] = false;
+fprintf(stderr, "speculating for %d\n", graph->idMem[index]);
+
+			isSpec = true;
+			index++;
+		}
+
+		if (isSpec)
+			block->instructions[4*graph->idMem[storeIndex]] |= 0x40000;
+	}
+
+}
+
 
 void memoryDisambiguation(DBTPlateform *platform, IRBlock *block){
-	if (MAX_DISAMB_COUNT == -1 || MAX_DISAMB_COUNT > 0){
 		MemoryDependencyGraph *graph = new MemoryDependencyGraph(block);
 
 		graph->print();
@@ -211,6 +244,8 @@ void memoryDisambiguation(DBTPlateform *platform, IRBlock *block){
 
 		//We perform disambiguation and apply it
 		basicMemorySimplification(block, graph);
+		findAndInsertSpeculation(block, graph);
+
 		graph->applyGraph(block);
 
 		//We print debug
@@ -222,6 +257,4 @@ void memoryDisambiguation(DBTPlateform *platform, IRBlock *block){
 
 		//We cleanout
 		delete graph;
-		MAX_DISAMB_COUNT--;
-	}
 }
