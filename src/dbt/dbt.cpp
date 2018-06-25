@@ -9,6 +9,7 @@
 #include <lib/endianness.h>
 #include <simulator/vexSimulator.h>
 #include <simulator/vexTraceSimulator.h>
+#include <simulator/loadQueueVexSimulator.h>
 #include <simulator/riscvSimulator.h>
 
 #include <transformation/irGenerator.h>
@@ -333,7 +334,7 @@ int main(int argc, char *argv[])
   	dbtPlateform.vexSimulator = new VexTraceSimulator(dbtPlateform.vliwBinaries, tracer);
   }
   else
-  	dbtPlateform.vexSimulator = new VexSimulator(dbtPlateform.vliwBinaries);
+  	dbtPlateform.vexSimulator = new LoadQueueVexSimulator(dbtPlateform.vliwBinaries);
 
 	dbtPlateform.vexSimulator->inStreams = inStreams;
 	dbtPlateform.vexSimulator->nbInStreams = nbInStreams;
