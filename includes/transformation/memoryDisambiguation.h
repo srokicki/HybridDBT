@@ -14,6 +14,7 @@ class MemoryDependencyGraph{
 public:
 	int size;
 	unsigned char *idMem;
+	char *idSpec;
 	bool *graph;
 	bool *isStore;
 

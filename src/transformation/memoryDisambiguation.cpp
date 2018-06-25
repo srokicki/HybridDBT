@@ -17,6 +17,7 @@ int MAX_DISAMB_COUNT = -1;
 MemoryDependencyGraph::MemoryDependencyGraph(IRBlock *block){
 	this->size = 0;
 	this->idMem = (unsigned char*) malloc(block->nbInstr*sizeof(unsigned char));
+	this->idSpec = (char*) malloc(block->nbInstr*sizeof(char));
 	this->isStore = (bool*) malloc(block->nbInstr*sizeof(bool));
 
 	for (int oneInstruction = 0; oneInstruction<block->nbInstr; oneInstruction++){
@@ -24,6 +25,7 @@ MemoryDependencyGraph::MemoryDependencyGraph(IRBlock *block){
 		if ((opcode >> 3) == (VEX_STW>>3) || (opcode >> 3) == (VEX_LDW>>3) || opcode == VEX_FSW || opcode == VEX_FLW){
 			this->idMem[size] = oneInstruction;
 			this->isStore[size] = (opcode >> 3) == (VEX_STW>>3) || opcode == VEX_FSW;
+			this->idSpec[size] = -1;
 			this->size++;
 		}
 	}
@@ -196,6 +198,9 @@ void basicMemorySimplification(IRBlock *block, MemoryDependencyGraph *graph){
 void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph){
 	//A good candidate is a list of loads which all depends on a given set of stores
 fprintf(stderr, "test\n");
+
+	char currentSpecId = 0;
+
 	//We find a store with an ID strictly greater than 0
 	int index = 0;
 	bool found = false;
@@ -209,20 +214,38 @@ fprintf(stderr, "test\n");
 	}
 
 	if (found){
+
+		//A store has been found, we will go through all memory accesses of the block until we went across 4 load instructions.
+		//All the memory accesses that have been met will be done speculatively (both loads and stores)
+		// if we reach 4 loads, the speculation area will be terminated and we will start a new speculation area
+		int nbLoads = 0;
 		int storeIndex = index-1;
 		bool isSpec = false;
 
-		while (index < graph->size && !graph->isStore[index]){
-			block->instructions[4*graph->idMem[index]] |= 0x40000;
-			graph->graph[index*graph->size + storeIndex] = false;
-fprintf(stderr, "speculating for %d\n", graph->idMem[index]);
+		while (index < graph->size && nbLoads < 4){
+
+			if (graph->isStore[index])
+				block->instructions[4*graph->idMem[index]] |= 0x20 | (currentSpecId<<1) | 1;
+			else
+				block->instructions[4*graph->idMem[index]] |= (currentSpecId<<1) | 1;
+
+			graph->idSpec[index] = currentSpecId;
+
+			for (int onePreviousInstr = storeIndex; onePreviousInstr<index; onePreviousInstr++){
+				graph->graph[index*graph->size + onePreviousInstr] = false;
+			}
+
+			if (!graph->isStore[index])
+				nbLoads++;
 
 			isSpec = true;
 			index++;
 		}
 
-		if (isSpec)
-			block->instructions[4*graph->idMem[storeIndex]] |= 0x40000;
+		if (isSpec){
+			block->instructions[4*graph->idMem[storeIndex]] |= 0x20 | (currentSpecId<<1) | 1;
+			graph->idSpec[storeIndex] = currentSpecId;
+		}
 	}
 
 }
