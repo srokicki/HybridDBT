@@ -39,10 +39,8 @@
 #define VEX_STH 0x19
 #define VEX_STW 0x1A
 #define VEX_STD 0x1b
-#define VEX_STBc 0x1c
-#define VEX_STHc 0x1d
-#define VEX_STWc 0x1e
-#define VEX_STDc 0x1f
+#define VEX_SPEC_INIT 0x1c
+#define VEX_SPEC_RST 0x1d
 
 #define VEX_GOTO 0x21
 #define VEX_GOTOR 0x22

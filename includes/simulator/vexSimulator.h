@@ -153,7 +153,7 @@ class VexSimulator : public GenericSimulator {
 
 
 
-	private:
+	protected:
 
 	//Different parts of the execution
 	virtual void doWB(struct MemtoWB memtoWB);

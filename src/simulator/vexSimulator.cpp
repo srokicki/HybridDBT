@@ -379,9 +379,6 @@ void VexSimulator::doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 			| (dctoEx.opCode == VEX_CMPLE)| (dctoEx.opCode == VEX_CMPLEi)
 			| (dctoEx.opCode == VEX_CMPLEU)| (dctoEx.opCode == VEX_CMPLEUi);
 
-	ac_int<1, false> selectCond = (dctoEx.opCode == VEX_STBc)
-					| (dctoEx.opCode == VEX_STHc)| (dctoEx.opCode == VEX_STWc)
-					| (dctoEx.opCode == VEX_STDc)| (dctoEx.opCode == VEX_SETc)| (dctoEx.opCode == VEX_SETFc);
 
 	ac_int<64, false> unsigned_dataa = dctoEx.dataa;
 	ac_int<64, false> unsigned_datab = dctoEx.datab;
@@ -518,9 +515,6 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 			| (dctoEx.opCode == VEX_CMPLE)| (dctoEx.opCode == VEX_CMPLEi)
 			| (dctoEx.opCode == VEX_CMPLEU)| (dctoEx.opCode == VEX_CMPLEUi);
 
-	ac_int<1, false> selectCond = (dctoEx.opCode == VEX_STBc)
-					| (dctoEx.opCode == VEX_STHc)| (dctoEx.opCode == VEX_STWc)
-					| (dctoEx.opCode == VEX_STDc)| (dctoEx.opCode == VEX_SETc)| (dctoEx.opCode == VEX_SETFc);
 
 	ac_int<64, false> unsigned_dataa = dctoEx.dataa;
 	ac_int<64, false> unsigned_datab = dctoEx.datab;
@@ -970,16 +964,11 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 			if ((OP>>4) == 0x1){
 				dctoEx->isSpec = ftoDC.instruction[7];
 				if (!ftoDC.instruction[7]){
-					if (isUnsigned)
-						dctoEx->datab = IMM12_u;
-					else
-						dctoEx->datab = IMM12_s;
+					dctoEx->datab = IMM12_s;
 				}
 				else{
-					if (isUnsigned)
-						dctoEx->datab = IMM12_u;
-					else
-						dctoEx->datab = IMM12_s;
+					dctoEx->funct = IMM12_u.slc<5>(0);
+					dctoEx->datab = IMM7_s;
 				}
 			}
 			else{
