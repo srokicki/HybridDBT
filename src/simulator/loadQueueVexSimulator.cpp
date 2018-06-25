@@ -46,97 +46,42 @@ ac_int<1, false> LoadQueueVexSimulator::stdSpec(ac_int<64, false> addr, ac_int<6
 }
 
 
-void LoadQueueVexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
-	VexSimulator::doDCMem(ftoDC, dctoEx);
+LoadQueueVexSimulator::LoadQueueVexSimulator(unsigned int *instructionMemory) : VexSimulator(instructionMemory){};
+LoadQueueVexSimulator::~LoadQueueVexSimulator(void){};
 
-	if ((dctoEx->opCode >> 3) == (VEX_LDD>>3) || dctoEx->opCode == VEX_FLW){
-		if (dctoEx->isSpec){
-			ac_int<64, false> address = dctoEx->dataa + dctoEx->datab;
-			dctoEx->memValue = lddSpec(address, (ftoDC.instruction>>8) & 0x1f);
-		}
-	}
-
-}
 
 void LoadQueueVexSimulator::doMem(ExtoMem extoMem, MemtoWB *memtoWB){
-	VexSimulator::doMem(extoMem, memtoWB);
 
-	if (!extoMem.isSpec)
-		return;
 
-	ac_int<64, false> address = extoMem.result;
+	ac_int<1, false> rollback = 0;
+	ac_int<1, false> clear = 0;
+	ac_int<1, false> init = 0;
 
-	if (extoMem.opCode == VEX_FSW || extoMem.opCode == VEX_FSH || extoMem.opCode == VEX_FSB){
-			memtoWB->WBena = 0; //TODO : this shouldn't be necessary : WB shouldn't be enabled before
+	//If instruction is speculative, we check the LSQ before
+	if (((extoMem.opCode >> 4) == 0x1 || extoMem.opCode == VEX_FLW || extoMem.opCode == VEX_FSW) && extoMem.isSpec){
 
-			if (extoMem.opCode == VEX_FSW){
-				unsigned int value;
-				memcpy(&value, &extoMem.floatRes, 4);
-
-				stwSpec(extoMem.result, value, extoMem.funct);
-			}
-			else if (extoMem.opCode == VEX_FSH){
-				unsigned int value;
-				memcpy(&value, &extoMem.floatRes, 2);
-				sthSpec(address, value, extoMem.funct);
-			}
-			else if (extoMem.opCode == VEX_FSW){
-				unsigned int value;
-				memcpy(&value, &extoMem.floatRes, 1);
-				stbSpec(address, value, extoMem.funct);
-			}
+		if (extoMem.opCode == VEX_SPEC_RST){
+			clear = 1;
 		}
-		else if (extoMem.opCode.slc<3>(4) == 1){
-			//The instruction is a memory access
+		else if (extoMem.opCode == VEX_SPEC_INIT){
+			init = 1;
+		}
 
-			if (extoMem.opCode == VEX_PROFILE){
-
-				if (this->profileResult[extoMem.result] != 255)
-					this->profileResult[extoMem.result]++;
-
-				memtoWB->WBena = 0;
-			}
-			else {
+		fprintf(stderr, "checking spec %lx...", (long long int) extoMem.result);
+		partitionnedLoadQueue(extoMem.result, extoMem.funct, clear, &rollback,
+				this->speculationData, init, extoMem.result);
 
 
+		if (rollback){
+			fprintf(stderr, "In LQ vex simulator, system detected that we had to rollback...\n");
+			exit(-1);
+		}
+		else
+			fprintf(stderr, "OK \n");
+
+	}
 
 
-				memtoWB->WBena = 0; //TODO : this shouldn't be necessary : WB shouldn't be enabled before
-
-				//We are on a store instruction
-				ac_int<1, false> byteEna0=0, byteEna1=0, byteEna2=0, byteEna3=0, byteEna4=0, byteEna5=0, byteEna6=0, byteEna7=0;
-				ac_int<8, false> byte0, byte1, byte2, byte3, byte4, byte5, byte6, byte7;
-				ac_int<7, false> opcodeToSwitch = extoMem.opCode;
-				ac_int<1, false> enableStore = 1;
-
-				if (opcodeToSwitch > VEX_STD){
-					opcodeToSwitch -= 4;
-					enableStore = this->enable;
-				}
-
-				if (enableStore){
-					switch (extoMem.opCode){
-					case VEX_STD:
-						this->stdSpec(address, extoMem.datac, extoMem.funct);
-						break;
-					case VEX_STW:
-
-						this->stwSpec(address, extoMem.datac.slc<32>(0), extoMem.funct);
-
-					break;
-					case VEX_STH:
-						//STH
-
-						this->sthSpec(address, extoMem.datac.slc<16>(0), extoMem.funct);
-					break;
-					case VEX_STB:
-
-						this->stbSpec(address, extoMem.datac.slc<8>(0), extoMem.funct);
-
-						break;
-					default:
-					break;
-					}
-				}
+	VexSimulator::doMem(extoMem, memtoWB);
 
 }
