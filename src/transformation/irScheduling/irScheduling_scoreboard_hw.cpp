@@ -58,6 +58,12 @@ ac_int<32, false> lastPlaceOfInstr;
 ac_int<32, false> window[WINDOW_SIZE][STAGE_NUMBER];
 ac_int<8, false> freeSlot[WINDOW_SIZE];
 
+//For speculation purpose
+ac_int<4, false> poisoned[64];
+ac_int<32, false> lastStore[4];
+
+
+
 ac_int<32, false> max(ac_int<32, false> a, ac_int<32, false> b) {
 	return a > b ? a : b;
 }
@@ -226,6 +232,14 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 
 	}
 
+	for (char oneReg = 0; oneReg<64; oneReg++){
+		poisoned[oneReg] = 0;
+	}
+	lastStore[0] = 0;
+	lastStore[1] = 0;
+	lastStore[2] = 0;
+	lastStore[3] = 0;
+
 	while (instructionId < basicBlockSize) {
 
 
@@ -260,6 +274,11 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		ac_int<13, false> imm13 = instruction.slc<13>(18); //TODO
 		ac_int<19, false> imm19 = instruction.slc<19>(9);
 		ac_int<9, false> brCode = instruction.slc<9>(27);
+
+		ac_int<4, false> specId = instruction.slc<4>(19);
+		ac_int<1, false> isSpec = instruction[18];
+		ac_int<1, false> isStore = ((opCode>>3) == (VEX_STW>>3) || opCode == VEX_FSW);
+		ac_int<1, false> isLoad = ((opCode>>3) == (VEX_LDW>>3) || opCode == VEX_FLW);
 
 		// real dest register (after alloc/dereferencing)
 		ac_int<6, false> dest;
@@ -351,8 +370,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		ac_int<1, false> isNop = (opCode == 0);
 		ac_int<1, false> isITypeWithDest = (opCode == VEX_MOVI || opCode == VEX_CALL);
 		ac_int<1, false> isArith2 = (shiftedOpcode == 4 || shiftedOpcode == 5 || shiftedOpcode == 0);
-		ac_int<1, false> isLoad = (opCode>>3) == 0x2;
-		ac_int<1, false> isStore = (opCode>>3) == 0x3;
+
 		ac_int<1, false> isArith1 = (shiftedOpcode == 6 || shiftedOpcode == 7);
 		ac_int<1, false> isBranchWithReg = (opCode == VEX_CALLR) ||(opCode == VEX_GOTOR);
 		ac_int<1, false> isFPOneReg = (opCode == VEX_FP && (funct == VEX_FP_FCVTSW || funct == VEX_FP_FCVTSWU || funct == VEX_FP_FCVTWS
@@ -399,6 +417,18 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 
 		if (useOperand2)
 			placeOfOperand2 = placeOfRegisters[operand2];
+
+		//********************* For speculation ***********************************
+		//If we are not alloc and if the source is poisoned, we have to be after the last store to make the rollback possible...
+		if (!alloc){
+			for (int oneBit = 0; oneBit<4; oneBit++){
+				if ((useOperand1 && poisoned[placeOfOperand1][oneBit]) || (useOperand2 && poisoned[placeOfOperand2][oneBit])){
+							earliest_place = max(earliest_place, lastStore[oneBit]);
+				}
+			}
+		}
+
+
 
 		//**************************************************************
 		// Placing the instruction
@@ -588,7 +618,27 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		window[offset(bestWindowOffset)][bestStageId] = createInstruction(instruction, placeOfOperand1, placeOfOperand2, dest);
 		freeSlot[offset(bestWindowOffset)][bestStageId] = 0;
 
+		//********************* For speculation ***********************************
+		// If we are a store, we update last store
+		// If we are speculative load, we poison the destination
+		// If one input register is poisonned, we poison output register
 
+		if (isStore && isSpec){
+			lastStore[specId] = max(lastStore[specId], windowPosition + bestWindowOffset);
+		}
+		if (isLoad && isSpec){
+			poisoned[dest][specId] = 1;
+		}
+
+		if (useOperand1 && poisoned[placeOfOperand1])
+			poisoned[dest] |= poisoned[placeOfOperand1];
+		if (useOperand2 && poisoned[placeOfOperand2])
+			poisoned[dest] |= poisoned[placeOfOperand2];
+
+		if (poisoned[dest])
+			fprintf(stderr, "Instr %d is poisoned\n", instructionId);
+
+		//*******************
 
 		if (instruction.slc<2>(48) == 0) {
 			haveJump = 1;

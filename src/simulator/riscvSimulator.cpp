@@ -842,7 +842,6 @@ void RiscvSimulator::doStep(){
 				}
 				else{
 					fprintf(stderr, "Fclass instruction is not handled in riscv simulator\n");
-					exit(-1);
 				}
 				break;
 			case  RISCV_FP_FCMP:
@@ -898,7 +897,6 @@ void RiscvSimulator::doStep(){
 
 			default:
 				printf("In FP part of switch opcode, instr %x is not handled yet(%x)  pC is %x\n", (int) ins, this->heapAddress, this->cycle);
-				exit(-1);
 			break;
 		}
 
@@ -906,8 +904,7 @@ void RiscvSimulator::doStep(){
 		break;
 
 	default:
-		printf("In default part of switch opcode, instr %x is not handled yet(%x)  pC is %x\n", (int) ins, this->heapAddress, this->cycle);
-		exit(-1);
+//		printf("In default part of switch opcode, instr %x is not handled yet(%x)  pC is %x\n", (int) ins, this->heapAddress, this->cycle);
 	break;
 
 	}
