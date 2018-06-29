@@ -96,6 +96,59 @@ void GenericSimulator::std(ac_int<64, false> addr, ac_int<64, true> value){
 
 ac_int<8, true> GenericSimulator::ldb(ac_int<64, false> addr){
 
+	//Trying to simulate cache
+	ac_int<6, false> offset = addr.slc<6>(0);
+	ac_int<6, false> index = addr.slc<6>(6);
+
+	ac_int<64-12, false> tag = addr.slc<64-12>(12);
+
+	bool hit = false;
+	int olderWay = 0;
+	int olderWayValue = this->cycle;
+
+
+	for (int oneWay = 0; oneWay < CACHE_WAYS; oneWay++){
+		if (this->dcacheTags[oneWay][index] == tag){
+			hit = true;
+		}
+
+		if (this->dcacheAges[oneWay][index] < olderWayValue){
+			olderWayValue = this->dcacheAges[oneWay][index];
+			olderWay = oneWay;
+		}
+	}
+
+	if (!hit){
+		this->cycle += 23;
+		this->dcacheTags[olderWay][index] = tag;
+		this->dcacheAges[olderWay][index] = this->cycle;
+
+		ac_int<10, false> indexl2 = addr.slc<10>(7);
+		ac_int<64-17, false> tagl2 = addr.slc<64-17>(17);
+
+		olderWayValue = this->cycle;
+		bool l2hit = false;
+		for (int oneWay = 0; oneWay < CACHEL2_WAYS; oneWay++){
+			if (this->l2cacheTags[oneWay][indexl2] == tagl2){
+				hit = true;
+			}
+			if (this->l2cacheAges[oneWay][indexl2] < olderWayValue){
+				olderWayValue = this->l2cacheAges[oneWay][index];
+				olderWay = oneWay;
+			}
+		}
+
+		if (!l2hit){
+			this->cycle += 100;
+			this->dcacheTags[olderWay][indexl2] = tagl2;
+			this->dcacheAges[olderWay][indexl2] = this->cycle;
+		}
+
+
+	}
+
+
+
 	ac_int<8, true> result = 0;
 	if (this->memory.find(addr) != this->memory.end())
 		result = this->memory[addr];
