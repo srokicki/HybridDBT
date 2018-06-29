@@ -571,6 +571,40 @@ char getOperands(unsigned int *bytecode, unsigned char index, short result[2]){
 }
 
 
+void setImmediateValue(unsigned int *bytecode, unsigned char index, int value){
+	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
+	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
+
+	unsigned char opcode = (bytecodeWord96>>19) & 0x7f;
+	unsigned char shiftedOpcode = opcode>>4;
+
+	bool isMemType = (opcode>>4) == 1 || opcode == VEX_FLW || opcode == VEX_FSW;
+	bool isImmArith = (opcode>>4) >= 6;
+	bool isIType = (opcode>>4) == 2 && (opcode != VEX_BLT) && (opcode != VEX_BGE) && (opcode != VEX_BLTU) && (opcode != VEX_BGEU) && (opcode != VEX_BR) && (opcode != VEX_BRF);
+	bool isBranchWithTwoRegs = (opcode == VEX_BR) || (opcode == VEX_BRF) || (opcode == VEX_BGE) || (opcode == VEX_BLT) || (opcode == VEX_BGEU) || (opcode == VEX_BLTU);
+
+
+
+	// we clear immediate values
+	if (isMemType){
+		bytecodeWord96 &= 0xffffe001;
+		bytecodeWord96 |= (value<<1) & 0x1fff;
+	}
+	else if (isBranchWithTwoRegs || isImmArith){
+		bytecodeWord96 &= 0xffffe000;
+		bytecodeWord96 |= value & 0x1fff;
+	}
+	else if (isIType){
+		bytecodeWord96 &= 0xfffffc00;
+		bytecodeWord64 &= 0x007fffff;
+
+		bytecodeWord96 |= (value>>9) & 0x3ff;
+		bytecodeWord64 |= (value & 0x1ff)<<23;
+	}
+	writeInt(bytecode, index*16+4,bytecodeWord64);
+	writeInt(bytecode, index*16+0, bytecodeWord96);
+}
+
 bool getImmediateValue(unsigned int *bytecode, unsigned char index, int *result){
 	//This function returns the number of register operand used by the bytecode instruction
 
@@ -591,12 +625,16 @@ bool getImmediateValue(unsigned int *bytecode, unsigned char index, int *result)
 	unsigned char opcode = (bytecodeWord96>>19) & 0x7f;
 	unsigned char shiftedOpcode = opcode>>4;
 
-	bool isMemType = (opcode>>4) == 1;
+	bool isMemType = (opcode>>4) == 1 || opcode == VEX_FLW || opcode == VEX_FSW;
 	bool isImmArith = (opcode>>4) >= 6;
 	bool isIType = (opcode>>4) == 2 && (opcode != VEX_BLT) && (opcode != VEX_BGE) && (opcode != VEX_BLTU) && (opcode != VEX_BGEU) && (opcode != VEX_BR) && (opcode != VEX_BRF);
 	bool isBranchWithTwoRegs = (opcode == VEX_BR) || (opcode == VEX_BRF) || (opcode == VEX_BGE) || (opcode == VEX_BLT) || (opcode == VEX_BGEU) || (opcode == VEX_BLTU);
 
-	if (isMemType || isBranchWithTwoRegs || isImmArith){
+	if (isMemType){
+		*result = (imm13>>1);
+		return true;
+	}
+	else if (isBranchWithTwoRegs || isImmArith){
 		*result = imm13;
 		return true;
 	}

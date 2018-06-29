@@ -218,6 +218,7 @@ short getDestinationRegister(unsigned int *bytecode, unsigned char index);
 char getOperands(unsigned int *bytecode, unsigned char index, short result[2]);
 void setOperands(unsigned int *bytecode, unsigned char index, short operands[2]);
 
+void setImmediateValue(unsigned int *bytecode, unsigned char index, int value);
 bool getImmediateValue(unsigned int *bytecode, unsigned char index, int* result);
 
 char getOpcode(unsigned int *bytecode, unsigned char index);
