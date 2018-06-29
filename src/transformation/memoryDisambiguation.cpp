@@ -224,6 +224,21 @@ fprintf(stderr, "test\n");
 
 		while (index < graph->size && nbLoads < 4){
 
+			int imm = 0;
+			bool hasImm = getImmediateValue(block->instructions, graph->idMem[index], &imm);
+
+			fprintf(stderr, "while trying to spec, imm is %x\n", imm);
+			if (imm > 64 || imm <= -64){
+				fprintf(stderr, "Failed at reducing immediate\n");
+				exit(-1);
+			}
+			else if (imm != 0){
+
+				fprintf(stderr, "setting imm at %x\n", imm<<5);
+				setImmediateValue(block->instructions, graph->idMem[index], imm<<5);
+			}
+
+
 			if (graph->isStore[index])
 				block->instructions[4*graph->idMem[index]] |= 0x20 | (currentSpecId<<1) | 1;
 			else
@@ -243,6 +258,16 @@ fprintf(stderr, "test\n");
 		}
 
 		if (isSpec){
+			int imm = 0;
+			bool hasImm = getImmediateValue(block->instructions, graph->idMem[storeIndex], &imm);
+			if (imm > 64){
+				fprintf(stderr, "Failed at reducing immediate\n");
+				exit(-1);
+			}
+			else if (imm != 0){
+				setImmediateValue(block->instructions, graph->idMem[storeIndex], imm<<5);
+			}
+
 			block->instructions[4*graph->idMem[storeIndex]] |= 0x20 | (currentSpecId<<1) | 1;
 			graph->idSpec[storeIndex] = currentSpecId;
 		}
