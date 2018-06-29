@@ -67,7 +67,6 @@ void LoadQueueVexSimulator::doMem(ExtoMem extoMem, MemtoWB *memtoWB){
 			init = 1;
 		}
 
-		fprintf(stderr, "checking spec %lx...", (long long int) extoMem.result);
 		partitionnedLoadQueue(extoMem.result, extoMem.funct, clear, &rollback,
 				this->speculationData, init, extoMem.result);
 
@@ -76,8 +75,7 @@ void LoadQueueVexSimulator::doMem(ExtoMem extoMem, MemtoWB *memtoWB){
 			fprintf(stderr, "In LQ vex simulator, system detected that we had to rollback...\n");
 			exit(-1);
 		}
-		else
-			fprintf(stderr, "OK \n");
+
 
 	}
 

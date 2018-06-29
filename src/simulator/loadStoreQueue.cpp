@@ -58,7 +58,6 @@ void partitionnedLoadQueue(ac_int<64, false> address, ac_int<5, false> specId, a
 		}
 		addresses[bank][0] = address;
 		ages[bank][0] = 1;
-		fprintf(stderr, " Saving... ");
 
 	}
 	else if (clear){
@@ -80,7 +79,6 @@ void partitionnedLoadQueue(ac_int<64, false> address, ac_int<5, false> specId, a
 		missCounters[bank] = param.slc<16>(16);
 	}
 	else{
-		fprintf(stderr, " Checking... ");
 
 		for (int oneAddress = 0; oneAddress<4; oneAddress++){
 			ac_int<64, false> storedAddress = addresses[bank][oneAddress];
