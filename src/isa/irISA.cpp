@@ -268,6 +268,14 @@ std::string printBytecodeInstruction(int index, unsigned int  instructionPart1, 
 		if (opCode == VEX_FP){
 				result << " " << fpNames[funct];
 		}
+		else if (((opCode>>4) == (VEX_LDW>>4)) || opCode == VEX_FLW || opCode == VEX_FSW){
+			if (imm13 & 0x1){
+				result << " spec " << ((imm13>>1) & 0xf);
+				imm13 = imm13>>5;
+			}
+			else
+				imm13 = imm13 >> 1;
+		}
 
 		result << " r" << virtualRDest << " = r" << virtualRIn2 << ", ";
 
