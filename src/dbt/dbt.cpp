@@ -334,7 +334,7 @@ int main(int argc, char *argv[])
   	dbtPlateform.vexSimulator = new VexTraceSimulator(dbtPlateform.vliwBinaries, tracer);
   }
   else
-  	dbtPlateform.vexSimulator = new LoadQueueVexSimulator(dbtPlateform.vliwBinaries);
+  	dbtPlateform.vexSimulator = new LoadQueueVexSimulator(dbtPlateform.vliwBinaries, dbtPlateform.specInfo);
 
 	dbtPlateform.vexSimulator->inStreams = inStreams;
 	dbtPlateform.vexSimulator->nbInStreams = nbInStreams;
@@ -559,7 +559,6 @@ int main(int argc, char *argv[])
 
 				int errorCode = buildAdvancedControlFlow(&dbtPlateform, block, &application);
 				block->blockState = IRBLOCK_PROC;
-
 
 				if (!errorCode){
 					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
