@@ -9,6 +9,7 @@
 #define INCLUDES_TRANSFORMATION_MEMORYDISAMBIGUATION_H_
 
 extern int MAX_DISAMB_COUNT;
+extern unsigned char speculationCounter;
 
 class MemoryDependencyGraph{
 public:
