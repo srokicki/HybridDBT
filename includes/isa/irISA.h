@@ -101,6 +101,8 @@ public:
 	int section;
 	IRBlock** placeInProfiler;
 
+	short specAddr[4];
+
 	void addJump(unsigned char jumpID, unsigned int jumpPlace);
 
 	IRBlock(int startAddress, int endAddress, int section);

@@ -402,7 +402,10 @@ IRBlock::IRBlock(int startAddress, int endAddress, int section){
 	this->nbJumps = 0;
 	this->placeInProfiler = NULL;
 	this->instructions = NULL;
-
+	this->specAddr[0] = 0;
+	this->specAddr[1] = 0;
+	this->specAddr[2] = 0;
+	this->specAddr[3] = 0;
 }
 
 IRBlock::~IRBlock(){
