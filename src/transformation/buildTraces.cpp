@@ -626,12 +626,10 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 						if (writeRegs[oneReg] && readRegs[oneReg])
 							writeRegs[oneReg] = 0;
 						else if (writeRegs[oneReg] && !readRegs[oneReg]){
-							printf("%d is ignored\n", oneReg);
 							writeRegs[oneReg] = 256+34+nbIgnoredRegs;
 							nbIgnoredRegs++;
 						}
 
-					printf("%d\n", nbIgnoredRegs);
 					IRBlock *oneSuperBlock = superBlock(block, block->successor1, true, writeRegs);
 
 
@@ -700,8 +698,25 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 
 
 
+					int nbPred = 0;
+					IRBlock *predecessor = NULL;
 
-					memoryDisambiguation(platform, block);
+					for (int oneOtherBlock = 0; oneOtherBlock<procedure->nbBlock; oneOtherBlock++){
+						IRBlock *otherBlock = procedure->blocks[oneOtherBlock];
+						if (otherBlock != block){
+							for (int oneSuccessor = 0; oneSuccessor < otherBlock->nbSucc; oneSuccessor++){
+								IRBlock* successor = otherBlock->successors[oneSuccessor];
+
+								if (successor == block){
+									nbPred++;
+									predecessor = otherBlock;
+								}
+							}
+						}
+					}
+
+					fprintf(stderr, "Block has %d predecessor\n", nbPred);
+					memoryDisambiguation(platform, block, predecessor);
 
 					delete oneSuperBlock;
 				}
@@ -831,8 +846,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 
 				delete (oneSuperBlock);
 
-				memoryDisambiguation(platform, firstPredecessor);
-
 
 
 //					delete block;
@@ -918,8 +931,10 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 		if (blockToAddId < nbBlocksToAdd && blocksToAdd[blockToAddId]->sourceStartAddress < procedure->blocks[oneBlock]->sourceStartAddress){
 			newBlocks[index] = blocksToAdd[blockToAddId];
 			blocksToAdd[blockToAddId]->reference = &(newBlocks[index]);
+
 			index++;
 			blockToAddId++;
+
 		}
 
 		//If it is not empty, we insert the block from the procedure
@@ -929,7 +944,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 			if (procedure->entryBlock == procedure->blocks[oneBlock])
 				procedure->entryBlock = newBlocks[index];
 			index++;
-
 //			if (procedure->blocks[oneBlock]->nbInstr > 20){
 //				memoryDisambiguation(platform, procedure->blocks[oneBlock]);
 //			}
@@ -947,7 +961,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 
 
 	procedure->blocks = newBlocks;
-	procedure->nbBlock = nbBlock;
+	procedure->nbBlock = nbBlock+nbBlocksToAdd;
 
 }
 
