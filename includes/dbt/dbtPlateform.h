@@ -62,6 +62,7 @@ public:
 	unsigned char *placeOfRegisters;
 	unsigned char *freeRegisters;
 	unsigned int *placeOfInstr;
+	unsigned int *specInfo;
 
 
 	VexSimulator* vexSimulator;
