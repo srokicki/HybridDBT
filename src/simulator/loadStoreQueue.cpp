@@ -36,8 +36,8 @@
 
 #include <lib/ac_int.h>
 
-void partitionnedLoadQueue(ac_int<64, false> address, ac_int<5, false> specId, ac_int<1, false> clear, ac_int<1, false> *rollback,
-		ac_int<64+32, false> speculationData[256], ac_int<1, false> specInit, ac_int<8, false> specParam){
+void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_int<5, false> specId, ac_int<1, false> clear, ac_int<1, false> *rollback,
+		unsigned int *speculationData, ac_int<1, false> specInit, ac_int<8, false> specParam, ac_int<64, false> *mask, ac_int<64, false> *rollback_start){
 
 	static ac_int<64, false> addresses[4][4];
 	static ac_int<1, false> ages[4][4];
@@ -45,6 +45,7 @@ void partitionnedLoadQueue(ac_int<64, false> address, ac_int<5, false> specId, a
 	static ac_int<16, false> missCounters[4];
 	static ac_int<8, false> currentSpecParam[4];
 	static ac_int<64, false> currentSpecMasks[4];
+	static ac_int<64, false> firstLoad[4];
 
 
 	ac_int<1, false> saveMemOp = specId[4];
@@ -58,34 +59,49 @@ void partitionnedLoadQueue(ac_int<64, false> address, ac_int<5, false> specId, a
 		}
 		addresses[bank][0] = address;
 		ages[bank][0] = 1;
+		if (firstLoad[bank] == 0)
+			firstLoad[bank] = pc;
 
 	}
 	else if (clear){
+
 		for (int oneAddress = 0; oneAddress < 4; oneAddress++){
 			ages[bank][oneAddress] = 0;
 		}
 		specCounters[bank]++;
-		ac_int<64+32, false> paramWord = specCounters[bank];
-		paramWord.set_slc(16, missCounters[bank]);
-		paramWord.set_slc(32, currentSpecMasks[bank]);
+//		ac_int<64+32, false> paramWord = specCounters[bank];
+//		paramWord.set_slc(16, missCounters[bank]);
+//		paramWord.set_slc(32, currentSpecMasks[bank]);
 
-		speculationData[currentSpecParam[bank]] = paramWord;
+		speculationData[4*currentSpecParam[bank]] = specCounters[bank];
+		speculationData[4*currentSpecParam[bank]+1] = missCounters[bank];
+		speculationData[4*currentSpecParam[bank]+2] = currentSpecMasks[bank]>>32;
+		speculationData[4*currentSpecParam[bank]+3] = currentSpecMasks[bank] & 0xffffffff;
+
+		firstLoad[bank] = 0;
+
 	}
 	else if (specInit){
+
 		ac_int<64+32, false> param = speculationData[specParam];
 		currentSpecParam[bank] = specParam;
-		currentSpecMasks[bank] = param.slc<64>(32);
-		specCounters[bank] = param.slc<16>(0);
-		missCounters[bank] = param.slc<16>(16);
+		currentSpecMasks[bank] = speculationData[4*currentSpecParam[bank]+3];
+		ac_int<32, false> hi_mask = speculationData[4*currentSpecParam[bank]+2];
+		currentSpecMasks[bank].set_slc(32, hi_mask);
+		specCounters[bank] = speculationData[4*currentSpecParam[bank]+0];
+		missCounters[bank] = speculationData[4*currentSpecParam[bank]+1];
+
+		firstLoad[bank] = 0;
 	}
 	else{
-
 		for (int oneAddress = 0; oneAddress<4; oneAddress++){
 			ac_int<64, false> storedAddress = addresses[bank][oneAddress];
 			ac_int<1, false> storedAge = ages[bank][oneAddress];
 
 			if (storedAge && storedAddress == address){
 				*rollback |= 1;
+				*mask = currentSpecMasks[bank];
+				*rollback_start = firstLoad[bank];
 				missCounters[bank]++;
 			}
 

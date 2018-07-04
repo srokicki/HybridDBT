@@ -20,17 +20,23 @@
 class LoadQueueVexSimulator : public VexSimulator {
 public:
 
-	LoadQueueVexSimulator(unsigned int *instructionMemory);
+	ac_int<64, false> rollBackPoint;
+	ac_int<1, false> rollback;
+	ac_int<64, false> endRollback;
+	ac_int<64, false> mask;
+
+	LoadQueueVexSimulator(unsigned int *instructionMemory, unsigned int *specData);
 	~LoadQueueVexSimulator(void);
 
 	//Definition of the different memories used by the load queue
 	ac_int<LOAD_QUEUE_ADDRESS_SIZE, false> loadQueue_addr[LOAD_QUEUE_NB_BANK][LOAD_QUEUE_BANK_SIZE];
 	ac_int<LOAD_QUEUE_AGE_SIZE, false> loadQueue_age[LOAD_QUEUE_NB_BANK][LOAD_QUEUE_BANK_SIZE];
 
-	ac_int<64+32, false> speculationData[256];
+	unsigned int *speculationData;
 
 	//Functions that will be modified
 	void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB);
+	int doStep();
 
 
 	//New functions will be added to handle speculation
@@ -49,8 +55,8 @@ private:
 };
 
 //Other functions, related with the load Queue Simlulator
-void partitionnedLoadQueue(ac_int<64, false> address, ac_int<5, false> specId, ac_int<1, false> clear, ac_int<1, false> *rollback,
-		ac_int<64+32, false> speculationData[256], ac_int<1, false> specInit, ac_int<8, false> specParam);
+void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_int<5, false> specId, ac_int<1, false> clear, ac_int<1, false> *rollback,
+		unsigned int *speculationData, ac_int<1, false> specInit, ac_int<8, false> specParam, ac_int<64, false> * mask, ac_int<64, false> *rollback_start);
 
 
 #endif /* INCLUDES_SIMULATOR_LOADQUEUEVEXSIMULATOR_CPP_ */

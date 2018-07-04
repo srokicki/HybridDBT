@@ -121,6 +121,8 @@ void doMemNoMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB){
 	memtoWB->result = extoMem.result;
 	memtoWB->isFloat = extoMem.isFloat;
 	memtoWB->floatRes = extoMem.floatRes;
+	memtoWB->pc = extoMem.pc;
+
 }
 
 #ifdef __CATAPULT
@@ -134,6 +136,7 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 	memtoWB->dest = extoMem.dest;
 	memtoWB->isFloat = extoMem.isFloat;
 	memtoWB->floatRes = extoMem.floatRes;
+	memtoWB->pc = extoMem.pc;
 
 	//IMPORTANT NOTE: In this function the value of exToMem.address is the address of the memory access to perform
 	// 					and it is addressing byte. In current implementation DATA is a word array so we need to
@@ -273,7 +276,6 @@ void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB, ac_int<8, false> mem
 				case VEX_STW:
 
 					this->stw(address, extoMem.datac.slc<32>(0));
-
 				break;
 				case VEX_STH:
 					//STH
@@ -464,6 +466,8 @@ void VexSimulator::doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 	extoMem->memValue = dctoEx.memValue;
 	extoMem->isSpec = dctoEx.isSpec;
 	extoMem->funct = dctoEx.funct;
+	extoMem->pc = dctoEx.pc;
+	extoMem->isRollback = dctoEx.isRollback;
 
 	if (dctoEx.opCode == VEX_FLB || dctoEx.opCode == VEX_FLH || dctoEx.opCode == VEX_FLW){
 		extoMem->isFloat = 1;
@@ -671,6 +675,8 @@ void VexSimulator::doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem){
 	extoMem->memValue = dctoEx.memValue;
 	extoMem->isSpec = dctoEx.isSpec;
 	extoMem->funct = dctoEx.funct;
+	extoMem->pc = dctoEx.pc;
+	extoMem->isRollback = dctoEx.isRollback;
 
 	extoMem->isFloat = 0;
 	float localFloat;
@@ -850,6 +856,8 @@ void VexSimulator::doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	dctoEx->floatValueB = regf[RB];
 	dctoEx->floatValueC = regf[RC];
 	dctoEx->funct = funct;
+	dctoEx->pc = ftoDC.pc;
+	dctoEx->isRollback = ftoDC.isRollback;
 
 	dctoEx->opCode = OP;
 	dctoEx->datac = regValueB; //For store instructions
@@ -906,7 +914,7 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	ac_int<13, true> IMM13_s = ftoDC.instruction.slc<13>(7);
 	ac_int<12, false> IMM12_u = ftoDC.instruction.slc<12>(8);
 	ac_int<12, true> IMM12_s = ftoDC.instruction.slc<12>(8);
-	ac_int<17, true> IMM7_s = ftoDC.instruction.slc<7>(13);
+	ac_int<7, true> IMM7_s = ftoDC.instruction.slc<7>(13);
 
 	ac_int<9, false> IMM9_u = ftoDC.instruction.slc<9>(11);
 	ac_int<9, true> IMM9_s = ftoDC.instruction.slc<9>(11);
@@ -940,6 +948,8 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	dctoEx->floatValueB = regf[RB];
 	dctoEx->floatValueC = regf[RC];
 	dctoEx->funct = funct;
+	dctoEx->pc = ftoDC.pc;
+	dctoEx->isRollback = ftoDC.isRollback;
 
 	dctoEx->floatRes = regf[secondRegAccess];
 
@@ -1062,6 +1072,8 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	dctoEx->funct = funct;
 	dctoEx->opCode = OP;
 	dctoEx->datac = regValueB;
+	dctoEx->pc = ftoDC.pc;
+	dctoEx->isRollback = ftoDC.isRollback;
 
 	if (isIType){
 		//The instruction is I type
@@ -1356,6 +1368,16 @@ int VexSimulator::doStep(){
 	ftoDC7.instruction = this->unitActivation[6] ? (this->muxValues[1] ? instructions[2] : instructions[6]) : nopInstr;
 	ftoDC8.instruction = this->unitActivation[7] ? (this->muxValues[2] ? instructions[3] : instructions[7]) : nopInstr;
 
+
+	ftoDC1.pc = PC;
+	ftoDC2.pc = PC;
+	ftoDC3.pc = PC;
+	ftoDC4.pc = PC;
+	ftoDC5.pc = PC;
+	ftoDC6.pc = PC;
+	ftoDC7.pc = PC;
+	ftoDC8.pc = PC;
+
 	//We increment IPc counters
 	if (ftoDC1.instruction != 0)
 		nbInstr++;
@@ -1388,6 +1410,7 @@ int VexSimulator::doStep(){
 
 	int pcValueForDebug = PC;
 	// Next instruction
+
 	PC = NEXT_PC;
 	cycle++;
 

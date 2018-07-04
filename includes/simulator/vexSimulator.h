@@ -42,6 +42,9 @@
 
 struct FtoDC {
 	ac_int<64, false> instruction; //Instruction to execute
+	ac_int<64, false> pc;
+	ac_int<1, false> isRollback;
+
 };
 
 struct DCtoEx {
@@ -54,7 +57,8 @@ struct DCtoEx {
 	float floatRes, floatValueA, floatValueB, floatValueC;
 	ac_int<5, false> funct;
 	ac_int<1, false> isSpec;
-
+	ac_int<64, false> pc;
+	ac_int<1, false> isRollback;
 };
 
 struct ExtoMem {
@@ -68,8 +72,8 @@ struct ExtoMem {
 	ac_int<1, false> isFloat;
 	ac_int<1, false> isSpec;
 	ac_int<5, false> funct;
-
-
+	ac_int<64, false> pc;
+	ac_int<1, false> isRollback;
 
 };
 
@@ -79,6 +83,7 @@ struct MemtoWB {
 	ac_int<1, false> WBena;		//Is a WB is needed ?
 	float floatRes;
 	ac_int<1, false> isFloat;
+	ac_int<64, false> pc;
 };
 
 
@@ -92,7 +97,7 @@ struct MemtoWB {
 class VexSimulator : public GenericSimulator {
 	public:
 
-	int typeInstr[230000];
+	int typeInstr[450000];
 	int nbCycleType[4] = {0,0,0,0};
 
 	//Instruction memory is a 128-bit memory
