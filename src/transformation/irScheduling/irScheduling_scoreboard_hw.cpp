@@ -61,11 +61,19 @@ ac_int<8, false> freeSlot[WINDOW_SIZE];
 //For speculation purpose
 ac_int<4, false> poisoned[64];
 ac_int<32, false> lastStore[4];
+ac_int<32, false> firstLoad[4];
+ac_int<4, false> mask_spec[4][WINDOW_SIZE];
+
+ac_int<64, false> maskVal[4];
 
 
 
 ac_int<32, false> max(ac_int<32, false> a, ac_int<32, false> b) {
 	return a > b ? a : b;
+}
+
+ac_int<32, false> min(ac_int<32, false> a, ac_int<32, false> b) {
+	return a < b ? a : b;
 }
 
 /**
@@ -239,6 +247,20 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 	lastStore[1] = 0;
 	lastStore[2] = 0;
 	lastStore[3] = 0;
+	firstLoad[0] = 0xffffffff;
+	firstLoad[1] = 0xffffffff;
+	firstLoad[2] = 0xffffffff;
+	firstLoad[3] = 0xffffffff;
+	maskVal[0] = 0;
+	maskVal[1] = 0;
+	maskVal[2] = 0;
+	maskVal[3] = 0;
+
+	for (int oneSpec = 0; oneSpec<4; oneSpec++){
+		for (int onePlace = 0; onePlace<WINDOW_SIZE; onePlace++){
+			mask_spec[oneSpec][onePlace] = 0;
+		}
+	}
 
 	while (instructionId < basicBlockSize) {
 
@@ -423,7 +445,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		if (!alloc){
 			for (int oneBit = 0; oneBit<4; oneBit++){
 				if ((useOperand1 && poisoned[placeOfOperand1][oneBit]) || (useOperand2 && poisoned[placeOfOperand2][oneBit])){
-							earliest_place = max(earliest_place, lastStore[oneBit]);
+							earliest_place = max(earliest_place, lastStore[oneBit]+1);
 				}
 			}
 		}
@@ -542,9 +564,9 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		registerDependencies[operand1.slc<8>(0)] = operand1Dep;
 		registerDependencies[operand2.slc<8>(0)] = operand2Dep;
 
-		if (useOperand1 && !operand1[8] && operand1Dep == 0)
+		if (useOperand1 && !operand1[8] && operand1Dep == 0 && !poisoned[placeOfOperand1])
 			freeRegisters[numberFreeRegister++] = placeOfOperand1;
-		if (useOperand2 && !operand2[8] && operand2Dep == 0)
+		if (useOperand2 && !operand2[8] && operand2Dep == 0 && !poisoned[placeOfOperand2])
 			freeRegisters[numberFreeRegister++] = placeOfOperand2;
 
 		//***********************************************************************
@@ -576,6 +598,14 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 					binaries[addressInBinaries+(windowPosition+windowOffset)*2] = binariesWord.slc<128>(0);
 					binaries[addressInBinaries+(windowPosition+windowOffset)*2+1] = binariesWord.slc<128>(128);
 				}
+
+				for (int oneBit = 0; oneBit<4; oneBit++){
+					if (mask_spec[oneBit][off] && !maskVal[63] && !maskVal[62] && !maskVal[61] && !maskVal[60]) {
+						maskVal[oneBit] = (maskVal[oneBit]<<4) + mask_spec[oneBit][off];
+					}
+
+				}
+
 			}
 
 
@@ -628,15 +658,22 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		}
 		if (isLoad && isSpec){
 			poisoned[dest][specId] = 1;
+			mask_spec[specId][offset(bestWindowOffset)][bestStageId] = 1;
+			firstLoad[specId] = min(firstLoad[specId], lastPlaceOfInstr);
 		}
 
-		if (useOperand1 && poisoned[placeOfOperand1])
-			poisoned[dest] |= poisoned[placeOfOperand1];
-		if (useOperand2 && poisoned[placeOfOperand2])
-			poisoned[dest] |= poisoned[placeOfOperand2];
+		if (!isNop && !isStore && !isBranchWithReg && ! isBranchWithTwoRegs){
+			if (useOperand1 && poisoned[placeOfOperand1])
+				poisoned[dest] |= poisoned[placeOfOperand1];
+			if (useOperand2 && poisoned[placeOfOperand2])
+				poisoned[dest] |= poisoned[placeOfOperand2];
+		}
 
-		if (poisoned[dest])
-			fprintf(stderr, "Instr %d is poisoned\n", instructionId);
+		for (int oneBit = 0; oneBit<4; oneBit++){
+			if ((unitType == 0 && lastStore[oneBit] != 0) || (useOperand1 && poisoned[placeOfOperand1][oneBit]) || (useOperand2 && poisoned[placeOfOperand2][oneBit])){
+				mask_spec[oneBit][offset(bestWindowOffset)][bestStageId] = 1;
+			}
+		}
 
 		//*******************
 
@@ -684,6 +721,13 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 			binaries[addressInBinaries+(windowPosition+windowOffset)*2] = binariesWord.slc<128>(0);
 			binaries[addressInBinaries+(windowPosition+windowOffset)*2+1] = binariesWord.slc<128>(128);
 		}
+
+		for (int oneBit = 0; oneBit<4; oneBit++){
+			if (mask_spec[oneBit][off] && !maskVal[oneBit][63] && !maskVal[oneBit][62] && !maskVal[oneBit][61] && !maskVal[oneBit][60]){
+				maskVal[oneBit] = (maskVal[oneBit]<<4) + mask_spec[oneBit][off];
+			}
+
+		}
 	}
 
 
@@ -703,6 +747,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 				binaries[addressInBinaries + newSize-1] = 0;
 				binaries[addressInBinaries + newSize-2] = 0;
 			}
+
 			break;
 		}
 	}
@@ -714,6 +759,14 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 	timeTakenIRScheduler += 8;
 	#endif
 
+	if (maskVal[0] != 0)
+		fprintf(stderr, "for 0 mask is %llx and starts at %d\n", (unsigned long long int) maskVal[0], firstLoad[0]);
+	if (maskVal[1] != 0)
+		fprintf(stderr, "for 0 mask is %llx\n", (unsigned long long int) maskVal[1]);
+	if (maskVal[2] != 0)
+		fprintf(stderr, "for 0 mask is %llx\n", (unsigned long long int) maskVal[2]);
+	if (maskVal[3] != 0)
+		fprintf(stderr, "for 0 mask is %llx\n", (unsigned long long int) maskVal[3]);
 	return newSize;
 }
 
