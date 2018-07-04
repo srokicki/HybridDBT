@@ -143,26 +143,25 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 		}
 
-		if (1){
-			for (int i=result->blocks[oneBlock]->vliwStartAddress;i<result->blocks[oneBlock]->vliwEndAddress;i++){
-				Log::printf(LOG_SCHEDULE_PROC,"%d ", i);
+		for (int i=result->blocks[oneBlock]->vliwStartAddress;i<result->blocks[oneBlock]->vliwEndAddress;i++){
+			Log::printf(LOG_SCHEDULE_PROC,"%d ", i);
 
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
 
 
-				if (platform->vliwInitialIssueWidth>4){
-					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
-					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
-					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
-					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
-					i++;
-				}
-				Log::printf(LOG_SCHEDULE_PROC,"\n");
+			if (platform->vliwInitialIssueWidth>4){
+				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
+				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
+				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
+				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
+				i++;
 			}
+			Log::printf(LOG_SCHEDULE_PROC,"\n");
 		}
+
 		if ((isReturnBlock || isCallBlock) && readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1] + 16*incrementInBinaries) != 0){
 
 //			if (((readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 16*incrementInBinaries)>>20) & 0x3f) == 33){
@@ -190,6 +189,13 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 		}
 
+		//We handle speculation information if necessary
+		for (int oneSpec = 0; oneSpec<4; oneSpec++){
+			if (block->specAddr[oneSpec] != 0){
+				platform->specInfo[4*block->specAddr[oneSpec]+2] = maskVal[oneSpec] >> 32;
+				platform->specInfo[4*block->specAddr[oneSpec]+3] = maskVal[oneSpec];
+			}
+		}
 
 
 		if (isCallBlock){
@@ -307,6 +313,11 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 				writeInt(platform->vliwBinaries, 16*originalEntry+20, 0);
 				writeInt(platform->vliwBinaries, 16*originalEntry+24, 0);
 				writeInt(platform->vliwBinaries, 16*originalEntry+28, 0);
+
+				if (block->specAddr[0] != 0){
+					writeInt(platform->vliwBinaries, 16*originalEntry+4, assembleMemoryInstruction(VEX_SPEC_INIT, 0, 0, block->specAddr[0], 1, 0));
+					//TODO make it work for others specs
+				}
 
 			}
 			else{
