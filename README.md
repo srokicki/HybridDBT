@@ -1,6 +1,8 @@
 Hybrid-DBT
 =====================
 
+[![Build Status](https://travis-ci.org/srokicki/HybridDBT.svg?branch=master)](https://travis-ci.org/srokicki/HybridDBT)
+
 This repository contains sources of the Hybrid-DBT project. Hybrid-DBT is a hardware accelerated Dynamic Binary Translation framework which execute RISC-V or MIPS code on a VLIW. Critical part of the binary translation are done by hardware accelerators: first-pass translation which generates a first naive translation of source binaries; IR generator which decode the result of the first pass translation to generate an IR where data-flow graph is encoded; IR scheduler which read the above mentionned IR and schedule instructions in order to exploit efficiently the VLIW capacities.
 
 ## Table of Contents
