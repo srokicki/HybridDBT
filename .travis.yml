@@ -15,6 +15,6 @@ addons:
 script: 
     - mkdir -p build 
     - cd build 
-		- export CXX=/usr/bin/g++-6
+    - export CXX=/usr/bin/g++-6
     - cmake ..
     - make all
