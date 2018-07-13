@@ -1,7 +1,19 @@
-language: cpp
-
+dist: trusty
+sudo: required
+language:
+  - cpp
+compiler:
+  - gcc
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-6
+      - g++-6
+      - cmake
 script: 
-		- mkdir -p build 
-		- cd build 
-		- cmake .. 
-		- make all
+    - mkdir -p build 
+    - cd build 
+    - cmake .. 
+    - make all
