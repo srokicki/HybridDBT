@@ -1,50 +1,39 @@
-/* -*-mode:c++-*- *********************************************************
+/**************************************************************************
  *                                                                        *
  *  Algorithmic C (tm) Datatypes                                          *
  *                                                                        *
- *  Software Version: 2.3                                                 *
+ *  Software Version: 3.7                                                 *
  *                                                                        *
- *  Release Date    : Wed Oct  7 16:29:21 PDT 2009                        *
- *  Release Type    : Production                                          *
- *  Release Build   : 2.3.0                                               *
+ *  Release Date    : Mon Nov 21 14:26:44 PST 2016                        *
+ *  Release Type    : Production Release                                  *
+ *  Release Build   : 3.7.1                                               *
  *                                                                        *
- *  Copyright 1996-2009, Mentor Graphics Corporation,                     *
+ *  Copyright 2004-2016, Mentor Graphics Corporation,                     *
  *                                                                        *
  *  All Rights Reserved.                                                  *
+ *
+ **************************************************************************
+ *  Licensed under the Apache License, Version 2.0 (the "License");       *
+ *  you may not use this file except in compliance with the License.      *
+ *  You may obtain a copy of the License at                               *
  *                                                                        *
+ *      http://www.apache.org/licenses/LICENSE-2.0                        *
+ *                                                                        *
+ *  Unless required by applicable law or agreed to in writing, software   *
+ *  distributed under the License is distributed on an "AS IS" BASIS,     *
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or       *
+ *  implied.                                                              *
+ *  See the License for the specific language governing permissions and   *
+ *  limitations under the License.                                        *
  **************************************************************************
  *                                                                        *
- *  The most recent version of this package can be downloaded from:       *
- *     http://www.mentor.com/products/c-based_design/ac_datatypes         *
- *                                                                        *
- **************************************************************************
- *                                                                        *
- *  IMPORTANT - THIS SOFTWARE IS COPYRIGHTED AND SUBJECT TO LICENSE       *
- *  RESTRICTIONS                                                          *
- *                                                                        *
- *  THE LICENSE THAT CONTROLS YOUR USE OF THE SOFTWARE IS:                *
- *     ALGORITHMIC C DATATYPES END-USER LICENSE AGREEMENT                 *
- *                                                                        *
- *  THESE COMMENTS ARE NOT THE LICENSE.  PLEASE CONSULT THE FULL LICENSE  *
- *  FOR THE ACTUAL TERMS AND CONDITIONS WHICH IS LOCATED AT THE BOTTOM    *
- *  OF THIS FILE.                                                         *
- *                                                                        *  
- *  CAREFULLY READ THE LICENSE AGREEMENT BEFORE USING THE SOFTWARE.       *
- *                                                                        *  
- *       *** MODIFICATION OF THE SOFTWARE IS NOT AUTHORIZED ***           *
- *                                                                        *
- **************************************************************************
- *                                                                        *
- *  YOUR USE OF THE SOFTWARE INDICATES YOUR COMPLETE AND UNCONDITIONAL    *
- *  ACCEPTANCE OF THE TERMS AND CONDITIONS SET FORTH IN THE LICENSE. IF   *
- *  YOU DO NOT  AGREE TO THE LICENSE TERMS AND CONDITIONS, DO NOT USE THE *
- *  SOFTWARE, REMOVE IT FROM YOUR SYSTEM, AND DESTROY ALL COPIES.         *
+ *  The most recent version of this package is available at github.       *
  *                                                                        *
  *************************************************************************/
 
 /*
 //  Source:         ac_int.h
-//  Description:    fast arbitrary-length bit-accurate integral types:
+//  Description:    fast arbitrary-length bit-accurate integer types:
 //                    - unsigned integer of length W:  ac_int<W,false>
 //                    - signed integer of length W:  ac_int<W,true>
 //  Author:         Andres Takach, Ph.D.
@@ -75,8 +64,8 @@
 #ifndef __AC_INT_H
 #define __AC_INT_H
 
-#define AC_VERSION 2
-#define AC_VERSION_MINOR 3
+#define AC_VERSION 3
+#define AC_VERSION_MINOR 7
 
 #ifndef __cplusplus
 #error C++ is required to include this header file
@@ -92,25 +81,31 @@
 
 #if (defined(_MSC_VER) && !defined(__EDG__))
 #pragma warning( push )
-#pragma warning( disable: 4127 4100 4244 4307 4554 )
+#pragma warning( disable: 4127 4100 4244 4307 4310 4365 4514 4554 4706 4800 )
 #endif
 
 // for safety
 #if (defined(N) || defined(N2))
 #error One or more of the following is defined: N, N2. Definition conflicts with their usage as template parameters. 
+#error DO NOT use defines before including third party header files.
 #endif
 
 // for safety
 #if (defined(W) || defined(I) || defined(S) || defined(W2) || defined(I2) || defined(S2))
 #error One or more of the following is defined: W, I, S, W2, I2, S2. Definition conflicts with their usage as template parameters. 
+#error DO NOT use defines before including third party header files.
 #endif
 
 #if (defined(true) || defined(false))
 #error One or more of the following is defined: true, false. They are keywords in C++ of type bool. Defining them as 1 and 0, may result in subtle compilation problems.
+#error DO NOT use defines before including third party header files.
 #endif
 
-#ifndef __SYNTHESIS__
+#ifndef __ASSERT_H__
+#define __ASSERT_H__
 #include <assert.h>
+#endif
+#include <limits>
 #ifndef AC_USER_DEFINED_ASSERT
 #include <iostream>
 #else
@@ -119,6 +114,7 @@
 #include <math.h>
 #include <string>
 
+#ifndef __SYNTHESIS__
 #ifndef __AC_INT_UTILITY_BASE
 #define __AC_INT_UTILITY_BASE
 #endif
@@ -131,11 +127,9 @@ namespace __AC_NAMESPACE {
 
 #define AC_MAX(a,b) ((a) > (b) ? (a) : (b))
 #define AC_MIN(a,b) ((a) < (b) ? (a) : (b))
+#define AC_ABS(a) ((a) < 0 ? (-a) : (a))
 
 #if defined(_MSC_VER)
-#if !defined(__EDG__) && _MSC_VER < 1400 && !defined(for)
-# define for if(0);else for
-#endif
 typedef unsigned __int64 Ulong;
 typedef signed   __int64 Slong;
 #else
@@ -152,6 +146,8 @@ namespace ac_private {
 #if defined(__SYNTHESIS__) && !defined(AC_IGNORE_BUILTINS)
 #pragma builtin
 #endif
+
+  enum {long_w = std::numeric_limits<unsigned long>::digits};
 
   // PRIVATE FUNCTIONS in namespace: for implementing ac_int/ac_fixed
 
@@ -189,7 +185,7 @@ namespace ac_private {
       enum {
         X2 = X >> N,
         N_div_2 = N >> 1,
-        nbits = X ? (X2 ? N + s_N<N_div_2>::template s_X<X2>::nbits : s_N<N_div_2>::template s_X<X>::nbits) : 0
+        nbits = X ? (X2 ? N + (int) s_N<N_div_2>::template s_X<X2>::nbits : (int) s_N<N_div_2>::template s_X<X>::nbits) : 0
       };
     };
   };
@@ -242,7 +238,7 @@ namespace ac_private {
         return false;
     return true;
   }
-  template<> inline bool iv_equal_zero<0>(const int *op) { return true; }
+  template<> inline bool iv_equal_zero<0>(const int * /*op*/) { return true; }
   template<> inline bool iv_equal_zero<1>(const int *op) {
     return !op[0];
   }
@@ -257,7 +253,7 @@ namespace ac_private {
         return false;
     return true;
   }
-  template<> inline bool iv_equal_ones<0>(const int *op) { return true; }
+  template<> inline bool iv_equal_ones<0>(const int * /*op*/) { return true; }
   template<> inline bool iv_equal_ones<1>(const int *op) {
     return !~op[0];
   }
@@ -286,7 +282,7 @@ namespace ac_private {
 
   template<int B, int N>
   inline bool iv_equal_ones_from(const int *op){
-    if(B >= 32*N && op[N-1] >= 0 || (B&31 && ~(op[B/32] >> (B&31))))
+    if((B >= 32*N && op[N-1] >= 0) || (B&31 && ~(op[B/32] >> (B&31))))
       return false; 
     return iv_equal_ones<N-(B+31)/32>(&op[(B+31)/32]);
   }
@@ -299,7 +295,7 @@ namespace ac_private {
 
   template<int B, int N>
   inline bool iv_equal_zeros_from(const int *op){
-    if(B >= 32*N && op[N-1] < 0 || (B&31 && (op[B/32] >> (B&31))))
+    if((B >= 32*N && op[N-1] < 0) || (B&31 && (op[B/32] >> (B&31))))
       return false; 
     return iv_equal_zero<N-(B+31)/32>(&op[(B+31)/32]);
   }
@@ -312,7 +308,7 @@ namespace ac_private {
 
   template<int B, int N>
   inline bool iv_equal_ones_to(const int *op){
-    if(B >= 32*N && op[N-1] >= 0 || (B&31 && ~(op[B/32] | (~0 << (B&31)))))
+    if((B >= 32*N && op[N-1] >= 0) || (B&31 && ~(op[B/32] | (~0 << (B&31)))))
       return false; 
     return iv_equal_ones<B/32>(op);
   }
@@ -325,7 +321,7 @@ namespace ac_private {
 
   template<int B, int N>
   inline bool iv_equal_zeros_to(const int *op){
-    if(B >= 32*N && op[N-1] < 0 || (B&31 && (op[B/32] & ~(~0 << (B&31)))))
+    if((B >= 32*N && op[N-1] < 0) || (B&31 && (op[B/32] & ~(~0 << (B&31)))))
       return false; 
     return iv_equal_zero<B/32>(op);
   }
@@ -369,9 +365,9 @@ namespace ac_private {
     for(int i=0; i < N; i++)
       r[i] = ext;
   } 
-  template<> inline void iv_extend<-2>(int *r, int ext) {}
-  template<> inline void iv_extend<-1>(int *r, int ext) {}
-  template<> inline void iv_extend<0>(int *r, int ext) {}
+  template<> inline void iv_extend<-2>(int * /*r*/, int /*ext*/) { }
+  template<> inline void iv_extend<-1>(int * /*r*/, int /*ext*/) { }
+  template<> inline void iv_extend<0>(int * /*r*/, int /*ext*/) { }
   template<> inline void iv_extend<1>(int *r, int ext) {
     r[0] = ext;
   } 
@@ -505,7 +501,7 @@ namespace ac_private {
     }
     return l != 0;
   }
-  template<> inline bool iv_uadd_carry<0>(const int *op1, bool carry, int *r) { return carry; }
+  template<> inline bool iv_uadd_carry<0>(const int * /*op1*/, bool carry, int * /*r*/) { return carry; }
   template<> inline bool iv_uadd_carry<1>(const int *op1, bool carry, int *r) {
     Ulong l = carry + (Ulong) (unsigned) op1[0];
     r[0] = (int) l;
@@ -533,7 +529,7 @@ namespace ac_private {
     r[N-1] = (int) l;
     return (l >> 32) & 1;
   }
-  template<> inline bool iv_add_int_carry<0>(const int *op1, int op2, bool carry, int *r) { return carry; }
+  template<> inline bool iv_add_int_carry<0>(const int * /*op1*/, int /*op2*/, bool carry, int * /*r*/) { return carry; }
   template<> inline bool iv_add_int_carry<1>(const int *op1, int op2, bool carry, int *r) {
     Ulong l = carry + (Slong) op1[0] + (Slong) op2;
     r[0] = (int) l;
@@ -550,7 +546,7 @@ namespace ac_private {
     }
     return l & 1;
   }
-  template<> inline bool iv_uadd_n<0>(const int *op1, const int *op2, int *r) { return false; }
+  template<> inline bool iv_uadd_n<0>(const int * /*op1*/, const int * /*op2*/, int * /*r*/) { return false; }
   template<> inline bool iv_uadd_n<1>(const int *op1, const int *op2, int *r) {
     Ulong l = (Ulong) (unsigned) op1[0] + (Ulong) (unsigned) op2[0];
     r[0] = (int) l; 
@@ -608,7 +604,7 @@ namespace ac_private {
     r[N-1] = (int) l;
     return (l >> 32) & 1;
   }
-  template<> inline bool iv_sub_int_borrow<0>(const int *op1, int op2, bool borrow, int *r) { return borrow; }
+  template<> inline bool iv_sub_int_borrow<0>(const int * /*op1*/, int /*op2*/, bool borrow, int * /*r*/) { return borrow; }
   template<> inline bool iv_sub_int_borrow<1>(const int *op1, int op2, bool borrow, int *r) {
     Ulong l = (Slong) op1[0] - (Slong) op2 - borrow;
     r[0] = (int) l;
@@ -634,7 +630,7 @@ namespace ac_private {
     r[N-1] = (int) l;
     return (l >> 32) & 1;
   }
-  template<> inline bool iv_sub_int_borrow<0>(int op1, const int *op2, bool borrow, int *r) { return borrow; }
+  template<> inline bool iv_sub_int_borrow<0>(int /*op1*/, const int * /*op2*/, bool borrow, int * /*r*/) { return borrow; }
   template<> inline bool iv_sub_int_borrow<1>(int op1, const int *op2, bool borrow, int *r) {
     Ulong l = (Slong) op1 - (Slong) op2[0] - borrow;
     r[0] = (int) l;
@@ -697,7 +693,7 @@ namespace ac_private {
         return false;
     return true;
   }
-  template<> inline bool iv_all_bits_same<0>(const int *op, bool bit) { return true; }
+  template<> inline bool iv_all_bits_same<0>(const int * /*op*/, bool /*bit*/) { return true; }
   template<> inline bool iv_all_bits_same<1>(const int *op, bool bit) {
     return op[0] == (bit ? ~0 : 0); 
   }
@@ -711,7 +707,7 @@ namespace ac_private {
       l >>= 32;
     }
     if(Nr > N) {
-      r[N] = (unsigned) l;
+      r[N] = (unsigned) (l - (op1[N-1] < 0 ? ~0 : 0));
       iv_extend<Nr-N-1>(r+N+1, r[N] < 0 ? ~0 : 0);
     }
   }
@@ -719,16 +715,7 @@ namespace ac_private {
   template <int N, bool S, int Nr>
   void iv_abs(const int *op1, int *r) {
     if( S && op1[N-1] < 0) {
-      Slong l = 0;
-      for(int k = 0; k < AC_MIN(N,Nr); k++) {
-        l -= (Ulong) (unsigned) op1[k];
-        r[k] = (unsigned) l;
-        l >>= 32;
-      }
-      if(Nr > N) {
-        r[N] = l & 1;
-        iv_extend<Nr-N-1>(r+N+1, 0);
-      }
+      iv_neg<N,Nr>(op1, r);
     } else {
       iv_copy<AC_MIN(N,Nr)>(op1, r);
       iv_extend<Nr-N>(r+N, 0);
@@ -752,12 +739,12 @@ namespace ac_private {
     for(int i=0; i < R; i++)
       r[i] = n[i];
     // write most significant "words" into d1
-    bool d_mss_odd = (d[d_msi] >> w1_length);
+    bool d_mss_odd = (bool) (d[d_msi] >> w1_length);
     int d_mss= 2*d_msi + d_mss_odd;  // index to most significant short (16-bit)
-    d1 = (uw4) (uw2) d[d_msi] << (w1_length << !d_mss_odd);
+    d1 = (uw4) (uw2) d[d_msi] << (w1_length << (int) !d_mss_odd);
     if(d_msi)
       d1 |= (uw2) d[d_msi-1] >> (d_mss_odd ? w1_length : 0);
-    bool n_mss_odd = (n[n_msi] >> w1_length);
+    bool n_mss_odd = (bool) (n[n_msi] >> w1_length);
     int n_mss = 2*n_msi + n_mss_odd;
     if(n_mss < d_mss) {
       // q already initialized to 0
@@ -788,8 +775,8 @@ namespace ac_private {
           bool l_sign = l < 0;
           sw4 prod = (uw4) (uw2) d[j] * (uw4) q2;
           l -= prod;
-          bool ov1 = l >= 0 & (prod < 0 | l_sign);
-          bool ov2 = l < 0 & prod < 0 & l_sign;
+          bool ov1 = (l >= 0) & ((prod < 0) | l_sign);
+          bool ov2 = (l < 0) & (prod < 0) & l_sign;
           r1[k2_i + j] = (uw2) l;
           l >>= w2_length;
           if(ov1)
@@ -821,58 +808,74 @@ namespace ac_private {
         }
       }
       if(R) {
-        int r_msi = R > d_msi ? R-1 : d_msi;
+        int r_msi = AC_MIN(R-1, n_msi);
         for(int j = 0; j <= r_msi; j++)
           r[j] = r1[j];
+        for(int j = r_msi+1; j < R; j++)
+          r[j] = 0;
       }
     }
   }
 
   template<int N1, int Num_s, int N2, int Den_s, int Nr>
   inline void iv_div(const int *op1, const int *op2, int *r) {
-    if(N1==1 && N2==1) {
+    enum { N1_over = N1+(Den_s && (Num_s==2)) };
+    if(N1_over==1 && N2==1) {
       r[0] = op1[0] / op2[0];
-      iv_extend<Nr-N1>(r+1, (Num_s && (op1[0] < 0)) ^ (Den_s && (op2[0] < 0)) ? ~0 : 0);
+      iv_extend<Nr-N1>(r+1, ((Num_s || Den_s) && (r[0] < 0)) ? ~0 : 0);
     }
-    else if(N1==1 && N2==2)
+    else if(N1_over==1 && N2==2)
       iv_assign_int64<Nr>(r, ( (Slong) op1[0]) / (((Slong) op2[1] << 32) | (unsigned) op2[0]) );
-    else if(N1==2 && N2==1)
-      iv_assign_int64<Nr>(r, (((Slong) op1[1] << 32) | (unsigned) op1[0]) / ( (Slong) op2[0]) );
-    else if(N1==2 && N2==2)
-      iv_assign_int64<Nr>(r, (((Slong) op1[1] << 32) | (unsigned) op1[0]) / (((Slong) op2[1] << 32) | (unsigned) op2[0]) );
+    else if(N1_over==2 && N2==1)
+      if(N1 == 1)
+        iv_assign_int64<Nr>(r, ( (Slong) op1[0]) / ( (Slong) op2[0]) );
+      else
+        iv_assign_int64<Nr>(r, (((Slong) op1[1] << 32) | (unsigned) op1[0]) / ( (Slong) op2[0]) );
+    else if(N1_over==2 && N2==2)
+      if(N1 == 1)
+        iv_assign_int64<Nr>(r, ( (Slong) op1[0]) / (((Slong) op2[1] << 32) | (unsigned) op2[0]) );
+      else
+        iv_assign_int64<Nr>(r, (((Slong) op1[1] << 32) | (unsigned) op1[0]) / (((Slong) op2[1] << 32) | (unsigned) op2[0]) );
     else if(!Num_s && !Den_s) {
       iv_udiv<N1,N2,N1,0,int,unsigned,Slong,Ulong,16>(op1, op2, r, 0);
-      iv_extend<Nr-N2>(r+N2, 0);
+      iv_extend<Nr-N1>(r+N1, 0);
     }
     else {
       enum { N1_neg = N1+(Num_s==2), N2_neg = N2+(Den_s==2)}; 
       int numerator[N1_neg];
       int denominator[N2_neg];
       int quotient[N1_neg];
-      iv_abs<N1, Num_s, N1_neg>(op1, numerator);
-      iv_abs<N2, Den_s, N2_neg>(op2, denominator);
-      iv_udiv<N1,N2,N1,0,int,unsigned,Slong,Ulong,16>(numerator, denominator, quotient, 0);
+      iv_abs<N1, (bool) Num_s, N1_neg>(op1, numerator);
+      iv_abs<N2, (bool) Den_s, N2_neg>(op2, denominator);
+      iv_udiv<N1_neg,N2_neg,N1_neg,0,int,unsigned,Slong,Ulong,16>(numerator, denominator, quotient, 0);
       if( (Num_s && op1[N1-1] < 0) ^ (Den_s && op2[N2-1] < 0) )  
         iv_neg<N1_neg, Nr>(quotient, r);
       else {
-        iv_copy<AC_MIN(N1,Nr)>(quotient, r);
-        iv_extend<Nr-N1>(r+N1, (Num_s || Den_s) && r[N1-1] < 0 ? ~0 : 0);
+        iv_copy<AC_MIN(N1_neg,Nr)>(quotient, r);
+        iv_extend<Nr-N1_neg>(r+N1_neg, (Num_s || Den_s) && r[N1_neg-1] < 0 ? ~0 : 0);
       }
     }
   }
 
   template<int N1, int Num_s, int N2, int Den_s, int Nr>
   inline void iv_rem(const int *op1, const int *op2, int *r) {
-    if(N1==1 && N2==1) {
+    enum { N1_over = N1+(Den_s && (Num_s==2)) };   // N1_over corresponds to the division
+    if(N1_over==1 && N2==1) {
       r[0] = op1[0] % op2[0];
       iv_extend<Nr-1>(r+1, Num_s && r[0] < 0 ? ~0 : 0);
     }
-    else if(N1==1 && N2==2)
+    else if(N1_over==1 && N2==2)
       iv_assign_int64<Nr>(r, ( (Slong) op1[0]) % (((Slong) op2[1] << 32) | (unsigned) op2[0]) );
-    else if(N1==2 && N2==1)
-      iv_assign_int64<Nr>(r, (((Slong) op1[1] << 32) | (unsigned) op1[0]) % ( (Slong) op2[0]) );
-    else if(N1==2 && N2==2)
-      iv_assign_int64<Nr>(r, (((Slong) op1[1] << 32) | (unsigned) op1[0]) % (((Slong) op2[1] << 32) | (unsigned) op2[0]) );
+    else if(N1_over==2 && N2==1)
+      if(N1 == 1)
+        iv_assign_int64<Nr>(r, ( (Slong) op1[0]) % ( (Slong) op2[0]) );
+      else
+        iv_assign_int64<Nr>(r, (((Slong) op1[1] << 32) | (unsigned) op1[0]) % ( (Slong) op2[0]) );
+    else if(N1_over==2 && N2==2)
+      if(N1 == 1)
+        iv_assign_int64<Nr>(r, ( (Slong) op1[0]) % (((Slong) op2[1] << 32) | (unsigned) op2[0]) );
+      else
+        iv_assign_int64<Nr>(r, (((Slong) op1[1] << 32) | (unsigned) op1[0]) % (((Slong) op2[1] << 32) | (unsigned) op2[0]) );
     else if(!Num_s && !Den_s) {
       iv_udiv<N1,N2,0,N2,int,unsigned,Slong,Ulong,16>(op1, op2, 0, r);
       iv_extend<Nr-N2>(r+N2, 0);
@@ -882,8 +885,8 @@ namespace ac_private {
       int numerator[N1_neg];
       int denominator[N2_neg];
       int remainder[N2];
-      iv_abs<N1, Num_s, N1_neg>(op1, numerator);
-      iv_abs<N2, Den_s, N2_neg>(op2, denominator);
+      iv_abs<N1, (bool) Num_s, N1_neg>(op1, numerator);
+      iv_abs<N2, (bool) Den_s, N2_neg>(op2, denominator);
       iv_udiv<N1_neg,N2_neg,0,N2,int,unsigned,Slong,Ulong,16>(numerator, denominator, 0, remainder);
       if( (Num_s && op1[N1-1] < 0) )
         iv_neg<N2, Nr>(remainder, r);
@@ -1079,11 +1082,10 @@ namespace ac_private {
     else {
       const unsigned s31 = B & 31;
       const unsigned ishift = (unsigned) (((B >> 5) > Nr) ? Nr : (B >> 5));
+      iv_extend<ishift>(r, 0);
+      const unsigned M1 = AC_MIN(N+ishift,Nr);
       if(s31) {
-        for(unsigned i=0; i < AC_MIN(ishift,Nr); i++)
-          r[i] = 0;
         unsigned lw = 0;
-        const unsigned M1 = AC_MIN(N+ishift,Nr);
         for(unsigned i=ishift; i < M1; i++) {
           unsigned hw = op1[i-ishift];
           r[i] = (hw << s31) | (lw >> ((32-s31)&31));  // &31 is to quiet compilers
@@ -1091,12 +1093,12 @@ namespace ac_private {
         }
         if(Nr > M1) {
           r[M1] = (signed) lw >> ((32-s31)&31);  // &31 is to quiet compilers 
-          for(unsigned i=M1+1; i < Nr; i++)
-            r[i] = r[M1] < 0 ? ~0 : 0; 
+          iv_extend<Nr-M1-1>(r+M1+1, r[M1] < 0 ? ~0 : 0);
         }
       } else {
-        for(unsigned i=0; i < Nr ; i++)
-          r[i] = (i >= ishift) ? op1[i-ishift] : 0;
+        for(unsigned i=ishift; i < M1 ; i++)
+          r[i] = op1[i-ishift];
+        iv_extend<Nr-M1>(r+M1, r[M1-1] < 0 ? -1 : 0);
       }
     }
   }
@@ -1187,7 +1189,7 @@ namespace ac_private {
   }
   template<> inline int to_str<AC_DEC>(int *v, int w, bool left_just, char *r) { 
     int k = 0;
-    int msw = w-1 >> 5;
+    int msw = (w-1) >> 5;
     if(left_just) {
       unsigned bits_msw = w & 31;
       if(bits_msw) {
@@ -1224,7 +1226,7 @@ namespace ac_private {
           msw--;
         bool last = msw == -1;
         unsigned rem = (unsigned) nl;
-        for(int i=0; i < 9 && !last || rem; i++) {
+        for(int i=0; (i < 9 && !last) || rem; i++) {
           r[k++] = (char) ('0' + (int) (rem % 10));
           rem /= 10;
         }
@@ -1266,6 +1268,37 @@ namespace ac_private {
       return to_str<AC_BIN>(v, w, left_just, r);
     return 0;
   }
+
+  template<int N>
+  inline unsigned iv_leading_bits(const int *op, bool bit);
+
+  template<> inline unsigned iv_leading_bits<1>(const int *op, bool bit) {
+    const unsigned char tab[] = {4, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
+    unsigned t = bit ? ~*op : *op;
+    unsigned cnt = 0;
+    if(t >> 16)
+      t >>= 16;
+    else
+      cnt += 16;
+    if(t >> 8)
+      t >>= 8;
+    else
+      cnt += 8;
+    if(t >> 4)
+      t >>= 4;
+    else
+      cnt += 4;
+    cnt += tab[t];
+    return cnt;
+  }
+
+  template<int N>
+  inline unsigned iv_leading_bits(const int *op, bool bit) {
+    int ext_sign = bit ? -1 : 0;
+    int k;
+    for(k = N-1; k >= 0 && op[k] == ext_sign; k--) {}
+    return 32*(N-1-k) + (k < 0 ? 0 : iv_leading_bits<1>(op+k, bit));
+  }
   
   //////////////////////////////////////////////////////////////////////////////
   //  Integer Vector class: iv 
@@ -1298,12 +1331,18 @@ namespace ac_private {
       iv_extend<N-1>(v+1, 0);
     }
     iv ( long t) {
-      v[0] = t;
-      iv_extend<N-1>(v+1, (t < 0) ? ~0 : 0);
+      if(long_w == 32) {
+        v[0] = t;
+        iv_extend<N-1>(v+1, (t < 0) ? ~0 : 0);
+      } else
+        iv_assign_int64<N>(v, t);
     }
     iv ( unsigned long t) {
-      v[0] = t;
-      iv_extend<N-1>(v+1, 0);
+      if(long_w == 32) {
+        v[0] = t;
+        iv_extend<N-1>(v+1, 0);
+      } else
+        iv_assign_uint64<N>(v, t);
     }
     iv ( double d ) {
       double d2 = ldexpr32<-N>(d);
@@ -1345,6 +1384,16 @@ namespace ac_private {
     template<int Num_s, int N2, int Den_s, int Nr>
     void rem(const iv<N2> &op2, iv<Nr> &r) const {
       iv_rem<N,Num_s,N2,Den_s,Nr>(v, op2.v, r.v);
+    }
+    void increment() {
+      iv_uadd_carry<N>(v, true, v);
+    }
+    void decrement() {
+      iv_sub_int_borrow<N>(v, 0, true, v);
+    }
+    template<int Nr>
+    void neg(iv<Nr> &r) const {
+      iv_neg<N,Nr>(v, r.v);
     }
     template<int Nr>
     void shift_l(unsigned op2, iv<Nr> &r) const {
@@ -1432,6 +1481,9 @@ namespace ac_private {
         v[msb_v] ^= (v[msb_v] ^ m) & ~((~0<<1)<<msb_b);
       }
     }
+    unsigned leading_bits(bool bit) const {
+      return iv_leading_bits<N>(v, bit);
+    }
   };
   
   template<> inline Slong iv<1>::to_int64() const { return v[0]; } 
@@ -1485,30 +1537,6 @@ namespace ac_private {
     iv_conv() {}
     template<class T> iv_conv(const T& t) : iv<N>(t) {}
   };
-} // namespace ac_private
-
-namespace ac {
-  // compiler time constant for log2 like functions
-  template<unsigned X>
-  struct nbits {
-    enum { val = ac_private::s_N<16>::s_X<X>::nbits };
-  };
-                                                                                                                     
-  template<unsigned X>
-  struct log2_floor {
-    enum { val = nbits<X>::val - 1 };
-  };
-                                                                                                                     
-  // log2 of 0 is not defined: generate compiler error
-  template<> struct log2_floor<0> {};
-                                                                                                                     
-  template<unsigned X>
-  struct log2_ceil {
-    enum { lf = log2_floor<X>::val, val = (X == (1 << lf) ? lf : lf+1) };
-  };
-                                                                                                                     
-  // log2 of 0 is not defined: generate compiler error
-  template<> struct log2_ceil<0> {};
 
   // Set default to promote to int as this is the case for almost all types
   //  create exceptions using specializations
@@ -1516,9 +1544,11 @@ namespace ac {
   struct c_prom {
     typedef int promoted_type;
   };
-  // This assumes long is same as int
   template<> struct c_prom<unsigned> {
     typedef unsigned promoted_type;
+  };
+  template<> struct c_prom<long> {
+    typedef long promoted_type;
   };
   template<> struct c_prom<unsigned long> {
     typedef unsigned long promoted_type;
@@ -1565,6 +1595,7 @@ namespace ac {
   C_ARITH(float, unsigned long)
   C_ARITH(float, Slong)
   C_ARITH(float, Ulong)
+
   C_ARITH(Slong, int)
   C_ARITH(Slong, unsigned)
   C_ARITH(Ulong, int)
@@ -1608,8 +1639,6 @@ namespace ac {
       typedef typename T::template rt_T< c_type<T2> >::logic logic;
       typedef typename T::template rt_T< c_type<T2> >::div2 div;
       typedef typename T::template rt_T< c_type<T2> >::div div2;
-//      typedef typename T::template rt_T< a_type<T2> >::mod2 mod;
-//      typedef typename T::template rt_T< a_type<T2> >::mod mod2;
     };
   };
   template<typename T>
@@ -1634,12 +1663,10 @@ namespace ac {
       typedef typename rt_c_type_T<T2>::template op1<T>::div div;
       typedef typename rt_c_type_T<T2>::template op1<T>::div2 div2;
     };
-#ifndef __SYNTHESIS__
     inline static std::string type_name() {
       std::string r = c_type_name<T>();
       return r;
     }
-#endif
 
   };
   // with T == c_type
@@ -1666,17 +1693,17 @@ namespace ac {
 
   #define C_TYPE_PARAMS(C_TYPE, WI, SI) \
   template<> struct c_type_params<C_TYPE> { \
-    enum { W = WI, S = SI, floating_point = 0 }; \
+    enum { W = WI, I = WI, E = 0, S = SI, floating_point = 0 }; \
   };
 
   #define C_TYPE_MAP_INT(C_TYPE, WI, SI) \
     C_TYPE_MAP(C_TYPE) \
     C_TYPE_PARAMS(C_TYPE, WI, SI)
 
-  #define C_TYPE_MAP_FLOAT(C_TYPE, FP) \
+  #define C_TYPE_MAP_FLOAT(C_TYPE, FP, WFP, IFP, EFP) \
   C_TYPE_MAP(C_TYPE) \
   template<> struct c_type_params<C_TYPE> { \
-    enum { floating_point = FP }; \
+    enum { W = WFP, I = IFP, E = EFP, S = true, floating_point = FP }; \
   };
 
   C_TYPE_MAP_INT(bool, 1, false)
@@ -1687,12 +1714,12 @@ namespace ac {
   C_TYPE_MAP_INT(unsigned short, 16, false)
   C_TYPE_MAP_INT(signed int, 32, true)
   C_TYPE_MAP_INT(unsigned int, 32, false)
-  C_TYPE_MAP_INT(signed long, 32, true)
-  C_TYPE_MAP_INT(unsigned long, 32, false)
+  C_TYPE_MAP_INT(signed long, ac_private::long_w, true)
+  C_TYPE_MAP_INT(unsigned long, ac_private::long_w, false)
   C_TYPE_MAP_INT(signed long long, 64, true)
   C_TYPE_MAP_INT(unsigned long long, 64, false)
-  C_TYPE_MAP_FLOAT(float, 1)
-  C_TYPE_MAP_FLOAT(double, 2)
+  C_TYPE_MAP_FLOAT(float, 1, 25, 1, 8)
+  C_TYPE_MAP_FLOAT(double, 2, 54, 1, 11)
 
   #undef C_TYPE_INT
   #undef C_TYPE_PARAMS
@@ -1711,15 +1738,46 @@ namespace ac {
       typedef typename T::template rt_T< ac_int<W,S> >::logic logic;
       typedef typename T::template rt_T< ac_int<W,S> >::div2 div;
       typedef typename T::template rt_T< ac_int<W,S> >::div div2;
-//      typedef typename map_T::template rt_T< ac_int<W,S> >::mod2 mod;
-//      typedef typename map_T::template rt_T< ac_int<W,S> >::mod mod2;
     };
   };
-
 }
 
+namespace ac {
+  // compiler time constant for log2 like functions
+  template<unsigned X>
+  struct nbits {
+    enum { val = ac_private::s_N<16>::s_X<X>::nbits };
+  };
 
-enum ac_q_mode { AC_TRN, AC_RND, AC_TRN_ZERO, AC_RND_ZERO, AC_RND_INF, AC_RND_MIN_INF, AC_RND_CONV };
+  template<unsigned X>
+  struct log2_floor {
+    enum { val = nbits<X>::val - 1 };
+  };
+
+  // log2 of 0 is not defined: generate compiler error
+  template<> struct log2_floor<0> {};
+
+  template<unsigned X>
+  struct log2_ceil {
+    enum { lf = log2_floor<X>::val, val = (X == (1 << lf) ? lf : lf+1) };
+  };
+
+  // log2 of 0 is not defined: generate compiler error
+  template<> struct log2_ceil<0> {};
+
+  template<int LowerBound, int UpperBound>
+  struct int_range {
+    enum { l_s = LowerBound < 0, u_s = UpperBound < 0,
+           signedness = l_s || u_s,
+           l_nbits = nbits<AC_ABS(LowerBound+l_s)+l_s>::val,
+           u_nbits = nbits<AC_ABS(UpperBound+u_s)+u_s>::val,
+           nbits = AC_MAX(l_nbits, u_nbits + (!u_s && signedness))
+         };
+    typedef ac_int<nbits, signedness> type;
+  };
+}
+
+enum ac_q_mode { AC_TRN, AC_RND, AC_TRN_ZERO, AC_RND_ZERO, AC_RND_INF, AC_RND_MIN_INF, AC_RND_CONV, AC_RND_CONV_ODD };
 enum ac_o_mode { AC_WRAP, AC_SAT, AC_SAT_ZERO, AC_SAT_SYM };
 template<int W2, int I2, bool S2, ac_q_mode Q2, ac_o_mode O2> class ac_fixed;
 
@@ -1749,12 +1807,41 @@ __AC_INT_UTILITY_BASE
 
   inline bool is_neg() const { return S && Base::v[N-1] < 0; }
 
+  // returns false if number is denormal
+  template<int WE, bool SE>
+  bool normalize_private(ac_int<WE,SE> &exp, bool reserved_min_exp=false) {
+    int expt = exp;
+    int lshift = leading_sign();
+    bool fully_normalized = true;
+    ac_int<WE, SE> min_exp;
+    min_exp.template set_val<AC_VAL_MIN>();
+    int max_shift = exp - min_exp - reserved_min_exp;
+    if(lshift > max_shift) {
+      lshift = ac_int<WE,false>(max_shift);
+      expt = min_exp + reserved_min_exp;
+      fully_normalized = false;
+    } else {
+      expt -= lshift;
+    }
+    if(Base::equal_zero()) {
+      expt = 0;
+      fully_normalized = true;
+    }
+    exp = expt;
+    Base r;
+    Base::shift_l(lshift, r);
+    Base::operator=(r);
+    bit_adjust();
+    return fully_normalized;
+  }
+
 public:
   static const int width = W;
   static const int i_width = W;
   static const bool sign = S;
   static const ac_q_mode q_mode = AC_TRN;
   static const ac_o_mode o_mode = AC_WRAP;
+  static const int e_width = 0;
 
   template<int W2, bool S2>
   struct rt {
@@ -1783,16 +1870,14 @@ public:
 
   template<typename T>
   struct rt_T {
-    typedef typename ac::map<T>::t map_T;
-    typedef typename ac::rt_ac_int_T<map_T>::template op1<W,S>::mult mult;
-    typedef typename ac::rt_ac_int_T<map_T>::template op1<W,S>::plus plus;
-    typedef typename ac::rt_ac_int_T<map_T>::template op1<W,S>::minus minus;
-    typedef typename ac::rt_ac_int_T<map_T>::template op1<W,S>::minus2 minus2;
-    typedef typename ac::rt_ac_int_T<map_T>::template op1<W,S>::logic logic;
-    typedef typename ac::rt_ac_int_T<map_T>::template op1<W,S>::div div;
-    typedef typename ac::rt_ac_int_T<map_T>::template op1<W,S>::div2 div2;
-//    typedef typename ac::rt_ac_int_T<map_T>::template op1<W,S>::mod2 mod;
-//    typedef typename ac::rt_ac_int_T<map_T>::template op1<W,S>::mod mod2;
+    typedef typename ac_private::map<T>::t map_T;
+    typedef typename ac_private::rt_ac_int_T<map_T>::template op1<W,S>::mult mult;
+    typedef typename ac_private::rt_ac_int_T<map_T>::template op1<W,S>::plus plus;
+    typedef typename ac_private::rt_ac_int_T<map_T>::template op1<W,S>::minus minus;
+    typedef typename ac_private::rt_ac_int_T<map_T>::template op1<W,S>::minus2 minus2;
+    typedef typename ac_private::rt_ac_int_T<map_T>::template op1<W,S>::logic logic;
+    typedef typename ac_private::rt_ac_int_T<map_T>::template op1<W,S>::div div;
+    typedef typename ac_private::rt_ac_int_T<map_T>::template op1<W,S>::div2 div2;
     typedef ac_int<W, S> arg1;
   };
 
@@ -1803,11 +1888,14 @@ public:
       mag_sqr_w = 2*W-S,
       mag_sqr_s = false,
       mag_w = W+S,
-      mag_s = false
+      mag_s = false,
+      leading_sign_w = ac::log2_ceil<W+!S>::val,
+      leading_sign_s = false
     };
     typedef ac_int<neg_w, neg_s> neg;
     typedef ac_int<mag_sqr_w, mag_sqr_s> mag_sqr;
     typedef ac_int<mag_w, mag_s> mag;
+    typedef ac_int<leading_sign_w, leading_sign_s> leading_sign;
     template<unsigned N>
     struct set {
       enum { sum_w = W + ac::log2_ceil<N>::val, sum_s = S};
@@ -1817,7 +1905,11 @@ public:
 
   template<int W2, bool S2> friend class ac_int;
   template<int W2, int I2, bool S2, ac_q_mode Q2, ac_o_mode O2> friend class ac_fixed;
-  ac_int() {}
+  ac_int() {
+#if !defined(__SYNTHESIS__) && defined(AC_DEFAULT_IN_RANGE)
+    bit_adjust();
+#endif
+  }
   template<int W2, bool S2>
   inline ac_int (const ac_int<W2,S2> &op) {
     Base::operator =(op);
@@ -1843,10 +1935,18 @@ public:
 #pragma warning( push )
 #pragma warning( disable: 4700 )
 #endif
+#if (defined(__GNUC__) && ( __GNUC__ == 4 && __GNUC_MINOR__ >= 6 || __GNUC__ > 4 ) && !defined(__EDG__))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized"
+#endif
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wuninitialized"
+#endif
   template<ac_special_val V>
   inline ac_int &set_val() {
     if(V == AC_VAL_DC) {
-      int r;
+      ac_int r;
       Base::operator =(r); 
       bit_adjust();
     }
@@ -1868,19 +1968,28 @@ public:
 #if (defined(_MSC_VER) && !defined(__EDG__))
 #pragma warning( pop )
 #endif
+#if (defined(__GNUC__) && ( __GNUC__ == 4 && __GNUC_MINOR__ >= 6 || __GNUC__ > 4 ) && !defined(__EDG__))
+#pragma GCC diagnostic pop
+#endif
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
-  // Explicit conversion functions to C built-in integral types -------------
+  // Explicit conversion functions to C built-in types -------------
   inline int to_int() const { return Base::v[0]; }
   inline unsigned to_uint() const { return Base::v[0]; }
-  inline long to_long() const { return Base::v[0]; }
-  inline unsigned long to_ulong() const { return Base::v[0]; }
+  inline long to_long() const {
+    return ac_private::long_w == 32 ? (long) Base::v[0] : (long) Base::to_int64();
+  }
+  inline unsigned long to_ulong() const {
+    return ac_private::long_w == 32 ? (unsigned long) Base::v[0] : (unsigned long) Base::to_uint64();
+  }
   inline Slong to_int64() const { return Base::to_int64(); } 
   inline Ulong to_uint64() const { return Base::to_uint64(); } 
   inline double to_double() const { return Base::to_double(); } 
 
   inline int length() const { return W; }
   
-#ifndef __SYNTHESIS__
   inline std::string to_string(ac_base_mode base_rep, bool sign_mag = false) const {
     // base_rep == AC_DEC => sign_mag == don't care (always print decimal in sign magnitude) 
     char r[N*32+4] = {0};
@@ -1893,16 +2002,17 @@ public:
       r[i++] = '0';
       r[i++] = base_rep == AC_BIN ? 'b' : (base_rep == AC_OCT ? 'o' : 'x');
     }
+    int str_w;
     if( (base_rep == AC_DEC || sign_mag) && is_neg() ) {
       ac_int<W, false>  mag = operator -();
-      i += ac_private::to_string(mag.v, W+1, sign_mag, base_rep, false, r+i); 
+      str_w = ac_private::to_string(mag.v, W+1, sign_mag, base_rep, false, r+i);
     } else {
       ac_int<W,S> tmp = *this;
-      i+= ac_private::to_string(tmp.v, W+!S, sign_mag, base_rep, false, r+i); 
+      str_w = ac_private::to_string(tmp.v, W+!S, sign_mag, base_rep, false, r+i);
     }
-    if(!i) {
-      r[0] = '0';
-      r[1] = 0;
+    if(!str_w) {
+      r[i] = '0';
+      r[i+1] = 0;
     }
     return std::string(r);
   }
@@ -1913,7 +2023,6 @@ public:
 	r += tf[S];
 	return r;
   }
-#endif
 
   // Arithmetic : Binary ----------------------------------------------------
   template<int W2, bool S2>
@@ -1934,6 +2043,10 @@ public:
     Base::sub(op2, r);
     return r;
   }
+#if (defined(__GNUC__) && ( __GNUC__ == 4 && __GNUC_MINOR__ >= 6 || __GNUC__ > 4 ) && !defined(__EDG__))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wenum-compare"
+#endif
   template<int W2, bool S2>
   typename rt<W2,S2>::div operator /( const ac_int<W2,S2> &op2) const {
     typename rt<W2,S2>::div r;
@@ -1950,6 +2063,9 @@ public:
     Base::template rem<num_s, N2, den_s, Nr>(op2, r);
     return r;
   }
+#if (defined(__GNUC__) && ( __GNUC__ == 4 && __GNUC_MINOR__ >= 6 || __GNUC__ > 4 ) && !defined(__EDG__))
+#pragma GCC diagnostic pop
+#endif
   // Arithmetic assign  ------------------------------------------------------
   template<int W2, bool S2>
   ac_int &operator *=( const ac_int<W2,S2> &op2) {
@@ -1975,6 +2091,10 @@ public:
     bit_adjust();
     return *this;
   }
+#if (defined(__GNUC__) && ( __GNUC__ == 4 && __GNUC_MINOR__ >= 6 || __GNUC__ > 4 ) && !defined(__EDG__))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wenum-compare"
+#endif
   template<int W2, bool S2>
   ac_int &operator /=( const ac_int<W2,S2> &op2) {
     enum {Nminus = ac_int<W+S,S>::N, N2 = ac_int<W2,S2>::N, N2minus = ac_int<W2+S2,S2>::N, 
@@ -1995,24 +2115,31 @@ public:
     bit_adjust();
     return *this;
   }
+#if (defined(__GNUC__) && ( __GNUC__ == 4 && __GNUC_MINOR__ >= 6 || __GNUC__ > 4 ) && !defined(__EDG__))
+#pragma GCC diagnostic pop
+#endif
   // Arithmetic prefix increment, decrement ----------------------------------
   ac_int &operator ++() {
-    operator+=((ac_int<1,false>) 1);
+    Base::increment();
+    bit_adjust();
     return *this;
   }
   ac_int &operator --() {
-    operator-=((ac_int<1,false>) 1);
+    Base::decrement();
+    bit_adjust();
     return *this;
   }
   // Arithmetic postfix increment, decrement ---------------------------------
   const ac_int operator ++(int) {
     ac_int t = *this;
-    operator+=((ac_int<1,false>) 1);
+    Base::increment();
+    bit_adjust();
     return t;
   }
   const ac_int operator --(int) {
     ac_int t = *this;
-    operator-=((ac_int<1,false>) 1);
+    Base::decrement();
+    bit_adjust();
     return t;
   }
   // Arithmetic Unary --------------------------------------------------------
@@ -2020,7 +2147,10 @@ public:
     return *this;
   }
   typename rt_unary::neg operator -() const {
-    return ((ac_int<1,false>) 0) - *this;
+    typename rt_unary::neg r;
+    Base::neg(r);
+    r.bit_adjust();
+    return r;
   }
   // ! ------------------------------------------------------------------------
   bool operator ! () const {
@@ -2031,6 +2161,13 @@ public:
   ac_int<W+!S, true> operator ~() const {
     ac_int<W+!S, true> r;
     Base::bitwise_complement(r);
+    return r;
+  }
+  // Bitwise (non-arithmetic) bit_complement  -----------------------------
+  ac_int<W, false> bit_complement() const {
+    ac_int<W, false> r;
+    Base::bitwise_complement(r);
+    r.bit_adjust();
     return r;
   }
   // Bitwise (arithmetic): and, or, xor ----------------------------------
@@ -2283,41 +2420,167 @@ public:
     AC_ASSERT(index >= 0, "Attempting to read bit with negative index");
     AC_ASSERT(index < W, "Attempting to read bit beyond MSB");
     ac_int<W2-S2,false> uindex = index;
-    return (uindex < W) ? (Base::v[uindex>>5]>>(uindex&31) & 1) : 0;
+    return (uindex < W) ? (Base::v[uindex>>5]>>(uindex.to_uint()&31) & 1) : 0;
+  }
+#if 0
+  unsigned int leading_bits(bool bit) const {
+    return Base::leading_bits(bit) - (32*N - W);
+  }
+#endif
+  typename rt_unary::leading_sign leading_sign() const {
+    unsigned ls = Base::leading_bits(S & (Base::v[N-1] < 0)) - (32*N - W)-S;
+    return ls;
+  }
+  typename rt_unary::leading_sign leading_sign(bool &all_sign) const {
+    unsigned ls = Base::leading_bits(S & (Base::v[N-1] < 0)) - (32*N - W)-S;
+    all_sign = (ls == W-S);
+    return ls;
+  }
+  // returns false if number is denormal
+  template<int WE, bool SE>
+  bool normalize(ac_int<WE,SE> &exp) {
+    return normalize_private(exp);
+  }
+  // returns false if number is denormal, minimum exponent is reserved (usually for encoding special values/errors)
+  template<int WE, bool SE>
+  bool normalize_RME(ac_int<WE,SE> &exp) {
+    return normalize_private(exp, true);
+  }
+  bool and_reduce() const {
+    return ac_private::iv_equal_ones_to<W,N>(Base::v);
+  }
+  bool or_reduce() const {
+    return !Base::equal_zero();
+  }
+  bool xor_reduce() const {
+    unsigned r = Base::v[N-1];
+    if(S) {
+      const unsigned rem = (32-W)&31;
+      r = (r << rem) >> rem;
+    }
+    if(N > 1)
+      r ^= Base::v[N-2];
+    if(N > 2) {
+      for(int i=0; i<N-2; i++)
+        r ^= Base::v[i];
+    }
+    if(W > 16)
+      r ^= r >> 16;
+    if(W > 8)
+      r ^= r >> 8;
+    if(W > 4)
+      r ^= r >> 4;
+    if(W > 2)
+      r ^= r >> 2;
+    if(W > 1)
+    r ^= r >> 1;
+    return r&1;
+  }
+
+  inline void bit_fill_hex(const char *str) {
+    // Zero Pads if str is too short, throws ms bits away if str is too long
+    // Asserts if anything other than 0-9a-fA-F is encountered
+    ac_int<W,S> res = 0;
+    while(str) {
+      char c = *str;
+      int h = 0;
+      if(c >= '0' && c <= '9')
+        h = c - '0';
+      else if(c >= 'A' && c <= 'F')
+        h = c - 'A' + 10;
+      else if(c >= 'a' && c <= 'f')
+        h = c - 'a' + 10;
+      else {
+        AC_ASSERT(!c, "Invalid hex digit");
+        break;
+      }
+      res <<= 4;
+      res |= h;
+      str++;
+    }
+    *this = res;
+  }
+
+  template<int Na>
+  inline void bit_fill(const int (&ivec)[Na], bool bigendian=true) {
+    // bit_fill from integer vector
+    //   if W > N*32, missing most significant bits are zeroed
+    //   if W < N*32, additional bits in ivec are ignored (no overflow checking)
+    // Example:
+    //   ac_int<80,false> x;    int vec[] = { 0xffffa987, 0x6543210f, 0xedcba987 };
+    //   x.bit_fill(vec);   // vec[0] fill bits 79-64
+    enum { N0 = (W+31)/32, M = AC_MIN(N0,Na) };
+    ac_int<M*32,false> res = 0;
+    for(int i=0; i < M; i++)
+      res.set_slc(i*32, ac_int<32>(ivec[bigendian ? M-1-i : i]));
+    *this = res;
   }
 };
 
 namespace ac {
+  template<typename T, typename T2>
+  struct rt_2T {
+    typedef typename ac_private::map<T>::t map_T;
+    typedef typename ac_private::map<T2>::t map_T2;
+    typedef typename map_T::template rt_T< map_T2 >::mult mult;
+    typedef typename map_T::template rt_T< map_T2 >::plus plus;
+    typedef typename map_T::template rt_T< map_T2 >::minus minus;
+    typedef typename map_T::template rt_T< map_T2 >::minus2 minus2;
+    typedef typename map_T::template rt_T< map_T2 >::logic logic;
+    typedef typename map_T::template rt_T< map_T2 >::div div;
+    typedef typename map_T::template rt_T< map_T2 >::div2 div2;
+  };
+}
+
+namespace ac {
+  template<typename T>
+  struct ac_int_represent {
+    enum { t_w = ac_private::c_type_params<T>::W, t_s = ac_private::c_type_params<T>::S };
+    typedef ac_int<t_w,t_s> type;
+  };
+  template<> struct ac_int_represent<float> {};
+  template<> struct ac_int_represent<double> {};
+  template<int W, bool S>
+  struct ac_int_represent< ac_int<W,S> > {
+    typedef ac_int<W,S> type;
+  };
+}
+
+namespace ac_private {
   template<int W2, bool S2> 
   struct rt_ac_int_T< ac_int<W2,S2> > {
+    typedef ac_int<W2,S2> i2_t;
     template<int W, bool S> 
     struct op1 {
-      typedef typename ac_int<W,S>::template rt<W2,S2>::mult mult;
-      typedef typename ac_int<W,S>::template rt<W2,S2>::plus plus;
-      typedef typename ac_int<W,S>::template rt<W2,S2>::minus minus;
-      typedef typename ac_int<W2,S2>::template rt<W,S>::minus minus2;
-      typedef typename ac_int<W,S>::template rt<W2,S2>::logic logic;
-      typedef typename ac_int<W,S>::template rt<W2,S2>::div div;
-      typedef typename ac_int<W2,S2>::template rt<W,S>::div div2;
-      typedef typename ac_int<W,S>::template rt<W2,S2>::mod mod;
-      typedef typename ac_int<W2,S2>::template rt<W,S>::mod mod2;
+      typedef ac_int<W,S> i_t;
+      typedef typename i_t::template rt<W2,S2>::mult mult;
+      typedef typename i_t::template rt<W2,S2>::plus plus;
+      typedef typename i_t::template rt<W2,S2>::minus minus;
+      typedef typename i2_t::template rt<W,S>::minus minus2;
+      typedef typename i_t::template rt<W2,S2>::logic logic;
+      typedef typename i_t::template rt<W2,S2>::div div;
+      typedef typename i2_t::template rt<W,S>::div div2;
+      typedef typename i_t::template rt<W2,S2>::mod mod;
+      typedef typename i2_t::template rt<W,S>::mod mod2;
     };
   };
 
   template<typename T>
   struct rt_ac_int_T< c_type<T> > {
-    enum { W2 = c_type_params<T>::W, S2 = c_type_params<T>::S };
+    typedef typename ac::ac_int_represent<T>::type i2_t;
+    enum { W2 = i2_t::width, S2 = i2_t::sign };
     template<int W, bool S>
     struct op1 {
-      typedef typename ac_int<W,S>::template rt<W2,S2>::mult mult;
-      typedef typename ac_int<W,S>::template rt<W2,S2>::plus plus;
-      typedef typename ac_int<W,S>::template rt<W2,S2>::minus minus;
-      typedef typename ac_int<W2,S2>::template rt<W,S>::minus minus2;
-      typedef typename ac_int<W,S>::template rt<W2,S2>::logic logic;
-      typedef typename ac_int<W,S>::template rt<W2,S2>::div div;
-      typedef typename ac_int<W2,S2>::template rt<W,S>::div div2;
-      typedef typename ac_int<W,S>::template rt<W2,S2>::mod mod;
-      typedef typename ac_int<W2,S2>::template rt<W,S>::mod mod2;
+      typedef ac_int<W,S> i_t;
+      typedef typename i_t::template rt<W2,S2>::mult mult;
+      typedef typename i_t::template rt<W2,S2>::plus plus;
+      typedef typename i_t::template rt<W2,S2>::minus minus;
+      typedef typename i2_t::template rt<W,S>::minus minus2;
+      typedef typename i_t::template rt<W2,S2>::logic logic;
+      typedef typename i_t::template rt<W2,S2>::div div;
+      typedef typename i2_t::template rt<W,S>::div div2;
+      typedef typename i_t::template rt<W2,S2>::mod mod;
+      typedef typename i2_t::template rt<W,S>::mod mod2;
     };
   };
 }
@@ -2374,13 +2637,13 @@ template<> inline ac_int<64,false>::ac_int( Ulong b ) { v[0] = (int) b; v[1] = (
 
 // Stream --------------------------------------------------------------------
 
-#ifndef __SYNTHESIS__
 template<int W, bool S>
 inline std::ostream& operator << (std::ostream &os, const ac_int<W,S> &x) {
+#ifndef __SYNTHESIS__
   os << x.to_string(AC_DEC);
+#endif
   return os;
 }
-#endif
 
 // Macros for Binary Operators with Integers --------------------------------------------
 
@@ -2453,12 +2716,32 @@ namespace ac {
     OPS_WITH_INT(unsigned short, 16, false)
     OPS_WITH_INT(int, 32, true)
     OPS_WITH_INT(unsigned int, 32, false)
-    OPS_WITH_INT(long, 32, true)
-    OPS_WITH_INT(unsigned long, 32, false)
+    OPS_WITH_INT(long, ac_private::long_w, true)
+    OPS_WITH_INT(unsigned long, ac_private::long_w, false)
     OPS_WITH_INT(Slong, 64, true)
     OPS_WITH_INT(Ulong, 64, false)
     // -----------------------------------------  End of Mixed Operators with Integers
   }  // ops_with_other_types namespace
+
+  // Functions to fill bits
+
+  template<typename T>
+  inline T bit_fill_hex(const char *str) {
+    T res;
+    res.bit_fill_hex(str);
+    return res;
+  }
+
+  // returns bit_fill for type
+  //   example:
+  //   ac_int<80,false> x = ac::bit_fill< ac_int<80,false> > ((int [3]) {0xffffa987, 0x6543210f, 0xedcba987 });
+  template<typename T, int N>
+  inline T bit_fill(const int (&ivec)[N], bool bigendian=true) {
+    T res;
+    res.bit_fill(ivec, bigendian);
+    return res;
+  }
+
 }  // ac namespace
 
 //  Mixed Operators with Pointers  -----------------------------------------------
@@ -2622,6 +2905,14 @@ using namespace ac_intN;
 #if (defined(_MSC_VER) && !defined(__EDG__))
 #pragma warning( disable: 4700 )
 #endif
+#if (defined(__GNUC__) && ( __GNUC__ == 4 && __GNUC_MINOR__ >= 6 || __GNUC__ > 4 ) && !defined(__EDG__))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized"
+#endif
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wuninitialized"
+#endif
 
 // Global templatized functions for easy initialization to special values
 template<ac_special_val V, int W, bool S>
@@ -2633,14 +2924,17 @@ inline ac_int<W,S> value(ac_int<W,S>) {
 template<ac_special_val V, int W, int I, bool S, ac_q_mode Q, ac_o_mode O>
 inline ac_fixed<W,I,S,Q,O> value(ac_fixed<W,I,S,Q,O>);
 
+#define SPECIAL_VAL_FOR_INTS_DC(C_TYPE, WI, SI) \
+template<> inline C_TYPE value<AC_VAL_DC>(C_TYPE) { C_TYPE x; return x; }
+
 // -- C int types -----------------------------------------------------------------
 #define SPECIAL_VAL_FOR_INTS(C_TYPE, WI, SI) \
 template<ac_special_val val> inline C_TYPE value(C_TYPE); \
 template<> inline C_TYPE value<AC_VAL_0>(C_TYPE) { return (C_TYPE)0; } \
-template<> inline C_TYPE value<AC_VAL_DC>(C_TYPE) { C_TYPE x; return x; } \
+SPECIAL_VAL_FOR_INTS_DC(C_TYPE, WI, SI) \
 template<> inline C_TYPE value<AC_VAL_QUANTUM>(C_TYPE) { return (C_TYPE)1; } \
 template<> inline C_TYPE value<AC_VAL_MAX>(C_TYPE) { return (C_TYPE)(SI ? ~((C_TYPE) -1 << (WI-1)) : (C_TYPE) -1); } \
-template<> inline C_TYPE value<AC_VAL_MIN>(C_TYPE) { return (C_TYPE)(SI ? (C_TYPE) 1 << WI-1 : 0); }
+template<> inline C_TYPE value<AC_VAL_MIN>(C_TYPE) { return (C_TYPE)(SI ? (C_TYPE) 1 << (WI-1) : 0); }
                                                                                            
 SPECIAL_VAL_FOR_INTS(bool, 1, false)
 SPECIAL_VAL_FOR_INTS(char, 8, true)
@@ -2650,8 +2944,8 @@ SPECIAL_VAL_FOR_INTS(short, 16, true)
 SPECIAL_VAL_FOR_INTS(unsigned short, 16, false)
 SPECIAL_VAL_FOR_INTS(int, 32, true)
 SPECIAL_VAL_FOR_INTS(unsigned int, 32, false)
-SPECIAL_VAL_FOR_INTS(long, 32, true)
-SPECIAL_VAL_FOR_INTS(unsigned long, 32, false)
+SPECIAL_VAL_FOR_INTS(long, ac_private::long_w, true)
+SPECIAL_VAL_FOR_INTS(unsigned long, ac_private::long_w, false)
 SPECIAL_VAL_FOR_INTS(Slong, 64, true)
 SPECIAL_VAL_FOR_INTS(Ulong, 64, false)
 
@@ -2665,10 +2959,6 @@ SPECIAL_VAL_FOR_INTS(Ulong, 64, false)
   }
 
 namespace ac {
-#if defined(__SYNTHESIS__) && !defined(AC_IGNORE_BUILTINS)
-#pragma builtin
-  static int place_holder_object_for_pragma; 
-#endif
 // PUBLIC FUNCTIONS 
 // function to initialize (or uninitialize) arrays 
   template<ac_special_val V, int W, bool S>
@@ -2679,22 +2969,28 @@ namespace ac {
     return true;
   }
 
-  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(bool);
-  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(char);
-  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(signed char);
-  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(unsigned char);
-  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(signed short);
-  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(unsigned short);
-  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(signed int);
-  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(unsigned int);
-  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(signed long);
-  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(unsigned long);
-  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(signed long long);
-  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(unsigned long long);
+  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(bool)
+  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(char)
+  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(signed char)
+  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(unsigned char)
+  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(signed short)
+  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(unsigned short)
+  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(signed int)
+  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(unsigned int)
+  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(signed long)
+  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(unsigned long)
+  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(signed long long)
+  INIT_ARRAY_SPECIAL_VAL_FOR_INTS(unsigned long long)
 }
 
 #if (defined(_MSC_VER) && !defined(__EDG__))
 #pragma warning( pop )
+#endif
+#if (defined(__GNUC__) && ( __GNUC__ == 4 && __GNUC_MINOR__ >= 6 || __GNUC__ > 4 ) && !defined(__EDG__))
+#pragma GCC diagnostic pop
+#endif
+#if defined(__clang__)
+#pragma clang diagnostic pop
 #endif
 
 #ifdef __AC_NAMESPACE
@@ -2702,145 +2998,3 @@ namespace ac {
 #endif
 
 #endif // __AC_INT_H
-
-/**************************************************************************
- *                                                                        *
- *  ALGORITHMIC C DATATYPES END-USER LICENSE AGREEMENT                    *
- *                                                                        *
- *                                                                        *
- *  IMPORTANT - USE OF SOFTWARE IS SUBJECT TO LICENSE RESTRICTIONS        *
- *  CAREFULLY READ THIS LICENSE AGREEMENT BEFORE USING THE SOFTWARE       *
- *                                                                        *
- *  YOU MAY USE AND DISTRIBUTE UNMODIFIED VERSIONS OF THIS SOFTWARE AS    *
- *  STATED BELOW, YOU MAY NOT MODIFY THE SOFTWARE This license is a       *
- *  legal Agreement between you, the end user, either individually or     *
- *  as an authorized representative of a company acquiring the license,   *
- *  and Mentor Graphics Corporation ("Mentor Graphics"). YOUR USE OF      *
- *  THE SOFTWARE INDICATES YOUR COMPLETE AND UNCONDITIONAL ACCEPTANCE     *
- *  OF THE TERMS AND CONDITIONS SET FORTH IN THIS AGREEMENT. If you do    *
- *  not agree to these terms and conditions, promptly return or, if       *
- *  received electronically, delete the Software and all accompanying     *
- *  items.                                                                *
- *                                                                        *
- *                                                                        *
- *  1. GRANT OF LICENSE. YOU MAY USE AND DISTRIBUTE THE SOFTWARE, BUT     *
- *  YOU MAY NOT MODIFY THE SOFTWARE. The Software you are installing,     *
- *  downloading, or otherwise acquired, under this Agreement, including   *
- *  source code, binary code, updates, modifications, revisions,          *
- *  copies, or documentation pertaining to Algorithmic C Datatypes        *
- *  (collectively the "Software") is a copyrighted work owned by Mentor   *
- *  Graphics. Mentor Graphics grants to you, a nontransferable,           *
- *  nonexclusive, limited copyright license to use and distribute the     *
- *  Software, but you may not modify the Software. Use of the Software    *
- *  consists solely of reproduction, performance, and display.            *
- *                                                                        *
- *  2. RESTRICTIONS; NO MODIFICATION. Modifying the Software is           *
- *  prohibited. Each copy of the Software you create must include all     *
- *  notices and legends embedded in the Software.  Modifying the          *
- *  Software means altering, enhancing, editing, deleting portions or     *
- *  creating derivative works of the Software.  You may append other      *
- *  code to the Software, so long as the Software is not otherwise        *
- *  modified. Mentor Graphics retains all rights not expressly granted    *
- *  by this Agreement. The terms of this Agreement, including without     *
- *  limitation, the licensing and assignment provisions, shall be         *
- *  binding upon your successors in interest and assigns.  The            *
- *  provisions of this section 2 shall survive termination or             *
- *  expiration of this Agreement.                                         *
- *                                                                        *
- *  3. USER COMMENT AND SUGGESTIONS.  You are not obligated to provide    *
- *  Mentor Graphics with comments or suggestions regarding the            *
- *  Software.  However, if you do provide to Mentor Graphics comments     *
- *  or suggestions for the modification, correction, improvement or       *
- *  enhancement of (a) the Software or (b) Mentor Graphics products or    *
- *  processes which may embody the Software ("Comments"), you grant to    *
- *  Mentor a non-exclusive, irrevocable, worldwide, royalty-free          *
- *  license to disclose, display, perform, copy, make, have made, use,    *
- *  sublicense, sell, and otherwise dispose of the Comments, and Mentor   *
- *  Graphics' products embodying such Comments, in any manner which       *
- *  Mentor Graphics chooses, without reference to the source.             *
- *                                                                        *
- *  4. NO WARRANTY. MENTOR GRAPHICS EXPRESSLY DISCLAIMS ALL WARRANTY      *
- *  FOR THE SOFTWARE. TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE       *
- *  LAW, THE SOFTWARE AND ANY RELATED DOCUMENTATION IS PROVIDED "AS IS"   *
- *  AND WITH ALL FAULTS AND WITHOUT WARRANTIES OR CONDITIONS OF ANY       *
- *  KIND, EITHER EXPRESS OR IMPLIED, INCLUDING, WITHOUT LIMITATION, THE   *
- *  IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR       *
- *  PURPOSE, OR NONINFRINGEMENT. THE ENTIRE RISK ARISING OUT OF USE OR    *
- *  DISTRIBUTION OF THE SOFTWARE REMAINS WITH YOU.                        *
- *                                                                        *
- *  5. LIMITATION OF LIABILITY. IN NO EVENT WILL MENTOR GRAPHICS OR ITS   *
- *  LICENSORS BE LIABLE FOR INDIRECT, SPECIAL, INCIDENTAL, OR             *
- *  CONSEQUENTIAL DAMAGES (INCLUDING LOST PROFITS OR SAVINGS) WHETHER     *
- *  BASED ON CONTRACT, TORT OR ANY OTHER LEGAL THEORY, EVEN IF MENTOR     *
- *  GRAPHICS OR ITS LICENSORS HAVE BEEN ADVISED OF THE POSSIBILITY OF     *
- *  SUCH DAMAGES.                                                         *
- *                                                                        *
- *  6.  LIFE ENDANGERING APPLICATIONS. NEITHER MENTOR GRAPHICS NOR ITS    *
- *  LICENSORS SHALL BE LIABLE FOR ANY DAMAGES RESULTING FROM OR IN        *
- *  CONNECTION WITH THE USE OR DISTRIBUTION OF SOFTWARE IN ANY            *
- *  APPLICATION WHERE THE FAILURE OR INACCURACY OF THE SOFTWARE MIGHT     *
- *  RESULT IN DEATH OR PERSONAL INJURY.  THE PROVISIONS OF THIS SECTION 6 *
- *  SHALL SURVIVE TERMINATION OR EXPIRATION OF THIS AGREEMENT.            *
- *                                                                        *
- *  7.  INDEMNIFICATION.  YOU AGREE TO INDEMNIFY AND HOLD HARMLESS        *
- *  MENTOR GRAPHICS AND ITS LICENSORS FROM ANY CLAIMS, LOSS, COST,        *
- *  DAMAGE, EXPENSE, OR LIABILITY, INCLUDING ATTORNEYS' FEES, ARISING     *
- *  OUT OF OR IN CONNECTION WITH YOUR USE OR DISTRIBUTION OF SOFTWARE.    *
- *                                                                        *
- *  8. TERM AND TERMINATION. This Agreement terminates immediately if     *
- *  you exceed the scope of the license granted or fail to comply with    *
- *  the provisions of this License Agreement.  If you institute patent    *
- *  litigation against Mentor Graphics (including a cross-claim or        *
- *  counterclaim in a lawsuit) alleging that the Software constitutes     *
- *  direct or contributory patent infringement, then any patent           *
- *  licenses granted to you under this License for that Software shall    *
- *  terminate as of the date such litigation is filed. Upon termination   *
- *  or expiration, you agree to cease all use of the Software and         *
- *  delete all copies of the Software.                                    *
- *                                                                        *
- *  9. EXPORT. Software may be subject to regulation by local laws and    *
- *  United States government agencies, which prohibit export or           *
- *  diversion of certain products, information about the products, and    *
- *  direct products of the products to certain countries and certain      *
- *  persons. You agree that you will not export any Software or direct    *
- *  product of Software in any manner without first obtaining all         *
- *  necessary approval from appropriate local and United States           *
- *  government agencies.                                                  *
- *                                                                        *
- *  10. U.S. GOVERNMENT LICENSE RIGHTS. Software was developed entirely   *
- *  at private expense. All software is commercial computer software      *
- *  within the meaning of the applicable acquisition regulations.         *
- *  Accordingly, pursuant to US FAR 48 CFR 12.212 and DFAR 48 CFR         *
- *  227.7202, use, duplication and disclosure of the Software by or for   *
- *  the U.S. Government or a U.S. Government subcontractor is subject     *
- *  solely to the terms and conditions set forth in this Agreement,       *
- *  except for provisions which are contrary to applicable mandatory      *
- *  federal laws.                                                         *
- *                                                                        *
- *  11. CONTROLLING LAW AND JURISDICTION. THIS AGREEMENT SHALL BE         *
- *  GOVERNED BY AND CONSTRUED UNDER THE LAWS OF THE STATE OF OREGON,      *
- *  USA. All disputes arising out of or in relation to this Agreement     *
- *  shall be submitted to the exclusive jurisdiction of Multnomah         *
- *  County, Oregon. This section shall not restrict Mentor Graphics'      *
- *  right to bring an action against you in the jurisdiction where your   *
- *  place of business is located.  The United Nations Convention on       *
- *  Contracts for the International Sale of Goods does not apply to       *
- *  this Agreement.                                                       *
- *                                                                        *
- *  12. SEVERABILITY. If any provision of this Agreement is held by a     *
- *  court of competent jurisdiction to be void, invalid, unenforceable    *
- *  or illegal, such provision shall be severed from this Agreement and   *
- *  the remaining provisions will remain in full force and effect.        *
- *                                                                        *
- *  13. MISCELLANEOUS.  This Agreement contains the parties' entire       *
- *  understanding relating to its subject matter and supersedes all       *
- *  prior or contemporaneous agreements. This Agreement may only be       *
- *  modified in writing by authorized representatives of the parties.     *
- *  Waiver of terms or excuse of breach must be in writing and shall      *
- *  not constitute subsequent consent, waiver or excuse. The prevailing   *
- *  party in any legal action regarding the subject matter of this        *
- *  Agreement shall be entitled to recover, in addition to other          *
- *  relief, reasonable attorneys' fees and expenses.                      *
- *                                                                        *
- *  Algorithmic C Datatypes EULA (Rev. 090507)                             *
- **************************************************************************/
