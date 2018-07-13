@@ -324,8 +324,8 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	Log::printf(LOG_SCHEDULE_BLOCK,"*************************************************************************\n");
 	/*****************************************************************/
 
-
-	block->blockState = IRBLOCK_STATE_SCHEDULED;
+	if (block->blockState < IRBLOCK_STATE_SCHEDULED)
+		block->blockState = IRBLOCK_STATE_SCHEDULED;
 
 }
 

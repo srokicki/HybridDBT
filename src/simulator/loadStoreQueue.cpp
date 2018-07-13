@@ -82,7 +82,6 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 
 	}
 	else if (specInit){
-
 		ac_int<64+32, false> param = speculationData[specParam];
 		currentSpecParam[bank] = specParam;
 		currentSpecMasks[bank] = speculationData[4*currentSpecParam[bank]+3];

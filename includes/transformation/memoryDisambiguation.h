@@ -8,8 +8,14 @@
 #ifndef INCLUDES_TRANSFORMATION_MEMORYDISAMBIGUATION_H_
 #define INCLUDES_TRANSFORMATION_MEMORYDISAMBIGUATION_H_
 
+
+
 extern int MAX_DISAMB_COUNT;
 extern unsigned char speculationCounter;
+extern struct speculationDef speculationDefinitions[256];
+
+
+
 
 class MemoryDependencyGraph{
 public:
@@ -30,6 +36,20 @@ public:
 
 };
 
+struct speculationDef {
+	IRBlock *block;
+	MemoryDependencyGraph *graph;
+	unsigned char loads[4];
+	unsigned char stores[8];
+	short nbUse;
+	short nbFail;
+	char type, nbLoads, nbStores;
+
+};
+
+
+void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBlock *predecessor);
+void updateSpeculationsStatus(DBTPlateform *platform, int writePlace);
 
 
 #endif /* INCLUDES_TRANSFORMATION_MEMORYDISAMBIGUATION_H_ */

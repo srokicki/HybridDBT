@@ -502,7 +502,9 @@ int main(int argc, char *argv[])
 		int oldOptimizationCount = dbtPlateform.optimizationCycles;
 		bool optimizationPerformed = false;
 
-		if (OPTLEVEL >= 3){
+		updateSpeculationsStatus(&dbtPlateform, placeCode);
+
+		if (OPTLEVEL >= 4){
 			for (int oneProcedure = 0; oneProcedure < application.numberProcedures; oneProcedure++){
 				IRProcedure *procedure = application.procedures[oneProcedure];
 				if (procedure->state == 0){
@@ -561,7 +563,7 @@ int main(int argc, char *argv[])
 				block->blockState = IRBLOCK_PROC;
 
 				if (!errorCode){
-					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
+					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1], OPTLEVEL);
 					placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
 					dbtPlateform.procedureOptCounter++;
 

@@ -1005,7 +1005,7 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 		address = IMM12_s + regValueA;
 
 
-	if ((OP.slc<3>(4) == 1 || OP == VEX_FLW || OP == VEX_FLH || OP == VEX_FLB) && (address != 0x10009000 || !OP[3])){
+	if ((OP.slc<4>(3) == (VEX_LDD>>3) || OP == VEX_FLW || OP == VEX_FLH || OP == VEX_FLB) && OP != VEX_PROFILE && (address != 0x10009000 || !OP[3])){
 		//If we are in a memory access, the access is initiated here
 		#ifdef __CATAPULT
 		dctoEx->memValue = ldd(address & 0xfffffffffffffff8, memory0, memory1, memory2, memory3, memory4, memory5, memory6, memory7);

@@ -548,7 +548,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 
 }
 
-void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
+void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 
 	/******************************************************************
 	 * Optimization that merges blocks:
@@ -716,7 +716,8 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure){
 					}
 
 					fprintf(stderr, "Block has %d predecessor\n", nbPred);
-					memoryDisambiguation(platform, block, predecessor);
+					if (optLevel>=3)
+						memoryDisambiguation(platform, block, predecessor);
 
 					delete oneSuperBlock;
 				}

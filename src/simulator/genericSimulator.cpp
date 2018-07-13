@@ -119,7 +119,7 @@ ac_int<8, true> GenericSimulator::ldb(ac_int<64, false> addr){
 	}
 
 	if (!hit){
-		this->cycle += 23;
+		this->cycle += 11;
 		this->dcacheTags[olderWay][index] = tag;
 		this->dcacheAges[olderWay][index] = this->cycle;
 
@@ -139,7 +139,7 @@ ac_int<8, true> GenericSimulator::ldb(ac_int<64, false> addr){
 		}
 
 		if (!l2hit){
-			this->cycle += 100;
+			this->cycle += 50;
 			this->dcacheTags[olderWay][indexl2] = tagl2;
 			this->dcacheAges[olderWay][indexl2] = this->cycle;
 		}

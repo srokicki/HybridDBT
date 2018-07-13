@@ -65,6 +65,7 @@ void LoadQueueVexSimulator::doMem(ExtoMem extoMem, MemtoWB *memtoWB){
 		}
 		else if (extoMem.opCode == VEX_SPEC_INIT){
 			init = 1;
+
 		}
 
 		ac_int<64, false> mask = 0;
@@ -74,10 +75,11 @@ void LoadQueueVexSimulator::doMem(ExtoMem extoMem, MemtoWB *memtoWB){
 				this->speculationData, init, extoMem.result, &mask, &rollbackPoint);
 
 
-		if (rollback && !extoMem.isRollback){
+		if (rollback && !extoMem.isRollback && (extoMem.opCode >> 3) != (VEX_LDD>>3) && extoMem.opCode != VEX_FLW){
 //			fprintf(stderr, "In LQ vex simulator, system detected that we had to rollback...\n");
 //			fprintf(stderr, "Mask to apply would be %llx starting from %lld\n", (unsigned long long int) mask, (unsigned long long int) rollbackPoint);
 //			fprintf(stderr, "endrollback is %lld\n", (unsigned long long int) endRollback);
+			fprintf(stderr, "rollback\n");
 			this->rollback = 1;
 			this->rollBackPoint = rollbackPoint;
 			this->endRollback = extoMem.pc;
@@ -368,7 +370,6 @@ int LoadQueueVexSimulator::doStep(){
 
 	if (debugLevel >= 1){
 
-
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
 //		if (this->unitActivation[0])
 //			std::cerr << "\033[1;31m" << printDecodedInstr(ftoDC1.instruction) << "\033[0m;";
@@ -412,7 +413,6 @@ int LoadQueueVexSimulator::doStep(){
 			fprintf(stderr, "%lx;", (long) REG[oneRegister]);
 		}
 		fprintf(stderr, ";;%lx;", (long) REG[63]);
-fprintf(stderr, "%lld", (long)ldd(0x70000048));
 
 		fprintf(stderr, "\n");
 
