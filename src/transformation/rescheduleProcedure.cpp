@@ -467,6 +467,35 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePlace){
 
+	fprintf(stderr, "test %d %d \n", block->vliwStartAddress, block->vliwEndAddress);
+	char isCurrentlyInBlock = (platform->vexSimulator->PC >= block->vliwStartAddress*4) &&
+			(platform->vexSimulator->PC < block->vliwEndAddress*4);
+
+	if (isCurrentlyInBlock){
+		unsigned int instructionInEnd = readInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16);
+		if (instructionInEnd == 0){
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0x2f);
+
+			platform->vexSimulator->doStep(5 + block->vliwEndAddress - block->vliwStartAddress);
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0);
+		}
+		else if (readInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4) == 0){
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0x2f);
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4, instructionInEnd);
+
+			platform->vexSimulator->doStep(5 + block->vliwEndAddress - block->vliwStartAddress);
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, instructionInEnd);
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4, 0);
+
+		}
+		else{
+			Log::printf(LOG_ERROR, "In optimize basic block, execution is in the middle of a block and programm cannot stop it...\n exiting...\n");
+			exit(-1);
+		}
+	}
+	fprintf(stderr, "test\n");
+
+
 	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
 	Log::printf(LOG_SCHEDULE_PROC,"****                 In place block reschedule !                    *****\n");
 
@@ -525,11 +554,11 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 	binaSize = binaSize & 0xffff;
 
 
-	if (block->vliwStartAddress + binaSize < block->vliwEndAddress){
+	if (block->vliwStartAddress + binaSize <= block->vliwEndAddress){
 
 		fprintf(stderr, "Changing the block\n");
 
-		memcpy(&platform->vliwBinaries[4*block->vliwStartAddress], &platform->vliwBinaries[4*writePlace], (binaSize+1)*4*sizeof(unsigned int));
+		memcpy(&platform->vliwBinaries[4*block->vliwStartAddress], &platform->vliwBinaries[4*writePlace], (binaSize)*4*sizeof(unsigned int));
 
 
 		for (int i=block->vliwStartAddress+binaSize;i<block->vliwEndAddress;i++){

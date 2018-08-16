@@ -302,7 +302,7 @@ int LoadQueueVexSimulator::doStep(){
 			this->PC = rollBackPoint;
 			rollBackPoint = 0;
 
-			while (this->mask.slc<4>(60) == 0){
+			while (mask != 0 && this->mask.slc<4>(60) == 0){
 				this->mask = this->mask<<4;
 			}
 

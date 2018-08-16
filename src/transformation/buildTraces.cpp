@@ -48,7 +48,7 @@ void getReadWriteRegisters(IRBlock *block, bool *readRegs, short *writeRegs){
 		//We mark the written reg
 		short writtenReg = getDestinationRegister(block->instructions, oneInstr);
 		if (writtenReg >= 0)
-			writeRegs[writtenReg-256] = 1;
+			writeRegs[writtenReg-256] = oneInstr;
 
 		short operands[2];
 		char nbOperand = getOperands(block->instructions, oneInstr, operands);
@@ -63,7 +63,7 @@ void getReadWriteRegisters(IRBlock *block, bool *readRegs, short *writeRegs){
 }
 
 
-IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, short *outputRegsToIgnore){
+IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, short *outputRegsToIgnore, char nbIgnore){
 
 	/*****
 	 * The goal of this function is to merge two block into one.
@@ -151,7 +151,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 	short sizeofEntryBlock = entryBlock->nbInstr;
 
 	//We declare the result block:
-	int sizeOfResult = entryBlock->nbInstr + secondBlock->nbInstr + (useSetc ? 32 : 0);
+	int sizeOfResult = entryBlock->nbInstr + secondBlock->nbInstr + (useSetc ? 32 : 0) + nbIgnore;
 	IRBlock *result = new IRBlock(0,0,0);
 	result->instructions = (unsigned int*) malloc(sizeOfResult*4*sizeof(unsigned int));
 
@@ -452,7 +452,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 
 						if (ignoreRegs && outputRegsToIgnore[oneReg]){
 							//We are authorized to ignore this register which is only alive if we are in the last iteration
-							setAlloc(result->instructions, lastWriteRegForSecond[oneReg], 0);
+							setAlloc(result->instructions, lastWriteRegForSecond[oneReg], 1);
 							setDestinationRegister(result->instructions, lastWriteRegForSecond[oneReg], firstAvailable);
 							firstAvailable++;
 						}
@@ -626,11 +626,11 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 						if (writeRegs[oneReg] && readRegs[oneReg])
 							writeRegs[oneReg] = 0;
 						else if (writeRegs[oneReg] && !readRegs[oneReg]){
-							writeRegs[oneReg] = 256+34+nbIgnoredRegs;
+							writeRegs[oneReg] += block->nbInstr;
 							nbIgnoredRegs++;
 						}
 
-					IRBlock *oneSuperBlock = superBlock(block, block->successor1, true, writeRegs);
+					IRBlock *oneSuperBlock = superBlock(block, block->successor1, true, writeRegs, nbIgnoredRegs);
 
 
 
@@ -664,35 +664,41 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 					//We generate a block for the loop termination
 					if (nbIgnoredRegs>0){
 
-						IRBlock *newBlock = new IRBlock(0,0,block->section);
-						newBlock->sourceStartAddress = block->successors[block->nbSucc-1]->sourceStartAddress - 1;
-						newBlock->sourceEndAddress = newBlock->sourceStartAddress + 1;
+//						IRBlock *newBlock = new IRBlock(0,0,block->section);
+//						newBlock->sourceStartAddress = block->successors[block->nbSucc-1]->sourceStartAddress - 1;
+//						newBlock->sourceEndAddress = newBlock->sourceStartAddress + 1;
+//
+//						newBlock->instructions = (unsigned int*) malloc(nbIgnoredRegs * 4 * sizeof(unsigned int));
+//						newBlock->nbInstr = nbIgnoredRegs;
 
-						newBlock->instructions = (unsigned int*) malloc(nbIgnoredRegs * 4 * sizeof(unsigned int));
-						newBlock->nbInstr = nbIgnoredRegs;
+						//New, extra instruction for reallocation are now inserted at the end of the block.
+						//TODO do that in the buildSuperBlock
+						//WARNING: only work when unrolling of 1
 
 						unsigned int availableReg = 256+34;
-						unsigned int instructionId = 0;
 						for (int oneReg=0; oneReg<128; oneReg++){
 							if (writeRegs[oneReg]){
-								write128(newBlock->instructions, instructionId*16, assembleRBytecodeInstruction(2, 0, VEX_ADD, writeRegs[oneReg], 256, 256+oneReg, 0));
+								write128(block->instructions, block->nbInstr*16, assembleRBytecodeInstruction(2, 0, VEX_ADD, writeRegs[oneReg], 256, 256+oneReg, 0));
+								addDataDep(block->instructions, writeRegs[oneReg], block->nbInstr);
+								addControlDep(block->instructions, block->jumpIds[0], block->nbInstr);
+
 								availableReg++;
-								instructionId++;
+								block->nbInstr++;
 							}
 						}
 
 
-						newBlock->successors[0] = block->successors[block->nbSucc-1];
-						block->successors[block->nbSucc-1] = newBlock;
-						blocksToAdd[nbBlocksToAdd] = newBlock;
-						nbBlocksToAdd++;
+//						newBlock->successors[0] = block->successors[block->nbSucc-1];
+//						block->successors[block->nbSucc-1] = newBlock;
+//						blocksToAdd[nbBlocksToAdd] = newBlock;
+//						nbBlocksToAdd++;
 
 						fprintf(stderr, "********************   Successor identified  *********************\n");
 						fprintf(stderr, "******************************************************************\n");
 
-						for (int i=0; i<newBlock->nbInstr; i++){
-							Log::printf(0, "%s ", printBytecodeInstruction(i, readInt(newBlock->instructions, i*16+0), readInt(newBlock->instructions, i*16+4), readInt(newBlock->instructions, i*16+8), readInt(newBlock->instructions, i*16+12)).c_str());
-						}
+//						for (int i=0; i<newBlock->nbInstr; i++){
+//							Log::printf(0, "%s ", printBytecodeInstruction(i, readInt(newBlock->instructions, i*16+0), readInt(newBlock->instructions, i*16+4), readInt(newBlock->instructions, i*16+8), readInt(newBlock->instructions, i*16+12)).c_str());
+//						}
 					}
 
 
@@ -799,7 +805,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 			if (eligible && block->nbInstr + firstPredecessor->nbInstr < 220){
 
 
-				IRBlock *oneSuperBlock = superBlock(firstPredecessor, block, false, NULL);
+				IRBlock *oneSuperBlock = superBlock(firstPredecessor, block, false, NULL, 0);
 
 				if (oneSuperBlock == NULL){
 					block->blockState = IRBLOCK_UNROLLED;

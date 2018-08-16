@@ -9,6 +9,7 @@
 #define LSQ_SIZE_AGE 5
 
 #include <types.h>
+#include <lib/log.h>
 
 //void loadStoreQueue(ac_int<64, false> address, ac_int<LSQ_SIZE_AGE, false> age, ac_int<64, false> value, ac_int<1, false> isStore, ac_int<1, false> isRm,
 //					ac_int<1, false> *match, ac_int<1, false> *flush, ac_int<64, false> *result){
@@ -34,7 +35,11 @@
 //
 //}
 
+#ifdef __CATAPULT
+#include <ac_int.h>
+#else
 #include <lib/ac_int.h>
+#endif
 
 void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_int<5, false> specId, ac_int<1, false> clear, ac_int<1, false> *rollback,
 		unsigned int *speculationData, ac_int<1, false> specInit, ac_int<8, false> specParam, ac_int<64, false> *mask, ac_int<64, false> *rollback_start){
@@ -46,6 +51,9 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 	static ac_int<8, false> currentSpecParam[4];
 	static ac_int<64, false> currentSpecMasks[4];
 	static ac_int<64, false> firstLoad[4];
+
+
+	ac_int<16, false> hashedAddress = address.slc<16>(3);
 
 
 	ac_int<1, false> saveMemOp = specId[4];
@@ -97,7 +105,27 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 			ac_int<64, false> storedAddress = addresses[bank][oneAddress];
 			ac_int<1, false> storedAge = ages[bank][oneAddress];
 
-			if (storedAge && storedAddress == address){
+
+			#ifndef __CATAPULT
+			//We gather statistics
+			for (int oneBit = 0; oneBit<64; oneBit++){
+				if (((storedAddress>>oneBit) & 1) != ((address>>oneBit)&1)){
+					bitDifferentiation[oneBit]++;
+				}
+			}
+
+			plsq_checks++;
+
+			if (storedAge && storedAddress.slc<61>(3) == address.slc<61>(3)){
+				plsq_positive++;
+			}
+
+			if (storedAge && storedAddress.slc<16>(3) == hashedAddress && storedAddress.slc<61>(3) != address.slc<61>(3)){
+				plsq_false_positive++;
+			}
+			#endif
+
+			if (storedAge && storedAddress.slc<16>(3) == address.slc<16>(3)){
 				*rollback |= 1;
 				*mask = currentSpecMasks[bank];
 				*rollback_start = firstLoad[bank];

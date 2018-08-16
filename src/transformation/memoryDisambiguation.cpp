@@ -191,7 +191,7 @@ void basicMemorySimplification(IRBlock *block, MemoryDependencyGraph *graph){
 				getImmediateValue(block->instructions, predecessor, &immediateValuePred);
 				getImmediateValue(block->instructions, memInstruction, &immediateValueInstr);
 
-				if (operandsInstr[0] == operandsPred[0] && immediateValueInstr != immediateValuePred){
+				if (operandsInstr[0] == operandsPred[0] && abs(immediateValueInstr - immediateValuePred)>8){
 					graph->graph[oneMemInstruction * graph->size + onePredecessor] = false;
 				}
 			}
@@ -363,7 +363,7 @@ fprintf(stderr, "test\n");
 			}
 
 			currentSpeculationDef->stores[0] = storeIndex;
-			block->instructions[4*graph->idMem[storeIndex]] |= (currentSpecId<<1) | 1;
+			block->instructions[4*graph->idMem[storeIndex]] |= 0x20 | (currentSpecId<<1) | 1;
 			graph->idSpec[storeIndex] = currentSpecId;
 
 			//We add other values in specDef
@@ -406,24 +406,59 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 		short newNbUse = platform->specInfo[4*oneSpecDef];
 		short newNbMiss = platform->specInfo[4*oneSpecDef+1];
 
-		if (currentSpecDef->type == 1 && newNbUse > 40 && newNbMiss < newNbUse/4){
-			for (int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++){
-				for (int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++){
-					if (currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]] > currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]){
-						currentSpecDef->graph->graph[currentSpecDef->loads[oneLoad]*currentSpecDef->graph->size + currentSpecDef->stores[oneStore]] = false;
+		if (newNbUse-currentSpecDef->nbUse > 70){
+			fprintf(stderr, "test (%d/%d)!\n",newNbMiss - currentSpecDef->nbFail, newNbUse-currentSpecDef->nbUse);
+			if (currentSpecDef->type == 1 && (newNbMiss - currentSpecDef->nbFail) < (newNbUse-currentSpecDef->nbUse)/10){
+
+				for (int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++){
+					for (int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++){
+						if (currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]] > currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]){
+							currentSpecDef->graph->graph[currentSpecDef->loads[oneLoad]*currentSpecDef->graph->size + currentSpecDef->stores[oneStore]] = false;
+						}
 					}
 				}
+				for (int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++)
+					currentSpecDef->block->instructions[4*currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]]] |= 0x20;
+
+				for (int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++)
+					currentSpecDef->block->instructions[4*currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]] &= 0xffffffdf;
+
+
+				currentSpecDef->graph->applyGraph(currentSpecDef->block);
+
+				fprintf(stderr, "Turning spec on (%d/%d)!\n", newNbMiss, newNbUse);
+
+				inPlaceBlockReschedule(currentSpecDef->block, platform, writePlace);
+				currentSpecDef->type = 2;
+
 			}
-			currentSpecDef->graph->applyGraph(currentSpecDef->block);
+			else if (currentSpecDef->type == 2 && (newNbMiss - currentSpecDef->nbFail) >= (newNbUse-currentSpecDef->nbUse)/10){
 
-			fprintf(stderr, "Turning spec on (%d/%d)!\n", newNbMiss, newNbUse);
+				for (int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++){
+					for (int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++){
+						if (currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]] > currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]){
+							currentSpecDef->graph->graph[currentSpecDef->loads[oneLoad]*currentSpecDef->graph->size + currentSpecDef->stores[oneStore]] = true;
+						}
+					}
+				}
+				for (int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++)
+					currentSpecDef->block->instructions[4*currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]]] &= 0xffffffdf;
 
-			inPlaceBlockReschedule(currentSpecDef->block, platform, writePlace);
-			currentSpecDef->type = 2;
+				for (int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++)
+					currentSpecDef->block->instructions[4*currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]] |= 0x20;
 
-		}
-		else if (currentSpecDef->type == 2 && newNbUse > 20){
-//			fprintf(stderr, "[%d] Do not turn spec on (%d/%d)!\n",oneSpecDef, newNbMiss, newNbUse);
+
+				currentSpecDef->graph->applyGraph(currentSpecDef->block);
+
+				fprintf(stderr, "[%d] Turn spec off (%d/%d)!\n",oneSpecDef, newNbMiss, newNbUse);
+
+				inPlaceBlockReschedule(currentSpecDef->block, platform, writePlace);
+				currentSpecDef->type = 1;
+			}
+
+			currentSpecDef->nbUse = newNbUse;
+			currentSpecDef->nbFail = newNbMiss;
+
 		}
 
 	}

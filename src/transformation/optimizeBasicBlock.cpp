@@ -304,6 +304,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	Log::printf(LOG_SCHEDULE_BLOCK,"*************************************************************************\n");
 
 	for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
+		Log::printf(LOG_SCHEDULE_BLOCK,"%d ", i);
 		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
 		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
 		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
