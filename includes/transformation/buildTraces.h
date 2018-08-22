@@ -10,6 +10,6 @@
 
 
 void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel);
-void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock *predecessor);
+void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock **predecessors, int nbPred);
 
 #endif /* INCLUDES_TRANSFORMATION_BUILDTRACES_H_ */

@@ -19,7 +19,7 @@
 //Values for statistics
 
 //Stats on PLSQ
-extern unsigned int plsq_checks, plsq_positive,plsq_false_positive;
+extern unsigned int plsq_checks, plsq_positive,plsq_false_positive, spec_loop_counter, spec_trace_counter;
 extern unsigned short bitDifferentiation[64];
 
 
@@ -168,6 +168,8 @@ static void printStat(DBTPlateform *platform, IRApplication *application){
 		Log::fprintf(0, stdout, "\t\t Number of PLSQ checks: %d\n", plsq_checks);
 		Log::fprintf(0, stdout, "\t\t Number of PLSQ false positive: %d\n", plsq_false_positive);
 		Log::fprintf(0, stdout, "\t\t Number of PLSQ true positive: %d\n", plsq_positive);
+		Log::fprintf(0, stdout, "\t\t Number of speculation groups (loop): %d\n", spec_loop_counter);
+		Log::fprintf(0, stdout, "\t\t Number of speculation groups (trace): %d\n", spec_trace_counter);
 
 //		int maxDiff = 1;
 //		for (int oneBit = 0; oneBit <64; oneBit++){

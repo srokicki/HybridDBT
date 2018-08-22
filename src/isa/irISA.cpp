@@ -877,7 +877,6 @@ void clearControlDep(unsigned int *ir, unsigned char index){
 
 	//The mask to apply on the higher incomplete list of control dep
 	unsigned int mask = (0xffffffff << ((nbCSucc & 0x3)<<3));
-fprintf(stderr, "mask is %x\n", mask);
 	if (nbCSucc >= 4){
 		//We clear completely word0 and apply the mask to word32
 		irWord0 = 0;
@@ -896,7 +895,6 @@ fprintf(stderr, "mask is %x\n", mask);
 	writeInt(ir, index*16+8, irWord32);
 	writeInt(ir, index*16+4, irWord64);
 
-	fprintf(stderr, "Instruction %d has been cleared %x %x %x\n", index, irWord64, irWord32, irWord0);
 }
 
 char getControlDep(unsigned int *ir, unsigned char index, unsigned char *result){

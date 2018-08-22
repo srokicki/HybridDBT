@@ -18,6 +18,7 @@ int MAX_DISAMB_COUNT = -1;
 unsigned char speculationCounter = 1;
 struct speculationDef speculationDefinitions[256];
 
+
 MemoryDependencyGraph::MemoryDependencyGraph(IRBlock *block){
 	this->size = 0;
 	this->idMem = (unsigned char*) malloc(block->nbInstr*sizeof(unsigned char));
@@ -202,7 +203,7 @@ void basicMemorySimplification(IRBlock *block, MemoryDependencyGraph *graph){
 
 
 
-void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock *predecessor){
+void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock **predecessors, int nbPred){
 		MemoryDependencyGraph *graph = new MemoryDependencyGraph(block);
 
 		graph->print();
@@ -218,7 +219,7 @@ void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock *prede
 
 		//We perform disambiguation and apply it
 		basicMemorySimplification(block, graph);
-		findAndInsertSpeculation(block, graph, predecessor);
+		findAndInsertSpeculation(block, graph, predecessors, nbPred);
 
 		graph->applyGraph(block);
 
@@ -245,9 +246,8 @@ void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock *prede
  *  specInit un predecessor's instructions.
  *
  ***************************************************/
-void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBlock *predecessor){
+void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBlock **predecessors, int nbPred){
 	//A good candidate is a list of loads which all depends on a given set of stores
-fprintf(stderr, "test\n");
 
 	char currentSpecId = 0;
 
@@ -255,7 +255,6 @@ fprintf(stderr, "test\n");
 	int index = 0;
 	bool found = false;
 	while (!found && index < graph->size){
-		fprintf(stderr, "test %d\n", index);
 
 		if (graph->isStore[index] && graph->idMem[index] > 0){
 			for (int oneOtherMem = index+1; oneOtherMem<graph->size; oneOtherMem++){
@@ -271,13 +270,12 @@ fprintf(stderr, "test\n");
 	if (found){
 
 		//We first add the reset instruction in the block
-		//Dependencies will be added to ensure that the instruction is scheduled after spec stores
-
+		//Dependencies will be added to ensure that the instruction is scheduled after spec stores/loads
 		unsigned int *newInstrs = (unsigned int*) malloc((block->nbInstr+1) * 4 * sizeof(unsigned int));
 		memcpy(newInstrs, block->instructions, 4*block->nbInstr*sizeof(unsigned int));
 		free(block->instructions);
 		block->instructions = newInstrs;
-		write128(block->instructions, block->nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_RST, 0, speculationCounter, 1, currentSpecId, 0, 0));
+		write128(block->instructions, block->nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_RST, 256, speculationCounter, 1, currentSpecId, 0, 0));
 		block->nbInstr++;
 		addControlDep(block->instructions, graph->idMem[index-1], block->nbInstr-1);
 
@@ -312,15 +310,14 @@ fprintf(stderr, "test\n");
 			int imm = 0;
 			bool hasImm = getImmediateValue(block->instructions, graph->idMem[index], &imm);
 
-			fprintf(stderr, "while trying to spec, imm is %x\n", imm);
 			if (imm > 64 || imm <= -64){
-				fprintf(stderr, "Failed at reducing immediate\n");
-				exit(-1);
+				index++;
+				continue;
 			}
 			else if (imm != 0){
-				fprintf(stderr, "setting imm at %x\n", imm<<5);
 				setImmediateValue(block->instructions, graph->idMem[index], imm<<5);
 			}
+
 
 
 			if (graph->isStore[index]){
@@ -354,8 +351,8 @@ fprintf(stderr, "test\n");
 		if (isSpec){
 			int imm = 0;
 			bool hasImm = getImmediateValue(block->instructions, graph->idMem[storeIndex], &imm);
-			if (imm > 64){
-				fprintf(stderr, "Failed at reducing immediate\n");
+			if (imm > 64 || imm <= -64){
+				fprintf(stderr, "Failed at reducing immediate %d\n", imm);
 				exit(-1);
 			}
 			else if (imm != 0){
@@ -378,13 +375,16 @@ fprintf(stderr, "test\n");
 		//The speculation address is written as a block information
 		block->specAddr[currentSpecId] = speculationCounter;
 
-		//We also have to insert a spec init in previous block
-		unsigned int *newInstrsPred = (unsigned int*) malloc((predecessor->nbInstr+1) * 4 * sizeof(unsigned int));
-		memcpy(newInstrsPred, predecessor->instructions, 4*predecessor->nbInstr*sizeof(unsigned int));
-		free(predecessor->instructions);
-		predecessor->instructions = newInstrsPred;
-		write128(predecessor->instructions, predecessor->nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_INIT, 0, speculationCounter, 1, currentSpecId, 0, 0));
-		predecessor->nbInstr++;
+		//We also have to insert a spec init in previous blocks
+		for (int onePred = 0; onePred<nbPred; onePred++){
+			IRBlock *predecessor = predecessors[onePred];
+			unsigned int *newInstrsPred = (unsigned int*) malloc((predecessor->nbInstr+1) * 4 * sizeof(unsigned int));
+			memcpy(newInstrsPred, predecessor->instructions, 4*predecessor->nbInstr*sizeof(unsigned int));
+			free(predecessor->instructions);
+			predecessor->instructions = newInstrsPred;
+			write128(predecessor->instructions, predecessor->nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_INIT, 256, speculationCounter, 1, currentSpecId, 0, 0));
+			predecessor->nbInstr++;
+		}
 
 		speculationCounter++;
 	}
@@ -402,13 +402,19 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 
 	for (int oneSpecDef = 1; oneSpecDef<speculationCounter; oneSpecDef++){
 		struct speculationDef *currentSpecDef = &speculationDefinitions[oneSpecDef];
-
 		short newNbUse = platform->specInfo[4*oneSpecDef];
 		short newNbMiss = platform->specInfo[4*oneSpecDef+1];
 
+		if (newNbUse < currentSpecDef->nbUse){
+			currentSpecDef->nbUse = currentSpecDef->nbUse>>6;
+			currentSpecDef->nbFail = currentSpecDef->nbFail>>6;
+		}
+
 		if (newNbUse-currentSpecDef->nbUse > 70){
-			fprintf(stderr, "test (%d/%d)!\n",newNbMiss - currentSpecDef->nbFail, newNbUse-currentSpecDef->nbUse);
+
 			if (currentSpecDef->type == 1 && (newNbMiss - currentSpecDef->nbFail) < (newNbUse-currentSpecDef->nbUse)/10){
+
+				//We turn the spec on
 
 				for (int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++){
 					for (int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++){
@@ -426,13 +432,13 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 
 				currentSpecDef->graph->applyGraph(currentSpecDef->block);
 
-				fprintf(stderr, "Turning spec on (%d/%d)!\n", newNbMiss, newNbUse);
-
 				inPlaceBlockReschedule(currentSpecDef->block, platform, writePlace);
 				currentSpecDef->type = 2;
 
 			}
 			else if (currentSpecDef->type == 2 && (newNbMiss - currentSpecDef->nbFail) >= (newNbUse-currentSpecDef->nbUse)/10){
+
+				//We turn the spec off
 
 				for (int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++){
 					for (int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++){
@@ -450,17 +456,27 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 
 				currentSpecDef->graph->applyGraph(currentSpecDef->block);
 
-				fprintf(stderr, "[%d] Turn spec off (%d/%d)!\n",oneSpecDef, newNbMiss, newNbUse);
-
 				inPlaceBlockReschedule(currentSpecDef->block, platform, writePlace);
+
+
 				currentSpecDef->type = 1;
 			}
+
+
+			double val = newNbMiss - currentSpecDef->nbFail;
+			double val2 = newNbUse-currentSpecDef->nbUse;
+//			fprintf(stderr, "%lld; %f; %d\n", (long long) platform->vexSimulator->cycle, val2 == 0 ? 0 : 100 * val / val2, (currentSpecDef->type == 2) ? 1 : 0);
+
 
 			currentSpecDef->nbUse = newNbUse;
 			currentSpecDef->nbFail = newNbMiss;
 
+
+
 		}
 
 	}
+
+
 
 }

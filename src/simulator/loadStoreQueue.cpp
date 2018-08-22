@@ -77,6 +77,11 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 			ages[bank][oneAddress] = 0;
 		}
 		specCounters[bank]++;
+
+		if (specCounters[bank][15]){
+			specCounters[bank] = specCounters[bank]>>6;
+			missCounters[bank] = missCounters[bank]>>6;
+		}
 //		ac_int<64+32, false> paramWord = specCounters[bank];
 //		paramWord.set_slc(16, missCounters[bank]);
 //		paramWord.set_slc(32, currentSpecMasks[bank]);

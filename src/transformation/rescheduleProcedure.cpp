@@ -467,7 +467,6 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePlace){
 
-	fprintf(stderr, "test %d %d \n", block->vliwStartAddress, block->vliwEndAddress);
 	char isCurrentlyInBlock = (platform->vexSimulator->PC >= block->vliwStartAddress*4) &&
 			(platform->vexSimulator->PC < block->vliwEndAddress*4);
 
@@ -493,8 +492,6 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 			exit(-1);
 		}
 	}
-	fprintf(stderr, "test\n");
-
 
 	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
 	Log::printf(LOG_SCHEDULE_PROC,"****                 In place block reschedule !                    *****\n");
@@ -555,8 +552,6 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 
 
 	if (block->vliwStartAddress + binaSize <= block->vliwEndAddress){
-
-		fprintf(stderr, "Changing the block\n");
 
 		memcpy(&platform->vliwBinaries[4*block->vliwStartAddress], &platform->vliwBinaries[4*writePlace], (binaSize)*4*sizeof(unsigned int));
 

@@ -759,14 +759,14 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 	timeTakenIRScheduler += 8;
 	#endif
 
-	if (maskVal[0] != 0)
-		fprintf(stderr, "for 0 mask is %llx and starts at %d\n", (unsigned long long int) maskVal[0], firstLoad[0]);
-	if (maskVal[1] != 0)
-		fprintf(stderr, "for 0 mask is %llx\n", (unsigned long long int) maskVal[1]);
-	if (maskVal[2] != 0)
-		fprintf(stderr, "for 0 mask is %llx\n", (unsigned long long int) maskVal[2]);
-	if (maskVal[3] != 0)
-		fprintf(stderr, "for 0 mask is %llx\n", (unsigned long long int) maskVal[3]);
+//	if (maskVal[0] != 0)
+//		fprintf(stderr, "for 0 mask is %llx and starts at %d\n", (unsigned long long int) maskVal[0], firstLoad[0]);
+//	if (maskVal[1] != 0)
+//		fprintf(stderr, "for 0 mask is %llx\n", (unsigned long long int) maskVal[1]);
+//	if (maskVal[2] != 0)
+//		fprintf(stderr, "for 0 mask is %llx\n", (unsigned long long int) maskVal[2]);
+//	if (maskVal[3] != 0)
+//		fprintf(stderr, "for 0 mask is %llx\n", (unsigned long long int) maskVal[3]);
 	return newSize;
 }
 

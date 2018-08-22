@@ -48,7 +48,7 @@ struct speculationDef {
 };
 
 
-void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBlock *predecessor);
+void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBlock **predecessors, int nbPred);
 void updateSpeculationsStatus(DBTPlateform *platform, int writePlace);
 
 

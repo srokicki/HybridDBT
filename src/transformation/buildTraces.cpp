@@ -56,7 +56,6 @@ void getReadWriteRegisters(IRBlock *block, bool *readRegs, short *writeRegs){
 		for (int oneOperand = 0; oneOperand<nbOperand; oneOperand++)
 			if (operands[oneOperand] >= 256){
 					readRegs[operands[oneOperand]-256] = true;
-					printf("Reg %d is read\n", oneOperand-256);
 			}
 
 	}
@@ -610,13 +609,13 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 
 					block->blockState = IRBLOCK_UNROLLED;
 
-					fprintf(stderr, "******************************************************************\n");
-					fprintf(stderr, "******************** Perfect loop identified *********************\n");
-					fprintf(stderr, "******************** %8x  ---  %8x *********************\n", (unsigned int) block->sourceStartAddress, (unsigned int) block->sourceEndAddress);
-					fprintf(stderr, "******************************************************************\n");
+					Log::printf(LOG_SCHEDULE_PROC, "******************************************************************\n");
+					Log::printf(LOG_SCHEDULE_PROC, "******************** Perfect loop identified *********************\n");
+					Log::printf(LOG_SCHEDULE_PROC, "******************** %8x  ---  %8x *********************\n", (unsigned int) block->sourceStartAddress, (unsigned int) block->sourceEndAddress);
+					Log::printf(LOG_SCHEDULE_PROC, "******************************************************************\n");
 
 					for (int i=0; i<block->nbInstr; i++){
-						Log::printf(0, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+						Log::printf(LOG_SCHEDULE_PROC, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
 					}
 
 					getReadWriteRegisters(block, readRegs, writeRegs);
@@ -653,12 +652,12 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 					oneSuperBlock->nbJumps = 0;
 					oneSuperBlock->instructions = NULL;
 
-					fprintf(stderr, "******************************************************************\n");
-					fprintf(stderr, "********************     Modified loop       *********************\n");
-					fprintf(stderr, "******************************************************************\n");
+					Log::printf(LOG_SCHEDULE_PROC, "******************************************************************\n");
+					Log::printf(LOG_SCHEDULE_PROC, "********************     Modified loop       *********************\n");
+					Log::printf(LOG_SCHEDULE_PROC, "******************************************************************\n");
 
 					for (int i=0; i<block->nbInstr; i++){
-						Log::printf(0, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+						Log::printf(LOG_SCHEDULE_PROC, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
 					}
 
 					//We generate a block for the loop termination
@@ -693,8 +692,8 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 //						blocksToAdd[nbBlocksToAdd] = newBlock;
 //						nbBlocksToAdd++;
 
-						fprintf(stderr, "********************   Successor identified  *********************\n");
-						fprintf(stderr, "******************************************************************\n");
+						Log::printf(LOG_SCHEDULE_PROC, "********************   Successor identified  *********************\n");
+						Log::printf(LOG_SCHEDULE_PROC, "******************************************************************\n");
 
 //						for (int i=0; i<newBlock->nbInstr; i++){
 //							Log::printf(0, "%s ", printBytecodeInstruction(i, readInt(newBlock->instructions, i*16+0), readInt(newBlock->instructions, i*16+4), readInt(newBlock->instructions, i*16+8), readInt(newBlock->instructions, i*16+12)).c_str());
@@ -705,7 +704,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 
 
 					int nbPred = 0;
-					IRBlock *predecessor = NULL;
+					IRBlock *predecessors[1];
 
 					for (int oneOtherBlock = 0; oneOtherBlock<procedure->nbBlock; oneOtherBlock++){
 						IRBlock *otherBlock = procedure->blocks[oneOtherBlock];
@@ -715,15 +714,17 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 
 								if (successor == block){
 									nbPred++;
-									predecessor = otherBlock;
+									predecessors[0] = otherBlock;
 								}
 							}
 						}
 					}
 
-					fprintf(stderr, "Block has %d predecessor\n", nbPred);
-					if (optLevel>=3)
-						memoryDisambiguation(platform, block, predecessor);
+					Log::printf(LOG_SCHEDULE_PROC, "Block has %d predecessor\n", nbPred);
+					if (optLevel>=3){
+						memoryDisambiguation(platform, block, predecessors, 1);
+						spec_loop_counter++;
+					}
 
 					delete oneSuperBlock;
 				}
@@ -865,70 +866,13 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 
 
 			}
-//			//WARNING: cannot unroll blocks with a call or a goto at the end
-//			//A good way to check is to see if block has one less jump than successor
-//			else if (block->nbJumps + 1 == block->nbSucc && block->nbSucc == 2 && block->successor1 == block && block->nbInstr<100){
-//					/**************************************************************************************************
-//					 * In this situation, we are unrolling a loop.
-//					 **************************************************************************************************
-//					 * The block CFG information should remain unchanged : only the number of instruction changes.
-//					 * The place location will also be modified...
-//					 **************************************************************************************************/
-//
-//
-//					if (block->nbJumps == block->nbSucc)
-//						continue;
-//
-//					if (block->blockState == IRBLOCK_UNROLLED)
-//						continue;
-//
-//					block->blockState = IRBLOCK_UNROLLED;
-//
-//
-////					IRBlock *oneSuperBlock = superBlock(block, block->successor1);
-////
-////					platform->unrollingCounter++;
-////
-////					block->nbInstr = oneSuperBlock->nbInstr;
-////
-////					unsigned int *oldInstruction = block->instructions;
-////					block->instructions = oneSuperBlock->instructions;
-////					oneSuperBlock->instructions = oldInstruction;
-////
-////					block->jumpID = oneSuperBlock->jumpID;
-////					block->jumpIds = oneSuperBlock->jumpIds;
-////					block->nbJumps = oneSuperBlock->nbJumps;
-////					block->jumpPlaces = oneSuperBlock->jumpPlaces;
-////					block->nbSucc = oneSuperBlock->nbSucc;
-////					for (int oneSuccessor = 0; oneSuccessor<10; oneSuccessor++)
-////						block->successors[oneSuccessor] = oneSuperBlock->successors[oneSuccessor];
-////
-////					oneSuperBlock->nbJumps = 0;
-////					oneSuperBlock->instructions = NULL;
-////
-////
-//					fprintf(stderr, "******************************************************************\n");
-//					fprintf(stderr, "******************** Perfect loop identified *********************\n");
-//					fprintf(stderr, "******************** %8x  ---  %8x *********************\n", (unsigned int) block->sourceStartAddress, (unsigned int) block->sourceEndAddress);
-//					fprintf(stderr, "******************************************************************\n");
-//
-//					for (int i=0; i<block->nbInstr; i++){
-//						Log::printf(0, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
-//					}
-////
-////					memoryDisambiguation(platform, block);
-////
-////					delete oneSuperBlock;
-//
-//					changeMade=1;
-//					break;
-//
-//				}
 
 
 		}
 
 	}
+
+
 	IRBlock **newBlocks = (IRBlock**)  malloc((nbBlock + nbBlocksToAdd)*sizeof(IRBlock*));
 	int index = 0;
 	int blockToAddId = 0;
@@ -969,6 +913,58 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 
 	procedure->blocks = newBlocks;
 	procedure->nbBlock = nbBlock+nbBlocksToAdd;
+
+
+
+	// We go through the blocks and we build speculation groups
+	if (optLevel >= 3){
+
+		int numberPred = 0;
+		IRBlock **preds = (IRBlock **) malloc(procedure->nbBlock * sizeof(IRBlock*));
+		bool eligibleForSpec = true;
+
+		for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
+			IRBlock *block = procedure->blocks[oneBlock];
+
+			if (block->blockState == IRBLOCK_PERFECT_LOOP || block->nbInstr < 8)
+				continue;
+
+			//We check if the block is elligible
+			eligibleForSpec = true;
+			for (int oneOtherBlock=0; oneOtherBlock<procedure->nbBlock; oneOtherBlock++){
+				IRBlock *otherBlock = procedure->blocks[oneOtherBlock];
+
+				if (otherBlock == block)
+					continue;
+
+				for (int oneSuccessor = 0; oneSuccessor < otherBlock->nbSucc; oneSuccessor++){
+					if (otherBlock->successors[oneSuccessor] == block){
+						//The block 'otherBlock' is a predecessor of current block.
+						//To be eligible, we need it not to be a loop body...
+						if (otherBlock->blockState == IRBLOCK_PERFECT_LOOP){
+							eligibleForSpec = false;
+							break;
+						}
+
+						preds[numberPred] = otherBlock;
+						numberPred++;
+					}
+				}
+
+				if (eligibleForSpec){
+					if (numberPred<3){
+						memoryDisambiguation(platform, block, preds, numberPred);
+						spec_trace_counter++;
+					}
+					else{
+						fprintf(stderr, "Did not triggered spec on a block of %d instr because it had %d pred\n", block->nbInstr, numberPred);
+					}
+				}
+			}
+		}
+	}
+
+
 
 }
 

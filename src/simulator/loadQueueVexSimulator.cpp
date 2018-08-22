@@ -79,7 +79,6 @@ void LoadQueueVexSimulator::doMem(ExtoMem extoMem, MemtoWB *memtoWB){
 //			fprintf(stderr, "In LQ vex simulator, system detected that we had to rollback...\n");
 //			fprintf(stderr, "Mask to apply would be %llx starting from %lld\n", (unsigned long long int) mask, (unsigned long long int) rollbackPoint);
 //			fprintf(stderr, "endrollback is %lld\n", (unsigned long long int) endRollback);
-			fprintf(stderr, "rollback\n");
 			this->rollback = 1;
 			this->rollBackPoint = rollbackPoint;
 			this->endRollback = extoMem.pc;
