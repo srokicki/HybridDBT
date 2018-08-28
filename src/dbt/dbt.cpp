@@ -39,21 +39,6 @@
 #endif
 
 
-void printStats(unsigned int size, short* blockBoundaries){
-
-	float numberBlocks = 0;
-
-	for (int oneInstruction = 0; oneInstruction < size; oneInstruction++){
-		if (blockBoundaries[oneInstruction] == 1)
-			numberBlocks++;
-	}
-
-  Log::printf(0, "\n* Statistics on used binaries:\n");
-  Log::printf(0, "* \tThere is %d instructions.\n", size);
-  Log::printf(0, "* \tThere is %d blocks.\n", (int) numberBlocks);
-  Log::printf(0, "* \tBlocks mean size is %f.\n\n", size/numberBlocks);
-
-}
 
 
 int translateOneSection(DBTPlateform &dbtPlateform, unsigned int placeCode, int sourceStartAddress, int sectionStartAddress, int sectionEndAddress){
@@ -201,6 +186,7 @@ int main(int argc, char *argv[])
 
 	int OPTLEVEL = cfg.has("O") ? std::stoi(cfg["O"]) : 2;
 	char* binaryFile = cfg.has("f") && !cfg["f"].empty() ? (char*)cfg["f"].c_str() : NULL;
+	int DBT_TYPE = cfg.has("type") ? std::stoi(cfg["type"]) : DBT_TYPE_HW;
 
 	FILE** inStreams = (FILE**) malloc(10*sizeof(FILE*));
 	FILE** outStreams = (FILE**) malloc(10*sizeof(FILE*));
@@ -212,7 +198,6 @@ int main(int argc, char *argv[])
 	int MAX_PROC_COUNT = cfg.has("mp") ? std::stoi(cfg["mp"]) : -1;
 	MAX_DISAMB_COUNT = cfg.has("md") ? std::stoi(cfg["md"]) : -1;
 
-	fprintf(stderr, "md is %d\n", cfg.has("md") ? std::stoi(cfg["md"]) : -1);
 
 	if (cfg.has("i"))
 	{
@@ -305,6 +290,7 @@ int main(int argc, char *argv[])
 
 	dbtPlateform.vliwInitialConfiguration = CONFIGURATION;
 	dbtPlateform.vliwInitialIssueWidth = getIssueWidth(dbtPlateform.vliwInitialConfiguration);
+	dbtPlateform.dbtType = DBT_TYPE;
 
 	//Preparation of required memories
 	for (int oneFreeRegister = 33; oneFreeRegister<63; oneFreeRegister++)
@@ -501,6 +487,7 @@ int main(int argc, char *argv[])
 
 		int oldOptimizationCount = dbtPlateform.optimizationCycles;
 		bool optimizationPerformed = false;
+
 
 		updateSpeculationsStatus(&dbtPlateform, placeCode);
 

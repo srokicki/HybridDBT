@@ -51,6 +51,7 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 	static ac_int<8, false> currentSpecParam[4];
 	static ac_int<64, false> currentSpecMasks[4];
 	static ac_int<64, false> firstLoad[4];
+	static ac_int<1, false> hasMissed[4];
 
 
 	ac_int<16, false> hashedAddress = address.slc<16>(3);
@@ -77,6 +78,10 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 			ages[bank][oneAddress] = 0;
 		}
 		specCounters[bank]++;
+		if (hasMissed[bank])
+			missCounters[bank]++;
+
+		hasMissed[bank] = 0;
 
 		if (specCounters[bank][15]){
 			specCounters[bank] = specCounters[bank]>>6;
@@ -134,7 +139,7 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 				*rollback |= 1;
 				*mask = currentSpecMasks[bank];
 				*rollback_start = firstLoad[bank];
-				missCounters[bank]++;
+				hasMissed[bank] = 1;
 			}
 
 		}

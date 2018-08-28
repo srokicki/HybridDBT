@@ -234,11 +234,19 @@ unsigned int firstPassTranslator(DBTPlateform *platform,
 	addInsertions((sectionStartAddress-sourceStartAddress)>>2, placeCode, platform->insertions, platform->insertions[0]);
 
 	//Modelization of optimization time : here we needed one cycle per generated instruction
-//	platform->optimizationCycles += destinationIndex*425;
-//	platform->optimizationEnergy += destinationIndex*8800;
+	if (platform->dbtType == DBT_TYPE_HW){
+		platform->optimizationCycles += destinationIndex*2;
+		platform->optimizationEnergy += destinationIndex*2*3.44f;
+	}
+	else{
+		platform->optimizationCycles += destinationIndex*425;
+		platform->optimizationEnergy += destinationIndex*425*14.48f;
+	}
 
-	platform->optimizationCycles += destinationIndex*2;
-	platform->optimizationEnergy += destinationIndex*51;
+
+
+
+
 
 	return placeCode + destinationIndex;
 }

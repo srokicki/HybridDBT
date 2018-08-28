@@ -19,7 +19,7 @@
 //Values for statistics
 
 //Stats on PLSQ
-extern unsigned int plsq_checks, plsq_positive,plsq_false_positive, spec_loop_counter, spec_trace_counter;
+extern unsigned int plsq_checks, plsq_positive,plsq_false_positive, spec_loop_counter, spec_trace_counter, cache_l1_miss, cache_l2_miss;
 extern unsigned short bitDifferentiation[64];
 
 
@@ -64,8 +64,11 @@ public:
   template<class ... Ts>
   static void fprintf(char verbose, FILE * f, const char * format, Ts ... args)
   {
-    if (_verbose_level >= verbose)
-      std::fprintf(f, format, args ...);
+	 if (verbose == 1 && _verbose_level == 1){
+		 std::fprintf(f, format, args ...);
+	 }
+	 else if (_verbose_level >= verbose)
+		 std::fprintf(f, format, args ...);
   }
 
 static void printStat(DBTPlateform *platform, IRApplication *application){
@@ -162,6 +165,11 @@ static void printStat(DBTPlateform *platform, IRApplication *application){
 
 		}
 		Log::fprintf(0, stdout, "\t\t Part of procedure instr that are memory: %f \%\n", 100*((float)nbMem)/((float)nbInstr));
+
+		Log::fprintf(0, stdout, "\t -----------------------------------------------------\n");
+		Log::fprintf(0, stdout, "\t Stats for the Cache\n");
+		Log::fprintf(0, stdout, "\t\t Number of l1 miss: %d\n", cache_l1_miss);
+		Log::fprintf(0, stdout, "\t\t Number of l2 miss: %d\n", cache_l2_miss);
 
 		Log::fprintf(0, stdout, "\t -----------------------------------------------------\n");
 		Log::fprintf(0, stdout, "\t Stats for the PLSQ\n");

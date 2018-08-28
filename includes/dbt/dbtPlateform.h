@@ -22,7 +22,8 @@
 #define SHIFT_FOR_INSERTION_SECTION 13 //Should be equal to log2(MAX_INSERTION_PER_SECTION) + 2
 
 
-
+#define DBT_TYPE_HW 0
+#define DBT_TYPE_SW 1
 
 
 #include <simulator/vexSimulator.h>
@@ -86,6 +87,7 @@ public:
 	double blockProcAverageSizeBeforeTrace = 0;
 	double blockProcDistanceBeforeTrace = 0;
 	int nbBlockProcedureBeforeTrace = 0;
+	char dbtType = DBT_TYPE_HW;
 
 	DBTPlateform(int binarySize);
 	~DBTPlateform();

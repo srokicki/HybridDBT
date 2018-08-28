@@ -1008,3 +1008,34 @@ void IRBlock::print(FILE * output)
 	}
 	fprintf(output, "}");
 }
+
+void shiftBlock(IRBlock *block, char value){
+	//We alloc the new block and copy all instructions inside
+	unsigned int *newInstr = (unsigned int *) malloc(4*(block->nbInstr + value)*sizeof(unsigned int));
+	memcpy(&(newInstr[4*value]), block->instructions, 4*block->nbInstr*sizeof(unsigned int));
+
+	block->nbInstr += value;
+	free(block->instructions);
+	block->instructions = newInstr;
+
+	//We update dependencies
+	for (int oneInstruction = value; oneInstruction < block->nbInstr; oneInstruction++){
+		addOffsetToDep(block->instructions, oneInstruction, value);
+
+		short operands[3];
+		char nbOperand = getOperands(block->instructions, oneInstruction, operands);
+		for (int oneOperand = 0; oneOperand<nbOperand; oneOperand++){
+			if (operands[oneOperand] < 256){
+				operands[oneOperand] += value;
+			}
+		}
+		setOperands(block->instructions, oneInstruction, operands);
+
+	}
+
+	//We update the jump table
+	for (int oneJump = 0; oneJump<block->nbJumps; oneJump++)
+		block->jumpIds[oneJump] += value;
+
+}
+

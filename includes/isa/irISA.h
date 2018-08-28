@@ -237,6 +237,7 @@ char getStageCode(unsigned int *bytecode, unsigned char index);
 
 int getNbInstr(IRProcedure *procedure);
 int getNbInstr(IRProcedure *procedure, int type);
+void shiftBlock(IRBlock *block, char value);
 
 /********************************************************************
  * Declaration of stage codes

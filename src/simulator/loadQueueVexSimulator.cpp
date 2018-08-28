@@ -4,13 +4,7 @@
 
 ac_int<64, true> LoadQueueVexSimulator::lddSpec(ac_int<64, false> addr, unsigned char specId){
 
-	ac_int<3, false> bankId = bankId >> 2;
-	ac_int<2, false> indexInBank = specId & 0x3;
-
-	this->loadQueue_addr[bankId][indexInBank] = addr.slc<24>(3);
-	this->loadQueue_age[bankId][indexInBank] = 1;
-
-	return this->ldd(addr);
+	return 0;
 }
 
 

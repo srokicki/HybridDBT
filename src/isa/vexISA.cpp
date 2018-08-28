@@ -182,7 +182,7 @@ std::string printDecodedInstr(unsigned int instruction){
 	short IMM13 = (instruction >> 7) & 0x1fff;
 	short IMM13_signed = (IMM13 > 4095) ? IMM13 - 8192 : IMM13;
 	short IMM12 = (instruction >> 8) & 0xfff;
-	short IMM12_signed = (IMM13 > 2047) ? IMM12 - 4196 : IMM12;
+	short IMM12_signed = (IMM12 > 2047) ? IMM12 - 4196 : IMM12;
 
 	int funct = (instruction >> 7) & 0x1f;
 	int OP = (instruction & 0x7f);
@@ -203,9 +203,10 @@ std::string printDecodedInstr(unsigned int instruction){
 	else if (OP>>4 == 0x1){
 		//We are a memory op
 		IMM13 = IMM12;
-		IMM13_signed == IMM12_signed;
+		IMM13_signed = IMM12_signed;
 		if (isSpec){
-			stream << " spec ";
+			stream << " spec " << ((instruction>>7) & 0x1);
+			IMM13_signed = IMM13_signed >> 5;
 		}
 	}
 

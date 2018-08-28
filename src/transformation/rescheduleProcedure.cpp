@@ -314,7 +314,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 				for (int oneSpec = 0; oneSpec<4; oneSpec++){
 					if (block->specAddr[oneSpec] != 0){
-						writeInt(platform->vliwBinaries, 16*originalEntry+4, assembleMemoryInstruction(VEX_SPEC_INIT, 0, 0, block->specAddr[oneSpec], 1, oneSpec));
+						writeInt(platform->vliwBinaries, 16*originalEntry+4, assembleMemoryInstruction_sw(VEX_SPEC_INIT, 0, 0, block->specAddr[oneSpec], 1, oneSpec));
 						//TODO make it work for others specs
 					}
 				}
