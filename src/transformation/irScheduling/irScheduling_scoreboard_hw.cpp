@@ -334,7 +334,8 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 				registerDependencies[instructionId] = bytecode_word2.slc<8>(6);
 			} else {
 				// else crash
-				exit(-1);
+				registerDependencies[instructionId] = 0xff;
+				dest = accessPlaceOfReg;
 				//return basicBlockSize+1;
 			}
 		} else {

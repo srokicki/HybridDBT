@@ -48,18 +48,445 @@ void getReadWriteRegisters(IRBlock *block, bool *readRegs, short *writeRegs){
 		//We mark the written reg
 		short writtenReg = getDestinationRegister(block->instructions, oneInstr);
 		if (writtenReg >= 0)
-			writeRegs[writtenReg-256] = oneInstr;
+			writeRegs[writtenReg-256] = 1;
 
 		short operands[2];
 		char nbOperand = getOperands(block->instructions, oneInstr, operands);
 
 		for (int oneOperand = 0; oneOperand<nbOperand; oneOperand++)
-			if (operands[oneOperand] >= 256){
+			if (operands[oneOperand] >= 256 && writeRegs[operands[oneOperand]-256] == 0){
 					readRegs[operands[oneOperand]-256] = true;
 			}
 
 	}
 }
+
+IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore, char nbIgnore){
+
+	/*****
+	 * The goal of this function is to merge two block into one.
+	 * There are two kinds of merging supported by this function
+	 * -> The merging where the entry blocks has two successors. In this case, the execution may leave the block before its end.
+	 * 		For this reason we have to write into new register which will be allocated by the scheduler. We then use the conditional
+	 * 		instruction to ensure that we do modify the behavior of the program.
+	 * -> The merge of two block when there is no escape. In such a case we do not have to take care of conditions,
+	 *
+	 *******************************************************
+	 *******************************************************
+	 *******************************************************
+	 *
+	 * Here are the steps done by the function:
+	 * 0. We compute some parameters for the transformation:
+	 * 		-> isEscapable is set to true if the first block is a conditional block (so if the second block may not be executed)
+	 *
+	 * 1. We go through the instructions of the first block. Doing so, we keep track of
+	 * 		-> The last instruction that wrote in a given register
+	 * 		-> The last 4 memory accesses (read/store)
+	 * 		-> The jump and its condition
+	 *   All these instructions are inserted in the block unmodified.
+	 *
+	 * 2. We go through the instructions from the second block. Doing this we still keep track of:
+	 * 		-> Last writer on registers from this second block
+	 * 	  We also do the following modifications:
+	 * 	  	-> If isEscapable we transform memory stores into conditional memory stores, we say writing instruction to allocate
+	 * 	  		a new register instead of using the normal one.
+	 * 	  	-> For each operand of a given instruction, if the operand is global (>256) then we check if the said register has not
+	 * 	  		been modified by the block 1. If so we change the reference by a non global one and we add a data dependency.
+	 * 	  		Otherwise, we just change the local reference by adding an offset to the operand (the offset will be the size of
+	 * 	  		block 1).
+	 * 	  	-> For each dependencies of a given instruction, we add an offset in order to refer to the correct instruction index
+	 * 	  		in the newly created block. Once again, this offset will be the size of block 1.
+	 * 	  	-> The first memory operation found will depend on the last memory operation found on block 1 to ensure the memory coherence
+	 *
+	 * 3. If the block is escapable, then we have to add also some conditional instructions:
+	 * 		-> One setCond instruction which will set the flag by looking at the condition (found during step 1).
+	 * 			Note that this instruction will depend (control dependency) from the conditional instruction found during step one.
+	 * 		-> For each register whose value was written on block 2, we insert a setCond which will commit the new value if and only if
+	 * 			the condition was fulfilled. This instruction will have a data dependency from the instruction from block 2 that
+	 * 			generated the value and a control dependency from the SETCOND instruction and from any previous write from the block 1
+	 * 			(to ensure that there is no WAR dependency violated).
+	 *
+	 * 4. Finally, the new block is placed in the procedure, taking the place of the block 1.
+	 */
+
+
+	//We define which model will be used for the merging:
+	// isEscape says if the second part may not be executed
+	// useSetc says that we use conditional instruction for solving speculation. Other alternative is the use of correctly handled alloc
+
+	char isEscape = 1;
+
+
+	/*****************************************************
+	 * We start by print debug messages
+	 */
+	Log::printf(LOG_SCHEDULE_PROC, "***********Unrolling loop*******************\n");
+
+	Log::printf(LOG_SCHEDULE_PROC, "Successors of block (%d) : ", block->sourceStartAddress);
+	for (int oneSuccessor = 0; oneSuccessor < block->nbSucc; oneSuccessor++)
+		Log::printf(LOG_SCHEDULE_PROC, " (instr %d, dest %d) ", oneSuccessor<block->nbJumps ? block->jumpIds[oneSuccessor] : -1 , block->successors[oneSuccessor]->sourceStartAddress);
+
+	Log::printf(LOG_SCHEDULE_PROC, "\n");
+
+
+	for (int i=0; i<block->nbInstr; i++){
+		Log::printf(LOG_SCHEDULE_PROC, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+	}
+	Log::printf(LOG_SCHEDULE_PROC, "\n");
+
+
+	//********************************************************
+
+	short sizeofEntryBlock = block->nbInstr;
+
+	//We declare the result block:
+	//We also compute the unrolling factor. The goal is to get a ~50 instr block
+//	int unrollingFactor = (50/block->nbInstr) + 1;
+//	if (unrollingFactor>8)
+//		unrollingFactor = 8;
+	int unrollingFactor = 4;
+	if (block->nbInstr > 50)
+		unrollingFactor = 180 / block->nbInstr;
+	int sizeOfResult = block->nbInstr + unrollingFactor*(block->nbInstr + nbIgnore) + block->nbInstr;
+
+	IRBlock *result = new IRBlock(0,0,0);
+	fprintf(stderr, "Malloc size %d\n", sizeOfResult);
+	result->instructions = (unsigned int*) malloc(sizeOfResult*4*sizeof(unsigned int));
+	result->nbSucc = 0;
+
+	//Arrays that keep track of last write places in each block
+	short lastWriteReg[128];
+
+	for (int oneReg = 0; oneReg < 128; oneReg++){
+		lastWriteReg[oneReg] = -1;
+	}
+
+	//Arrays that keep track of last last memory accesses
+	short lastMemInstr[4];
+	char nbLastMemInstr = 0;
+	unsigned char placeLastMemInstr = 0;
+	short lastStore = -1;
+
+	short lastMemInstrSecond[4];
+	char nbLastMemInstrSecond = 0;
+	unsigned char placeLastMemInstrSecond = 0;
+	short lastStoreSecond = -1;
+
+	//last jump/condition of entry block 	short indexOfJump = -1;
+	short indexOfJump = -1;
+	unsigned short indexOfCondition = -1;
+
+	//****************************************************************************************************
+	//We go through the first block to find all written register and memory accesses
+	//Because of this we will be able to build dependencies correctly
+
+	for (int oneInstr = 0; oneInstr<sizeofEntryBlock; oneInstr++){
+
+
+		//We mark the written reg
+		short writtenReg = getDestinationRegister(block->instructions, oneInstr);
+		if (writtenReg >= 0){
+			lastWriteReg[writtenReg-256] = oneInstr;
+		}
+
+		//We copy the result
+		result->instructions[4*oneInstr+0] = block->instructions[4*oneInstr+0];
+		result->instructions[4*oneInstr+1] = block->instructions[4*oneInstr+1];
+		result->instructions[4*oneInstr+2] = block->instructions[4*oneInstr+2];
+		result->instructions[4*oneInstr+3] = block->instructions[4*oneInstr+3];
+
+		char opcode = getOpcode(block->instructions, oneInstr);
+
+
+
+		//If it is a conditional branch, we mark the jump and the condition instr
+		if (opcode == VEX_BR || opcode == VEX_BRF || opcode == VEX_BGE || opcode == VEX_BLT || opcode == VEX_BGEU || opcode == VEX_BLTU){
+			indexOfJump = oneInstr;
+
+			//If we are unrolling a loop we invert the jump condition
+			if (opcode == VEX_BR)
+				setOpcode(result->instructions, oneInstr, VEX_BRF);
+			else if (opcode == VEX_BRF)
+				setOpcode(result->instructions, oneInstr, VEX_BR);
+			else if (opcode == VEX_BGE)
+				setOpcode(result->instructions, oneInstr, VEX_BLT);
+			else if (opcode == VEX_BLT)
+				setOpcode(result->instructions, oneInstr, VEX_BGE);
+			else if (opcode == VEX_BGEU)
+				setOpcode(result->instructions, oneInstr, VEX_BLTU);
+			else if (opcode == VEX_BLTU)
+				setOpcode(result->instructions, oneInstr, VEX_BGEU);
+
+
+		}
+
+
+
+		//We keep track of last store/load instructions
+		char shiftOpcode = opcode >> 3;
+		if (shiftOpcode == (VEX_STD >> 3)){
+			lastStore = oneInstr;
+			nbLastMemInstr = 1;
+			placeLastMemInstr = 1;
+			lastMemInstr[0] = oneInstr;
+		}
+
+		if (shiftOpcode == (VEX_LDD >> 3)){
+			lastMemInstr[placeLastMemInstr] = oneInstr;
+			placeLastMemInstr = (placeLastMemInstr+1) & 0x3;
+
+			if (nbLastMemInstr<4)
+				nbLastMemInstr++;
+		}
+	}
+	result->nbInstr = block->nbInstr;
+
+	//We insert the first jump
+	for (int oneJump = 0; oneJump<block->nbJumps; oneJump++){
+		char jumpOpcode = getOpcode(block->instructions, block->jumpIds[oneJump]);
+			result->addJump(block->jumpIds[oneJump], -1);
+			result->successors[result->nbSucc] = block->successors[oneJump+1];
+			result->nbSucc++;
+	}
+
+	//****************************************************************************************************
+	//We insert instructions from second block
+
+	for (int oneUnroll=1; oneUnroll<unrollingFactor; oneUnroll++){
+
+		short indexOfSecondJump = -1;
+		char hasStores = 0;
+
+		for (int oneInstr = 0; oneInstr<block->nbInstr; oneInstr++){
+
+			//We copy the instruction into the new block
+			result->instructions[(result->nbInstr+oneInstr)*4+0] = block->instructions[oneInstr*4+0];
+			result->instructions[(result->nbInstr+oneInstr)*4+1] = block->instructions[oneInstr*4+1];
+			result->instructions[(result->nbInstr+oneInstr)*4+2] = block->instructions[oneInstr*4+2];
+			result->instructions[(result->nbInstr+oneInstr)*4+3] = block->instructions[oneInstr*4+3];
+
+
+
+			short operands[2];
+			char nbOperand = getOperands(block->instructions, oneInstr, operands);
+
+
+			//We update dependencies
+			addOffsetToDep(result->instructions, result->nbInstr+oneInstr, result->nbInstr);
+
+			//For each operand register, there are two possibilities:
+			// -> The operand is lower than 256, then it is a reference to another instruction from the block: we correct it
+			// -> The operand is greater than 256 then it is an access to global register and thus we need to check if there is a dep to add
+			for (int oneOperand = 0; oneOperand<nbOperand; oneOperand++){
+
+				if (operands[oneOperand] < 256){
+						operands[oneOperand] += result->nbInstr;
+				}
+				else if (lastWriteReg[operands[oneOperand]-256] != -1){
+					addDataDep(result->instructions, lastWriteReg[operands[oneOperand]-256], result->nbInstr+oneInstr);
+					operands[oneOperand] = lastWriteReg[operands[oneOperand]-256];
+				}
+			}
+			setOperands(result->instructions, result->nbInstr + oneInstr, operands);
+
+			char opcode = getOpcode(block->instructions, oneInstr);
+			char shiftedOpcode = opcode>>3;
+
+
+			/***************************************************************
+			 * We handle memory accesses from the second block:
+			 *  -> Stores are turned into conditional store if needed
+			 *  -> Dependencies to ensure memory coherence are added to the first memory accesses met
+			 */
+
+			if (shiftedOpcode == (VEX_STD>>3)){
+				hasStores = 1;
+
+				//If we are in a escapable block, we need to add a dependency from the first jump
+				if (isEscape)
+					addControlDep(result->instructions, indexOfJump, result->nbInstr+oneInstr);
+
+				//In any case, we have to ensure a dependency from last mem instruction from previous block (this is only needed for first memory store)
+				for (int oneLastMemInstr = 0; oneLastMemInstr<nbLastMemInstr; oneLastMemInstr++)
+					addControlDep(result->instructions, lastMemInstr[oneLastMemInstr], result->nbInstr+oneInstr);
+
+				nbLastMemInstr = 0;
+			}
+
+			if (lastStore != -1 && nbLastMemInstr > 0 && shiftedOpcode == (VEX_LDD>>3)){
+				//For the first 4 load instr we add a dependency to ensure the correctness
+				if (nbLastMemInstr == 4){
+					addControlDep(result->instructions, lastMemInstr[placeLastMemInstr], result->nbInstr+oneInstr);
+					lastMemInstr[placeLastMemInstr] = result->nbInstr+oneInstr;
+					placeLastMemInstr = (placeLastMemInstr+1) & 0x3;
+
+				}
+				else{
+					addControlDep(result->instructions, lastStore, result->nbInstr+oneInstr);
+					lastMemInstr[placeLastMemInstr] = result->nbInstr+oneInstr;
+					placeLastMemInstr = (placeLastMemInstr+1) & 0x3;
+				}
+			}
+
+			//We keep track of last store/load instructions of second block
+			char shiftOpcode = opcode >> 3;
+			if (shiftOpcode == (VEX_STD >> 3)){
+				lastStoreSecond = result->nbInstr+oneInstr;
+				nbLastMemInstrSecond = 1;
+				placeLastMemInstrSecond = 1;
+				lastMemInstrSecond[0] = result->nbInstr+oneInstr;
+			}
+
+			if (shiftOpcode == (VEX_LDD >> 3)){
+				lastMemInstrSecond[placeLastMemInstrSecond] = result->nbInstr+oneInstr;
+				placeLastMemInstrSecond = (placeLastMemInstrSecond+1) & 0x3;
+
+				if (nbLastMemInstrSecond<4)
+					nbLastMemInstrSecond++;
+			}
+
+
+
+			short writtenReg = getDestinationRegister(block->instructions, oneInstr);
+			if (writtenReg >= 0){
+				lastWriteReg[writtenReg-256] = oneInstr+result->nbInstr;
+
+			}
+			//We check if there is a jump in the second block
+			if (opcode == VEX_GOTO || opcode == VEX_GOTOR || opcode == VEX_BRF || opcode == VEX_BR || opcode == VEX_BGE || opcode == VEX_BLT || opcode == VEX_BGEU || opcode == VEX_BLTU || opcode == VEX_CALL || opcode == VEX_CALLR){
+				if (indexOfSecondJump == -1 && indexOfJump != -1){
+					addControlDep(result->instructions, indexOfJump, oneInstr+result->nbInstr);
+				}
+
+				if (oneUnroll != unrollingFactor-1){
+				//If we are unrolling a loop we invert the jump condition
+					if (opcode == VEX_BR)
+						setOpcode(result->instructions, oneInstr+result->nbInstr, VEX_BRF);
+					else if (opcode == VEX_BRF)
+						setOpcode(result->instructions, oneInstr+result->nbInstr, VEX_BR);
+					else if (opcode == VEX_BGE)
+						setOpcode(result->instructions, oneInstr+result->nbInstr, VEX_BLT);
+					else if (opcode == VEX_BLT)
+						setOpcode(result->instructions, oneInstr+result->nbInstr, VEX_BGE);
+					else if (opcode == VEX_BGEU)
+						setOpcode(result->instructions, oneInstr+result->nbInstr, VEX_BLTU);
+					else if (opcode == VEX_BLTU)
+						setOpcode(result->instructions, oneInstr+result->nbInstr, VEX_BGEU);
+				}
+				indexOfSecondJump = oneInstr+result->nbInstr;
+
+			}
+
+			//The new instruction will write into an allocated register (if we are in a case with escape)
+			if (isEscape && writtenReg >= 0)
+				setAlloc(result->instructions, result->nbInstr + oneInstr, 1);
+
+
+
+		}
+
+		//We register the jump
+		for (int oneJump = 0; oneJump<block->nbJumps; oneJump++){
+			char jumpOpcode = getOpcode(block->instructions, block->jumpIds[oneJump]);
+				result->addJump(block->jumpIds[oneJump]+result->nbInstr, -1);
+				if (oneUnroll != unrollingFactor-1)
+					result->successors[result->nbSucc] = block->successors[oneJump+1];
+				else
+					result->successors[result->nbSucc] = block->successors[oneJump];
+
+				result->nbSucc++;
+		}
+
+
+
+		result->nbInstr += block->nbInstr;
+
+
+		if (isEscape){
+
+			int firstAvailable = 256+34;
+			for (int oneReg = 1; oneReg <64; oneReg++){
+				if (lastWriteReg[oneReg]>=0){
+					fprintf(stderr, "%d is written\n", oneReg);
+					if (outputRegsToIgnore[oneReg]){
+						fprintf(stderr, "test\n");
+						//We are authorized to ignore this register which is only alive if we are in the last iteration
+						setAlloc(result->instructions, lastWriteReg[oneReg], 1);
+						setDestinationRegister(result->instructions, lastWriteReg[oneReg], firstAvailable);
+						firstAvailable++;
+					}
+					else {
+						setAlloc(result->instructions, lastWriteReg[oneReg], 0);
+						//We add a control dependency from one of the last four cond instruction (note: this array is initialized with four times the setcond instruction)
+
+						addControlDep(result->instructions, indexOfJump, lastWriteReg[oneReg]);
+					}
+
+				}
+			}
+
+			unsigned int availableReg = 256+34;
+			for (int oneReg=0; oneReg<128; oneReg++){
+				if (outputRegsToIgnore[oneReg]){
+
+					fprintf(stderr, "Correcting loop regalloc of %d   %d\n", outputRegsToIgnore[oneReg], oneReg);
+					write128(result->instructions, result->nbInstr*16, assembleRBytecodeInstruction(2, 0, VEX_ADD, lastWriteReg[oneReg], 256, 256+oneReg, 0));
+					addDataDep(result->instructions, lastWriteReg[oneReg], result->nbInstr);
+					addControlDep(result->instructions, block->jumpIds[0], indexOfSecondJump);
+
+					availableReg++;
+					result->nbInstr++;
+				}
+			}
+
+			indexOfJump = indexOfSecondJump;
+
+			lastMemInstr[0] = lastMemInstrSecond[0];
+			lastMemInstr[1] = lastMemInstrSecond[0];
+			lastMemInstr[2] = lastMemInstrSecond[0];
+			lastMemInstr[3] = lastMemInstrSecond[0];
+
+			nbLastMemInstr = nbLastMemInstrSecond;
+			placeLastMemInstr = placeLastMemInstrSecond;
+			lastStore = lastStoreSecond;
+
+
+
+		}
+
+
+	}
+	/*
+	 * Last step of the merging: we merge all jumps and destinators.
+	 * Merging is done with the following rules:
+	 * 	-> Jumps from entry block are inserted similarly
+	 * 	-> Jumps from second block are inserted
+	 */
+
+
+
+
+	result->successors[result->nbSucc] = block->successors[block->nbSucc - 1];
+	result->nbSucc++;
+
+
+
+
+	result->vliwStartAddress = block->vliwStartAddress;
+	result->vliwEndAddress = block->vliwEndAddress;
+	result->blockState = IRBLOCK_UNROLLED;
+
+	Log::printf(LOG_SCHEDULE_PROC, "Successors of result (%d) : ", block->sourceStartAddress);
+	for (int oneSuccessor = 0; oneSuccessor < result->nbSucc; oneSuccessor++)
+		Log::printf(LOG_SCHEDULE_PROC, " (instr %d, dest %d) ", oneSuccessor<result->nbJumps ? result->jumpIds[oneSuccessor] : -1 , result->successors[oneSuccessor]->sourceStartAddress);
+
+
+	fprintf(stderr, "Block size is %d\n", result->nbInstr);
+	return result;
+
+
+}
+
 
 
 IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, short *outputRegsToIgnore, char nbIgnore){
@@ -621,15 +1048,17 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 					getReadWriteRegisters(block, readRegs, writeRegs);
 					int nbIgnoredRegs = 0;
 
-					for (int oneReg = 0; oneReg<128; oneReg++)
+					for (int oneReg = 0; oneReg<128; oneReg++){
+						fprintf(stderr, "for %d : %d %d\n", oneReg, readRegs[oneReg],writeRegs[oneReg]);
 						if (writeRegs[oneReg] && readRegs[oneReg])
 							writeRegs[oneReg] = 0;
 						else if (writeRegs[oneReg] && !readRegs[oneReg]){
 							writeRegs[oneReg] += block->nbInstr;
 							nbIgnoredRegs++;
 						}
+					}
 
-					IRBlock *oneSuperBlock = superBlock(block, block->successor1, true, writeRegs, nbIgnoredRegs);
+					IRBlock *oneSuperBlock = unrollLoops(block, true, writeRegs, nbIgnoredRegs);
 
 
 
@@ -674,17 +1103,17 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 						//TODO do that in the buildSuperBlock
 						//WARNING: only work when unrolling of 1
 
-						unsigned int availableReg = 256+34;
-						for (int oneReg=0; oneReg<128; oneReg++){
-							if (writeRegs[oneReg]){
-								write128(block->instructions, block->nbInstr*16, assembleRBytecodeInstruction(2, 0, VEX_ADD, writeRegs[oneReg], 256, 256+oneReg, 0));
-								addDataDep(block->instructions, writeRegs[oneReg], block->nbInstr);
-								addControlDep(block->instructions, block->jumpIds[0], block->nbInstr);
-
-								availableReg++;
-								block->nbInstr++;
-							}
-						}
+//						unsigned int availableReg = 256+34;
+//						for (int oneReg=0; oneReg<128; oneReg++){
+//							if (writeRegs[oneReg]){
+//								write128(block->instructions, block->nbInstr*16, assembleRBytecodeInstruction(2, 0, VEX_ADD, writeRegs[oneReg], 256, 256+oneReg, 0));
+//								addDataDep(block->instructions, writeRegs[oneReg], block->nbInstr);
+//								addControlDep(block->instructions, block->jumpIds[0], block->nbInstr);
+//
+//								availableReg++;
+//								block->nbInstr++;
+//							}
+//						}
 
 
 //						newBlock->successors[0] = block->successors[block->nbSucc-1];
@@ -917,55 +1346,55 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 
 
 	// We go through the blocks and we build speculation groups
-	if (optLevel >= 3){
-
-		int numberPred = 0;
-		IRBlock **preds = (IRBlock **) malloc(procedure->nbBlock * sizeof(IRBlock*));
-		bool eligibleForSpec = true;
-
-		for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
-			IRBlock *block = procedure->blocks[oneBlock];
-
-
-			if (block->blockState == IRBLOCK_PERFECT_LOOP || block->nbInstr < 8)
-				continue;
-
-			//We check if the block is elligible
-			eligibleForSpec = true;
-			numberPred = 0;
-
-
-			if (oneBlock == 0)
-				eligibleForSpec = false;
-
-			for (int oneOtherBlock=0; oneOtherBlock<procedure->nbBlock; oneOtherBlock++){
-				IRBlock *otherBlock = procedure->blocks[oneOtherBlock];
-
-				if (otherBlock == block)
-					continue;
-
-				for (int oneSuccessor = 0; oneSuccessor < otherBlock->nbSucc; oneSuccessor++){
-					if (otherBlock->successors[oneSuccessor] == block){
-						//The block 'otherBlock' is a predecessor of current block.
-						//To be eligible, we need it not to be a loop body...
-						if (otherBlock->blockState == IRBLOCK_PERFECT_LOOP){
-							eligibleForSpec = false;
-							break;
-						}
-
-						preds[numberPred] = otherBlock;
-						numberPred++;
-					}
-				}
-
-			}
-
-			if (eligibleForSpec){
-					memoryDisambiguation(platform, block, preds, 0);
-					spec_trace_counter++;
-			}
-		}
-	}
+//	if (optLevel >= 3){
+//
+//		int numberPred = 0;
+//		IRBlock **preds = (IRBlock **) malloc(procedure->nbBlock * sizeof(IRBlock*));
+//		bool eligibleForSpec = true;
+//
+//		for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
+//			IRBlock *block = procedure->blocks[oneBlock];
+//
+//
+//			if (block->blockState == IRBLOCK_PERFECT_LOOP || block->blockState == IRBLOCK_UNROLLED || block->nbInstr < 8)
+//				continue;
+//
+//			//We check if the block is elligible
+//			eligibleForSpec = true;
+//			numberPred = 0;
+//
+//
+//			if (oneBlock == 0)
+//				eligibleForSpec = false;
+//
+//			for (int oneOtherBlock=0; oneOtherBlock<procedure->nbBlock; oneOtherBlock++){
+//				IRBlock *otherBlock = procedure->blocks[oneOtherBlock];
+//
+//				if (otherBlock == block)
+//					continue;
+//
+//				for (int oneSuccessor = 0; oneSuccessor < otherBlock->nbSucc; oneSuccessor++){
+//					if (otherBlock->successors[oneSuccessor] == block){
+//						//The block 'otherBlock' is a predecessor of current block.
+//						//To be eligible, we need it not to be a loop body...
+//						if (otherBlock->blockState == IRBLOCK_PERFECT_LOOP){
+//							eligibleForSpec = false;
+//							break;
+//						}
+//
+//						preds[numberPred] = otherBlock;
+//						numberPred++;
+//					}
+//				}
+//
+//			}
+//
+//			if (eligibleForSpec){
+//					memoryDisambiguation(platform, block, preds, 0);
+//					spec_trace_counter++;
+//			}
+//		}
+//	}
 
 
 

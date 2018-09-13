@@ -14,7 +14,7 @@ extern int MAX_DISAMB_COUNT;
 extern unsigned char speculationCounter;
 extern struct speculationDef speculationDefinitions[256];
 
-
+#define PLSQ_BANK_SIZE 8
 
 
 class MemoryDependencyGraph{
@@ -39,8 +39,8 @@ public:
 struct speculationDef {
 	IRBlock *block;
 	MemoryDependencyGraph *graph;
-	unsigned char loads[4];
-	unsigned char stores[8];
+	unsigned char loads[PLSQ_BANK_SIZE];
+	unsigned char stores[PLSQ_BANK_SIZE];
 	short nbUse;
 	short nbFail;
 	char type, nbLoads, nbStores;

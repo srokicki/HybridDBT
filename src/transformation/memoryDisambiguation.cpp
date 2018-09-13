@@ -303,7 +303,7 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
 		graph->idSpec[index] = currentSpecId;
 
 		if (graph->isStore[index]){
-			if (currentSpeculationDef->nbStores == 4)
+			if (currentSpeculationDef->nbStores == PLSQ_BANK_SIZE)
 				break;
 
 			currentSpeculationDef->stores[currentSpeculationDef->nbStores] = index;
@@ -315,7 +315,7 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
 				continue; // It is useless to add a load when there were no store before
 			}
 
-			if (currentSpeculationDef->nbLoads == 4)
+			if (currentSpeculationDef->nbLoads == PLSQ_BANK_SIZE)
 				break;
 
 			currentSpeculationDef->loads[currentSpeculationDef->nbLoads] = index;
@@ -418,7 +418,6 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
 
 		//We change for a new speculation group
 		speculationCounter++;
-
 	}
 
 
@@ -583,9 +582,9 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 			currentSpecDef->nbFail = currentSpecDef->nbFail>>6;
 		}
 
-		if (newNbUse-currentSpecDef->nbUse > 70){
+		if (newNbUse-currentSpecDef->nbUse > 70 || currentSpecDef->nbUse == 0){
 
-			if (currentSpecDef->type == 1 && (newNbMiss - currentSpecDef->nbFail) < (newNbUse-currentSpecDef->nbUse)/10){
+			if (currentSpecDef->type == 1 && ((newNbMiss - currentSpecDef->nbFail) < (newNbUse-currentSpecDef->nbUse)/10 || currentSpecDef->nbUse == 0)){
 
 				//We turn the spec on
 
@@ -638,7 +637,7 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 
 			double val = newNbMiss - currentSpecDef->nbFail;
 			double val2 = newNbUse-currentSpecDef->nbUse;
-			fprintf(stderr, "%lld; %f; %d\n", (long long) platform->vexSimulator->cycle, val2 == 0 ? 0 : 100 * val / val2, (currentSpecDef->type == 2) ? 1 : 0);
+//			fprintf(stderr, "%lld; %f; %d\n", (long long) platform->vexSimulator->cycle, val2 == 0 ? 0 : 100 * val / val2, (currentSpecDef->type == 2) ? 1 : 0);
 
 
 			currentSpecDef->nbUse = newNbUse;

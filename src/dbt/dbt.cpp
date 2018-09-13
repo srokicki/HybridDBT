@@ -444,7 +444,6 @@ int main(int argc, char *argv[])
 	}
 
 
-
 	//We also add information on insertions
 	int insertionSize = 65536;
 	int areaCodeStart=1;
@@ -480,6 +479,8 @@ int main(int argc, char *argv[])
 	//HW version
 	dbtPlateform.vexSimulator->cycle = 1000;
 	runStatus = run(&dbtPlateform, size);
+
+	int profileGap = 32;
 
 	while (runStatus == 0){
 
@@ -572,13 +573,13 @@ int main(int argc, char *argv[])
 				IRBlock* block = application.blocksInSections[oneSection][oneBlock];
 
 				if (block != NULL && block->sourceStartAddress != -1){
-					if ((MAX_SCHEDULE_COUNT==-1 || dbtPlateform.blockScheduleCounter < MAX_SCHEDULE_COUNT) && OPTLEVEL >= 1 && (block->sourceEndAddress - block->sourceStartAddress > 4 || (block->sourceDestination != -1 && block->sourceDestination <= block->sourceStartAddress) )  && block->blockState < IRBLOCK_STATE_SCHEDULED){
-
+					if ((MAX_SCHEDULE_COUNT==-1 || dbtPlateform.blockScheduleCounter < MAX_SCHEDULE_COUNT) && OPTLEVEL >= 1/* && block->sourceEndAddress - block->sourceStartAddress > profileGap */&& (block->sourceEndAddress - block->sourceStartAddress > 4 || (block->sourceDestination != -1 && block->sourceDestination <= block->sourceStartAddress) )  && block->blockState < IRBLOCK_STATE_SCHEDULED){
 
 						optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
 						dbtPlateform.blockScheduleCounter++;
 
 						if ((block->sourceDestination != -1 && block->sourceDestination <= block->sourceStartAddress) || block->nbInstr > 32){
+
 							profiler.profileBlock(block);
 						}
 
@@ -596,8 +597,13 @@ int main(int argc, char *argv[])
 		}
 
 		int cyclesToRun = dbtPlateform.optimizationCycles - oldOptimizationCount;
-		if (cyclesToRun == 0)
+		if (cyclesToRun == 0){
 			cyclesToRun = 1000;
+			profileGap = profileGap>>1;
+		}
+
+		if (dbtPlateform.vexSimulator->cycle > 2000000000)
+			break;
 
 		runStatus = run(&dbtPlateform, cyclesToRun);
 
