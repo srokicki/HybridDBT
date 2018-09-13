@@ -44,6 +44,7 @@ struct speculationDef {
 	short nbUse;
 	short nbFail;
 	char type, nbLoads, nbStores;
+	char init;
 
 };
 

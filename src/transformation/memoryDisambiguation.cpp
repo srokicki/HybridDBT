@@ -415,6 +415,7 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
 		currentSpeculationDef->nbUse = 0;
 		currentSpeculationDef->type = 1;
 		currentSpeculationDef->graph = graph;
+		currentSpeculationDef->init = 1;
 
 		//We change for a new speculation group
 		speculationCounter++;
@@ -582,9 +583,9 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 			currentSpecDef->nbFail = currentSpecDef->nbFail>>6;
 		}
 
-		if (newNbUse-currentSpecDef->nbUse > 70 || currentSpecDef->nbUse == 0){
+		if (newNbUse-currentSpecDef->nbUse > 70 || currentSpecDef->init == 1){
 
-			if (currentSpecDef->type == 1 && ((newNbMiss - currentSpecDef->nbFail) < (newNbUse-currentSpecDef->nbUse)/10 || currentSpecDef->nbUse == 0)){
+			if (currentSpecDef->type == 1 && ((newNbMiss - currentSpecDef->nbFail) < (newNbUse-currentSpecDef->nbUse)/10 || currentSpecDef->init == 1)){
 
 				//We turn the spec on
 
@@ -606,6 +607,7 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 
 				inPlaceBlockReschedule(currentSpecDef->block, platform, writePlace);
 				currentSpecDef->type = 2;
+				currentSpecDef->init = 0;
 
 			}
 			else if (currentSpecDef->type == 2 && (newNbMiss - currentSpecDef->nbFail) >= (newNbUse-currentSpecDef->nbUse)/10){

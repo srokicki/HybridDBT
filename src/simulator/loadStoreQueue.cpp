@@ -55,7 +55,7 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 	static ac_int<1, false> hasMissed[4];
 
 
-	ac_int<16, false> hashedAddress = address.slc<16>(3);
+	ac_int<16, false> hashedAddress = address.slc<16>(2);
 
 
 	ac_int<1, false> saveMemOp = specId[4];
@@ -67,7 +67,6 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 			addresses[bank][oneAddress - 1] = addresses[bank][oneAddress];
 			ages[bank][oneAddress - 1] = ages[bank][oneAddress];
 		}
-		fprintf(stderr, "adding %llx\n", address);
 		addresses[bank][0] = address;
 		ages[bank][0] = 1;
 		if (firstLoad[bank] == 0)
@@ -113,7 +112,6 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 		firstLoad[bank] = 0;
 	}
 	else{
-		fprintf(stderr, "checking %llx\n", address);
 
 		for (int oneAddress = 0; oneAddress<PLSQ_BANK_SIZE; oneAddress++){
 			ac_int<64, false> storedAddress = addresses[bank][oneAddress];
@@ -130,16 +128,16 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 
 			plsq_checks++;
 
-			if (storedAge && storedAddress.slc<61>(3) == address.slc<61>(3)){
+			if (storedAge && storedAddress.slc<61>(2) == address.slc<61>(2)){
 				plsq_positive++;
 			}
 
-			if (storedAge && storedAddress.slc<16>(3) == hashedAddress && storedAddress.slc<61>(3) != address.slc<61>(3)){
+			if (storedAge && storedAddress.slc<16>(2) == hashedAddress && storedAddress.slc<61>(2) != address.slc<61>(2)){
 				plsq_false_positive++;
 			}
 			#endif
 
-			if (storedAge && storedAddress.slc<16>(3) == address.slc<16>(3)){
+			if (storedAge && storedAddress.slc<16>(2) == address.slc<16>(2)){
 				*rollback |= 1;
 				*mask = currentSpecMasks[bank];
 				*rollback_start = firstLoad[bank];
