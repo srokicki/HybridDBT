@@ -190,8 +190,11 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 		//We handle speculation information if necessary
 		for (int oneSpec = 0; oneSpec<4; oneSpec++){
 			if (block->specAddr[oneSpec] != 0){
-				platform->specInfo[4*block->specAddr[oneSpec]+2] = maskVal[oneSpec] >> 32;
-				platform->specInfo[4*block->specAddr[oneSpec]+3] = maskVal[oneSpec];
+				platform->specInfo[8*block->specAddr[oneSpec]+2] = readInt(maskVal, oneSpec*16+12);
+				platform->specInfo[8*block->specAddr[oneSpec]+3] = readInt(maskVal, oneSpec*16+8);
+				platform->specInfo[8*block->specAddr[oneSpec]+4] = readInt(maskVal, oneSpec*16+4);
+				platform->specInfo[8*block->specAddr[oneSpec]+5] = readInt(maskVal, oneSpec*16);
+
 			}
 		}
 

@@ -62,9 +62,9 @@ ac_int<8, false> freeSlot[WINDOW_SIZE];
 ac_int<4, false> poisoned[64];
 ac_int<32, false> lastStore[4];
 ac_int<32, false> firstLoad[4];
-ac_int<4, false> mask_spec[4][WINDOW_SIZE];
+ac_int<8, false> mask_spec[4][WINDOW_SIZE];
 
-ac_int<64, false> maskVal[4];
+ac_int<128, false> maskVal[4];
 
 
 
@@ -457,6 +457,8 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		// Placing the instruction
 		//**************************************************************
 
+
+
 		ac_int<WINDOW_SIZE_L2+1, false> bestWindowOffset = WINDOW_SIZE;
 		ac_int<STAGE_NUMBER_L2+1, false> bestStageId;
 
@@ -531,7 +533,6 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		}
 
 
-
 		bestWindowOffset = bestOffset[0];
 		bestStageId = bestStage[0];
 
@@ -601,8 +602,12 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 				}
 
 				for (int oneBit = 0; oneBit<4; oneBit++){
-					if (mask_spec[oneBit][off] && !maskVal[63] && !maskVal[62] && !maskVal[61] && !maskVal[60]) {
+					if (issue_width <= 4 && mask_spec[oneBit][off] && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]) {
 						maskVal[oneBit] = (maskVal[oneBit]<<4) + mask_spec[oneBit][off];
+					}
+					else if (issue_width <= 4 && mask_spec[oneBit][off] && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]){
+						maskVal[oneBit] = (maskVal[oneBit]<<8) + mask_spec[oneBit][off];
+
 					}
 
 				}
@@ -625,6 +630,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 
 			bestWindowOffset = WINDOW_SIZE-1;
 		}
+
 		//****************************************************************
 		// Writing instruction into the window buffer
 		//****************************************************************
@@ -683,6 +689,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 			jumpPlace = placeOfInstr[instructionId];
 		}
 
+
 		instructionId++;
 
 		#ifndef __CATAPULT
@@ -724,10 +731,13 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		}
 
 		for (int oneBit = 0; oneBit<4; oneBit++){
-			if (mask_spec[oneBit][off] && !maskVal[oneBit][63] && !maskVal[oneBit][62] && !maskVal[oneBit][61] && !maskVal[oneBit][60]){
+			if (issue_width <= 4 && mask_spec[oneBit][off] && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]) {
 				maskVal[oneBit] = (maskVal[oneBit]<<4) + mask_spec[oneBit][off];
 			}
+			else if (issue_width <= 4 && mask_spec[oneBit][off] && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]){
+				maskVal[oneBit] = (maskVal[oneBit]<<8) + mask_spec[oneBit][off];
 
+			}
 		}
 	}
 

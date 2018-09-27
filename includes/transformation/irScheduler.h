@@ -68,7 +68,7 @@ unsigned int irScheduler_list_sw(unsigned char optLevel,
 		unsigned int placeOfInstr[256]);
 #endif
 
-extern ac_int<64, false> maskVal[4];
+extern ac_int<128, false> maskVal[4];
 
 
 int irScheduler(DBTPlateform *platform, bool optLevel, unsigned char basicBlockSize, unsigned int addressInBinaries,

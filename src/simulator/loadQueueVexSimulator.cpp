@@ -62,7 +62,7 @@ void LoadQueueVexSimulator::doMem(ExtoMem extoMem, MemtoWB *memtoWB){
 
 		}
 
-		ac_int<64, false> mask = 0;
+		ac_int<128, false> mask = 0;
 		ac_int<64, false> rollbackPoint;
 
 		partitionnedLoadQueue(extoMem.pc, extoMem.result, extoMem.funct, clear, &rollback,
@@ -87,6 +87,39 @@ void LoadQueueVexSimulator::doMem(ExtoMem extoMem, MemtoWB *memtoWB){
 
 }
 
+void LoadQueueVexSimulator::doMemNoMem(ExtoMem extoMem, MemtoWB *memtoWB){
+
+
+	ac_int<1, false> rollback = 0;
+	ac_int<1, false> clear = 0;
+	ac_int<1, false> init = 0;
+
+	//If instruction is speculative, we check the LSQ before
+	if (((extoMem.opCode >> 4) == 0x1 || extoMem.opCode == VEX_FLW || extoMem.opCode == VEX_FSW) && extoMem.isSpec){
+
+		if (extoMem.opCode == VEX_SPEC_RST){
+			clear = 1;
+		}
+		else if (extoMem.opCode == VEX_SPEC_INIT){
+			init = 1;
+
+		}
+
+		ac_int<128, false> mask = 0;
+		ac_int<64, false> rollbackPoint;
+
+		partitionnedLoadQueue(extoMem.pc, extoMem.result, extoMem.funct, clear, &rollback,
+				this->speculationData, init, extoMem.result, &mask, &rollbackPoint);
+
+
+
+
+	}
+
+
+	VexSimulator::doMemNoMem(extoMem, memtoWB);
+
+}
 
 
 int LoadQueueVexSimulator::doStep(){

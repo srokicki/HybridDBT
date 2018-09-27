@@ -43,14 +43,14 @@
 #endif
 
 void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_int<5, false> specId, ac_int<1, false> clear, ac_int<1, false> *rollback,
-		unsigned int *speculationData, ac_int<1, false> specInit, ac_int<8, false> specParam, ac_int<64, false> *mask, ac_int<64, false> *rollback_start){
+		unsigned int *speculationData, ac_int<1, false> specInit, ac_int<8, false> specParam, ac_int<128, false> *mask, ac_int<64, false> *rollback_start){
 
 	static ac_int<64, false> addresses[4][PLSQ_BANK_SIZE];
 	static ac_int<1, false> ages[4][PLSQ_BANK_SIZE];
 	static ac_int<16, false> specCounters[4];
 	static ac_int<16, false> missCounters[4];
 	static ac_int<8, false> currentSpecParam[4];
-	static ac_int<64, false> currentSpecMasks[4];
+	static ac_int<128, false> currentSpecMasks[4];
 	static ac_int<64, false> firstLoad[4];
 	static ac_int<1, false> hasMissed[4];
 
@@ -92,22 +92,26 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 //		paramWord.set_slc(16, missCounters[bank]);
 //		paramWord.set_slc(32, currentSpecMasks[bank]);
 
-		speculationData[4*currentSpecParam[bank]] = specCounters[bank];
-		speculationData[4*currentSpecParam[bank]+1] = missCounters[bank];
-		speculationData[4*currentSpecParam[bank]+2] = currentSpecMasks[bank]>>32;
-		speculationData[4*currentSpecParam[bank]+3] = currentSpecMasks[bank] & 0xffffffff;
+		speculationData[8*currentSpecParam[bank]] = specCounters[bank];
+		speculationData[8*currentSpecParam[bank]+1] = missCounters[bank];
 
 		firstLoad[bank] = 0;
 
 	}
 	else if (specInit){
-		ac_int<64+32, false> param = speculationData[specParam];
+		ac_int<256, false> param = speculationData[specParam];
 		currentSpecParam[bank] = specParam;
-		currentSpecMasks[bank] = speculationData[4*currentSpecParam[bank]+3];
-		ac_int<32, false> hi_mask = speculationData[4*currentSpecParam[bank]+2];
-		currentSpecMasks[bank].set_slc(32, hi_mask);
-		specCounters[bank] = speculationData[4*currentSpecParam[bank]+0];
-		missCounters[bank] = speculationData[4*currentSpecParam[bank]+1];
+		currentSpecMasks[bank] = speculationData[8*currentSpecParam[bank]+5];
+		ac_int<32, false> hi_mask4 = speculationData[8*currentSpecParam[bank]+4];
+		ac_int<32, false> hi_mask3 = speculationData[8*currentSpecParam[bank]+3];
+		ac_int<32, false> hi_mask2 = speculationData[8*currentSpecParam[bank]+2];
+
+		currentSpecMasks[bank].set_slc(32, hi_mask4);
+		currentSpecMasks[bank].set_slc(64, hi_mask3);
+		currentSpecMasks[bank].set_slc(96, hi_mask2);
+
+		specCounters[bank] = speculationData[8*currentSpecParam[bank]+0];
+		missCounters[bank] = speculationData[8*currentSpecParam[bank]+1];
 
 		firstLoad[bank] = 0;
 	}
