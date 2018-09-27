@@ -16,6 +16,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <cstring>
+#include <map>
 
 ac_int<64, false> shiftMask[64];
 float regf[32];
@@ -56,6 +57,44 @@ void RiscvSimulator::doStep(){
 
 	/*Fetching new instruction */
 	ac_int<32, false> ins = this->ldw(pc);
+
+
+
+
+	//Ignoring cache
+	ac_int<8, true> result0 = 0;
+	if (this->memory.find(pc) != this->memory.end())
+		result0 = this->memory[pc];
+	else
+		result0= 0;
+
+	ins.set_slc(0, result0);
+
+
+	if (this->memory.find(pc+1) != this->memory.end())
+		result0 = this->memory[pc+1];
+	else
+		result0= 0;
+
+	ins.set_slc(8, result0);
+
+	if (this->memory.find(pc+2) != this->memory.end())
+		result0 = this->memory[pc+2];
+	else
+		result0= 0;
+
+	ins.set_slc(16, result0);
+
+
+	if (this->memory.find(pc+3) != this->memory.end())
+		result0 = this->memory[pc+3];
+	else
+		result0= 0;
+
+
+	ins.set_slc(24, result0);
+
+
 
 	if (this->debugLevel>1){
 		fprintf(stderr,"%d;%x;%x", (int)cycle, (int)pc, (int) ins);

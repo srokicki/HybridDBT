@@ -540,7 +540,6 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 					unresolved_jump_src = indexInDestinationBinaries;
 					unresolved_jump_type = binaries;
 					setUnresolvedJump = 1;
-					fprintf(stderr, "%s goes to %s\n", printDecodedInstrRISCV(oneInstruction), printDecodedInstr(binaries));
 
 //				}
 //				else{

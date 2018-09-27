@@ -1346,55 +1346,55 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 
 
 	// We go through the blocks and we build speculation groups
-//	if (optLevel >= 3){
-//
-//		int numberPred = 0;
-//		IRBlock **preds = (IRBlock **) malloc(procedure->nbBlock * sizeof(IRBlock*));
-//		bool eligibleForSpec = true;
-//
-//		for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
-//			IRBlock *block = procedure->blocks[oneBlock];
-//
-//
-//			if (block->blockState == IRBLOCK_PERFECT_LOOP || block->blockState == IRBLOCK_UNROLLED || block->nbInstr < 8)
-//				continue;
-//
-//			//We check if the block is elligible
-//			eligibleForSpec = true;
-//			numberPred = 0;
-//
-//
-//			if (oneBlock == 0)
-//				eligibleForSpec = false;
-//
-//			for (int oneOtherBlock=0; oneOtherBlock<procedure->nbBlock; oneOtherBlock++){
-//				IRBlock *otherBlock = procedure->blocks[oneOtherBlock];
-//
-//				if (otherBlock == block)
-//					continue;
-//
-//				for (int oneSuccessor = 0; oneSuccessor < otherBlock->nbSucc; oneSuccessor++){
-//					if (otherBlock->successors[oneSuccessor] == block){
-//						//The block 'otherBlock' is a predecessor of current block.
-//						//To be eligible, we need it not to be a loop body...
-//						if (otherBlock->blockState == IRBLOCK_PERFECT_LOOP){
-//							eligibleForSpec = false;
-//							break;
-//						}
-//
-//						preds[numberPred] = otherBlock;
-//						numberPred++;
-//					}
-//				}
-//
-//			}
-//
-//			if (eligibleForSpec){
-//					memoryDisambiguation(platform, block, preds, 0);
-//					spec_trace_counter++;
-//			}
-//		}
-//	}
+	if (optLevel >= 4){
+
+		int numberPred = 0;
+		IRBlock **preds = (IRBlock **) malloc(procedure->nbBlock * sizeof(IRBlock*));
+		bool eligibleForSpec = true;
+
+		for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
+			IRBlock *block = procedure->blocks[oneBlock];
+
+
+			if (block->blockState == IRBLOCK_PERFECT_LOOP || block->blockState == IRBLOCK_UNROLLED || block->nbInstr < 8)
+				continue;
+
+			//We check if the block is elligible
+			eligibleForSpec = true;
+			numberPred = 0;
+
+
+			if (oneBlock == 0)
+				eligibleForSpec = false;
+
+			for (int oneOtherBlock=0; oneOtherBlock<procedure->nbBlock; oneOtherBlock++){
+				IRBlock *otherBlock = procedure->blocks[oneOtherBlock];
+
+				if (otherBlock == block)
+					continue;
+
+				for (int oneSuccessor = 0; oneSuccessor < otherBlock->nbSucc; oneSuccessor++){
+					if (otherBlock->successors[oneSuccessor] == block){
+						//The block 'otherBlock' is a predecessor of current block.
+						//To be eligible, we need it not to be a loop body...
+						if (otherBlock->blockState == IRBLOCK_PERFECT_LOOP){
+							eligibleForSpec = false;
+							break;
+						}
+
+						preds[numberPred] = otherBlock;
+						numberPred++;
+					}
+				}
+
+			}
+
+			if (eligibleForSpec){
+					memoryDisambiguation(platform, block, preds, 0);
+					spec_trace_counter++;
+			}
+		}
+	}
 
 
 

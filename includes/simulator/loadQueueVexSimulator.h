@@ -36,6 +36,8 @@ public:
 
 	//Functions that will be modified
 	void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB);
+	void doMemNoMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB);
+
 	int doStep();
 
 
@@ -56,7 +58,7 @@ private:
 
 //Other functions, related with the load Queue Simlulator
 void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_int<5, false> specId, ac_int<1, false> clear, ac_int<1, false> *rollback,
-		unsigned int *speculationData, ac_int<1, false> specInit, ac_int<8, false> specParam, ac_int<64, false> * mask, ac_int<64, false> *rollback_start);
+		unsigned int *speculationData, ac_int<1, false> specInit, ac_int<8, false> specParam, ac_int<128, false> * mask, ac_int<64, false> *rollback_start);
 
 
 #endif /* INCLUDES_SIMULATOR_LOADQUEUEVEXSIMULATOR_CPP_ */
