@@ -188,6 +188,8 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 		}
 
 		//We handle speculation information if necessary
+#ifndef __HW
+#ifndef __SW
 		for (int oneSpec = 0; oneSpec<4; oneSpec++){
 			if (block->specAddr[oneSpec] != 0){
 				platform->specInfo[8*block->specAddr[oneSpec]+2] = readInt(maskVal, oneSpec*16+12);
@@ -197,7 +199,8 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 			}
 		}
-
+#endif
+#endif
 
 		if (isCallBlock){
 			writeInt(platform->vliwBinaries, 16*(writePlace+binaSize), 0);
