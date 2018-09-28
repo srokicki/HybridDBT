@@ -69,7 +69,6 @@ int main(int argc, char* argv[]){
 		abort ();
 	  }
 
-	printf("%s\n", ARGUMENTS);
 
 
 	int localArgc;
