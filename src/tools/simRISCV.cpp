@@ -27,7 +27,6 @@ int main(int argc, char* argv[]){
 	int HELP = 0;
 	char* binaryFile = NULL;
 	char* ARGUMENTS = NULL;
-	printf("%s\n", argv[3]);
 	FILE** inStreams = (FILE**) malloc(10*sizeof(FILE*));
 	FILE** outStreams = (FILE**) malloc(10*sizeof(FILE*));
 
