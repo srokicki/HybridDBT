@@ -173,6 +173,6 @@ int main(int argc, char* argv[]){
 
 	}
 	else{
-		fprintf(stderr,"Simulation finished ! \n Number of cycles: %d \n Number of instruction executed: %d\n", simulator->cycle, simulator->n_inst);
+		fprintf(stdout,"Simulation finished ! \n Number of cycles: %d \n Number of instruction executed: %d\n", simulator->cycle, simulator->n_inst);
 	}
 }
