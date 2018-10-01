@@ -148,6 +148,13 @@ static void printStat(DBTPlateform *platform, IRApplication *application){
 		Log::fprintf(0, stdout, "\t\t Average block size BEFORE trace/unrolling: %f (M2 %f)\n", platform->blockProcAverageSizeBeforeTrace, platform->blockProcDistanceBeforeTrace/(platform->nbBlockProcedureBeforeTrace -1));
 		Log::fprintf(0, stdout, "\t\t Average block size AFTER trace/unrolling: %f (M2 %f)\n", platform->blockProcAverageSize, platform->blockProcDistance/(platform->nbBlockProcedure -1));
 
+
+		Log::fprintf(0, stdout, "\t -----------------------------------------------------\n");
+		Log::fprintf(0, stdout, "\t Stats for reconfiguration \n");
+		for (int oneConfig = 0; oneConfig<14; oneConfig++){
+		  Log::fprintf(0, stdout, "\t\t #pareto in conf %d: %d\n", oneConfig, platform->nbTimesInPareto[oneConfig]);
+		}
+
 		int nbMem = 0;
 		int nbInstr = 0;
 		for (int oneProcedure = 0; oneProcedure<application->numberProcedures; oneProcedure++){

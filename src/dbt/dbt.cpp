@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
 	int VERBOSE = cfg.has("v") ? std::stoi(cfg["v"]) : 0;
 	int STATMODE = cfg.has("statmode") ? std::stoi(cfg["statmode"]) : 0;
 
-
+	float coef = cfg.has("coef") ? ((float) (std::stoi(cfg["coef"])))/100 : 0;
 	Log::Init(VERBOSE, STATMODE);
 
 	int OPTLEVEL = cfg.has("O") ? std::stoi(cfg["O"]) : 2;
@@ -468,7 +468,6 @@ int main(int argc, char *argv[])
 	int runStatus=0;
 	int abortCounter = 0;
 
-	float coef = 0;
 
 	//We modelize the translation time
 
@@ -608,6 +607,33 @@ int main(int argc, char *argv[])
 		runStatus = run(&dbtPlateform, cyclesToRun);
 
 
+	}
+
+	//We compute pareto domains
+	for (int oneProcedure = 0; oneProcedure < application.numberProcedures; oneProcedure++){
+		IRProcedure *procedure = application.procedures[oneProcedure];
+
+		for (int oneConfiguration = 0; oneConfiguration<12; oneConfiguration++){
+			char configuration = validConfigurations[oneConfiguration];
+			float score = procedure->configurationScores[configuration];
+			float energy = (score * getPowerConsumption(configuration))/10;
+			fprintf(stderr, "for conf %d   - %f %f\n", configuration, score, energy);
+			bool isPareto = true;
+
+			for (int oneOtherConf = 0; oneOtherConf<12; oneOtherConf++){
+				char otherConf = validConfigurations[oneOtherConf];
+				float otherScore = procedure->configurationScores[otherConf];
+				float otherEnergy = (otherScore * getPowerConsumption(otherConf))/10;
+
+				if ((otherScore >= score && otherEnergy < energy) || (otherEnergy <= energy && otherScore > score)){
+					isPareto = false;
+					break;
+				}
+			}
+
+			if (isPareto)
+				dbtPlateform.nbTimesInPareto[configuration]++;
+		}
 	}
 
 	//We clean the last performance counters

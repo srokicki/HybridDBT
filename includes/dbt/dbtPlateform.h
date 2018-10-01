@@ -87,6 +87,7 @@ public:
 	double blockProcAverageSizeBeforeTrace = 0;
 	double blockProcDistanceBeforeTrace = 0;
 	int nbBlockProcedureBeforeTrace = 0;
+	int nbTimesInPareto[14] = {0};
 	char dbtType = DBT_TYPE_HW;
 
 	DBTPlateform(int binarySize);
