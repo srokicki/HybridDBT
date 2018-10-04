@@ -368,10 +368,16 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 		bool isReturnBlock = false;
 		bool isCallBlock = false;
+		bool isIndirectJump = false;
+
 		if (block->nbJumps > 0){
 			char opcode = getOpcode(block->instructions, block->jumpIds[block->nbJumps-1]);
 			isCallBlock = opcode == VEX_CALL || opcode == VEX_CALLR;
 			isReturnBlock = opcode == VEX_GOTOR;
+		}
+
+		if (block->nbJumps == 0 && block->nbSucc == 0){
+			isIndirectJump = true;
 		}
 
 		if (isReturnBlock){
@@ -393,6 +399,15 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 				}
 			}
 
+		}
+
+		if (isIndirectJump){
+			if (readInt(platform->vliwBinaries, 16*block->vliwEndAddress -16*incrementInBinaries) == 0)
+				writeInt(platform->vliwBinaries, 16*block->vliwEndAddress -16*incrementInBinaries, getReconfigurationInstruction(platform->vliwInitialConfiguration));
+			else{
+				Log::printf(LOG_ERROR,"Failing when inserting reconfs at the end of a procedure when indirect branch...\nExiting...");
+				exit(-1);
+			}
 		}
 
 
@@ -464,6 +479,8 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 		Log::printf(LOG_SCHEDULE_PROC,"\n");
 
 		platform->vexSimulator->typeInstr[i-1+incrementInBinaries] = 2;
+
+
 	}
 	//*************************************************************************
 	return writePlace;
