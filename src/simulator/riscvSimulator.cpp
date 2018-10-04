@@ -41,7 +41,7 @@ int RiscvSimulator::doSimulation(int nbkCycle){
 	do{
 		this->doStep();
 	}
-	while (stop != 1 && n_inst<nbkCycle*1000);
+	while (stop != 1 && this->cycle<20000000000);
 
 	if (this->stop)
 		return 0;
