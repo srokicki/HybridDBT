@@ -192,7 +192,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 	bool needToInsert = false;
 	if (readInt(platform->vliwBinaries, 16*basicBlockStart-12) != 0 || readInt(platform->vliwBinaries, 16*basicBlockStart-8) != 0){
-		basicBlockStart++;
+		basicBlockStart+=incrementInBinaries;
 		needToInsert = true;
 	}
 
@@ -200,11 +200,18 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	if (basicBlockStart + binaSize < basicBlockEnd){
 
 		if (needToInsert){
-			writeInt(platform->vliwBinaries, basicBlockStart*16+0, 0);
-			writeInt(platform->vliwBinaries, basicBlockStart*16+4, 0);
-			writeInt(platform->vliwBinaries, basicBlockStart*16+8, 0);
-			writeInt(platform->vliwBinaries, basicBlockStart*16+12, 0);
+			writeInt(platform->vliwBinaries, basicBlockStart*16+0-16, 0);
+			writeInt(platform->vliwBinaries, basicBlockStart*16+4-16, 0);
+			writeInt(platform->vliwBinaries, basicBlockStart*16+8-16, 0);
+			writeInt(platform->vliwBinaries, basicBlockStart*16+12-16, 0);
+			if (platform->vliwInitialIssueWidth > 4){
+				writeInt(platform->vliwBinaries, basicBlockStart*16+0-32, 0);
+				writeInt(platform->vliwBinaries, basicBlockStart*16+4-32, 0);
+				writeInt(platform->vliwBinaries, basicBlockStart*16+8-32, 0);
+				writeInt(platform->vliwBinaries, basicBlockStart*16+12-32, 0);
+			}
 		}
+
 
 		memcpy(&platform->vliwBinaries[4*basicBlockStart], &platform->vliwBinaries[4*placeCode], (binaSize+1)*4*sizeof(unsigned int));
 

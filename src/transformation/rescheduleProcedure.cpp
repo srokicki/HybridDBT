@@ -519,7 +519,7 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
 	Log::printf(LOG_SCHEDULE_PROC,"****                 In place block reschedule !                    *****\n");
 
-	for (int i=block->vliwStartAddress-10;i<block->vliwEndAddress+10;i++){
+	for (int i=block->vliwStartAddress-20;i<block->vliwEndAddress+20;i++){
 		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
 		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
 		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
@@ -597,6 +597,20 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 		}
 
 
+		//We handle speculation information if necessary
+#ifndef __HW
+#ifndef __SW
+		for (int oneSpec = 0; oneSpec<4; oneSpec++){
+			if (block->specAddr[oneSpec] != 0){
+				platform->specInfo[8*block->specAddr[oneSpec]+2] = readInt(maskVal, oneSpec*16+12);
+				platform->specInfo[8*block->specAddr[oneSpec]+3] = readInt(maskVal, oneSpec*16+8);
+				platform->specInfo[8*block->specAddr[oneSpec]+4] = readInt(maskVal, oneSpec*16+4);
+				platform->specInfo[8*block->specAddr[oneSpec]+5] = readInt(maskVal, oneSpec*16);
+
+			}
+		}
+#endif
+#endif
 
 		/*****************************************************************
 		 *	Control Flow Correction
@@ -657,8 +671,8 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
 	Log::printf(LOG_SCHEDULE_PROC,"****                 In place block reschedule !                    *****\n");
 
-	for (int i=block->vliwStartAddress-10;i<block->vliwEndAddress+10;i++){
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
+	for (int i=block->vliwStartAddress-20;i<block->vliwEndAddress+20;i++){
+		Log::printf(LOG_SCHEDULE_PROC,"%d %s ", 4*i,printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
 		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
 		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
 		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());

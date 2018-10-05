@@ -266,10 +266,10 @@ int LoadQueueVexSimulator::doStep(){
 	ftoDC3.instruction = (this->unitActivation[1] & (this->mask[61] | !this->rollback)) ? instructions[2] : nopInstr;
 	ftoDC4.instruction = (this->unitActivation[1] & (this->mask[60] | !this->rollback)) ? instructions[3] : nopInstr;
 
-	ftoDC5.instruction = this->unitActivation[4] ? instructions[4] : nopInstr;
-	ftoDC6.instruction = this->unitActivation[5] ? (this->muxValues[0] ? instructions[1] : instructions[5]) : nopInstr;
-	ftoDC7.instruction = this->unitActivation[6] ? (this->muxValues[1] ? instructions[2] : instructions[6]) : nopInstr;
-	ftoDC8.instruction = this->unitActivation[7] ? (this->muxValues[2] ? instructions[3] : instructions[7]) : nopInstr;
+	ftoDC5.instruction = (this->unitActivation[4] & (this->mask[59] | !this->rollback)) ? instructions[4] : nopInstr;
+	ftoDC6.instruction = (this->unitActivation[5] & (this->mask[58] | !this->rollback)) ? (this->muxValues[0] ? instructions[1] : instructions[5]) : nopInstr;
+	ftoDC7.instruction = (this->unitActivation[6] & (this->mask[57] | !this->rollback)) ? (this->muxValues[1] ? instructions[2] : instructions[6]) : nopInstr;
+	ftoDC8.instruction = (this->unitActivation[7] & (this->mask[56] | !this->rollback)) ? (this->muxValues[2] ? instructions[3] : instructions[7]) : nopInstr;
 
 
 	ftoDC1.pc = PC;
@@ -329,7 +329,7 @@ int LoadQueueVexSimulator::doStep(){
 			rollBackPoint = 0;
 
 			while (mask != 0 && this->mask.slc<4>(60) == 0){
-				this->mask = this->mask<<4;
+				this->mask = this->mask<<(issueWidth>4?8:4);
 			}
 
 			this->ftoDC1.instruction = 0;
@@ -369,14 +369,14 @@ int LoadQueueVexSimulator::doStep(){
 			this->memtoWB8.WBena = 0;
 
 		}
-		else if (NEXT_PC != PC + 4 || PC == endRollback){
+		else if ((this->issueWidth <= 4 && NEXT_PC != PC + 4) || (this->issueWidth > 4 && NEXT_PC != PC + 8) || PC == endRollback){
 			rollback = 0;
 			mask = 0;
 			PC = NEXT_PC;
 
 		}
 		else{
-			mask = mask<<4;
+			mask = mask<<(issueWidth>4?8:4);
 			PC = NEXT_PC;
 
 		}

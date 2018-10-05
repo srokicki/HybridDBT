@@ -23,7 +23,7 @@ public:
 	ac_int<64, false> rollBackPoint;
 	ac_int<1, false> rollback;
 	ac_int<64, false> endRollback;
-	ac_int<64, false> mask;
+	ac_int<128, false> mask;
 
 	LoadQueueVexSimulator(unsigned int *instructionMemory, unsigned int *specData);
 	~LoadQueueVexSimulator(void);
