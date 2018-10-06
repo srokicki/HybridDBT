@@ -191,7 +191,15 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	// Even if it is inefficient it will be solved at next opt level (procedure opt)
 
 	bool needToInsert = false;
-	if (readInt(platform->vliwBinaries, 16*basicBlockStart-12) != 0 || readInt(platform->vliwBinaries, 16*basicBlockStart-8) != 0){
+	if ((platform->vliwInitialIssueWidth <= 4 &&
+				(readInt(platform->vliwBinaries, 16*basicBlockStart-12) != 0
+				|| readInt(platform->vliwBinaries, 16*basicBlockStart-8) != 0))
+
+		|| (platform->vliwInitialIssueWidth>4 &&
+				(readInt(platform->vliwBinaries, 16*basicBlockStart-16-12) != 0
+				|| readInt(platform->vliwBinaries, 16*basicBlockStart-16-8) != 0
+				|| readInt(platform->vliwBinaries, 16*basicBlockStart-12) != 0
+				|| readInt(platform->vliwBinaries, 16*basicBlockStart-8) != 0))){
 		basicBlockStart+=incrementInBinaries;
 		needToInsert = true;
 	}
