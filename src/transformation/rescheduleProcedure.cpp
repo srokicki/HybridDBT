@@ -164,20 +164,13 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 		if ((isReturnBlock || isCallBlock) && readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1] + 16*incrementInBinaries) != 0){
 
-//			if (((readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 16*incrementInBinaries)>>20) & 0x3f) == 33){
-//				std::cerr << printDecodedInstr(readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 16*incrementInBinaries))<<"\n";
-//
-//				writeInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 2*16*incrementInBinaries, 0);
-//				writeInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress, readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 2*16*incrementInBinaries));
-//
-//
-//			}
-//			else{
 				//We need room for the reconf instruction, we add two lines at the end. TODO: this should be done only when reconf is activated
 				writeInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1] + 16*2*incrementInBinaries, readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1]));
+				writeInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1], 0);
 				result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1]+=2;
 				result->blocks[oneBlock]->vliwEndAddress += 2*incrementInBinaries;
 				binaSize += 2*incrementInBinaries;
+				fprintf(stderr, "correcting the end\n");
 //			}
 
 			if (readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 16*incrementInBinaries) != 0){
@@ -186,6 +179,18 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 			}
 
 		}
+
+		//Making room for reconf instr when we face an indirect jump.
+		//Indirect jumps are weird : the block is marked as having not succ and no jump (consequently we cannot use jumpPlace)
+		if ((block->nbJumps == 0 && block->nbSucc == 0) && readInt(platform->vliwBinaries, 16*block->vliwEndAddress -16*incrementInBinaries) != 0){
+			writeInt(platform->vliwBinaries, 16*block->vliwEndAddress,
+					readInt(platform->vliwBinaries, 16*block->vliwEndAddress -16*2*incrementInBinaries));
+			writeInt(platform->vliwBinaries, 16*block->vliwEndAddress -16*2*incrementInBinaries, 0);
+			result->blocks[oneBlock]->vliwEndAddress += 2*incrementInBinaries;
+			binaSize += 2*incrementInBinaries;
+		}
+
+
 
 		//We handle speculation information if necessary
 #ifndef __HW
