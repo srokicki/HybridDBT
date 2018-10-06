@@ -170,7 +170,6 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 				result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1]+=2;
 				result->blocks[oneBlock]->vliwEndAddress += 2*incrementInBinaries;
 				binaSize += 2*incrementInBinaries;
-				fprintf(stderr, "correcting the end\n");
 //			}
 
 			if (readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 16*incrementInBinaries) != 0){
