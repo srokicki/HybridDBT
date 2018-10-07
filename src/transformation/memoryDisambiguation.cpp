@@ -385,7 +385,6 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
 			}
 		}
 		else{
-			fprintf(stderr, "Will Shift blocks:\n");
 			for (int i=0; i<block->nbInstr; i++){
 				Log::printf(4, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
 			}
@@ -394,17 +393,10 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
 				graph->idMem[oneMemOperation] += 1;
 			}
 			write128(block->instructions, 0, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_INIT, 256, speculationCounter, 1, currentSpecId, 0, 0));
-			fprintf(stderr, "\n\n");
 			for (int i=0; i<block->nbInstr; i++){
 				Log::printf(4, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
 			}
-			for (int oneJump=0; oneJump<block->nbJumps; oneJump++){
-				fprintf(stderr, "Instr %d is a jump\n", block->jumpIds[oneJump]);
-			}
-			for (int oneMem=0; oneMem<graph->size; oneMem++){
-				fprintf(stderr, "Instr %d is a mem\n", graph->idMem[oneMem]);
-			}
-			fprintf(stderr, "\n");
+
 
 		}
 

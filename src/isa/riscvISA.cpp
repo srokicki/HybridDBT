@@ -175,7 +175,7 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction){
 		stream << "SYSTEM";
 	break;
 	default:
-		fprintf(stderr,"??? ", (int) oneInstruction);
+		stream << "??? ";
 	break;
 	}
 
