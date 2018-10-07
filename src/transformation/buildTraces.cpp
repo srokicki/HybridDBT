@@ -150,7 +150,6 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 	int sizeOfResult = block->nbInstr + unrollingFactor*(block->nbInstr + nbIgnore) + block->nbInstr;
 
 	IRBlock *result = new IRBlock(0,0,0);
-	fprintf(stderr, "Malloc size %d\n", sizeOfResult);
 	result->instructions = (unsigned int*) malloc(sizeOfResult*4*sizeof(unsigned int));
 	result->nbSucc = 0;
 
@@ -407,9 +406,7 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 			int firstAvailable = 256+34;
 			for (int oneReg = 1; oneReg <64; oneReg++){
 				if (lastWriteReg[oneReg]>=0){
-					fprintf(stderr, "%d is written\n", oneReg);
 					if (outputRegsToIgnore[oneReg]){
-						fprintf(stderr, "test\n");
 						//We are authorized to ignore this register which is only alive if we are in the last iteration
 						setAlloc(result->instructions, lastWriteReg[oneReg], 1);
 						setDestinationRegister(result->instructions, lastWriteReg[oneReg], firstAvailable);
@@ -429,7 +426,6 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 			for (int oneReg=0; oneReg<128; oneReg++){
 				if (outputRegsToIgnore[oneReg]){
 
-					fprintf(stderr, "Correcting loop regalloc of %d   %d\n", outputRegsToIgnore[oneReg], oneReg);
 					write128(result->instructions, result->nbInstr*16, assembleRBytecodeInstruction(2, 0, VEX_ADD, lastWriteReg[oneReg], 256, 256+oneReg, 0));
 					addDataDep(result->instructions, lastWriteReg[oneReg], result->nbInstr);
 					addControlDep(result->instructions, block->jumpIds[0], indexOfSecondJump);
@@ -481,7 +477,6 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 		Log::printf(LOG_SCHEDULE_PROC, " (instr %d, dest %d) ", oneSuccessor<result->nbJumps ? result->jumpIds[oneSuccessor] : -1 , result->successors[oneSuccessor]->sourceStartAddress);
 
 
-	fprintf(stderr, "Block size is %d\n", result->nbInstr);
 	return result;
 
 
@@ -1049,7 +1044,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 					int nbIgnoredRegs = 0;
 
 					for (int oneReg = 0; oneReg<128; oneReg++){
-						fprintf(stderr, "for %d : %d %d\n", oneReg, readRegs[oneReg],writeRegs[oneReg]);
 						if (writeRegs[oneReg] && readRegs[oneReg])
 							writeRegs[oneReg] = 0;
 						else if (writeRegs[oneReg] && !readRegs[oneReg]){
