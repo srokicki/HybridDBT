@@ -478,7 +478,7 @@ int main(int argc, char *argv[])
 
 	//HW version
 	dbtPlateform.vexSimulator->cycle = 1000;
-	runStatus = run(&dbtPlateform, size);
+	runStatus = run(&dbtPlateform, dbtPlateform.optimizationCycles);
 
 	int profileGap = 32;
 
