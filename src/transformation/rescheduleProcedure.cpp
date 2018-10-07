@@ -608,6 +608,7 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 #ifndef __SW
 		for (int oneSpec = 0; oneSpec<4; oneSpec++){
 			if (block->specAddr[oneSpec] != 0){
+				Log::fprintf(LOG_SCHEDULE_PROC, stderr, "Mask is %llx %llx\n", (unsigned long long int ) maskVal[oneSpec].slc<64>(64),(unsigned long long int ) maskVal[oneSpec].slc<64>(0) );
 				platform->specInfo[8*block->specAddr[oneSpec]+2] = readInt(maskVal, oneSpec*16+12);
 				platform->specInfo[8*block->specAddr[oneSpec]+3] = readInt(maskVal, oneSpec*16+8);
 				platform->specInfo[8*block->specAddr[oneSpec]+4] = readInt(maskVal, oneSpec*16+4);

@@ -602,11 +602,13 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 				}
 
 				for (int oneBit = 0; oneBit<4; oneBit++){
-					if (issue_width <= 4 && mask_spec[oneBit][off] && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]) {
+					if (issue_width <= 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]) {
 						maskVal[oneBit] = (maskVal[oneBit]<<4) + mask_spec[oneBit][off];
+						mask_spec[oneBit][off] = 0;
 					}
-					else if (issue_width > 4 && mask_spec[oneBit][off] && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]){
+					else if (issue_width > 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]){
 						maskVal[oneBit] = (maskVal[oneBit]<<8) + mask_spec[oneBit][off];
+						mask_spec[oneBit][off] = 0;
 
 					}
 
@@ -731,10 +733,10 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		}
 
 		for (int oneBit = 0; oneBit<4; oneBit++){
-			if (issue_width <= 4 && mask_spec[oneBit][off] && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]) {
+			if (issue_width <= 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]) {
 				maskVal[oneBit] = (maskVal[oneBit]<<4) + mask_spec[oneBit][off];
 			}
-			else if (issue_width > 4 && mask_spec[oneBit][off] && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]){
+			else if (issue_width > 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]){
 				maskVal[oneBit] = (maskVal[oneBit]<<8) + mask_spec[oneBit][off];
 
 			}
