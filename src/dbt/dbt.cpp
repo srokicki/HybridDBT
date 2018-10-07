@@ -182,6 +182,7 @@ int main(int argc, char *argv[])
 	int STATMODE = cfg.has("statmode") ? std::stoi(cfg["statmode"]) : 0;
 
 	float coef = cfg.has("coef") ? ((float) (std::stoi(cfg["coef"])))/100 : 0;
+
 	Log::Init(VERBOSE, STATMODE);
 
 	int OPTLEVEL = cfg.has("O") ? std::stoi(cfg["O"]) : 2;
@@ -527,7 +528,7 @@ int main(int argc, char *argv[])
 						if (procedure->configurationScores[configuration] > procedure->configurationScores[maxConf])
 							if (-coef*energy + (1-coef)*score > bestScore){
 								maxConf = configuration;
-								bestScore = -coef*energy + (100-coef)*score;
+								bestScore = -coef*energy + (1-coef)*score;
 							}
 
 					}

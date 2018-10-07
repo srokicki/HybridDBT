@@ -90,6 +90,14 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 			char opcode = getOpcode(block->instructions, block->jumpIds[block->nbJumps-1]);
 			isCallBlock = opcode == VEX_CALL || opcode == VEX_CALLR;
 			isReturnBlock = opcode == VEX_GOTOR;
+			if (opcode == VEX_GOTO){
+				int imm = 0;
+				bool hasImm = getImmediateValue(block->instructions, block->jumpIds[block->nbJumps-1], &imm);
+				if (hasImm && imm == 4){
+					isReturnBlock = true;
+				}
+			}
+
 
 		}
 
@@ -143,6 +151,7 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 		}
 
+
 		for (int i=result->blocks[oneBlock]->vliwStartAddress;i<result->blocks[oneBlock]->vliwEndAddress;i++){
 			Log::printf(LOG_SCHEDULE_PROC,"%d ", i);
 
@@ -181,13 +190,7 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 		//Making room for reconf instr when we face an indirect jump.
 		//Indirect jumps are weird : the block is marked as having not succ and no jump (consequently we cannot use jumpPlace)
-		if ((block->nbJumps == 0 && block->nbSucc == 0) && readInt(platform->vliwBinaries, 16*block->vliwEndAddress -16*incrementInBinaries) != 0){
-			writeInt(platform->vliwBinaries, 16*block->vliwEndAddress,
-					readInt(platform->vliwBinaries, 16*block->vliwEndAddress -16*2*incrementInBinaries));
-			writeInt(platform->vliwBinaries, 16*block->vliwEndAddress -16*2*incrementInBinaries, 0);
-			result->blocks[oneBlock]->vliwEndAddress += 2*incrementInBinaries;
-			binaSize += 2*incrementInBinaries;
-		}
+
 
 
 
@@ -268,7 +271,6 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 		for (int oneJump = 0; oneJump<block->nbJumps; oneJump++){
 			char jumpOpcode = getOpcode(block->instructions, block->jumpIds[oneJump]);
-
 			if (jumpOpcode == VEX_BR || jumpOpcode == VEX_BRF || jumpOpcode == VEX_BGE || jumpOpcode == VEX_BLT || jumpOpcode == VEX_BGEU || jumpOpcode == VEX_BLTU){
 				//Conditional block (br)
 				int offset = (block->successors[oneJump]->vliwStartAddress - block->jumpPlaces[oneJump]);
@@ -276,10 +278,11 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfff0007f) | ((offset & 0x1fff) << 7));
 			}
 			else if (jumpOpcode == VEX_GOTO){
-					int dest = block->successors[oneJump]->vliwStartAddress;
-					unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
-					writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
-
+					if (block->nbSucc > oneJump){
+						int dest = block->successors[oneJump]->vliwStartAddress;
+						unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
+						writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
+					}
 
 			}
 			else if (jumpOpcode != VEX_CALL && jumpOpcode != VEX_CALLR && jumpOpcode != VEX_GOTOR){
@@ -378,6 +381,13 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 			char opcode = getOpcode(block->instructions, block->jumpIds[block->nbJumps-1]);
 			isCallBlock = opcode == VEX_CALL || opcode == VEX_CALLR;
 			isReturnBlock = opcode == VEX_GOTOR;
+			if (opcode == VEX_GOTO){
+				int imm = 0;
+				bool hasImm = getImmediateValue(block->instructions, block->jumpIds[block->nbJumps-1], &imm);
+				if (hasImm && imm == 4){
+					isReturnBlock = true;
+				}
+			}
 		}
 
 		if (block->nbJumps == 0 && block->nbSucc == 0){
@@ -405,14 +415,6 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 		}
 
-		if (isIndirectJump){
-			if (readInt(platform->vliwBinaries, 16*block->vliwEndAddress -16*incrementInBinaries) == 0)
-				writeInt(platform->vliwBinaries, 16*block->vliwEndAddress -16*incrementInBinaries, getReconfigurationInstruction(platform->vliwInitialConfiguration));
-			else{
-				Log::printf(LOG_ERROR,"Failing when inserting reconfs at the end of a procedure when indirect branch...\nExiting...");
-				exit(-1);
-			}
-		}
 
 
 
