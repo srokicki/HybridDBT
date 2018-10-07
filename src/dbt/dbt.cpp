@@ -618,7 +618,6 @@ int main(int argc, char *argv[])
 			char configuration = validConfigurations[oneConfiguration];
 			float score = procedure->configurationScores[configuration];
 			float energy = (score * getPowerConsumption(configuration))/10;
-			fprintf(stderr, "for conf %d   - %f %f\n", configuration, score, energy);
 			bool isPareto = true;
 
 			for (int oneOtherConf = 0; oneOtherConf<12; oneOtherConf++){
