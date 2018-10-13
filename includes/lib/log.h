@@ -19,7 +19,8 @@
 //Values for statistics
 
 //Stats on PLSQ
-extern unsigned int plsq_checks, plsq_positive,plsq_false_positive, spec_loop_counter, spec_trace_counter, cache_l1_miss, cache_l2_miss;
+extern unsigned int plsq_checks, plsq_positive,plsq_false_positive, spec_loop_counter, spec_trace_counter,
+cache_l1_miss, cache_l2_miss, memory_accesses;
 extern unsigned short bitDifferentiation[64];
 
 
@@ -175,6 +176,7 @@ static void printStat(DBTPlateform *platform, IRApplication *application){
 
 		Log::fprintf(0, stdout, "\t -----------------------------------------------------\n");
 		Log::fprintf(0, stdout, "\t Stats for the Cache\n");
+		Log::fprintf(0, stdout, "\t\t Number of memory accesses: %d\n", memory_accesses);
 		Log::fprintf(0, stdout, "\t\t Number of l1 miss: %d\n", cache_l1_miss);
 		Log::fprintf(0, stdout, "\t\t Number of l2 miss: %d\n", cache_l2_miss);
 

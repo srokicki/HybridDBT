@@ -1,5 +1,6 @@
 #include <simulator/loadQueueVexSimulator.h>
 #include <isa/vexISA.h>
+#include <lib/log.h>
 
 
 ac_int<64, true> LoadQueueVexSimulator::lddSpec(ac_int<64, false> addr, unsigned char specId){
@@ -53,6 +54,8 @@ void LoadQueueVexSimulator::doMem(ExtoMem extoMem, MemtoWB *memtoWB){
 
 	//If instruction is speculative, we check the LSQ before
 	if (((extoMem.opCode >> 4) == 0x1 || extoMem.opCode == VEX_FLW || extoMem.opCode == VEX_FSW) && extoMem.isSpec){
+
+		memory_accesses++;
 
 		if (extoMem.opCode == VEX_SPEC_RST){
 			clear = 1;
