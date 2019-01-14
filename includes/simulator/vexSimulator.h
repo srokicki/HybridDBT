@@ -42,6 +42,9 @@
 
 struct FtoDC {
 	ac_int<64, false> instruction; //Instruction to execute
+	ac_int<64, false> pc;
+	ac_int<1, false> isRollback;
+
 };
 
 struct DCtoEx {
@@ -53,7 +56,9 @@ struct DCtoEx {
 	ac_int<64, true> memValue; //Second data, from register file or immediate value
 	float floatRes, floatValueA, floatValueB, floatValueC;
 	ac_int<5, false> funct;
-
+	ac_int<1, false> isSpec;
+	ac_int<64, false> pc;
+	ac_int<1, false> isRollback;
 };
 
 struct ExtoMem {
@@ -65,6 +70,10 @@ struct ExtoMem {
 	ac_int<64, true> memValue; //Second data, from register file or immediate value
 	float floatRes;
 	ac_int<1, false> isFloat;
+	ac_int<1, false> isSpec;
+	ac_int<5, false> funct;
+	ac_int<64, false> pc;
+	ac_int<1, false> isRollback;
 
 };
 
@@ -74,6 +83,7 @@ struct MemtoWB {
 	ac_int<1, false> WBena;		//Is a WB is needed ?
 	float floatRes;
 	ac_int<1, false> isFloat;
+	ac_int<64, false> pc;
 };
 
 
@@ -87,7 +97,7 @@ struct MemtoWB {
 class VexSimulator : public GenericSimulator {
 	public:
 
-	int typeInstr[230000];
+	int typeInstr[450000];
 	int nbCycleType[4] = {0,0,0,0};
 
 	//Instruction memory is a 128-bit memory
@@ -148,18 +158,17 @@ class VexSimulator : public GenericSimulator {
 
 
 
-	private:
+	protected:
 
 	//Different parts of the execution
-	void doWB(struct MemtoWB memtoWB);
-	void doMemNoMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB);
-	void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB);
-	void doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem);
-	void doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem);
-	void doExMem(struct DCtoEx dctoEx, struct ExtoMem *extoMem);
-	void doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
-	void doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
-	void doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
+	virtual void doWB(struct MemtoWB memtoWB);
+	virtual void doMemNoMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB);
+	virtual void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB);
+	virtual void doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem);
+	virtual void doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem);
+	virtual void doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
+	virtual void doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
+	virtual void doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
 
 
 	struct MemtoWB memtoWB1;	struct MemtoWB memtoWB2;	struct MemtoWB memtoWB3;	struct MemtoWB memtoWB4;	struct MemtoWB memtoWB5; 	struct MemtoWB memtoWB6;	struct MemtoWB memtoWB7;	struct MemtoWB memtoWB8;

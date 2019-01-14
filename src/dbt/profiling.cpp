@@ -43,7 +43,7 @@ unsigned int Profiler::insertProfilingProcedure(int start, unsigned int startAdd
 	//		| 				 | r35 = ldw 0(r34) 	| 					|
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, 0);
-	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction_sw(VEX_LDW, 35, 34, 0));
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleMemoryInstruction_sw(VEX_LDW, 35, 34, 0, false, 0));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 
@@ -57,7 +57,7 @@ unsigned int Profiler::insertProfilingProcedure(int start, unsigned int startAdd
 	//		|				 | r35 = ldw 0(r34) 	|					| offset = offset<<24
 	cycle++;
 	writeInt(platform->vliwBinaries, cycle*16+0, 0);
-	writeInt(platform->vliwBinaries, cycle*16+4, assembleRiInstruction_sw(VEX_STW, 35, 34, 0));
+	writeInt(platform->vliwBinaries, cycle*16+4, assembleMemoryInstruction_sw(VEX_STW, 35, 34, 0, false, 0));
 	writeInt(platform->vliwBinaries, cycle*16+8, 0);
 	writeInt(platform->vliwBinaries, cycle*16+12, 0);
 
@@ -80,7 +80,7 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 			//We now place the profile instr
 			if (instr64 == 0){
 				//We found a place
-				unsigned int instr = assembleRiInstruction_sw(VEX_PROFILE,0,0, numberProfiledBlocks);
+				unsigned int instr = assembleMemoryInstruction_sw(VEX_PROFILE,0,0, numberProfiledBlocks, false, 0);
 				writeInt(this->platform->vliwBinaries, oneInstruction*16+4, instr);
 				successfullInsertion = 1;
 				break;

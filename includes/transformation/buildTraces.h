@@ -9,7 +9,7 @@
 #define INCLUDES_TRANSFORMATION_BUILDTRACES_H_
 
 
-void buildTraces(DBTPlateform *platform, IRProcedure *procedure);
-void memoryDisambiguation(DBTPlateform *platform, IRBlock *block);
+void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel);
+void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock **predecessors, int nbPred);
 
 #endif /* INCLUDES_TRANSFORMATION_BUILDTRACES_H_ */

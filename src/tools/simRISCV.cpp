@@ -27,7 +27,6 @@ int main(int argc, char* argv[]){
 	int HELP = 0;
 	char* binaryFile = NULL;
 	char* ARGUMENTS = NULL;
-	printf("%s\n", argv[3]);
 	FILE** inStreams = (FILE**) malloc(10*sizeof(FILE*));
 	FILE** outStreams = (FILE**) malloc(10*sizeof(FILE*));
 
@@ -69,7 +68,6 @@ int main(int argc, char* argv[]){
 		abort ();
 	  }
 
-	printf("%s\n", ARGUMENTS);
 
 
 	int localArgc;
@@ -109,7 +107,6 @@ int main(int argc, char* argv[]){
 		index = 0;
 		for (int oneArg = 0; oneArg<count+1; oneArg++){
 			localArgv[oneArg] = &(tempArg[index]);
-			printf("Arg was %s\n", localArgv[oneArg]);
 			while (tempArg[index] != 0){
 				index++;
 			}
@@ -121,7 +118,6 @@ int main(int argc, char* argv[]){
 		localArgc = count + 1;
 	}
 
-	printf("There is %d arguments passed to simulator\n", localArgc);
 
 	if (HELP || binaryFile == NULL){
 		printf("Usage is %s [-v] file\n\t-v\tVerbose mode, prints all execution information\n", argv[0]);
@@ -174,9 +170,10 @@ int main(int argc, char* argv[]){
 	int error = simulator->doSimulation(50000000);
 
 	if (error){
+		fprintf(stdout,"Simulation finished ! \n\t Number of cycles: 0 \n\t Number of instruction executed: 0\n", simulator->cycle, simulator->n_inst);
 
 	}
 	else{
-		fprintf(stderr,"Simulation finished in %d cycles, executing %d instructions\n", simulator->cycle, simulator->n_inst);
+		fprintf(stdout,"Simulation finished ! \n\t Number of cycles: %d \n\t Number of instruction executed: %d\n", simulator->cycle, simulator->n_inst);
 	}
 }

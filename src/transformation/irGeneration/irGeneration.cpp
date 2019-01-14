@@ -38,11 +38,15 @@ unsigned int irGenerator(DBTPlateform *platform,
 		unsigned int globalVariableCounter){
 
 	//Modelization of optimization time : here we need 6 cycles to generate IR for one instruction
-//	platform->optimizationCycles += blockSize*889;
-//	platform->optimizationEnergy += ((int)blockSize)*5*3.22f;
+	if (platform->dbtType == DBT_TYPE_HW){
+		platform->optimizationCycles += blockSize*6;
+		platform->optimizationEnergy += ((int)blockSize)*6*11.47f;
+	}
+	else{
+		platform->optimizationCycles += blockSize*889;
+		platform->optimizationEnergy += ((int)blockSize)*889*14.48f;
+	}
 
-	platform->optimizationCycles += blockSize*6;
-	platform->optimizationEnergy += ((int)blockSize)*215;
 
 
 	#ifdef __SW_HW_SIM

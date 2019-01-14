@@ -101,6 +101,8 @@ public:
 	int section;
 	IRBlock** placeInProfiler;
 
+	short specAddr[4];
+
 	void addJump(unsigned char jumpID, unsigned int jumpPlace);
 
 	IRBlock(int startAddress, int endAddress, int section);
@@ -123,10 +125,11 @@ public:
 #define IRBLOCK_STATE_PROFILED 1
 #define IRBLOCK_STATE_SCHEDULED 2
 #define IRBLOCK_PROC 3
-#define IRBLOCK_UNROLLED 4
+#define IRBLOCK_PERFECT_LOOP 4
+#define IRBLOCK_UNROLLED 5
 
 
-#define IRBLOCK_STATE_RECONF 5
+#define IRBLOCK_STATE_RECONF 6
 
 class IRApplication{
 public:
@@ -136,6 +139,8 @@ public:
 
 	IRProcedure** procedures;
 	int numberProcedures;
+	int numberInstructions;
+
 
 	void addBlock(IRBlock *block, int sectionNumber);
 	void addProcedure(IRProcedure *procedure);
@@ -167,6 +172,9 @@ struct uint128_struct assembleRiBytecodeInstruction(char stageCode, char isAlloc
 		char opcode, short regA, short imm13, short regDest, unsigned char nbDep);
 struct uint128_struct assembleIBytecodeInstruction(char stageCode, char isAlloc,
 		char opcode, short reg, int imm19, unsigned char nbDep);
+struct uint128_struct assembleMemoryBytecodeInstruction(char stageCode, char isAlloc,
+		char opcode, short regA, short imm12, bool isSpec, char specId,
+		short regDest, unsigned char nbDep);
 
 
 #ifndef __SW
@@ -212,6 +220,9 @@ short getDestinationRegister(unsigned int *bytecode, unsigned char index);
 char getOperands(unsigned int *bytecode, unsigned char index, short result[2]);
 void setOperands(unsigned int *bytecode, unsigned char index, short operands[2]);
 
+void setImmediateValue(unsigned int *bytecode, unsigned char index, int value);
+bool getImmediateValue(unsigned int *bytecode, unsigned char index, int* result);
+
 char getOpcode(unsigned int *bytecode, unsigned char index);
 void setOpcode(unsigned int *bytecode, unsigned char index, char newOpcode);
 
@@ -220,11 +231,13 @@ void setAlloc(unsigned int *bytecode, unsigned char index, char newAlloc);
 void addDataDep(unsigned int *bytecode, unsigned char index, unsigned char successor);
 void addControlDep(unsigned int *bytecode, unsigned char index, unsigned char successor);
 void clearControlDep(unsigned int *ir, unsigned char index);
+char getControlDep(unsigned int *ir, unsigned char index, unsigned char *result);
 void addOffsetToDep(unsigned int *bytecode, unsigned char index, unsigned char offset);
 char getStageCode(unsigned int *bytecode, unsigned char index);
 
 int getNbInstr(IRProcedure *procedure);
 int getNbInstr(IRProcedure *procedure, int type);
+void shiftBlock(IRBlock *block, char value);
 
 /********************************************************************
  * Declaration of stage codes

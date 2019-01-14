@@ -213,13 +213,13 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	write128(platform->bytecode, nbInstr*16, assembleRBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_SUB, 2, 1,  256+34, 0)); //3
 	nbInstr++;
 
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 3, -8,  256+35, 0)); //4
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 3, -8, false, 0,  256+35, 0)); //4
 	nbInstr++;
 
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 3, -16,  256+36, 0)); //5
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 3, -16, false, 0, 256+36, 0)); //5
 	nbInstr++;
 
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 3, -8, 256+33, 0)); //6
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 3, -8, false, 0, 256+33, 0)); //6
 	nbInstr++;
 
 	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_CONTROL, 0, VEX_BRF, 4, increment*3, 256+33, 0)); //7
@@ -296,21 +296,21 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 
 	nbInstr = 0;
 
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -8, 256+offset_start, 0)); //0
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -8,  false, 0, 256+offset_start, 0)); //0
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -16, 256+init_start, 0)); //1
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -16,  false, 0, 256+init_start, 0)); //1
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -24, 256+value, 0)); //2
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -24,  false, 0, 256+value, 0)); //2
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -32, 256+size, 0)); //3
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -32,  false, 0, 256+size, 0)); //3
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -40, 256+tmp1, 0)); //4
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -40,  false, 0, 256+tmp1, 0)); //4
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -48, 256+tmp2, 0)); //5
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -48,  false, 0, 256+tmp2, 0)); //5
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -56, 256+test1, 0)); //6
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -56, false, 0, 256+test1, 0)); //6
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -64, 256+test2, 0)); //7
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+2, -64, false, 0, 256+test2, 0)); //7
 	nbInstr++;
 	write128(platform->bytecode, nbInstr*16, assembleIBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_MOVI, 256+offset_start, startAddress, 0)); //8
 	nbInstr++;
@@ -328,7 +328,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	nbInstr++;
 	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_ANDi, 9, 4095, 256+init_start, 0)); //15
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDW, 14, 4, 256+33, 0)); //16
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDW, 14, 4,  false, 0, 256+33, 0)); //16
 	nbInstr++;
 	write128(platform->bytecode, nbInstr*16, assembleIBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_MOVI, 256+size, MAX_INSERTION_PER_SECTION/2, 0)); //17
 	nbInstr++;
@@ -389,7 +389,7 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	 ********************************************************************************************************/
 
 	nbInstr = 0;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDW, 256+value, 8, 256+value, 0)); //0
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDW, 256+value, 8,  false, 0, 256+value, 0)); //0
 	nbInstr++;
 
 	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_SRAi, 0, increment == 2 ? 1 : 0, 256+value, 0)); //1
@@ -478,27 +478,27 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 	nbInstr++;
 	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_SLLi, 0, 2, 256+33, 0)); //1
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -8, 256+offset_start, 0)); //2
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -8,  false, 0, 256+offset_start, 0)); //2
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -16, 256+init_start, 0)); //3
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -16,  false, 0, 256+init_start, 0)); //3
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -24, 256+value, 0)); //4
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -24,  false, 0, 256+value, 0)); //4
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -32, 256+size, 0)); //5
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -32,  false, 0, 256+size, 0)); //5
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -40, 256+tmp1, 0)); //6
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -40,  false, 0, 256+tmp1, 0)); //6
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -48, 256+tmp2, 0)); //7
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -48,  false, 0, 256+tmp2, 0)); //7
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -56, 256+test1, 0)); //8
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -56,  false, 0, 256+test1, 0)); //8
 	nbInstr++;
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -64, 256+test2, 0)); //9
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_LDD, 256+2, -64,  false, 0, 256+test2, 0)); //9
 
 	nbInstr++;
 	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_ARITH, 0, VEX_ADDi, 256+33, 4*increment, 256+33, 0)); //10
 	nbInstr++;
 
-	write128(platform->bytecode, nbInstr*16, assembleRiBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+34, -16, 1, 0)); //11
+	write128(platform->bytecode, nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_STD, 256+34, -16,  false, 0, 1, 0)); //11
 	nbInstr++;
 
 	write128(platform->bytecode, nbInstr*16, assembleIBytecodeInstruction(STAGE_CODE_CONTROL, 0, VEX_GOTOR, 1, 0, 0)); //12

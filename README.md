@@ -66,7 +66,7 @@ In addition to the DBT framework, we also provided an instruction level simulato
 
 This simulator is built to be compatible with all binaries that the DBT framework may accept. Combined with the DBT framework we can make sure that the translation layer is correct by comparing the two simulations.
 
-###<a name="riscv_compiler"></a> Generating Compatible RISC-V binaries
+### <a name="riscv_compiler"></a> Generating Compatible RISC-V binaries
 
 In order to compile an application and generated RISC-V binaries compatible with the DBT framework, we have to follow the instruction found on the RISC-V web page:
 

@@ -57,6 +57,25 @@ ac_int<32, false> assembleRRInstruction(ac_int<7, false> opcode, ac_int<6, false
 	return result;
 }
 
+ac_int<32, false> assembleMemoryInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<12, false> imm12, ac_int<1, false> isSpec, ac_int<5, false> specID){
+
+	ac_int<32, false> result = 0;
+	result.set_slc(0, opcode);
+	result.set_slc(7, isSpec);
+
+	if (!isSpec){
+		result.set_slc(8, imm12);
+	}
+	else {
+		result.set_slc(8, specID);
+		result.set_slc(13, imm12.slc<7>(0));
+
+	}
+	result.set_slc(20, regDest);
+	result.set_slc(26, regA);
+	return result;
+}
+
 #endif
 #endif
 
@@ -108,6 +127,22 @@ unsigned int assembleRiInstruction_sw(char opcode, char regDest, char regA, shor
 	return result;
 }
 
+unsigned int assembleMemoryInstruction_sw(char opcode, char regDest, char regA, short imm12_7, bool isSpec, char specID){
+	unsigned int result = 0;
+	result += opcode & 0x7f;
+	result += (isSpec ? 1 : 0) << 7;
+	if (!isSpec)
+		result += (imm12_7 & 0xfff) << 8;
+	else{
+		result += (specID & 0x1f) << 8;
+		result += (imm12_7 & 0x7f) << 13;
+	}
+	result += (regDest & 0x3f) << 20;
+	result += (regA & 0x3f) << 26;
+
+	return result;
+}
+
 
 unsigned int assembleRRInstruction_sw(char opcode, char regDest, char regA, char regB, char regC){
 	unsigned int result = 0;
@@ -146,10 +181,15 @@ std::string printDecodedInstr(unsigned int instruction){
 	int IMM19 = (instruction >> 7) & 0x7ffff;
 	short IMM13 = (instruction >> 7) & 0x1fff;
 	short IMM13_signed = (IMM13 > 4095) ? IMM13 - 8192 : IMM13;
+	short IMM12 = (instruction >> 8) & 0xfff;
+	short IMM12_signed = (IMM12 > 2047) ? IMM12 - 4196 : IMM12;
+
 	int funct = (instruction >> 7) & 0x1f;
 	int OP = (instruction & 0x7f);
 	int BEXT = (instruction >> 8) & 0x7;
 	short IMM9 = (instruction >> 11) & 0x1ff;
+	char isSpec = (instruction>>7) & 0x1;
+
 
 	char isIType = (((OP >> 4) & 0x7) == 2) && (OP != VEX_BR) && (OP != VEX_BR) && (OP != VEX_BRF) && (OP != VEX_BGE) && (OP != VEX_BGEU) && (OP != VEX_BLT) && (OP != VEX_BLTU) ;
 	char isImm = ((OP >> 4) & 0x7) == 1 || ((OP >> 4) & 0x7) == 6 || ((OP >> 4) & 0x7) == 7 || (((OP >> 4) & 0x7) == 2);
@@ -159,6 +199,15 @@ std::string printDecodedInstr(unsigned int instruction){
 	stream << opcodeNames[OP];
 	if (OP == VEX_FP){
 			stream << " " << fpNames[funct];
+	}
+	else if (OP>>4 == 0x1){
+		//We are a memory op
+		IMM13 = IMM12;
+		IMM13_signed = IMM12_signed;
+		if (isSpec){
+			stream << " spec " << ((instruction>>7) & 0x1);
+			IMM13_signed = IMM13_signed >> 5;
+		}
 	}
 
 	if (OP == 0){

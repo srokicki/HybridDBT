@@ -9,6 +9,7 @@
 #include <lib/endianness.h>
 #include <simulator/vexSimulator.h>
 #include <simulator/vexTraceSimulator.h>
+#include <simulator/loadQueueVexSimulator.h>
 #include <simulator/riscvSimulator.h>
 
 #include <transformation/irGenerator.h>
@@ -17,6 +18,8 @@
 #include <transformation/reconfigureVLIW.h>
 #include <transformation/buildTraces.h>
 #include <transformation/rescheduleProcedure.h>
+#include <transformation/memoryDisambiguation.h>
+
 #include <lib/debugFunctions.h>
 
 #include <isa/vexISA.h>
@@ -36,21 +39,6 @@
 #endif
 
 
-void printStats(unsigned int size, short* blockBoundaries){
-
-	float numberBlocks = 0;
-
-	for (int oneInstruction = 0; oneInstruction < size; oneInstruction++){
-		if (blockBoundaries[oneInstruction] == 1)
-			numberBlocks++;
-	}
-
-  Log::printf(0, "\n* Statistics on used binaries:\n");
-  Log::printf(0, "* \tThere is %d instructions.\n", size);
-  Log::printf(0, "* \tThere is %d blocks.\n", (int) numberBlocks);
-  Log::printf(0, "* \tBlocks mean size is %f.\n\n", size/numberBlocks);
-
-}
 
 
 int translateOneSection(DBTPlateform &dbtPlateform, unsigned int placeCode, int sourceStartAddress, int sectionStartAddress, int sectionEndAddress){
@@ -193,11 +181,13 @@ int main(int argc, char *argv[])
 	int VERBOSE = cfg.has("v") ? std::stoi(cfg["v"]) : 0;
 	int STATMODE = cfg.has("statmode") ? std::stoi(cfg["statmode"]) : 0;
 
+	float coef = cfg.has("coef") ? ((float) (std::stoi(cfg["coef"])))/100 : 0;
 
 	Log::Init(VERBOSE, STATMODE);
 
 	int OPTLEVEL = cfg.has("O") ? std::stoi(cfg["O"]) : 2;
 	char* binaryFile = cfg.has("f") && !cfg["f"].empty() ? (char*)cfg["f"].c_str() : NULL;
+	int DBT_TYPE = cfg.has("type") ? std::stoi(cfg["type"]) : DBT_TYPE_HW;
 
 	FILE** inStreams = (FILE**) malloc(10*sizeof(FILE*));
 	FILE** outStreams = (FILE**) malloc(10*sizeof(FILE*));
@@ -207,6 +197,8 @@ int main(int argc, char *argv[])
 
 	int MAX_SCHEDULE_COUNT = cfg.has("ms") ? std::stoi(cfg["ms"]) : -1;
 	int MAX_PROC_COUNT = cfg.has("mp") ? std::stoi(cfg["mp"]) : -1;
+	MAX_DISAMB_COUNT = cfg.has("md") ? std::stoi(cfg["md"]) : -1;
+
 
 	if (cfg.has("i"))
 	{
@@ -299,6 +291,7 @@ int main(int argc, char *argv[])
 
 	dbtPlateform.vliwInitialConfiguration = CONFIGURATION;
 	dbtPlateform.vliwInitialIssueWidth = getIssueWidth(dbtPlateform.vliwInitialConfiguration);
+	dbtPlateform.dbtType = DBT_TYPE;
 
 	//Preparation of required memories
 	for (int oneFreeRegister = 33; oneFreeRegister<63; oneFreeRegister++)
@@ -328,7 +321,7 @@ int main(int argc, char *argv[])
   	dbtPlateform.vexSimulator = new VexTraceSimulator(dbtPlateform.vliwBinaries, tracer);
   }
   else
-  	dbtPlateform.vexSimulator = new VexSimulator(dbtPlateform.vliwBinaries);
+  	dbtPlateform.vexSimulator = new LoadQueueVexSimulator(dbtPlateform.vliwBinaries, dbtPlateform.specInfo);
 
 	dbtPlateform.vexSimulator->inStreams = inStreams;
 	dbtPlateform.vexSimulator->nbInStreams = nbInStreams;
@@ -348,6 +341,7 @@ int main(int argc, char *argv[])
 	//We read the binaries
 	readSourceBinaries(binaryFile, code, addressStart, size, pcStart, &dbtPlateform);
 
+
 	if (size > MEMORY_SIZE){
 		Log::printf(LOG_ERROR, "ERROR: Size of source binaries is %d. Current implementation only accept size lower then %d\n", size, MEMORY_SIZE);
 		exit(-1);
@@ -357,7 +351,7 @@ int main(int argc, char *argv[])
 	int numberOfSections = 1 + (size>>10);
 	IRApplication application = IRApplication(numberOfSections);
 	Profiler profiler = Profiler(&dbtPlateform);
-
+	application.numberInstructions = size;
 
 
 
@@ -451,7 +445,6 @@ int main(int argc, char *argv[])
 	}
 
 
-
 	//We also add information on insertions
 	int insertionSize = 65536;
 	int areaCodeStart=1;
@@ -476,7 +469,6 @@ int main(int argc, char *argv[])
 	int runStatus=0;
 	int abortCounter = 0;
 
-	float coef = 0;
 
 	//We modelize the translation time
 
@@ -486,7 +478,9 @@ int main(int argc, char *argv[])
 
 	//HW version
 	dbtPlateform.vexSimulator->cycle = 1000;
-	runStatus = run(&dbtPlateform, size);
+	runStatus = run(&dbtPlateform, dbtPlateform.optimizationCycles);
+
+	int profileGap = 32;
 
 	while (runStatus == 0){
 
@@ -495,7 +489,10 @@ int main(int argc, char *argv[])
 		int oldOptimizationCount = dbtPlateform.optimizationCycles;
 		bool optimizationPerformed = false;
 
-		if (OPTLEVEL >= 3){
+
+		updateSpeculationsStatus(&dbtPlateform, placeCode);
+
+		if (OPTLEVEL >= 5){
 			for (int oneProcedure = 0; oneProcedure < application.numberProcedures; oneProcedure++){
 				IRProcedure *procedure = application.procedures[oneProcedure];
 				if (procedure->state == 0){
@@ -531,7 +528,7 @@ int main(int argc, char *argv[])
 						if (procedure->configurationScores[configuration] > procedure->configurationScores[maxConf])
 							if (-coef*energy + (1-coef)*score > bestScore){
 								maxConf = configuration;
-								bestScore = -coef*energy + (100-coef)*score;
+								bestScore = -coef*energy + (1-coef)*score;
 							}
 
 					}
@@ -548,15 +545,13 @@ int main(int argc, char *argv[])
 			int profileResult = profiler.getProfilingInformation(oneBlock);
 			IRBlock* block = profiler.getBlock(oneBlock);
 
-			if ((MAX_PROC_COUNT==-1 || dbtPlateform.procedureOptCounter < MAX_PROC_COUNT) && block != NULL && OPTLEVEL >= 2 && profileResult >= 1 && (block->blockState == IRBLOCK_STATE_SCHEDULED || block->blockState == IRBLOCK_STATE_PROFILED)){
+			if ((MAX_PROC_COUNT==-1 || dbtPlateform.procedureOptCounter < MAX_PROC_COUNT) && block != NULL && OPTLEVEL >= 2 && profileResult >= 15 && (block->blockState == IRBLOCK_STATE_SCHEDULED || block->blockState == IRBLOCK_STATE_PROFILED)){
 
 				int errorCode = buildAdvancedControlFlow(&dbtPlateform, block, &application);
 				block->blockState = IRBLOCK_PROC;
 
-
 				if (!errorCode){
-					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1]);
-
+					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1], OPTLEVEL);
 					placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
 					dbtPlateform.procedureOptCounter++;
 
@@ -577,14 +572,14 @@ int main(int argc, char *argv[])
 			for (int oneBlock = 0; oneBlock<application.numbersBlockInSections[oneSection]; oneBlock++){
 				IRBlock* block = application.blocksInSections[oneSection][oneBlock];
 
-				if (block != NULL){
-					if ((MAX_SCHEDULE_COUNT==-1 || dbtPlateform.blockScheduleCounter < MAX_SCHEDULE_COUNT) && OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress > 4  && block->blockState < IRBLOCK_STATE_SCHEDULED){
-
+				if (block != NULL && block->sourceStartAddress != -1){
+					if ((MAX_SCHEDULE_COUNT==-1 || dbtPlateform.blockScheduleCounter < MAX_SCHEDULE_COUNT) && OPTLEVEL >= 1/* && block->sourceEndAddress - block->sourceStartAddress > profileGap */&& (block->sourceEndAddress - block->sourceStartAddress > 4 || (block->sourceDestination != -1 && block->sourceDestination <= block->sourceStartAddress) )  && block->blockState < IRBLOCK_STATE_SCHEDULED){
 
 						optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
 						dbtPlateform.blockScheduleCounter++;
 
 						if ((block->sourceDestination != -1 && block->sourceDestination <= block->sourceStartAddress) || block->nbInstr > 32){
+
 							profiler.profileBlock(block);
 						}
 
@@ -602,18 +597,51 @@ int main(int argc, char *argv[])
 		}
 
 		int cyclesToRun = dbtPlateform.optimizationCycles - oldOptimizationCount;
-		if (cyclesToRun == 0)
+		if (cyclesToRun == 0){
 			cyclesToRun = 1000;
+			profileGap = profileGap>>1;
+		}
+
+		if (dbtPlateform.vexSimulator->cycle > 2000000000)
+			break;
 
 		runStatus = run(&dbtPlateform, cyclesToRun);
 
 
 	}
 
+	//We compute pareto domains
+	for (int oneProcedure = 0; oneProcedure < application.numberProcedures; oneProcedure++){
+		IRProcedure *procedure = application.procedures[oneProcedure];
+
+		for (int oneConfiguration = 0; oneConfiguration<12; oneConfiguration++){
+			char configuration = validConfigurations[oneConfiguration];
+			float score = procedure->configurationScores[configuration];
+			float energy = (score * getPowerConsumption(configuration))/10;
+			bool isPareto = true;
+
+			for (int oneOtherConf = 0; oneOtherConf<12; oneOtherConf++){
+				char otherConf = validConfigurations[oneOtherConf];
+				float otherScore = procedure->configurationScores[otherConf];
+				float otherEnergy = (otherScore * getPowerConsumption(otherConf))/10;
+
+				if ((otherScore >= score && otherEnergy < energy) || (otherEnergy <= energy && otherScore > score)){
+					isPareto = false;
+					break;
+				}
+			}
+
+			if (isPareto)
+				dbtPlateform.nbTimesInPareto[configuration]++;
+		}
+	}
+
 	//We clean the last performance counters
 	dbtPlateform.vexSimulator->timeInConfig[dbtPlateform.vexSimulator->currentConfig] += (dbtPlateform.vexSimulator->cycle - dbtPlateform.vexSimulator->lastReconf);
 
 	Log::printStat(&dbtPlateform, &application);
+
+
 
 	int nbFirstPass = 0;
 	int nbScheduled = 0;

@@ -252,13 +252,24 @@ int main(int argc, char *argv[])
 	}
 
 #ifdef __SW
-	printf("FirstPass : %d cycles for %d instr\n", getProfilingInfo(0), nbInstrFirstPass);
-	printf("IRGeneration : %d cycles for %d instr\n", getProfilingInfo(1), nbInstrIRGen);
-	printf("IRScheduler : %d cycles for %d instr\n", getProfilingInfo(2), nbInstrSchedule);
+	printf("\tFirstPass cycle: %d\n", getProfilingInfo(0));
+	printf("\tFirstPass instr: %d\n", nbInstrFirstPass);
+
+	printf("\tIRGeneration cycle: %d\n", getProfilingInfo(1));
+	printf("\tIRGeneration instr: %d\n", nbInstrIRGen);
+
+	printf("\tIRScheduler cycle: %d\n", getProfilingInfo(2));
+	printf("\tIRScheduler instr: %d\n", nbInstrSchedule);
 #else
-	printf("FirstPass : %d cycles for %d instr\n", timeHwFirstPass, nbInstrFirstPass);
-	printf("IRGeneration : %d cycles for %d instr\n", timeHwIRGen, nbInstrIRGen);
-	printf("IRScheduler : %d cycles for %d instr\n", timeHwSchedule, nbInstrSchedule);
+	printf("\tFirstPass cycle: %d\n", timeHwFirstPass);
+	printf("\tFirstPass instr: %d\n", nbInstrFirstPass);
+
+	printf("\tIRGeneration cycle: %d\n", timeHwIRGen);
+	printf("\tIRGeneration instr: %d\n", nbInstrIRGen);
+
+	printf("\tIRScheduler cycle: %d\n", timeHwSchedule);
+	printf("\tIRScheduler instr: %d\n", nbInstrSchedule);
+
 #endif
 
 

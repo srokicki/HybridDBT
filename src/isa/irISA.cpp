@@ -86,6 +86,37 @@ struct uint128_struct assembleRiBytecodeInstruction(char stageCode, char isAlloc
 	return result;
 }
 
+struct uint128_struct assembleMemoryBytecodeInstruction(char stageCode, char isAlloc,
+		char opcode, short regA, short imm12, bool isSpec, char specId,
+		short regDest, unsigned char nbDep){
+
+	struct uint128_struct result = {0, 0, 0, 0};
+	char isImm = 1;
+
+	//Node: Type is zero: no need to write it for real.
+
+	result.word96 += ((stageCode & 0x3) << 30);
+	result.word96 += ((isAlloc & 0x1) << 27);
+	result.word96 += ((opcode & 0x7f) << 19);
+	result.word96 += ((isImm & 0x1) << 18);
+
+	if (isSpec){
+		result.word96 += ((specId & 0x1f) << 1);
+		result.word96 += ((imm12 & 0x07f) << 6);
+	}
+	else{
+		result.word96 += ((imm12 & 0x0fff) << 1);
+	}
+	result.word96 += (((isSpec ? 1 : 0) & 0x1) << 0);
+
+
+	result.word64 += ((regA & 0x1ff) << 23);
+	result.word64 += ((regDest & 0x1ff) << 14);
+	result.word64 += ((nbDep & 0xff) << 6);
+
+	return result;
+}
+
 struct uint128_struct assembleIBytecodeInstruction(char stageCode, char isAlloc,
 		char opcode, short reg, int imm19, unsigned char nbDep){
 
@@ -215,6 +246,7 @@ std::string printBytecodeInstruction(int index, unsigned int  instructionPart1, 
 	short virtualRIn2 = ((instructionPart2>>23) & 0x1ff);
 	short virtualRIn1_imm9 = ((instructionPart1>>0) & 0x1ff);
 	short imm13 = ((instructionPart1>>0) & 0x1fff);
+	int funct = (instructionPart1 >> 7) & 0x1f;
 
 	short imm11 = ((instructionPart1>>23) & 0x7ff);
 	short imm19 = 0;
@@ -232,7 +264,25 @@ std::string printBytecodeInstruction(int index, unsigned int  instructionPart1, 
 
 	if (typeCode == 0){
 		//R type
-		result << opcodeNames[opCode] << " r" << virtualRDest << " = r" << virtualRIn2 << ", ";
+		result << opcodeNames[opCode];
+		if (opCode == VEX_FP){
+				result << " " << fpNames[funct];
+		}
+		else if (((opCode>>4) == (VEX_LDW>>4)) || opCode == VEX_FLW || opCode == VEX_FSW){
+			if (imm13 & 0x1){
+				result << " spec " << ((imm13>>1) & 0xf);
+				imm13 = imm13>>5;
+			}
+			else
+				imm13 = imm13 >> 1;
+		}
+
+		result << " r" << virtualRDest << " = r" << virtualRIn2 << ", ";
+
+		if (opCode == VEX_FMADD || opCode == VEX_FMSUB ||opCode == VEX_FNMADD ||opCode == VEX_FNMSUB){
+			result << "r" << virtualRIn1_imm9 << " ";
+
+		}
 
 		if (isImm)
 			result << imm13 << " ";
@@ -352,7 +402,10 @@ IRBlock::IRBlock(int startAddress, int endAddress, int section){
 	this->nbJumps = 0;
 	this->placeInProfiler = NULL;
 	this->instructions = NULL;
-
+	this->specAddr[0] = 0;
+	this->specAddr[1] = 0;
+	this->specAddr[2] = 0;
+	this->specAddr[3] = 0;
 }
 
 IRBlock::~IRBlock(){
@@ -528,6 +581,83 @@ char getOperands(unsigned int *bytecode, unsigned char index, short result[2]){
 		return 0;
 }
 
+
+void setImmediateValue(unsigned int *bytecode, unsigned char index, int value){
+	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
+	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
+
+	unsigned char opcode = (bytecodeWord96>>19) & 0x7f;
+	unsigned char shiftedOpcode = opcode>>4;
+
+	bool isMemType = (opcode>>4) == 1 || opcode == VEX_FLW || opcode == VEX_FSW;
+	bool isImmArith = (opcode>>4) >= 6;
+	bool isIType = (opcode>>4) == 2 && (opcode != VEX_BLT) && (opcode != VEX_BGE) && (opcode != VEX_BLTU) && (opcode != VEX_BGEU) && (opcode != VEX_BR) && (opcode != VEX_BRF);
+	bool isBranchWithTwoRegs = (opcode == VEX_BR) || (opcode == VEX_BRF) || (opcode == VEX_BGE) || (opcode == VEX_BLT) || (opcode == VEX_BGEU) || (opcode == VEX_BLTU);
+
+
+
+	// we clear immediate values
+	if (isMemType){
+		bytecodeWord96 &= 0xffffe001;
+		bytecodeWord96 |= (value<<1) & 0x1fff;
+	}
+	else if (isBranchWithTwoRegs || isImmArith){
+		bytecodeWord96 &= 0xffffe000;
+		bytecodeWord96 |= value & 0x1fff;
+	}
+	else if (isIType){
+		bytecodeWord96 &= 0xfffffc00;
+		bytecodeWord64 &= 0x007fffff;
+
+		bytecodeWord96 |= (value>>9) & 0x3ff;
+		bytecodeWord64 |= (value & 0x1ff)<<23;
+	}
+	writeInt(bytecode, index*16+4,bytecodeWord64);
+	writeInt(bytecode, index*16+0, bytecodeWord96);
+}
+
+bool getImmediateValue(unsigned int *bytecode, unsigned char index, int *result){
+	//This function returns the number of register operand used by the bytecode instruction
+
+	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
+	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
+
+	int imm13 = ((bytecodeWord96>>0) & 0x1fff);
+	int imm19 = 0;
+	imm19 = ((bytecodeWord64>>23) & 0x1ff);
+	imm19 += ((bytecodeWord96>>0) & 0x3ff)<<9;
+
+	if (imm13 >= 4096)
+		imm13 -= 8192;
+
+	if (imm19 >= 262144)
+		imm19 -= 524288;
+
+	unsigned char opcode = (bytecodeWord96>>19) & 0x7f;
+	unsigned char shiftedOpcode = opcode>>4;
+
+	bool isMemType = (opcode>>4) == 1 || opcode == VEX_FLW || opcode == VEX_FSW;
+	bool isImmArith = (opcode>>4) >= 6;
+	bool isIType = (opcode>>4) == 2 && (opcode != VEX_BLT) && (opcode != VEX_BGE) && (opcode != VEX_BLTU) && (opcode != VEX_BGEU) && (opcode != VEX_BR) && (opcode != VEX_BRF);
+	bool isBranchWithTwoRegs = (opcode == VEX_BR) || (opcode == VEX_BRF) || (opcode == VEX_BGE) || (opcode == VEX_BLT) || (opcode == VEX_BGEU) || (opcode == VEX_BLTU);
+
+	if (isMemType){
+		*result = (imm13>>1);
+		return true;
+	}
+	else if (isBranchWithTwoRegs || isImmArith){
+		*result = imm13;
+		return true;
+	}
+	else if (isIType){
+		*result = imm19;
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+
 void setOperands(unsigned int *bytecode, unsigned char index, short operands[2]){
 	//This function returns the number of register operand used by the bytecode instruction
 
@@ -574,8 +704,21 @@ void setOperands(unsigned int *bytecode, unsigned char index, short operands[2])
 }
 
 void setDestinationRegister(unsigned int *bytecode, unsigned char index, short newDestinationRegister){
-	Log::printf(LOG_ERROR,"Function to set the destination register in an IR instr is not implemented yet\n");
-	exit(-1);
+	//This function returns the destination register of a bytecode instruction
+	//If bytecode instruction do not write any register then it returns -1
+
+
+	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
+	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
+	unsigned int newDestinationRegisterExtended = newDestinationRegister;
+	unsigned char opcode = (bytecodeWord96>>19) & 0x7f;
+	if ((opcode != 0) //not a nop
+			&&((opcode>>4) != 2 || opcode == VEX_MOVI) //if I-type then movi
+			&& ((opcode>>3) != 0x3) //not a store
+		    && opcode != VEX_FSB && opcode != VEX_FSH && opcode != VEX_FSW) //not a FP store
+		bytecodeWord64 = (bytecodeWord64 & 0xff803fff) | (newDestinationRegisterExtended << 14);
+
+	writeInt(bytecode, index*16+4, bytecodeWord64);
 }
 
 void setAlloc(unsigned int *bytecode, unsigned char index, char newAlloc){
@@ -734,7 +877,6 @@ void clearControlDep(unsigned int *ir, unsigned char index){
 
 	//The mask to apply on the higher incomplete list of control dep
 	unsigned int mask = (0xffffffff << ((nbCSucc & 0x3)<<3));
-fprintf(stderr, "mask is %x\n", mask);
 	if (nbCSucc >= 4){
 		//We clear completely word0 and apply the mask to word32
 		irWord0 = 0;
@@ -753,9 +895,26 @@ fprintf(stderr, "mask is %x\n", mask);
 	writeInt(ir, index*16+8, irWord32);
 	writeInt(ir, index*16+4, irWord64);
 
-	fprintf(stderr, "Instruction %d has been cleared %x %x %x\n", index, irWord64, irWord32, irWord0);
 }
 
+char getControlDep(unsigned int *ir, unsigned char index, unsigned char *result){
+	unsigned int irWord0 = readInt(ir, index*16+12);
+	unsigned int irWord32 = readInt(ir, index*16+8);
+	unsigned int irWord64 = readInt(ir, index*16+4);
+
+	char nbDSucc = ((irWord64>>3) & 7);
+	char nbSucc = ((irWord64>>0) & 7);
+	char nbCSucc = nbSucc - nbDSucc;
+
+	for (int onePred = 0; onePred < nbCSucc; onePred++){
+		if (onePred >= 4)
+			result[onePred] = (irWord32 >> (8*(onePred-4))) & 0xff;
+		else
+			result[onePred] = (irWord0 >> (8*onePred)) & 0xff;
+
+	}
+	return nbCSucc;
+}
 
 #endif
 
@@ -849,3 +1008,34 @@ void IRBlock::print(FILE * output)
 	}
 	fprintf(output, "}");
 }
+
+void shiftBlock(IRBlock *block, char value){
+	//We alloc the new block and copy all instructions inside
+	unsigned int *newInstr = (unsigned int *) malloc(4*(block->nbInstr + value)*sizeof(unsigned int));
+	memcpy(&(newInstr[4*value]), block->instructions, 4*block->nbInstr*sizeof(unsigned int));
+
+	block->nbInstr += value;
+	free(block->instructions);
+	block->instructions = newInstr;
+
+	//We update dependencies
+	for (int oneInstruction = value; oneInstruction < block->nbInstr; oneInstruction++){
+		addOffsetToDep(block->instructions, oneInstruction, value);
+
+		short operands[3];
+		char nbOperand = getOperands(block->instructions, oneInstruction, operands);
+		for (int oneOperand = 0; oneOperand<nbOperand; oneOperand++){
+			if (operands[oneOperand] < 256){
+				operands[oneOperand] += value;
+			}
+		}
+		setOperands(block->instructions, oneInstruction, operands);
+
+	}
+
+	//We update the jump table
+	for (int oneJump = 0; oneJump<block->nbJumps; oneJump++)
+		block->jumpIds[oneJump] += value;
+
+}
+

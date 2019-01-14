@@ -58,8 +58,22 @@ ac_int<32, false> lastPlaceOfInstr;
 ac_int<32, false> window[WINDOW_SIZE][STAGE_NUMBER];
 ac_int<8, false> freeSlot[WINDOW_SIZE];
 
+//For speculation purpose
+ac_int<4, false> poisoned[64];
+ac_int<32, false> lastStore[4];
+ac_int<32, false> firstLoad[4];
+ac_int<8, false> mask_spec[4][WINDOW_SIZE];
+
+ac_int<128, false> maskVal[4];
+
+
+
 ac_int<32, false> max(ac_int<32, false> a, ac_int<32, false> b) {
 	return a > b ? a : b;
+}
+
+ac_int<32, false> min(ac_int<32, false> a, ac_int<32, false> b) {
+	return a < b ? a : b;
 }
 
 /**
@@ -226,6 +240,28 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 
 	}
 
+	for (char oneReg = 0; oneReg<64; oneReg++){
+		poisoned[oneReg] = 0;
+	}
+	lastStore[0] = 0;
+	lastStore[1] = 0;
+	lastStore[2] = 0;
+	lastStore[3] = 0;
+	firstLoad[0] = 0xffffffff;
+	firstLoad[1] = 0xffffffff;
+	firstLoad[2] = 0xffffffff;
+	firstLoad[3] = 0xffffffff;
+	maskVal[0] = 0;
+	maskVal[1] = 0;
+	maskVal[2] = 0;
+	maskVal[3] = 0;
+
+	for (int oneSpec = 0; oneSpec<4; oneSpec++){
+		for (int onePlace = 0; onePlace<WINDOW_SIZE; onePlace++){
+			mask_spec[oneSpec][onePlace] = 0;
+		}
+	}
+
 	while (instructionId < basicBlockSize) {
 
 
@@ -261,6 +297,11 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		ac_int<19, false> imm19 = instruction.slc<19>(9);
 		ac_int<9, false> brCode = instruction.slc<9>(27);
 
+		ac_int<4, false> specId = instruction.slc<4>(19);
+		ac_int<1, false> isSpec = instruction[18];
+		ac_int<1, false> isStore = ((opCode>>3) == (VEX_STW>>3) || opCode == VEX_FSW);
+		ac_int<1, false> isLoad = ((opCode>>3) == (VEX_LDW>>3) || opCode == VEX_FLW);
+
 		// real dest register (after alloc/dereferencing)
 		ac_int<6, false> dest;
 
@@ -293,7 +334,8 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 				registerDependencies[instructionId] = bytecode_word2.slc<8>(6);
 			} else {
 				// else crash
-				exit(-1);
+				registerDependencies[instructionId] = 0xff;
+				dest = accessPlaceOfReg;
 				//return basicBlockSize+1;
 			}
 		} else {
@@ -351,8 +393,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		ac_int<1, false> isNop = (opCode == 0);
 		ac_int<1, false> isITypeWithDest = (opCode == VEX_MOVI || opCode == VEX_CALL);
 		ac_int<1, false> isArith2 = (shiftedOpcode == 4 || shiftedOpcode == 5 || shiftedOpcode == 0);
-		ac_int<1, false> isLoad = (opCode>>3) == 0x2;
-		ac_int<1, false> isStore = (opCode>>3) == 0x3;
+
 		ac_int<1, false> isArith1 = (shiftedOpcode == 6 || shiftedOpcode == 7);
 		ac_int<1, false> isBranchWithReg = (opCode == VEX_CALLR) ||(opCode == VEX_GOTOR);
 		ac_int<1, false> isFPOneReg = (opCode == VEX_FP && (funct == VEX_FP_FCVTSW || funct == VEX_FP_FCVTSWU || funct == VEX_FP_FCVTWS
@@ -400,9 +441,23 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		if (useOperand2)
 			placeOfOperand2 = placeOfRegisters[operand2];
 
+		//********************* For speculation ***********************************
+		//If we are not alloc and if the source is poisoned, we have to be after the last store to make the rollback possible...
+		if (!alloc){
+			for (int oneBit = 0; oneBit<4; oneBit++){
+				if ((useOperand1 && poisoned[placeOfOperand1][oneBit]) || (useOperand2 && poisoned[placeOfOperand2][oneBit])){
+							earliest_place = max(earliest_place, lastStore[oneBit]+1);
+				}
+			}
+		}
+
+
+
 		//**************************************************************
 		// Placing the instruction
 		//**************************************************************
+
+
 
 		ac_int<WINDOW_SIZE_L2+1, false> bestWindowOffset = WINDOW_SIZE;
 		ac_int<STAGE_NUMBER_L2+1, false> bestStageId;
@@ -478,7 +533,6 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		}
 
 
-
 		bestWindowOffset = bestOffset[0];
 		bestStageId = bestStage[0];
 
@@ -512,9 +566,9 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		registerDependencies[operand1.slc<8>(0)] = operand1Dep;
 		registerDependencies[operand2.slc<8>(0)] = operand2Dep;
 
-		if (useOperand1 && !operand1[8] && operand1Dep == 0)
+		if (useOperand1 && !operand1[8] && operand1Dep == 0 && !poisoned[placeOfOperand1])
 			freeRegisters[numberFreeRegister++] = placeOfOperand1;
-		if (useOperand2 && !operand2[8] && operand2Dep == 0)
+		if (useOperand2 && !operand2[8] && operand2Dep == 0 && !poisoned[placeOfOperand2])
 			freeRegisters[numberFreeRegister++] = placeOfOperand2;
 
 		//***********************************************************************
@@ -546,6 +600,20 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 					binaries[addressInBinaries+(windowPosition+windowOffset)*2] = binariesWord.slc<128>(0);
 					binaries[addressInBinaries+(windowPosition+windowOffset)*2+1] = binariesWord.slc<128>(128);
 				}
+
+				for (int oneBit = 0; oneBit<4; oneBit++){
+					if (issue_width <= 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]) {
+						maskVal[oneBit] = (maskVal[oneBit]<<4) + mask_spec[oneBit][off];
+						mask_spec[oneBit][off] = 0;
+					}
+					else if (issue_width > 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]){
+						maskVal[oneBit] = (maskVal[oneBit]<<8) + mask_spec[oneBit][off];
+						mask_spec[oneBit][off] = 0;
+
+					}
+
+				}
+
 			}
 
 
@@ -564,6 +632,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 
 			bestWindowOffset = WINDOW_SIZE-1;
 		}
+
 		//****************************************************************
 		// Writing instruction into the window buffer
 		//****************************************************************
@@ -588,12 +657,40 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		window[offset(bestWindowOffset)][bestStageId] = createInstruction(instruction, placeOfOperand1, placeOfOperand2, dest);
 		freeSlot[offset(bestWindowOffset)][bestStageId] = 0;
 
+		//********************* For speculation ***********************************
+		// If we are a store, we update last store
+		// If we are speculative load, we poison the destination
+		// If one input register is poisonned, we poison output register
 
+		if (isStore && isSpec){
+			lastStore[specId] = max(lastStore[specId], windowPosition + bestWindowOffset);
+		}
+		if (isLoad && isSpec){
+			poisoned[dest][specId] = 1;
+			mask_spec[specId][offset(bestWindowOffset)][bestStageId] = 1;
+			firstLoad[specId] = min(firstLoad[specId], lastPlaceOfInstr);
+		}
+
+		if (!isNop && !isStore && !isBranchWithReg && ! isBranchWithTwoRegs){
+			if (useOperand1 && poisoned[placeOfOperand1])
+				poisoned[dest] |= poisoned[placeOfOperand1];
+			if (useOperand2 && poisoned[placeOfOperand2])
+				poisoned[dest] |= poisoned[placeOfOperand2];
+		}
+
+		for (int oneBit = 0; oneBit<4; oneBit++){
+			if ((unitType == 0 && lastStore[oneBit] != 0) || (useOperand1 && poisoned[placeOfOperand1][oneBit]) || (useOperand2 && poisoned[placeOfOperand2][oneBit])){
+				mask_spec[oneBit][offset(bestWindowOffset)][bestStageId] = 1;
+			}
+		}
+
+		//*******************
 
 		if (instruction.slc<2>(48) == 0) {
 			haveJump = 1;
 			jumpPlace = placeOfInstr[instructionId];
 		}
+
 
 		instructionId++;
 
@@ -634,6 +731,16 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 			binaries[addressInBinaries+(windowPosition+windowOffset)*2] = binariesWord.slc<128>(0);
 			binaries[addressInBinaries+(windowPosition+windowOffset)*2+1] = binariesWord.slc<128>(128);
 		}
+
+		for (int oneBit = 0; oneBit<4; oneBit++){
+			if (issue_width <= 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]) {
+				maskVal[oneBit] = (maskVal[oneBit]<<4) + mask_spec[oneBit][off];
+			}
+			else if (issue_width > 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]){
+				maskVal[oneBit] = (maskVal[oneBit]<<8) + mask_spec[oneBit][off];
+
+			}
+		}
 	}
 
 
@@ -653,6 +760,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 				binaries[addressInBinaries + newSize-1] = 0;
 				binaries[addressInBinaries + newSize-2] = 0;
 			}
+
 			break;
 		}
 	}
@@ -664,6 +772,14 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 	timeTakenIRScheduler += 8;
 	#endif
 
+//	if (maskVal[0] != 0)
+//		fprintf(stderr, "for 0 mask is %llx and starts at %d\n", (unsigned long long int) maskVal[0], firstLoad[0]);
+//	if (maskVal[1] != 0)
+//		fprintf(stderr, "for 0 mask is %llx\n", (unsigned long long int) maskVal[1]);
+//	if (maskVal[2] != 0)
+//		fprintf(stderr, "for 0 mask is %llx\n", (unsigned long long int) maskVal[2]);
+//	if (maskVal[3] != 0)
+//		fprintf(stderr, "for 0 mask is %llx\n", (unsigned long long int) maskVal[3]);
 	return newSize;
 }
 

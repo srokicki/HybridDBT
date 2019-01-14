@@ -4,7 +4,7 @@
  *  Created on: 30 mai 2017
  *      Author: Simon Rokicki
  */
-
+#include <cstring>
 #include <dbt/dbtPlateform.h>
 #include <isa/irISA.h>
 #include <transformation/irScheduler.h>
@@ -90,6 +90,14 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 			char opcode = getOpcode(block->instructions, block->jumpIds[block->nbJumps-1]);
 			isCallBlock = opcode == VEX_CALL || opcode == VEX_CALLR;
 			isReturnBlock = opcode == VEX_GOTOR;
+			if (opcode == VEX_GOTO){
+				int imm = 0;
+				bool hasImm = getImmediateValue(block->instructions, block->jumpIds[block->nbJumps-1], &imm);
+				if (hasImm && imm == 4){
+					isReturnBlock = true;
+				}
+			}
+
 
 		}
 
@@ -143,44 +151,34 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 		}
 
-		if (1){
-			for (int i=result->blocks[oneBlock]->vliwStartAddress;i<result->blocks[oneBlock]->vliwEndAddress;i++){
-				Log::printf(LOG_SCHEDULE_PROC,"%d ", i);
 
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
+		for (int i=result->blocks[oneBlock]->vliwStartAddress;i<result->blocks[oneBlock]->vliwEndAddress;i++){
+			Log::printf(LOG_SCHEDULE_PROC,"%d ", i);
+
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
 
 
-				if (platform->vliwInitialIssueWidth>4){
-					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
-					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
-					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
-					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
-					i++;
-				}
-				Log::printf(LOG_SCHEDULE_PROC,"\n");
+			if (platform->vliwInitialIssueWidth>4){
+				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
+				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
+				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
+				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
+				i++;
 			}
+			Log::printf(LOG_SCHEDULE_PROC,"\n");
 		}
+
 		if ((isReturnBlock || isCallBlock) && readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1] + 16*incrementInBinaries) != 0){
 
-//			if (((readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 16*incrementInBinaries)>>20) & 0x3f) == 33){
-//				std::cerr << printDecodedInstr(readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 16*incrementInBinaries))<<"\n";
-//
-//				writeInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 2*16*incrementInBinaries, 0);
-//				writeInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress, readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 2*16*incrementInBinaries));
-//
-//
-//			}
-//			else{
-				//We need room for the reconf instruction, we invert the two last
-				unsigned int tempInstr = readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1] + 16*incrementInBinaries);
-				writeInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1] + 16*incrementInBinaries, readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1]));
-				writeInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1], tempInstr);
-				result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1]++;
-				result->blocks[oneBlock]->vliwEndAddress += incrementInBinaries;
-				binaSize += incrementInBinaries;
+				//We need room for the reconf instruction, we add two lines at the end. TODO: this should be done only when reconf is activated
+				writeInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1] + 16*2*incrementInBinaries, readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1]));
+				writeInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1], 0);
+				result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1]+=2;
+				result->blocks[oneBlock]->vliwEndAddress += 2*incrementInBinaries;
+				binaSize += 2*incrementInBinaries;
 //			}
 
 			if (readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 16*incrementInBinaries) != 0){
@@ -190,7 +188,26 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 		}
 
+		//Making room for reconf instr when we face an indirect jump.
+		//Indirect jumps are weird : the block is marked as having not succ and no jump (consequently we cannot use jumpPlace)
 
+
+
+
+		//We handle speculation information if necessary
+#ifndef __HW
+#ifndef __SW
+		for (int oneSpec = 0; oneSpec<4; oneSpec++){
+			if (block->specAddr[oneSpec] != 0){
+				platform->specInfo[8*block->specAddr[oneSpec]+2] = readInt(maskVal, oneSpec*16+12);
+				platform->specInfo[8*block->specAddr[oneSpec]+3] = readInt(maskVal, oneSpec*16+8);
+				platform->specInfo[8*block->specAddr[oneSpec]+4] = readInt(maskVal, oneSpec*16+4);
+				platform->specInfo[8*block->specAddr[oneSpec]+5] = readInt(maskVal, oneSpec*16);
+
+			}
+		}
+#endif
+#endif
 
 		if (isCallBlock){
 			writeInt(platform->vliwBinaries, 16*(writePlace+binaSize), 0);
@@ -254,7 +271,6 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 		for (int oneJump = 0; oneJump<block->nbJumps; oneJump++){
 			char jumpOpcode = getOpcode(block->instructions, block->jumpIds[oneJump]);
-
 			if (jumpOpcode == VEX_BR || jumpOpcode == VEX_BRF || jumpOpcode == VEX_BGE || jumpOpcode == VEX_BLT || jumpOpcode == VEX_BGEU || jumpOpcode == VEX_BLTU){
 				//Conditional block (br)
 				int offset = (block->successors[oneJump]->vliwStartAddress - block->jumpPlaces[oneJump]);
@@ -262,10 +278,11 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfff0007f) | ((offset & 0x1fff) << 7));
 			}
 			else if (jumpOpcode == VEX_GOTO){
-					int dest = block->successors[oneJump]->vliwStartAddress;
-					unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
-					writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
-
+					if (block->nbSucc > oneJump){
+						int dest = block->successors[oneJump]->vliwStartAddress;
+						unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
+						writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
+					}
 
 			}
 			else if (jumpOpcode != VEX_CALL && jumpOpcode != VEX_CALLR && jumpOpcode != VEX_GOTOR){
@@ -308,6 +325,12 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 				writeInt(platform->vliwBinaries, 16*originalEntry+24, 0);
 				writeInt(platform->vliwBinaries, 16*originalEntry+28, 0);
 
+				for (int oneSpec = 0; oneSpec<4; oneSpec++){
+					if (block->specAddr[oneSpec] != 0){
+						writeInt(platform->vliwBinaries, 16*originalEntry+4, assembleMemoryInstruction_sw(VEX_SPEC_INIT, 0, 0, block->specAddr[oneSpec], 1, oneSpec));
+						//TODO make it work for others specs
+					}
+				}
 			}
 			else{
 				if (platform->vexSimulator->PC == 4*originalEntry || platform->vexSimulator->PC == 4*(originalEntry+2))
@@ -352,10 +375,23 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 		bool isReturnBlock = false;
 		bool isCallBlock = false;
+		bool isIndirectJump = false;
+
 		if (block->nbJumps > 0){
 			char opcode = getOpcode(block->instructions, block->jumpIds[block->nbJumps-1]);
 			isCallBlock = opcode == VEX_CALL || opcode == VEX_CALLR;
 			isReturnBlock = opcode == VEX_GOTOR;
+			if (opcode == VEX_GOTO){
+				int imm = 0;
+				bool hasImm = getImmediateValue(block->instructions, block->jumpIds[block->nbJumps-1], &imm);
+				if (hasImm && imm == 4){
+					isReturnBlock = true;
+				}
+			}
+		}
+
+		if (block->nbJumps == 0 && block->nbSucc == 0){
+			isIndirectJump = true;
 		}
 
 		if (isReturnBlock){
@@ -378,6 +414,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 			}
 
 		}
+
 
 
 
@@ -447,13 +484,220 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 		}
 		Log::printf(LOG_SCHEDULE_PROC,"\n");
 
-		platform->vexSimulator->typeInstr[i] = 2;
+		platform->vexSimulator->typeInstr[i-1+incrementInBinaries] = 2;
+
+
 	}
 	//*************************************************************************
-
-
-
 	return writePlace;
+
+}
+
+
+void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePlace){
+
+	char isCurrentlyInBlock = (platform->vexSimulator->PC >= block->vliwStartAddress*4) &&
+			(platform->vexSimulator->PC < block->vliwEndAddress*4);
+
+	if (isCurrentlyInBlock){
+		unsigned int instructionInEnd = readInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16);
+		if (instructionInEnd == 0){
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0x2f);
+
+			platform->vexSimulator->doStep(5 + block->vliwEndAddress - block->vliwStartAddress);
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0);
+		}
+		else if (readInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4) == 0){
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0x2f);
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4, instructionInEnd);
+
+			platform->vexSimulator->doStep(5 + block->vliwEndAddress - block->vliwStartAddress);
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, instructionInEnd);
+			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4, 0);
+
+		}
+		else{
+			Log::printf(LOG_ERROR, "In optimize basic block, execution is in the middle of a block and programm cannot stop it...\n exiting...\n");
+			exit(-1);
+		}
+	}
+
+	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
+	Log::printf(LOG_SCHEDULE_PROC,"****                 In place block reschedule !                    *****\n");
+
+	for (int i=block->vliwStartAddress-20;i<block->vliwEndAddress+20;i++){
+		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
+		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
+		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
+		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
+
+
+		if (platform->vliwInitialIssueWidth>4){
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
+			i++;
+		}
+		Log::printf(LOG_SCHEDULE_PROC,"\n");
+	}
+
+	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
+	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
+
+	//TODO WARNING We do not handle in place rescheduling when the configuration have been modified. We will have to handle that.
+	char incrementInBinaries = (getIssueWidth(platform->vliwInitialConfiguration)>4) ? 2 : 1;
+
+	//Preparation of required memories
+	for (int oneFreeRegister = 33; oneFreeRegister<63; oneFreeRegister++)
+		platform->freeRegisters[oneFreeRegister-33] = oneFreeRegister;
+
+
+	for (int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
+		platform->placeOfRegisters[256+onePlaceOfRegister] = onePlaceOfRegister;
+	//same for FP registers
+	for (int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
+		platform->placeOfRegisters[256+64+onePlaceOfRegister] = onePlaceOfRegister;
+
+	//We move instructions into bytecode memory
+	for (int oneBytecodeInstr = 0; oneBytecodeInstr<block->nbInstr; oneBytecodeInstr++){
+		writeInt(platform->bytecode, 16*oneBytecodeInstr + 0, block->instructions[4*oneBytecodeInstr + 0]);
+		writeInt(platform->bytecode, 16*oneBytecodeInstr + 4, block->instructions[4*oneBytecodeInstr + 1]);
+		writeInt(platform->bytecode, 16*oneBytecodeInstr + 8, block->instructions[4*oneBytecodeInstr + 2]);
+		writeInt(platform->bytecode, 16*oneBytecodeInstr + 12, block->instructions[4*oneBytecodeInstr + 3]);
+	}
+
+	//This is only for debug
+	if (platform->debugLevel > 1 || 1){
+		Log::printf(LOG_SCHEDULE_PROC,"Block %x:\n", block->sourceStartAddress);
+		for (int i=0; i<block->nbInstr; i++)
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12)).c_str());
+	}
+
+
+	//Calling scheduler
+	int binaSize = irScheduler(platform, true, block->nbInstr, writePlace, 29, platform->vliwInitialConfiguration);
+	binaSize = binaSize & 0xffff;
+
+
+	if (block->vliwStartAddress + binaSize <= block->vliwEndAddress){
+
+		memcpy(&platform->vliwBinaries[4*block->vliwStartAddress], &platform->vliwBinaries[4*writePlace], (binaSize)*4*sizeof(unsigned int));
+
+
+		for (int i=block->vliwStartAddress+binaSize;i<block->vliwEndAddress;i++){
+			writeInt(platform->vliwBinaries, i*16+0, 0);
+			writeInt(platform->vliwBinaries, i*16+4, 0);
+			writeInt(platform->vliwBinaries, i*16+8, 0);
+			writeInt(platform->vliwBinaries, i*16+12, 0);
+
+		}
+
+		//We gather jump places
+		for (int oneJump = 0; oneJump<block->nbJumps; oneJump++){
+			#ifdef IR_SUCC
+			block->jumpPlaces[oneJump] = ((int) platform->placeOfInstr[block->jumpIds[oneJump]])+basicBlockStart;
+			#else
+			block->jumpPlaces[oneJump] = incrementInBinaries*((int) platform->placeOfInstr[block->jumpIds[oneJump]])+block->vliwStartAddress;
+			#endif
+		}
+
+
+		//We handle speculation information if necessary
+#ifndef __HW
+#ifndef __SW
+		for (int oneSpec = 0; oneSpec<4; oneSpec++){
+			if (block->specAddr[oneSpec] != 0){
+				Log::fprintf(LOG_SCHEDULE_PROC, stderr, "Mask is %llx %llx\n", (unsigned long long int ) maskVal[oneSpec].slc<64>(64),(unsigned long long int ) maskVal[oneSpec].slc<64>(0) );
+				platform->specInfo[8*block->specAddr[oneSpec]+2] = readInt(maskVal, oneSpec*16+12);
+				platform->specInfo[8*block->specAddr[oneSpec]+3] = readInt(maskVal, oneSpec*16+8);
+				platform->specInfo[8*block->specAddr[oneSpec]+4] = readInt(maskVal, oneSpec*16+4);
+				platform->specInfo[8*block->specAddr[oneSpec]+5] = readInt(maskVal, oneSpec*16);
+
+			}
+		}
+#endif
+#endif
+
+		/*****************************************************************
+		 *	Control Flow Correction
+		 ************
+		 * In this part we make the necessary work to make jumps correct.
+		 * There are three different tasks:
+		 * 	-> If the jump was relative jump then we have to correct the offset
+		 * 	-> We have to write the (corrected) jump instruction because current scheduler just compute the place but do not place the instruction
+		 * 	-> If the jump is a passthrough (eg. if the execution can go in the part after the schedule) we need to add a goto instruction
+		 * 		to prevent the execution of a large area of nop instruction (which would remove the interest of the schedule
+		 *
+		 *****************************************************************/
+
+
+		for (int oneJump = 0; oneJump<block->nbJumps; oneJump++){
+			char jumpOpcode = getOpcode(block->instructions, block->jumpIds[oneJump]);
+
+			if (jumpOpcode == VEX_BR || jumpOpcode == VEX_BRF || jumpOpcode == VEX_BGE || jumpOpcode == VEX_BLT || jumpOpcode == VEX_BGEU || jumpOpcode == VEX_BLTU){
+				//Conditional block (br)
+				int offset = (block->successors[oneJump]->vliwStartAddress - block->jumpPlaces[oneJump]);
+				unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
+				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfff0007f) | ((offset & 0x1fff) << 7));
+			}
+			else if (jumpOpcode == VEX_GOTO){
+					int dest = block->successors[oneJump]->vliwStartAddress;
+					unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
+					writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
+
+
+			}
+			else if (jumpOpcode != VEX_CALL && jumpOpcode != VEX_CALLR && jumpOpcode != VEX_GOTOR){
+
+				int dest = block->successors[oneJump]->vliwStartAddress;
+				unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
+				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
+
+
+			}
+
+		}
+
+		//Insertion of the new block with the goto instruction
+		if (block->nbSucc == block->nbJumps + 1 && block->vliwStartAddress+binaSize+1*incrementInBinaries < block->vliwEndAddress){
+			//We need to add a jump to correct the shortening of the block.
+
+			unsigned int insertedJump = VEX_GOTO + (block->vliwEndAddress<<7);
+			unsigned int placeOfNewJump = (block->vliwStartAddress+binaSize)*16;
+			writeInt(platform->vliwBinaries, placeOfNewJump, insertedJump);
+		}
+
+	}
+	else{
+		Log::printf(LOG_SCHEDULE_BLOCK, "Schedule is dropped (%d cycles)\n", binaSize);
+	}
+
+	/*****************************************************************/
+	// This only for debug
+	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
+	Log::printf(LOG_SCHEDULE_PROC,"****                 In place block reschedule !                    *****\n");
+
+	for (int i=block->vliwStartAddress-20;i<block->vliwEndAddress+20;i++){
+		Log::printf(LOG_SCHEDULE_PROC,"%d %s ", 4*i,printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
+		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
+		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
+		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
+
+
+		if (platform->vliwInitialIssueWidth>4){
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
+			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
+			i++;
+		}
+		Log::printf(LOG_SCHEDULE_PROC,"\n");
+	}
+
+	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
+	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
+	/*****************************************************************/
 
 }
 

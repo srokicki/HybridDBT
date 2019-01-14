@@ -191,8 +191,16 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	// Even if it is inefficient it will be solved at next opt level (procedure opt)
 
 	bool needToInsert = false;
-	if (readInt(platform->vliwBinaries, 16*basicBlockStart-12) != 0 || readInt(platform->vliwBinaries, 16*basicBlockStart-8) != 0){
-		basicBlockStart++;
+	if ((platform->vliwInitialIssueWidth <= 4 &&
+				(readInt(platform->vliwBinaries, 16*basicBlockStart-12) != 0
+				|| readInt(platform->vliwBinaries, 16*basicBlockStart-8) != 0))
+
+		|| (platform->vliwInitialIssueWidth>4 &&
+				(readInt(platform->vliwBinaries, 16*basicBlockStart-16-12) != 0
+				|| readInt(platform->vliwBinaries, 16*basicBlockStart-16-8) != 0
+				|| readInt(platform->vliwBinaries, 16*basicBlockStart-12) != 0
+				|| readInt(platform->vliwBinaries, 16*basicBlockStart-8) != 0))){
+		basicBlockStart+=incrementInBinaries;
 		needToInsert = true;
 	}
 
@@ -200,11 +208,18 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	if (basicBlockStart + binaSize < basicBlockEnd){
 
 		if (needToInsert){
-			writeInt(platform->vliwBinaries, basicBlockStart*16+0, 0);
-			writeInt(platform->vliwBinaries, basicBlockStart*16+4, 0);
-			writeInt(platform->vliwBinaries, basicBlockStart*16+8, 0);
-			writeInt(platform->vliwBinaries, basicBlockStart*16+12, 0);
+			writeInt(platform->vliwBinaries, basicBlockStart*16+0-16, 0);
+			writeInt(platform->vliwBinaries, basicBlockStart*16+4-16, 0);
+			writeInt(platform->vliwBinaries, basicBlockStart*16+8-16, 0);
+			writeInt(platform->vliwBinaries, basicBlockStart*16+12-16, 0);
+			if (platform->vliwInitialIssueWidth > 4){
+				writeInt(platform->vliwBinaries, basicBlockStart*16+0-32, 0);
+				writeInt(platform->vliwBinaries, basicBlockStart*16+4-32, 0);
+				writeInt(platform->vliwBinaries, basicBlockStart*16+8-32, 0);
+				writeInt(platform->vliwBinaries, basicBlockStart*16+12-32, 0);
+			}
 		}
+
 
 		memcpy(&platform->vliwBinaries[4*basicBlockStart], &platform->vliwBinaries[4*placeCode], (binaSize+1)*4*sizeof(unsigned int));
 
@@ -288,7 +303,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 
 		for (int i=basicBlockStart;i<basicBlockEnd;i++){
-			platform->vexSimulator->typeInstr[i] = 1;
+			platform->vexSimulator->typeInstr[i-1+incrementInBinaries] = 1;
 		}
 
 
@@ -304,6 +319,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	Log::printf(LOG_SCHEDULE_BLOCK,"*************************************************************************\n");
 
 	for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
+		Log::printf(LOG_SCHEDULE_BLOCK,"%d ", i);
 		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
 		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
 		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
@@ -324,8 +340,8 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	Log::printf(LOG_SCHEDULE_BLOCK,"*************************************************************************\n");
 	/*****************************************************************/
 
-
-	block->blockState = IRBLOCK_STATE_SCHEDULED;
+	if (block->blockState < IRBLOCK_STATE_SCHEDULED)
+		block->blockState = IRBLOCK_STATE_SCHEDULED;
 
 }
 

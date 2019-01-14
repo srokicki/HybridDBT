@@ -2,6 +2,8 @@ set(SOURCE
    ${SOURCE}
   ${CMAKE_CURRENT_SOURCE_DIR}/genericSimulator.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/vexSimulator.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/loadQueueVexSimulator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/loadStoreQueue.cpp  
    ${CMAKE_CURRENT_SOURCE_DIR}/vexTraceSimulator.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/riscvSimulator.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/mipsSimulator.cpp   

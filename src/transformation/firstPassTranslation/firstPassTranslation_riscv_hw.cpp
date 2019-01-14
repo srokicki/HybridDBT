@@ -515,7 +515,7 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 				lastLatency = MEMORY_LATENCY;
 
 				//Memory access operations.
-				binaries = assembleRiInstruction(functBindingLD[funct3], rd, rs1, imm12_I_signed);
+				binaries = assembleMemoryInstruction(functBindingLD[funct3], rd, rs1, imm12_I_signed, 0, 0);
 				stage = stageMem;
 
 
@@ -527,7 +527,7 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 				lastWrittenRegister = rd;
 				lastLatency = 0;
 
-				binaries = assembleRiInstruction(functBindingST[funct3], rs2, rs1, imm12_S_signed);
+				binaries = assembleMemoryInstruction(functBindingST[funct3], rs2, rs1, imm12_S_signed, 0, 0);
 				stage = stageMem;
 			}
 			else if (opcode == RISCV_JAL){

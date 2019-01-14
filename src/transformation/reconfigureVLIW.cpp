@@ -131,7 +131,7 @@ void changeConfiguration(IRProcedure *procedure){
 		}
 	}
 
-	procedure->state = 2;
+	procedure->state = 1;
 
 }
 

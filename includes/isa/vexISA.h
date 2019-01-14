@@ -39,10 +39,8 @@
 #define VEX_STH 0x19
 #define VEX_STW 0x1A
 #define VEX_STD 0x1b
-#define VEX_STBc 0x1c
-#define VEX_STHc 0x1d
-#define VEX_STWc 0x1e
-#define VEX_STDc 0x1f
+#define VEX_SPEC_INIT 0x1c
+#define VEX_SPEC_RST 0x1d
 
 #define VEX_GOTO 0x21
 #define VEX_GOTOR 0x22
@@ -173,6 +171,7 @@
 ac_int<32, false> assembleIInstruction(ac_int<7, false> opcode, ac_int<19, false> imm19, ac_int<6, false> regA);
 ac_int<32, false> assembleRInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<6, false> regB);
 ac_int<32, false> assembleRiInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<13, false> imm13);
+ac_int<32, false> assembleMemoryInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<12, false> imm12, ac_int<1, false> isSpec, ac_int<5, false> specID);
 ac_int<32, false> assembleFPInstruction(ac_int<7, false> opcode, ac_int<5, false> funct, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<6, false> regB);
 ac_int<32, false> assembleRRInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<6, false> regB, ac_int<6, false> regC);
 #endif
@@ -181,12 +180,14 @@ ac_int<32, false> assembleRRInstruction(ac_int<7, false> opcode, ac_int<6, false
 unsigned int assembleIInstruction_sw(char opcode, int imm19, char regA);
 unsigned int  assembleRInstruction_sw(char opcode, char regDest, char regA, char regB);
 unsigned int  assembleRiInstruction_sw(char opcode, char regDest, char regA, short imm13);
+unsigned int assembleMemoryInstruction_sw(char opcode, char regDest, char regA, short imm12_7, bool isSpec, char specID);
 unsigned int  assembleFPInstruction_sw(char opcode, char funct, char regDest, char regA, char regB);
 unsigned int  assembleRRInstruction_sw(char opcode, char regDest, char regA, char regB, char regC);
 
 
 #ifndef __CATAPULT
 extern const char* opcodeNames[128];
+extern const char* fpNames[32];
 std::string printDecodedInstr(unsigned int instruction);
 #endif
 
