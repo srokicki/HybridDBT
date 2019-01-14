@@ -96,6 +96,7 @@
 #error DO NOT use defines before including third party header files.
 #endif
 
+
 #ifndef __ASSERT_H__
 #define __ASSERT_H__
 #include <assert.h>
@@ -1748,7 +1749,7 @@ namespace ac {
   struct log2_floor {
     enum { val = nbits<X>::val - 1 };
   };
-
+  
   // log2 of 0 is not defined: generate compiler error
   template<> struct log2_floor<0> {};
 
@@ -1771,7 +1772,6 @@ namespace ac {
     typedef ac_int<nbits, signedness> type;
   };
 }
-
 enum ac_q_mode { AC_TRN, AC_RND, AC_TRN_ZERO, AC_RND_ZERO, AC_RND_INF, AC_RND_MIN_INF, AC_RND_CONV, AC_RND_CONV_ODD };
 enum ac_o_mode { AC_WRAP, AC_SAT, AC_SAT_ZERO, AC_SAT_SYM };
 template<int W2, int I2, bool S2, ac_q_mode Q2, ac_o_mode O2> class ac_fixed;
