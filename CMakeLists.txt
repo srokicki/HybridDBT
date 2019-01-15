@@ -26,6 +26,10 @@ add_subdirectory(src)
 #add_executable(readBytecode ${SOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/readBytecode.cpp)
 #add_executable(dbt ${SOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/src/dbt/dbt.cpp)
 
+add_executable(dbtInformation ${SOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/src/dbt/dbtInformation.cpp)
+set_target_properties(dbtInformation PROPERTIES COMPILE_DEFINITIONS "__HW_SIM")
+
+
 foreach(oneExecutable ${EXECUTABLE})
 	get_filename_component(execName ${oneExecutable} NAME_WE)
 
