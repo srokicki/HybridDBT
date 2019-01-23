@@ -17,7 +17,7 @@
  *
  ********************************************************************/
 
-#define MEMORY_SIZE 230000
+#define MEMORY_SIZE 2300000
 #define MAX_INSERTION_PER_SECTION 2048
 #define SHIFT_FOR_INSERTION_SECTION 13 //Should be equal to log2(MAX_INSERTION_PER_SECTION) + 2
 
@@ -25,9 +25,12 @@
 #define DBT_TYPE_HW 0
 #define DBT_TYPE_SW 1
 
-
+#ifndef __DBT_INFORMATION
 #include <simulator/vexSimulator.h>
 #include <simulator/riscvSimulator.h>
+#endif
+
+
 #include <types.h>
 
 #ifndef __NIOS
@@ -65,9 +68,10 @@ public:
 	unsigned int *placeOfInstr;
 	unsigned int *specInfo;
 
-
+#ifndef __DBT_INFORMATION
 	VexSimulator* vexSimulator;
 	RiscvSimulator* riscvSimulator;
+#endif
 
 	int vliwInitialConfiguration;
 	char vliwInitialIssueWidth;

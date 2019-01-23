@@ -26,8 +26,6 @@ add_subdirectory(src)
 #add_executable(readBytecode ${SOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/readBytecode.cpp)
 #add_executable(dbt ${SOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/src/dbt/dbt.cpp)
 
-add_executable(dbtInformation ${SOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/src/dbt/dbtInformation.cpp)
-set_target_properties(dbtInformation PROPERTIES COMPILE_DEFINITIONS "__HW_SIM")
 
 
 foreach(oneExecutable ${EXECUTABLE})
@@ -50,6 +48,7 @@ foreach(oneExecutable ${EXECUTABLE})
 
 endforeach(oneExecutable)
 
-
-
-
+add_library(dbtInformation SHARED ${SOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/src/dbt/dbtInformation.cpp)
+set_target_properties(dbtInformation PROPERTIES COMPILE_DEFINITIONS "__HW_SIM")
+set_target_properties(dbtInformation PROPERTIES CMAKE_CXX_FLAGS "-fPIC")
+set_target_properties(dbtInformation PROPERTIES PUBLIC_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/includes/dbt/dbtInformation.h)

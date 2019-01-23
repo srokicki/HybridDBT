@@ -230,7 +230,7 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 			ac_int<7, false> funct7_smaller = 0;
 			funct7_smaller.set_slc(1, oneInstruction.slc<6>(26));
 
-
+			ac_int<5, false> funct_atom = funct7.slc<5>(2);
 
 			ac_int<3, false> funct3 = oneInstruction.slc<3>(12);
 			ac_int<12, false> imm12_I = oneInstruction.slc<12>(20);
@@ -879,7 +879,62 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 				stage=stageMult;
 
 			}
-			else if (opcode == 0){
+			else if (opcode == RISCV_ATOM){
+
+				binaries = assembleRiInstruction(funct3 == 0x2 ? VEX_LDW : VEX_LDD, rd, rs1, 0);
+
+				enableNextInstruction = 1;
+				enableSecondNextInstruction = 1;
+
+				nextInstruction_rd = rd;
+				nextInstruction_rs1 = rd;
+				nextInstruction_rs2 = rs2;
+
+
+				switch (funct_atom){
+				case RISCV_ATOM_LR:
+					enableNextInstruction = 0;
+					enableSecondNextInstruction = 0;
+					break;
+				case RISCV_ATOM_SC:
+					nextInstruction = assembleRiInstruction(VEX_ADDi, rd, 0, 0);
+					break;
+				case RISCV_ATOM_SWAP:
+					nextInstruction = assembleRiInstruction(VEX_STD, rd, rs1, 0);
+					nextInstruction_rs1 = rs1;
+					enableSecondNextInstruction = 0;
+					break;
+				case RISCV_ATOM_ADD:
+					nextInstruction = assembleRInstruction(VEX_ADD, rd, rd, rs2);
+					break;
+				case RISCV_ATOM_XOR:
+					nextInstruction = assembleRInstruction(VEX_XOR, rd, rd, rs2);
+					break;
+				case RISCV_ATOM_AND:
+					nextInstruction = assembleRInstruction(VEX_AND, rd, rd, rs2);
+					break;
+				case RISCV_ATOM_OR:
+					nextInstruction = assembleRInstruction(VEX_OR, rd, rd, rs2);
+					break;
+				case RISCV_ATOM_MIN:
+					nextInstruction = assembleRInstruction(VEX_ADD, rd, rd, rs2); //TODO This is wrong !
+					break;
+				case RISCV_ATOM_MAX:
+					nextInstruction = assembleRInstruction(VEX_ADD, rd, rd, rs2); //TODO This is wrong !
+					break;
+				case RISCV_ATOM_MINU:
+					nextInstruction = assembleRInstruction(VEX_ADD, rd, rd, rs2); //TODO This is wrong !
+					break;
+				case RISCV_ATOM_MAXU:
+					nextInstruction = assembleRInstruction(VEX_ADD, rd, rd, rs2); //TODO This is wrong !
+					break;
+				}
+
+				secondNextInstruction = assembleRiInstruction(funct3 == 0x2 ? VEX_STW : VEX_STD, rd, rs1, 0);
+				secondNextInstruction_rs1 = rd;
+
+			}
+			else if (opcode == 0 || opcode == RISCV_FENCE){
 
 							previousLatency = lastLatency;
 							previousWrittenRegister = lastWrittenRegister;

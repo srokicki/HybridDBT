@@ -181,6 +181,22 @@
 #define RISCV_OPW_M_REMW 0x6
 #define RISCV_OPW_M_REMUW 0x7
 
+#define RISCV_FENCE 0x0f
+
+
+#define RISCV_ATOM 0x2f
+#define RISCV_ATOM_LR 0x2
+#define RISCV_ATOM_SC 0x3
+#define RISCV_ATOM_SWAP 0x1
+#define RISCV_ATOM_ADD 0
+#define RISCV_ATOM_XOR 0x4
+#define RISCV_ATOM_AND 0xc
+#define RISCV_ATOM_OR 0x8
+#define RISCV_ATOM_MIN 0x10
+#define RISCV_ATOM_MAX 0x14
+#define RISCV_ATOM_MINU 0x18
+#define RISCV_ATOM_MAXU 0x1c
+
 
 #ifndef __CATAPULT
 std::string printDecodedInstrRISCV(unsigned int instruction);

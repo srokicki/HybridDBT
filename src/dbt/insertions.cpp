@@ -53,10 +53,10 @@
 
 
 
-int insertionsArray[200*2048];
-int unresolvedJumpsArray[200*2048];
-int unresolvedJumpsTypeArray[200*2048];
-int unresolvedJumpsSourceArray[200*2048];
+int insertionsArray[2000*2048];
+int unresolvedJumpsArray[2000*2048];
+int unresolvedJumpsTypeArray[2000*2048];
+int unresolvedJumpsSourceArray[2000*2048];
 
 
 
