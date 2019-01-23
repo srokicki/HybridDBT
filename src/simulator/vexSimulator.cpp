@@ -1195,10 +1195,17 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 
 				break;
 
-			case VEX_ECALL:
-				dctoEx->dataa = this->solveSyscall(REG[17], REG[10], REG[11], REG[12], REG[13]);
-				dctoEx->dest = 10;
-				dctoEx->opCode = VEX_MOVI;
+			case VEX_SYSTEM:
+
+				if (IMM19_s & 0xf == VEX_ECALL){
+					dctoEx->dataa = this->solveSyscall(REG[17], REG[10], REG[11], REG[12], REG[13]);
+					dctoEx->dest = 10;
+					dctoEx->opCode = VEX_MOVI;
+				}
+				else if (IMM19_s & 0xf == VEX_CSRRS){
+					dctoEx->opCode = VEX_MOVI;
+					dctoEx->dataa = cycle;
+				}
 			break;
 
 

@@ -732,15 +732,20 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 
 				previousLatency = lastLatency;
 				previousWrittenRegister = lastWrittenRegister;
-				lastWrittenRegister = 10;
 				lastLatency = SIMPLE_LATENCY;
 
 				if (funct3 == RISCV_SYSTEM_ENV){
 					setBoundaries1 = 1;
 					boundary1 = indexInSourceBinaries;//Only plus one because in riscv next instr is not executed
+					lastWrittenRegister = 10;
 
 
-					binaries = assembleIInstruction(VEX_ECALL, 0,0);
+					binaries = assembleIInstruction(VEX_SYSTEM, VEX_ECALL,0);
+				}
+				else if (funct3 == RISCV_SYSTEM_CSRRS){
+					binaries = assembleIInstruction(VEX_SYSTEM, VEX_CSRRS, rd);
+					lastWrittenRegister = rd;
+
 				}
 				else {
 

@@ -308,7 +308,7 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 					| opcode == VEX_LDHU | opcode == VEX_LDW | opcode == VEX_LDWU | opcode == VEX_LDD;
 			ac_int<1, false> isStoreType = opcode == VEX_STB | opcode == VEX_STH | opcode == VEX_STW | opcode == VEX_STD;
 			ac_int<1, false> isBranchWithNoReg = opcode == VEX_GOTO | opcode == VEX_CALL
-					| opcode == VEX_STOP | opcode == VEX_ECALL;
+					| opcode == VEX_STOP | opcode == VEX_SYSTEM;
 			ac_int<1, false> isBranchWithReg = opcode == VEX_GOTOR | opcode == VEX_CALLR;
 			ac_int<1, false> isBranchWithTwoReg = opcode == VEX_BR | opcode == VEX_BRF | opcode == VEX_BGE | opcode == VEX_BLT | opcode == VEX_BGEU | opcode == VEX_BLTU;
 			ac_int<1, false> isMovi = opcode == VEX_MOVI;
