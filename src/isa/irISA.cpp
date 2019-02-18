@@ -409,6 +409,7 @@ IRBlock::IRBlock(int startAddress, int endAddress, int section){
 }
 
 IRBlock::~IRBlock(){
+	fprintf(stderr, "I'm destroying a block !!!\n");
 	if (placeInProfiler != 0)
 		*placeInProfiler = 0;
 	if (!this->instructions)
@@ -440,12 +441,12 @@ IRApplication::IRApplication(int numberSections){
 IRApplication::~IRApplication(){
 
 
-	for (int oneSection = 0; oneSection<this->numberOfSections; oneSection++){
-		for (int oneBlock = 0; oneBlock<this->numbersBlockInSections[oneSection]; oneBlock++){
-			if (this->blocksInSections[oneSection][oneBlock] != NULL)
-				delete this->blocksInSections[oneSection][oneBlock];
-		}
-	}
+//	for (int oneSection = 0; oneSection<this->numberOfSections; oneSection++){
+//		for (int oneBlock = 0; oneBlock<this->numbersBlockInSections[oneSection]; oneBlock++){
+//			if (this->blocksInSections[oneSection][oneBlock] != NULL)
+//				delete this->blocksInSections[oneSection][oneBlock];
+//		}
+//	}
 
 
 	for (int oneProcedure = 0; oneProcedure<this->numberProcedures; oneProcedure++){

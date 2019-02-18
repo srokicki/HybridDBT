@@ -49,14 +49,14 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		if (instructionInEnd == 0){
 			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0x2f);
 
-			platform->vexSimulator->doStep(1000);
+//			platform->vexSimulator->doStep(1000);
 			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0);
 		}
 		else if (readInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4) == 0){
 			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0x2f);
 			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4, instructionInEnd);
 
-			platform->vexSimulator->doStep(1000);
+//			platform->vexSimulator->doStep(1000);
 			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, instructionInEnd);
 			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4, 0);
 

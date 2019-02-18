@@ -1579,6 +1579,8 @@ void VexSimulator::initializeDataMemory(unsigned char* content, unsigned int siz
 
 
 int VexSimulator::doStep(int numberCycles){
+	return 0;
+
 	this->stop = 0;
 	int initialCycleCounter = cycle;
 	while (cycle < initialCycleCounter + numberCycles){

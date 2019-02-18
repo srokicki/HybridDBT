@@ -113,7 +113,7 @@ void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressS
 
 }
 
-
+int globalBinarySize;
 
 void initializeDBTInfo(char* fileName)
 {
@@ -121,7 +121,7 @@ void initializeDBTInfo(char* fileName)
 
 	int CONFIGURATION = 2;
 	int VERBOSE = 0;
-	Log::Init(VERBOSE, 0);
+	Log::Init(9, 0);
 
 
 	/***********************************
@@ -248,6 +248,7 @@ void initializeDBTInfo(char* fileName)
 
 
 	/********************** We store the size of each block ***********************/
+	globalBinarySize = size;
 	blockInfo = (BlockInformation *) malloc(size*sizeof(BlockInformation));
 	for (int oneBlockInfo = 0; oneBlockInfo<size; oneBlockInfo++)
 		blockInfo[oneBlockInfo].block = NULL;
@@ -256,7 +257,6 @@ void initializeDBTInfo(char* fileName)
 	for (int oneSection = 0; oneSection<numberOfSections; oneSection++){
 		for (int oneBlock = 0; oneBlock<application->numbersBlockInSections[oneSection]; oneBlock++){
 			IRBlock* block = application->blocksInSections[oneSection][oneBlock];
-			fprintf(stderr, "Adding a block at %x\n", block->sourceStartAddress);
 			blockInfo[block->sourceStartAddress].block = block;
 			blockInfo[block->sourceStartAddress].scheduleSizeOpt0 = block->vliwEndAddress - block->vliwStartAddress;
 			blockInfo[block->sourceStartAddress].scheduleSizeOpt1 = -1;
@@ -293,17 +293,81 @@ void initializeDBTInfo(char* fileName)
 }
 
 int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock){
+//	fprintf(stderr, "Address is %x, block is %llx\n", address, blockInfo[address>>2].block);
+
+	if ((address>>2) >= globalBinarySize){
+//		fprintf(stderr, "Acessing out of bounds -- %x - %x\n", address>>2, globalBinarySize);
+		return 0;
+	}
+
 	if (blockInfo[address>>2].block == NULL)
 		return 0;
 
 	*nextBlock = blockInfo[address>>2].block->sourceEndAddress*4;
 
-	if (optLevel >= 1){
+//	fprintf(stderr, "Next is %x\n", *nextBlock);
+
+	if (optLevel == 1){
 		if (blockInfo[address>>2].scheduleSizeOpt1 == -1){
+			fprintf(stderr, "Starting schedule\n");
+
 			optimizeBasicBlock(blockInfo[address>>2].block, platform, application, placeCode);
 			blockInfo[address>>2].scheduleSizeOpt1 = blockInfo[address>>2].block->vliwEndAddress - blockInfo[address>>2].block->vliwStartAddress;
 		}
 		return blockInfo[address>>2].scheduleSizeOpt1;
+	}
+	else if (optLevel >= 2){
+
+		if (blockInfo[address>>2].scheduleSizeOpt2 == -1){
+
+			if (blockInfo[address>>2].block->blockState >= IRBLOCK_PROC){
+					blockInfo[address>>2].scheduleSizeOpt1 = blockInfo[address>>2].block->vliwEndAddress - blockInfo[address>>2].block->vliwStartAddress;
+					blockInfo[address>>2].scheduleSizeOpt2 = blockInfo[address>>2].scheduleSizeOpt1;
+			}
+			else {
+				fprintf(stderr, "Starting trace construction\n");
+				int errorCode = buildAdvancedControlFlow(platform, blockInfo[address>>2].block, application);
+				blockInfo[address>>2].block->blockState = IRBLOCK_PROC;
+
+				if (!errorCode){
+					buildTraces(platform, application->procedures[application->numberProcedures-1], 100);
+					placeCode = rescheduleProcedure(platform, application->procedures[application->numberProcedures-1], placeCode);
+					for (int oneBlock = 0; oneBlock<application->procedures[application->numberProcedures-1]->nbBlock; oneBlock++){
+						IRBlock* block = application->procedures[application->numberProcedures-1]->blocks[oneBlock];
+						IRBlock* blockInOtherList = blockInfo[address>>2].block;
+
+
+
+						if (block == blockInOtherList){
+							blockInfo[address>>2].scheduleSizeOpt2 = block->vliwEndAddress - block->vliwStartAddress;
+
+							if (block->blockState = IRBLOCK_UNROLLED)
+								blockInfo[address>>2].scheduleSizeOpt2 = blockInfo[address>>2].scheduleSizeOpt2 / block->unrollingFactor;
+
+							int currentjumpId = 0;
+							for (int oneSourceCycle = block->sourceStartAddress+1; oneSourceCycle<block->sourceEndAddress; oneSourceCycle++){
+								if (blockInfo[oneSourceCycle].block != NULL){
+									if (currentjumpId > block->nbJumps){
+										fprintf(stderr, "Block info : number jump : %d number succ : %d\n", block->nbJumps, block->nbSucc);
+										fprintf(stderr, "Block limits : %x to %x\n", block->sourceStartAddress, block->sourceEndAddress);
+										fprintf(stderr, "Current cycle : %x\n", oneSourceCycle);
+										fprintf(stderr, "Failed while trying to extrapolate block size from traces (DBTInfo line 332)\n");
+										exit(-1);
+									}
+									blockInfo[oneSourceCycle].scheduleSizeOpt2 = block->vliwEndAddress - block->jumpPlaces[currentjumpId];
+									fprintf(stderr, "Extrapolated size %d for block in trace (whole trace is %d)\n", blockInfo[oneSourceCycle].scheduleSizeOpt2, blockInfo[block->sourceStartAddress].scheduleSizeOpt2);
+									currentjumpId++;
+								}
+							}
+						}
+
+
+					}
+				}
+			}
+		}
+
+		return blockInfo[address>>2].scheduleSizeOpt2;
 	}
 
 	return blockInfo[address>>2].scheduleSizeOpt0;

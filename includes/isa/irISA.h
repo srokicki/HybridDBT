@@ -97,6 +97,7 @@ public:
 	int nbInstr;					//The number of instructions
 
 	unsigned int blockState;		//A value to store its state (optimized/translated or other things like that)
+	short unrollingFactor;
 
 	int section;
 	IRBlock** placeInProfiler;

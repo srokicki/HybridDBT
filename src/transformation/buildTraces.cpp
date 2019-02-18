@@ -147,6 +147,8 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 	int unrollingFactor = 4;
 	if (block->nbInstr > 50)
 		unrollingFactor = 180 / block->nbInstr;
+	block->unrollingFactor = unrollingFactor;
+
 	int sizeOfResult = block->nbInstr + unrollingFactor*(block->nbInstr + nbIgnore) + block->nbInstr;
 
 	IRBlock *result = new IRBlock(0,0,0);
@@ -1149,7 +1151,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 						spec_loop_counter++;
 					}
 
-					delete oneSuperBlock;
+//					delete oneSuperBlock;
 				}
 
 			}
@@ -1275,7 +1277,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 				block->vliwStartAddress = 0;
 				nbBlock--;
 
-				delete (oneSuperBlock);
+//				delete (oneSuperBlock);
 
 
 
@@ -1329,8 +1331,8 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 			double delta2 = procedure->blocks[oneBlock]->nbInstr - platform->blockProcAverageSize;
 			platform->blockProcDistance += delta*delta2;
 		}
-		else
-			delete procedure->blocks[oneBlock];
+//		else
+//			delete procedure->blocks[oneBlock];
 	}
 
 

@@ -29,7 +29,6 @@ extern "C" {
  *************************************************************/
 int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock);
 
-
 /*************************************************************
  * 	Function initialize will read the the elf file and instantiate
  * 	everything needed for the estimation
