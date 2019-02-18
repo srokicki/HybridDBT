@@ -762,7 +762,8 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 				lastWrittenRegister = 64+rd; //the written reg is a float reg
 				lastLatency = MEMORY_LATENCY;
 
-				binaries = assembleRiInstruction(VEX_FLW, rd, rs1, imm12_I_signed);
+				binaries = assembleMemoryInstruction(VEX_FLW, rd, rs1, imm12_I_signed, 0, 0);
+
 
 
 				stage = stageMem;
@@ -774,7 +775,8 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 				lastWrittenRegister = rd;
 				lastLatency = 0;
 
-				binaries = assembleRiInstruction(VEX_FSW, rs2, rs1, imm12_S_signed);
+				binaries = assembleMemoryInstruction(VEX_FSW, rs2, rs1, imm12_S_signed, 0, 0);
+
 
 				stage = stageMem;
 
