@@ -673,9 +673,9 @@ void setOperands(unsigned int *bytecode, unsigned char index, short operands[2])
 	unsigned char shiftedOpcode = opcode>>4;
 
 	char isNop = (opcode == 0);
-	char isArith2 = (shiftedOpcode == 4 || shiftedOpcode == 5 || shiftedOpcode == 0 || shiftedOpcode == 3);
-	char isLoad = (opcode>>3) == 0x2;
-	char isStore = (opcode>>3) == 0x3;
+	char isArith2 = (shiftedOpcode == 4 || shiftedOpcode == 5 || shiftedOpcode == 0 || shiftedOpcode == 3) && opcode != VEX_FLW && opcode != VEX_FSW;
+	char isLoad = (opcode>>3) == 0x2 || opcode == VEX_FLW;
+	char isStore = (opcode>>3) == 0x3 || opcode == VEX_FSW;
 	char isArith1 = (shiftedOpcode == 6 || shiftedOpcode == 7);
 	char isBranchWithReg = (opcode == VEX_CALLR) ||(opcode == VEX_GOTOR);
 	char isBranchWithTwoRegs = (opcode == VEX_BR) || (opcode == VEX_BRF) || (opcode == VEX_BGE) || (opcode == VEX_BLT) || (opcode == VEX_BGEU) || (opcode == VEX_BLTU);

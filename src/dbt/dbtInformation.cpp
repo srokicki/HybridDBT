@@ -121,7 +121,7 @@ void initializeDBTInfo(char* fileName)
 
 	int CONFIGURATION = 2;
 	int VERBOSE = 0;
-	Log::Init(9, 0);
+	Log::Init(VERBOSE, 0);
 
 
 	/***********************************
@@ -248,9 +248,9 @@ void initializeDBTInfo(char* fileName)
 
 
 	/********************** We store the size of each block ***********************/
-	globalBinarySize = size;
-	blockInfo = (BlockInformation *) malloc(size*sizeof(BlockInformation));
-	for (int oneBlockInfo = 0; oneBlockInfo<size; oneBlockInfo++)
+	globalBinarySize = 10*size;
+	blockInfo = (BlockInformation *) malloc(10*size*sizeof(BlockInformation));
+	for (int oneBlockInfo = 0; oneBlockInfo<10*size; oneBlockInfo++)
 		blockInfo[oneBlockInfo].block = NULL;
 
 	int numberOfBlocks = 0;
@@ -265,7 +265,6 @@ void initializeDBTInfo(char* fileName)
 		}
 	}
 
-	fprintf(stderr, "There are %d blocks\n", numberOfBlocks);
 
 
 
@@ -309,8 +308,6 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock){
 
 	if (optLevel == 1){
 		if (blockInfo[address>>2].scheduleSizeOpt1 == -1){
-			fprintf(stderr, "Starting schedule\n");
-
 			optimizeBasicBlock(blockInfo[address>>2].block, platform, application, placeCode);
 			blockInfo[address>>2].scheduleSizeOpt1 = blockInfo[address>>2].block->vliwEndAddress - blockInfo[address>>2].block->vliwStartAddress;
 		}
@@ -325,7 +322,6 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock){
 					blockInfo[address>>2].scheduleSizeOpt2 = blockInfo[address>>2].scheduleSizeOpt1;
 			}
 			else {
-				fprintf(stderr, "Starting trace construction\n");
 				int errorCode = buildAdvancedControlFlow(platform, blockInfo[address>>2].block, application);
 				blockInfo[address>>2].block->blockState = IRBLOCK_PROC;
 
@@ -341,21 +337,23 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock){
 						if (block == blockInOtherList){
 							blockInfo[address>>2].scheduleSizeOpt2 = block->vliwEndAddress - block->vliwStartAddress;
 
-							if (block->blockState = IRBLOCK_UNROLLED)
+							if (block->blockState = IRBLOCK_UNROLLED && block->unrollingFactor != 0)
 								blockInfo[address>>2].scheduleSizeOpt2 = blockInfo[address>>2].scheduleSizeOpt2 / block->unrollingFactor;
 
 							int currentjumpId = 0;
 							for (int oneSourceCycle = block->sourceStartAddress+1; oneSourceCycle<block->sourceEndAddress; oneSourceCycle++){
 								if (blockInfo[oneSourceCycle].block != NULL){
-									if (currentjumpId > block->nbJumps){
-										fprintf(stderr, "Block info : number jump : %d number succ : %d\n", block->nbJumps, block->nbSucc);
-										fprintf(stderr, "Block limits : %x to %x\n", block->sourceStartAddress, block->sourceEndAddress);
-										fprintf(stderr, "Current cycle : %x\n", oneSourceCycle);
-										fprintf(stderr, "Failed while trying to extrapolate block size from traces (DBTInfo line 332)\n");
-										exit(-1);
+									if (currentjumpId >= block->nbJumps){
+//										fprintf(stderr, "Block info : number jump : %d number succ : %d\n", block->nbJumps, block->nbSucc);
+//										fprintf(stderr, "Block limits : %x to %x\n", block->sourceStartAddress, block->sourceEndAddress);
+//										fprintf(stderr, "Current cycle : %x\n", oneSourceCycle);
+//										fprintf(stderr, "Failed while trying to extrapolate block size from traces (DBTInfo line 332)\n");
+										blockInfo[oneSourceCycle].scheduleSizeOpt2 = 0;
+										//										exit(-1);
 									}
-									blockInfo[oneSourceCycle].scheduleSizeOpt2 = block->vliwEndAddress - block->jumpPlaces[currentjumpId];
-									fprintf(stderr, "Extrapolated size %d for block in trace (whole trace is %d)\n", blockInfo[oneSourceCycle].scheduleSizeOpt2, blockInfo[block->sourceStartAddress].scheduleSizeOpt2);
+									else{
+										blockInfo[oneSourceCycle].scheduleSizeOpt2 = block->vliwEndAddress - block->jumpPlaces[currentjumpId];
+									}
 									currentjumpId++;
 								}
 							}
@@ -372,6 +370,19 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock){
 
 	return blockInfo[address>>2].scheduleSizeOpt0;
 }
+
+char useIndirectionTable(int address){
+	//Address is the RISCV address of the jump
+	//We find the nearest block above
+	int currentAddress = address;
+	while (blockInfo[currentAddress>>2].block == NULL){
+		currentAddress -= 4;
+	}
+
+	if (blockInfo[currentAddress>>2].block->blockState > IRBLOCK_STATE_SCHEDULED)
+		return 0;
+}
+
 
 
 int main(int argc, char** argv){

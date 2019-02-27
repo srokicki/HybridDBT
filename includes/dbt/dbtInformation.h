@@ -35,6 +35,7 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock);
  *
  *************************************************************/
 void initializeDBTInfo(char* fileName);
+char useIndirectionTable(int address);
 
 #ifdef __cplusplus
 }

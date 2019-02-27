@@ -225,14 +225,14 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 
 		//We keep track of last store/load instructions
 		char shiftOpcode = opcode >> 3;
-		if (shiftOpcode == (VEX_STD >> 3)){
+		if (shiftOpcode == (VEX_STD >> 3) || opcode == VEX_FSW){
 			lastStore = oneInstr;
 			nbLastMemInstr = 1;
 			placeLastMemInstr = 1;
 			lastMemInstr[0] = oneInstr;
 		}
 
-		if (shiftOpcode == (VEX_LDD >> 3)){
+		if (shiftOpcode == (VEX_LDD >> 3)  || opcode == VEX_FLW){
 			lastMemInstr[placeLastMemInstr] = oneInstr;
 			placeLastMemInstr = (placeLastMemInstr+1) & 0x3;
 
@@ -300,7 +300,7 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 			 *  -> Dependencies to ensure memory coherence are added to the first memory accesses met
 			 */
 
-			if (shiftedOpcode == (VEX_STD>>3)){
+			if (shiftedOpcode == (VEX_STD>>3) || opcode == VEX_FSW){
 				hasStores = 1;
 
 				//If we are in a escapable block, we need to add a dependency from the first jump
@@ -314,7 +314,7 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 				nbLastMemInstr = 0;
 			}
 
-			if (lastStore != -1 && nbLastMemInstr > 0 && shiftedOpcode == (VEX_LDD>>3)){
+			if (lastStore != -1 && nbLastMemInstr > 0 && (shiftedOpcode == (VEX_LDD>>3)  || opcode == VEX_FLW)){
 				//For the first 4 load instr we add a dependency to ensure the correctness
 				if (nbLastMemInstr == 4){
 					addControlDep(result->instructions, lastMemInstr[placeLastMemInstr], result->nbInstr+oneInstr);
@@ -331,14 +331,14 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 
 			//We keep track of last store/load instructions of second block
 			char shiftOpcode = opcode >> 3;
-			if (shiftOpcode == (VEX_STD >> 3)){
+			if (shiftOpcode == (VEX_STD >> 3) || opcode == VEX_FSW){
 				lastStoreSecond = result->nbInstr+oneInstr;
 				nbLastMemInstrSecond = 1;
 				placeLastMemInstrSecond = 1;
 				lastMemInstrSecond[0] = result->nbInstr+oneInstr;
 			}
 
-			if (shiftOpcode == (VEX_LDD >> 3)){
+			if (shiftOpcode == (VEX_LDD >> 3)  || opcode == VEX_FLW){
 				lastMemInstrSecond[placeLastMemInstrSecond] = result->nbInstr+oneInstr;
 				placeLastMemInstrSecond = (placeLastMemInstrSecond+1) & 0x3;
 
@@ -660,14 +660,14 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 
 		//We keep track of last store/load instructions
 		char shiftOpcode = opcode >> 3;
-		if (shiftOpcode == (VEX_STD >> 3)){
+		if (shiftOpcode == (VEX_STD >> 3) || opcode == VEX_FSW){
 			lastStore = oneInstr;
 			nbLastMemInstr = 1;
 			placeLastMemInstr = 1;
 			lastMemInstr[0] = oneInstr;
 		}
 
-		if (shiftOpcode == (VEX_LDD >> 3)){
+		if (shiftOpcode == (VEX_LDD >> 3) || opcode == VEX_FLW){
 			lastMemInstr[placeLastMemInstr] = oneInstr;
 			placeLastMemInstr = (placeLastMemInstr+1) & 0x3;
 
@@ -725,7 +725,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 		 *  -> Dependencies to ensure memory coherence are added to the first memory accesses met
 		 */
 
-		if (shiftedOpcode == (VEX_STD>>3)){
+		if (shiftedOpcode == (VEX_STD>>3) || opcode == VEX_FSW){
 			hasStores = 1;
 
 			//If we are in a escapable block, we need to add a dependency from the first jump
@@ -739,7 +739,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 			nbLastMemInstr = 0;
 		}
 
-		if (lastStore != -1 && nbLastMemInstr > 0 && shiftedOpcode == (VEX_LDD>>3)){
+		if (lastStore != -1 && nbLastMemInstr > 0 && (shiftedOpcode == (VEX_LDD>>3) || opcode == VEX_FLW)){
 			//For the first 4 load instr we add a dependency to ensure the correctness
 			if (nbLastMemInstr == 4){
 				addControlDep(result->instructions, lastMemInstr[placeLastMemInstr], sizeofEntryBlock+oneInstr);
