@@ -142,7 +142,7 @@ void initializeDBTInfo(char* fileName)
 	unsigned int pcStart;
 
 	readSourceBinaries(fileName, code, addressStart, size, pcStart, platform);
-
+fprintf(stderr, "size is %d\n", size);
 
 	platform->vliwInitialConfiguration = CONFIGURATION;
 	platform->vliwInitialIssueWidth = getIssueWidth(platform->vliwInitialConfiguration);
@@ -189,9 +189,7 @@ void initializeDBTInfo(char* fileName)
 	initializeInsertionsMemory(size*4);
 
 
-	for (int i=0; i<placeCode; i++){
-		platform->vexSimulator->typeInstr[i] = 3;
-	}
+
 	int endOfInitSection = placeCode;
 
 	for (int oneSection=0; oneSection<(size>>10)+1; oneSection++){
@@ -233,17 +231,15 @@ void initializeDBTInfo(char* fileName)
 			writeInt(platform->vliwBinaries, 16*(source), type + ((immediateValue & mask)<<7));
 
 			if (immediateValue > 0x7ffff){
-				Log::fprintf(LOG_ERROR, stderr, "error in immediate size...\n");
-				exit(-1);
+
+				Log::fprintf(LOG_ERROR, stderr, "error in immediate size... Should be corrected in real life...%x\n", immediateValue);
+//				exit(-1);
+				immediateValue &= 0x7ffff;
 			}
 			unsigned int instructionBeforePreviousDestination = readInt(platform->vliwBinaries, 16*(destinationInVLIWFromNewMethod-1)+12);
 			if (instructionBeforePreviousDestination != 0)
 				writeInt(platform->vliwBinaries, 16*(source+1)+12, instructionBeforePreviousDestination);
 		}
-	}
-
-	for (int i=endOfInitSection; i<placeCode; i++){
-		platform->vexSimulator->typeInstr[i] = 0;
 	}
 
 
@@ -269,27 +265,10 @@ void initializeDBTInfo(char* fileName)
 
 
 
-	/********************** We compute all schedules ******************************/
-
-	//We perform aggressive level 1 optimization: if a block takes more than 8 cycle we schedule it.
-//	//If it has a backward loop, we also profile it.
-//	for (int oneSection = 0; oneSection<numberOfSections; oneSection++){
-//		for (int oneBlock = 0; oneBlock<application->numbersBlockInSections[oneSection]; oneBlock++){
-//			IRBlock* block = application->blocksInSections[oneSection][oneBlock];
-//
-//
-//			if (block != NULL && block->sourceStartAddress != -1){
-//				if (OPTLEVEL >= 1 && block->sourceEndAddress - block->sourceStartAddress>8){
-//					optimizeBasicBlock(block, &platform-> &application, placeCode);
-//					platform->blockScheduleCounter++;
-//fprintf(stderr, "test %d\n",platform->blockScheduleCounter);
-//				}
-//			}
-//		}
-//	}
-//	fprintf(stderr, "Scheduled %d blocks\n", platform->blockScheduleCounter);
-
 }
+
+
+
 
 int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock){
 //	fprintf(stderr, "Address is %x, block is %llx\n", address, blockInfo[address>>2].block);
@@ -344,12 +323,7 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock){
 							for (int oneSourceCycle = block->sourceStartAddress+1; oneSourceCycle<block->sourceEndAddress; oneSourceCycle++){
 								if (blockInfo[oneSourceCycle].block != NULL){
 									if (currentjumpId >= block->nbJumps){
-//										fprintf(stderr, "Block info : number jump : %d number succ : %d\n", block->nbJumps, block->nbSucc);
-//										fprintf(stderr, "Block limits : %x to %x\n", block->sourceStartAddress, block->sourceEndAddress);
-//										fprintf(stderr, "Current cycle : %x\n", oneSourceCycle);
-//										fprintf(stderr, "Failed while trying to extrapolate block size from traces (DBTInfo line 332)\n");
 										blockInfo[oneSourceCycle].scheduleSizeOpt2 = 0;
-										//										exit(-1);
 									}
 									else{
 										blockInfo[oneSourceCycle].scheduleSizeOpt2 = block->vliwEndAddress - block->jumpPlaces[currentjumpId];
@@ -381,6 +355,190 @@ char useIndirectionTable(int address){
 
 	if (blockInfo[currentAddress>>2].block->blockState > IRBLOCK_STATE_SCHEDULED)
 		return 0;
+}
+
+IRProcedure* optimizeLevel2(unsigned int address){
+
+	//We check if the block has already been optimized
+	if (blockInfo[address>>2].scheduleSizeOpt2 == -1){
+
+		if (blockInfo[address>>2].block->blockState >= IRBLOCK_PROC){
+				blockInfo[address>>2].scheduleSizeOpt1 = blockInfo[address>>2].block->vliwEndAddress - blockInfo[address>>2].block->vliwStartAddress;
+				blockInfo[address>>2].scheduleSizeOpt2 = blockInfo[address>>2].scheduleSizeOpt1;
+				return NULL;
+		}
+		else {
+			int errorCode = buildAdvancedControlFlow(platform, blockInfo[address>>2].block, application);
+			blockInfo[address>>2].block->blockState = IRBLOCK_PROC;
+
+			if (!errorCode){
+				buildTraces(platform, application->procedures[application->numberProcedures-1], 100);
+				placeCode = rescheduleProcedure(platform, application->procedures[application->numberProcedures-1], placeCode);
+				for (int oneBlock = 0; oneBlock<application->procedures[application->numberProcedures-1]->nbBlock; oneBlock++){
+					IRBlock* block = application->procedures[application->numberProcedures-1]->blocks[oneBlock];
+					IRBlock* blockInOtherList = blockInfo[address>>2].block;
+
+
+
+					if (block == blockInOtherList){
+						blockInfo[address>>2].scheduleSizeOpt2 = block->vliwEndAddress - block->vliwStartAddress;
+
+						if (block->blockState = IRBLOCK_UNROLLED && block->unrollingFactor != 0)
+							blockInfo[address>>2].scheduleSizeOpt2 = blockInfo[address>>2].scheduleSizeOpt2 / block->unrollingFactor;
+
+						int currentjumpId = 0;
+						for (int oneSourceCycle = block->sourceStartAddress+1; oneSourceCycle<block->sourceEndAddress; oneSourceCycle++){
+							if (blockInfo[oneSourceCycle].block != NULL){
+								if (currentjumpId >= block->nbJumps){
+									blockInfo[oneSourceCycle].scheduleSizeOpt2 = 0;
+								}
+								else{
+									blockInfo[oneSourceCycle].scheduleSizeOpt2 = block->vliwEndAddress - block->jumpPlaces[currentjumpId];
+								}
+								currentjumpId++;
+							}
+						}
+					}
+
+
+				}
+
+				return application->procedures[application->numberProcedures-1];
+			}
+			else{
+				return NULL;
+			}
+		}
+	}
+	else {
+		for (int oneProcedure = 0; oneProcedure < application->numberProcedures; oneProcedure++){
+			IRProcedure *procedure = application->procedures[oneProcedure];
+			for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++){
+				IRBlock *block = procedure->blocks[oneBlock];
+				if (block->sourceStartAddress * 4 == address){
+					return procedure;
+				}
+			}
+		}
+		return NULL;
+	}
+
+
+}
+
+
+
+
+
+#define IT_NB_SET 8
+#define IT_NB_WAY 8
+
+#define COST_OPT_1 10
+#define COST_OPT_2 100
+
+
+struct indirectionTableEntry {
+	uint64_t address;
+	uint8_t counter;
+	bool isInTC;
+	char optLevel;
+	unsigned int sizeInTC; //Reprensent the size of the binaries in the TC (counter as the number of instruction)
+	uint64_t timeAvailable; //Reprensent the timestamp where the optimization is finished. If current cycle number is lower we take the optimization level just below
+	unsigned int costOfBinaries; // Cost function that represent the time spent on the binaries.
+};
+
+struct indirectionTableEntry indirectionTable[IT_NB_WAY][IT_NB_SET];
+uint64_t nextAvailabilityDBTProc = 0;
+int sizeLeftInTC = 8192;
+
+char getOptLevel(int address, uint64_t nb_cycle){
+	bool inTC = false;
+	bool inTranslationCache= false;
+	char optLevel = 0;
+
+	/************************************************************************************/
+	int setNumber = (address>>2) & 0x7;
+	bool found = 0;
+	for (int oneWay = 0; oneWay < IT_NB_WAY; oneWay++){
+		if (indirectionTable[oneWay][setNumber].address == address){
+			//The destination of the branch is in the indirection table.
+
+			//We increment the use counter
+			indirectionTable[oneWay][setNumber].counter++;
+			if (indirectionTable[oneWay][setNumber].timeAvailable < nb_cycle)
+				optLevel = indirectionTable[oneWay][setNumber].optLevel;
+			else
+				optLevel = indirectionTable[oneWay][setNumber].optLevel - 1;
+
+			found = true;
+		}
+	}
+
+	if (!found){
+		inTranslationCache = false;
+		for (int oneWay = 0; oneWay < IT_NB_WAY; oneWay++){
+			if (indirectionTable[oneWay][setNumber].counter == 0){
+				indirectionTable[oneWay][setNumber].address = address;
+				indirectionTable[oneWay][setNumber].counter = 1;
+			}
+			else{
+				indirectionTable[oneWay][setNumber].counter--;
+			}
+		}
+
+	}
+
+	/************************************************************************************/
+
+
+	if (nextAvailabilityDBTProc <= nb_cycle){
+		for (int oneWay = 0; oneWay < IT_NB_WAY; oneWay++){
+			for (int oneSet = 0; oneSet < IT_NB_SET; oneSet++){
+				if (indirectionTable[oneWay][setNumber].counter >= 3 && indirectionTable[oneWay][setNumber].optLevel <= 0){
+					//We trigger opt level 1
+					if (blockInfo[address].block != NULL){
+						int size = blockInfo[address].block->sourceEndAddress - blockInfo[address].block->sourceStartAddress;
+						if (size < sizeLeftInTC){
+							indirectionTable[oneWay][setNumber].optLevel++;
+							indirectionTable[oneWay][setNumber].isInTC = true;
+							indirectionTable[oneWay][setNumber].timeAvailable = nb_cycle + COST_OPT_1 * size;
+							indirectionTable[oneWay][setNumber].costOfBinaries = COST_OPT_1 * size;
+							indirectionTable[oneWay][setNumber].sizeInTC = size;
+							sizeLeftInTC -= size;
+							nextAvailabilityDBTProc = nb_cycle + COST_OPT_1 * size;
+						}
+					}
+				}
+				else if (indirectionTable[oneWay][setNumber].counter >= 7 && indirectionTable[oneWay][setNumber].optLevel <= 1){
+					//We trigger opt level 2
+
+					if (blockInfo[address].block != NULL){
+						IRProcedure *procedure = optimizeLevel2(address);
+
+						//We compute the size
+						if (procedure != NULL){
+							int size=0;
+							for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++)
+								size += procedure->blocks[oneBlock]->nbInstr;
+
+							if (size < sizeLeftInTC){
+								indirectionTable[oneWay][setNumber].optLevel++;
+								indirectionTable[oneWay][setNumber].isInTC = true;
+								indirectionTable[oneWay][setNumber].timeAvailable = nb_cycle + COST_OPT_2 * size;
+								indirectionTable[oneWay][setNumber].costOfBinaries = COST_OPT_2 * size;
+								indirectionTable[oneWay][setNumber].sizeInTC = size;
+								sizeLeftInTC -= size;
+								nb_cycle + COST_OPT_2 * size;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+
+	return optLevel;
 }
 
 

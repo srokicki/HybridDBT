@@ -982,9 +982,9 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 		if (setBoundaries1){
 			ac_int<1, false> const1 = 1;
 			ac_int<32, false> boundaryAddress = (boundary1 + ((codeSectionStart - addressStart)>>2));
-			ac_int<18, false> offset = boundaryAddress.slc<18>(0);
+			ac_int<22, false> offset = boundaryAddress.slc<22>(0);
 			//ac_int<3, false> bitOffset = boundaryAddress.slc<3>(0);
-			blocksBoundaries[offset] = 1; //.set_slc(bitOffset, const1);
+			blocksBoundaries[offset%MEMORY_SIZE] = 1; //.set_slc(bitOffset, const1);
 
 			if (boundary1 == indexInSourceBinaries)
 				currentBoundaryJustSet=1;
@@ -1022,6 +1022,7 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 
 		if (previousLatency != 0)
 			previousLatency--;
+
 
 	#ifndef __CATAPULT
 	//Performance simulation

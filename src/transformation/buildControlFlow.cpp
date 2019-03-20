@@ -246,7 +246,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 	IRBlock *blockInProcedure[TEMP_BLOCK_STORAGE_SIZE];
 	int numberBlockInProcedure = 0;
 
-
+fprintf(stderr, "Starting analysis with block at %p\n", startBlock);
 
 	while (numberBlockToStudy != 0){
 
@@ -314,6 +314,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 			if (currentBlock->sourceDestination != -1){
 				successor1 = currentBlock->sourceDestination;
 				nbSucc = 1;
+
 				if (currentBlock->nbJumps == 0)
 					currentBlock->addJump(-1, (endAddress-2*incrementInBinaries));
 
@@ -366,7 +367,6 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 		if (nbSucc > 1){
 			blocksToStudy[numberBlockToStudy+1] = currentBlock->successor2;
 			currentBlock->successors[1] = currentBlock->successor2;
-
 		}
 		numberBlockToStudy += nbSucc;
 
@@ -390,6 +390,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 				int successor1, successor2, nbSucc;
 				if (isConditionalBranch && (application->blocksInSections[oneSection][oneBlock]->sourceDestination == currentBlock->sourceStartAddress || application->blocksInSections[oneSection][oneBlock]->sourceEndAddress == currentBlock->sourceStartAddress)){
 					blocksToStudy[numberBlockToStudy] = application->blocksInSections[oneSection][oneBlock];
+
 					numberBlockToStudy++;
 				}
 				else if (isJump){
@@ -402,7 +403,6 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 				else if (isCall || isNothing){
 					if (application->blocksInSections[oneSection][oneBlock]->sourceEndAddress == currentBlock->sourceStartAddress){
 						blocksToStudy[numberBlockToStudy] = application->blocksInSections[oneSection][oneBlock];
-
 						numberBlockToStudy++;
 					}
 				}

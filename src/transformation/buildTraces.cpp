@@ -1378,8 +1378,10 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 							break;
 						}
 
+
 						preds[numberPred] = otherBlock;
 						numberPred++;
+						break;
 					}
 				}
 

@@ -175,19 +175,17 @@ unsigned int firstPassTranslator(DBTPlateform *platform,
 	ac_int<32, false> *localInsertions = (ac_int<32, false>*) malloc(2048*sizeof(ac_int<32, false>));
 	ac_int<128, false> *localVliwBinaries = (ac_int<128, false>*) malloc(MEMORY_SIZE*sizeof(ac_int<128, false>));
 	ac_int<1, false> *localBlockBoundaries = (ac_int<1, false>*) malloc(MEMORY_SIZE*sizeof(ac_int<1, false>));
-	ac_int<32, false> *localUnresolvedJumps_src = (ac_int<32, false>*) malloc(512*sizeof(ac_int<32, false>));
-	ac_int<32, false> *localUnresolvedJumps_type = (ac_int<32, false>*) malloc(512*sizeof(ac_int<32, false>));
-	ac_int<32, true> *localUnresolvedJumps = (ac_int<32, true>*) malloc(512*sizeof(ac_int<32, true>));
+	ac_int<32, false> *localUnresolvedJumps_src = (ac_int<32, false>*) malloc(1024*sizeof(ac_int<32, false>));
+	ac_int<32, false> *localUnresolvedJumps_type = (ac_int<32, false>*) malloc(1024*sizeof(ac_int<32, false>));
+	ac_int<32, true> *localUnresolvedJumps = (ac_int<32, true>*) malloc(1024*sizeof(ac_int<32, true>));
 
 	acintMemcpy(localMipsBinaries, platform->mipsBinaries, MEMORY_SIZE*4);
 	acintMemcpy(localInsertions, platform->insertions, 2048*4);
 	acintMemcpy(localVliwBinaries, platform->vliwBinaries, MEMORY_SIZE*16);
 	acintMemcpy(localBlockBoundaries, platform->blockBoundaries, MEMORY_SIZE);
-	acintMemcpy(localUnresolvedJumps_src, platform->unresolvedJumps_src, 512*4);
-	acintMemcpy(localUnresolvedJumps_type, platform->unresolvedJumps_type, 512*4);
-	acintMemcpy(localUnresolvedJumps, platform->unresolvedJumps, 512*4);
-
-
+	acintMemcpy(localUnresolvedJumps_src, platform->unresolvedJumps_src, 1024*4);
+	acintMemcpy(localUnresolvedJumps_type, platform->unresolvedJumps_type, 1024*4);
+	acintMemcpy(localUnresolvedJumps, platform->unresolvedJumps, 1024*4);
 
 	int returnedValue = firstPassTranslator_riscv_hw(localMipsBinaries,
 			size,
@@ -206,9 +204,9 @@ unsigned int firstPassTranslator(DBTPlateform *platform,
 	acintMemcpy(platform->insertions, localInsertions, 2048*4);
 	acintMemcpy(platform->vliwBinaries, localVliwBinaries, MEMORY_SIZE*16);
 	acintMemcpy(platform->blockBoundaries, localBlockBoundaries, MEMORY_SIZE);
-	acintMemcpy(platform->unresolvedJumps_src, localUnresolvedJumps_src, 512*4);
-	acintMemcpy(platform->unresolvedJumps_type, localUnresolvedJumps_type, 512*4);
-	acintMemcpy(platform->unresolvedJumps, localUnresolvedJumps, 512*4);
+	acintMemcpy(platform->unresolvedJumps_src, localUnresolvedJumps_src, 1024*4);
+	acintMemcpy(platform->unresolvedJumps_type, localUnresolvedJumps_type, 1024*4);
+	acintMemcpy(platform->unresolvedJumps, localUnresolvedJumps, 1024*4);
 
 	free(localMipsBinaries);
 	free(localInsertions);

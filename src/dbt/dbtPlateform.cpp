@@ -15,9 +15,9 @@ DBTPlateform::DBTPlateform(int binarySize){
 	blockBoundaries = (unsigned char*) malloc(MEMORY_SIZE*sizeof(unsigned char));
 	bytecode = (unsigned int*) malloc(256*4*sizeof(unsigned int));
 	globalVariables = (int*) malloc(128*sizeof(int));
-	unresolvedJumps_src = (unsigned int*) malloc(512*sizeof(unsigned int));
-	unresolvedJumps_type = (unsigned int*) malloc(512*sizeof(unsigned int));
-	unresolvedJumps = (int*) malloc(512*sizeof(int));
+	unresolvedJumps_src = (unsigned int*) malloc(1024*sizeof(unsigned int));
+	unresolvedJumps_type = (unsigned int*) malloc(1024*sizeof(unsigned int));
+	unresolvedJumps = (int*) malloc(1024*sizeof(int));
 	placeOfRegisters = (unsigned char*) malloc(512*sizeof(unsigned char));
 	freeRegisters = (unsigned char*) malloc(64*sizeof(unsigned char));
 	placeOfInstr = (unsigned int*) malloc(256*sizeof(unsigned int));

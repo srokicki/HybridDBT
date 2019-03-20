@@ -14,6 +14,9 @@
 #include <map>
 #endif
 
+#define MEMORY_SIZE 2300000
+
+
 #include <types.h>
 #include <isa/vexISA.h>
 #include <simulator/genericSimulator.h>
@@ -97,7 +100,7 @@ struct MemtoWB {
 class VexSimulator : public GenericSimulator {
 	public:
 
-	int typeInstr[450000];
+	int typeInstr[MEMORY_SIZE];
 	int nbCycleType[4] = {0,0,0,0};
 
 	//Instruction memory is a 128-bit memory
