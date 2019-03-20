@@ -136,9 +136,9 @@ inline unsigned int writeDependency_ac(ac_int<128, false> bytecode[1024], ac_int
 	//Note: the IR_SUCC should be defined in irISA.h
 
 #ifdef IR_SUCC
-	writeSuccessor_ac(bytecode, srcInstr, destInstr, isData, currentInstruction);
+	return writeSuccessor_ac(bytecode, srcInstr, destInstr, isData, currentInstruction);
 #else
-	writePredecessor_ac(bytecode, srcInstr, destInstr, isData, currentInstruction);
+	return writePredecessor_ac(bytecode, srcInstr, destInstr, isData, currentInstruction);
 #endif
 
 }

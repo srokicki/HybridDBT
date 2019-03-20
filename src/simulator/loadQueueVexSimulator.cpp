@@ -397,7 +397,7 @@ int LoadQueueVexSimulator::doStep(){
 
 #ifndef __CATAPULT
 
-	if (debugLevel >= 1 || 1){
+	if (debugLevel >= 1){
 
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
 //		if (this->unitActivation[0])
