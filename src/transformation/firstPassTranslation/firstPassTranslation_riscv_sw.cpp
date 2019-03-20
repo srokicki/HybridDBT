@@ -682,10 +682,10 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 					lastWrittenRegister = 10;
 
 
-					binaries = assembleIInstruction_sw(VEX_SYSTEM, VEX_ECALL,0);
+					binaries = assembleIInstruction_sw(VEX_SYSTEM, VEX_SYSTEM_ECALL,0);
 				}
 				else if (funct3 == RISCV_SYSTEM_CSRRS){
-					binaries = assembleIInstruction_sw(VEX_SYSTEM, VEX_CSRRS, rd);
+					binaries = assembleIInstruction_sw(VEX_SYSTEM, VEX_SYSTEM_CSRRS, rd);
 					lastWrittenRegister = rd;
 
 				}

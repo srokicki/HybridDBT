@@ -892,6 +892,12 @@ void VexSimulator::doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 	if (OP == VEX_FNMADD || OP == VEX_FMADD || OP == VEX_FNMSUB || OP == VEX_FMSUB){
 		dctoEx->dest = RD;
 	}
+
+
+	if (OP == VEX_SYSTEM && (IMM19_s & 0xf) == VEX_SYSTEM_CSRRS){
+		dctoEx->opCode = VEX_MOVI;
+		dctoEx->dataa = cycle;
+	}
 }
 
 #ifdef __CATAPULT
@@ -1013,6 +1019,11 @@ void VexSimulator::doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 		dctoEx->memValue = this->ldd(address & 0xfffffffffffffff8);
 
 		#endif
+	}
+
+	if (OP == VEX_SYSTEM && (IMM19_s & 0xf) == VEX_SYSTEM_CSRRS){
+		dctoEx->opCode = VEX_MOVI;
+		dctoEx->dataa = cycle;
 	}
 
 }
@@ -1197,12 +1208,12 @@ void VexSimulator::doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx){
 
 			case VEX_SYSTEM:
 
-				if ((IMM19_s & 0xf) == VEX_ECALL){
+				if ((IMM19_s & 0xf) == VEX_SYSTEM_ECALL){
 					dctoEx->dataa = this->solveSyscall(REG[17], REG[10], REG[11], REG[12], REG[13]);
 					dctoEx->dest = 10;
 					dctoEx->opCode = VEX_MOVI;
 				}
-				else if ((IMM19_s & 0xf) == VEX_CSRRS){
+				else if ((IMM19_s & 0xf) == VEX_SYSTEM_CSRRS){
 					dctoEx->opCode = VEX_MOVI;
 					dctoEx->dataa = cycle;
 				}
@@ -1428,7 +1439,7 @@ int VexSimulator::doStep(){
 
 #ifndef __CATAPULT
 
-	if (debugLevel >= 1/* || (PC >= 4*22090 && PC < 4*22125) || (PC >= 4*458 && PC < 4*507)*/){
+	if (debugLevel >= 1 || 1/* || (PC >= 4*22090 && PC < 4*22125) || (PC >= 4*458 && PC < 4*507)*/){
 
 
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";

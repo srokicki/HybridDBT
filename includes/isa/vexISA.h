@@ -56,8 +56,8 @@
 #define VEX_BLTU 0x2c
 #define VEX_BGEU 0x2d
 #define VEX_SYSTEM 0x2e
-	#define VEX_ECALL 0x0
-	#define VEX_CSRRS 0x1
+	#define VEX_SYSTEM_ECALL 0x0
+	#define VEX_SYSTEM_CSRRS 0x1
 
 #define VEX_STOP 0x2f
 

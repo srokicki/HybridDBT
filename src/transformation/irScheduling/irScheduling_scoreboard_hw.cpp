@@ -154,9 +154,10 @@ ac_int<32, false> createInstruction(ac_int<50, false> instruction, ac_int<6, fal
 		}
 	}
 	else { //The instruction is I Type
-		if (opCode == VEX_MOVI || opCode == VEX_CALL) {
+		if (opCode == VEX_MOVI || opCode == VEX_CALL || (opCode == VEX_SYSTEM && imm19 == VEX_SYSTEM_CSRRS)) {
 			generatedInstruction.set_slc(7, imm19);
 			generatedInstruction.set_slc(26, dest);
+
 		}
 		else if (opCode == VEX_BR || opCode == VEX_BRF || opCode == VEX_BGE || opCode == VEX_BLT || opCode == VEX_BGEU || opCode == VEX_BLTU){
 			generatedInstruction.set_slc(26, operand1);
@@ -391,7 +392,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		unsigned char shiftedOpcode = opCode>>4;
 
 		ac_int<1, false> isNop = (opCode == 0);
-		ac_int<1, false> isITypeWithDest = (opCode == VEX_MOVI || opCode == VEX_CALL);
+		ac_int<1, false> isITypeWithDest = (opCode == VEX_MOVI || opCode == VEX_CALL || (opCode == VEX_SYSTEM && imm19 == VEX_SYSTEM_CSRRS));
 		ac_int<1, false> isArith2 = (shiftedOpcode == 4 || shiftedOpcode == 5 || shiftedOpcode == 0);
 
 		ac_int<1, false> isArith1 = (shiftedOpcode == 6 || shiftedOpcode == 7);
