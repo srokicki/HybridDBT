@@ -11,5 +11,6 @@
 
 void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel);
 void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock **predecessors, int nbPred);
+void checkSpeculation(IRProcedure *procedure);
 
 #endif /* INCLUDES_TRANSFORMATION_BUILDTRACES_H_ */
