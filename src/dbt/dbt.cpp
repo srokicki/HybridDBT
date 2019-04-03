@@ -552,7 +552,7 @@ int main(int argc, char *argv[])
 
 				if (!errorCode){
 					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1], OPTLEVEL);
-					checkSpeculation(application.procedures[application.numberProcedures-1]);
+				//	checkSpeculation(application.procedures[application.numberProcedures-1]);
 					placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
 					dbtPlateform.procedureOptCounter++;
 
