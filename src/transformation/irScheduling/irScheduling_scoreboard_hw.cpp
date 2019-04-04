@@ -66,6 +66,10 @@ ac_int<8, false> mask_spec[4][WINDOW_SIZE];
 
 ac_int<128, false> maskVal[4];
 
+ac_int<6, false> freeRegistersPlaceToRead;
+ac_int<6, false> freeRegistersPlaceToWrite;
+
+
 
 
 ac_int<32, false> max(ac_int<32, false> a, ac_int<32, false> b) {
@@ -225,6 +229,9 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 	timeTakenIRScheduler = 0;
 	#endif
 
+	freeRegistersPlaceToRead = 0;
+	freeRegistersPlaceToWrite = numberFreeRegister;
+
 	haveJump = 0;
 	instructionId = 0;
 	windowPosition = 0;//addressInBinaries;
@@ -320,7 +327,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 
 		//For alloc
 		ac_int<6, false> accessPlaceOfReg = placeOfRegisters[virtualRDest];
-		ac_int<6, false> accessFreeReg = freeRegisters[numberFreeRegister-1];
+		ac_int<6, false> accessFreeReg = freeRegisters[freeRegistersPlaceToRead];
 
 		//**************************************************************
 		// Allocation
@@ -331,6 +338,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 			// take the first free register + update register dependencies
 			if (numberFreeRegister > 0) {
 				numberFreeRegister--;
+				freeRegistersPlaceToRead++;
 				dest = accessFreeReg;
 				registerDependencies[instructionId] = bytecode_word2.slc<8>(6);
 			} else {
@@ -567,10 +575,17 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		registerDependencies[operand1.slc<8>(0)] = operand1Dep;
 		registerDependencies[operand2.slc<8>(0)] = operand2Dep;
 
-		if (useOperand1 && !operand1[8] && operand1Dep == 0 && !poisoned[placeOfOperand1])
-			freeRegisters[numberFreeRegister++] = placeOfOperand1;
-		if (useOperand2 && !operand2[8] && operand2Dep == 0 && !poisoned[placeOfOperand2])
-			freeRegisters[numberFreeRegister++] = placeOfOperand2;
+		if (useOperand1 && !operand1[8] && operand1Dep == 0 && !poisoned[placeOfOperand1]){
+			freeRegisters[freeRegistersPlaceToWrite] = placeOfOperand1;
+			numberFreeRegister++;
+			freeRegistersPlaceToWrite++;
+		}
+
+		if (useOperand2 && !operand2[8] && operand2Dep == 0 && !poisoned[placeOfOperand2]){
+			freeRegisters[freeRegistersPlaceToWrite] = placeOfOperand2;
+			numberFreeRegister++;
+			freeRegistersPlaceToWrite++;
+		}
 
 		//***********************************************************************
 		// !Place found : Write binaries + shift the window + correct placement
