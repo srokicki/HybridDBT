@@ -397,7 +397,7 @@ int LoadQueueVexSimulator::doStep(){
 
 #ifndef __CATAPULT
 
-	if (debugLevel >= 1){
+	if (debugLevel >= 1 || 1){
 
 		std::cerr << std::to_string(cycle) + ";" + std::to_string(pcValueForDebug) + ";";
 //		if (this->unitActivation[0])
@@ -441,7 +441,8 @@ int LoadQueueVexSimulator::doStep(){
 		for (int oneRegister =0; oneRegister<38; oneRegister++){
 			fprintf(stderr, "%lx;", (long) REG[oneRegister]);
 		}
-		fprintf(stderr, ";;%lx;", (long) REG[63]);
+		fprintf(stderr, ";;%lx;", (long) REG[41]);
+		fprintf(stderr, ";;%lx;", (long) REG[42]);
 
 		fprintf(stderr, "\n");
 

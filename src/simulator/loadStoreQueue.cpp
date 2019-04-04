@@ -64,8 +64,8 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 
 	if (saveMemOp){
 		for (int oneAddress = PLSQ_BANK_SIZE-1; oneAddress > 0; oneAddress--){
-			addresses[bank][oneAddress - 1] = addresses[bank][oneAddress];
-			ages[bank][oneAddress - 1] = ages[bank][oneAddress];
+			addresses[bank][oneAddress] = addresses[bank][oneAddress-1];
+			ages[bank][oneAddress] = ages[bank][oneAddress-1];
 		}
 		addresses[bank][0] = address;
 		ages[bank][0] = 1;
@@ -120,7 +120,6 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 		for (int oneAddress = 0; oneAddress<PLSQ_BANK_SIZE; oneAddress++){
 			ac_int<64, false> storedAddress = addresses[bank][oneAddress];
 			ac_int<1, false> storedAge = ages[bank][oneAddress];
-
 
 			#ifndef __CATAPULT
 			//We gather statistics
