@@ -668,6 +668,9 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 			writeInt(platform->vliwBinaries, placeOfNewJump, insertedJump);
 		}
 
+		//We update vliw end cycle
+		block->vliwEndAddress = block->vliwStartAddress+binaSize;
+
 	}
 	else{
 		Log::printf(LOG_SCHEDULE_BLOCK, "Schedule is dropped (%d cycles)\n", binaSize);
@@ -698,6 +701,8 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
 	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
 	/*****************************************************************/
+
+
 
 }
 

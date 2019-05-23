@@ -37,7 +37,6 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 	Log::printf(LOG_SCHEDULE_BLOCK, "Block from %x to %x is eligible for scheduling (dest %x) \n", block->sourceStartAddress, block->sourceEndAddress, block->sourceDestination);
 
-
 #ifndef __NIOS
 
 	//TODO make it work for nios too

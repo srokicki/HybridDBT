@@ -246,13 +246,12 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 	IRBlock *blockInProcedure[TEMP_BLOCK_STORAGE_SIZE];
 	int numberBlockInProcedure = 0;
 
-fprintf(stderr, "Starting analysis with block at %p\n", startBlock);
-
 	while (numberBlockToStudy != 0){
 
 		if (numberBlockToStudy>500){
 			return -1;
 		}
+
 
 		IRBlock *currentBlock = blocksToStudy[numberBlockToStudy-1];
 		numberBlockToStudy--;

@@ -41,7 +41,7 @@ ac_int<1, false> LoadQueueVexSimulator::stdSpec(ac_int<64, false> addr, ac_int<6
 }
 
 
-LoadQueueVexSimulator::LoadQueueVexSimulator(unsigned int *instructionMemory, unsigned int *specData) : VexSimulator(instructionMemory){this->speculationData = specData;};
+LoadQueueVexSimulator::LoadQueueVexSimulator(unsigned int *instructionMemory, unsigned int *specData) : VexSimulator(instructionMemory){this->speculationData = specData; this->PC = 0;};
 LoadQueueVexSimulator::~LoadQueueVexSimulator(void){};
 
 

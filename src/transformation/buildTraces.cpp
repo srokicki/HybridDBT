@@ -154,6 +154,7 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 	IRBlock *result = new IRBlock(0,0,0);
 	result->instructions = (unsigned int*) malloc(sizeOfResult*4*sizeof(unsigned int));
 	result->nbSucc = 0;
+	result->unrollingFactor = block->unrollingFactor;
 
 	//Arrays that keep track of last write places in each block
 	short lastWriteReg[128];
@@ -1071,6 +1072,8 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 					block->nbJumps = oneSuperBlock->nbJumps;
 					block->jumpPlaces = oneSuperBlock->jumpPlaces;
 					block->nbSucc = oneSuperBlock->nbSucc;
+					block->unrollingFactor = oneSuperBlock->unrollingFactor;
+
 					for (int oneSuccessor = 0; oneSuccessor<10; oneSuccessor++)
 						block->successors[oneSuccessor] = oneSuperBlock->successors[oneSuccessor];
 
@@ -1234,7 +1237,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 				IRBlock *oneSuperBlock = superBlock(firstPredecessor, block, false, NULL, 0);
 
 				if (oneSuperBlock == NULL){
-					block->blockState = IRBLOCK_UNROLLED;
+					block->blockState = IRBLOCK_TRACE;
 					break;
 				}
 				else{
@@ -1269,17 +1272,20 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 				for (int oneSuccessor = 0; oneSuccessor<oneSuperBlock->nbSucc; oneSuccessor++)
 					firstPredecessor->successors[oneSuccessor] = oneSuperBlock->successors[oneSuccessor];
 
-				firstPredecessor->sourceEndAddress = block->sourceEndAddress;
+			//	firstPredecessor->sourceEndAddress = block->sourceEndAddress; //FIXME removed only for dbt information
 
 
 				block->nbSucc = 0;
 				block->nbInstr = 0;
-				block->vliwStartAddress = 0;
+//				block->vliwStartAddress = 0;
 				nbBlock--;
 
 //				delete (oneSuperBlock);
 
+				block->blockState = IRBLOCK_TRACE;
+				firstPredecessor->blockState = IRBLOCK_TRACE;
 
+				firstPredecessor->sourceEndAddress = block->sourceEndAddress;
 
 //					delete block;
 //					continue;
@@ -1352,7 +1358,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 			IRBlock *block = procedure->blocks[oneBlock];
 
 
-			if (block->blockState == IRBLOCK_PERFECT_LOOP || block->blockState == IRBLOCK_UNROLLED || block->nbInstr < 8)
+			if (block->blockState == IRBLOCK_PERFECT_LOOP || block->blockState == IRBLOCK_UNROLLED || block->blockState == IRBLOCK_TRACE || block->nbInstr < 8)
 				continue;
 
 			//We check if the block is elligible

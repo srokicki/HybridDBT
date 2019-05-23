@@ -106,7 +106,7 @@ public:
 
 	void addJump(unsigned char jumpID, unsigned int jumpPlace);
 
-	IRBlock(int startAddress, int endAddress, int section);
+	IRBlock(int vliwStartAddress, int vliwEndAddress, int section);
 	~IRBlock();
 
 	/**
@@ -128,9 +128,10 @@ public:
 #define IRBLOCK_PROC 3
 #define IRBLOCK_PERFECT_LOOP 4
 #define IRBLOCK_UNROLLED 5
+#define IRBLOCK_TRACE 6
 
 
-#define IRBLOCK_STATE_RECONF 6
+#define IRBLOCK_STATE_RECONF 7
 
 class IRApplication{
 public:

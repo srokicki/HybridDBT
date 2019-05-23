@@ -304,6 +304,7 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			ac_int<5, false> funct = oneInstruction.slc<5>(7);
 			ac_int<1, false> isIType = (opcode.slc<3>(4) == 2);
 
+			ac_int<1, false> isNop = opcode == VEX_NOP | opcode == VEX_RECONFFS;
 			ac_int<1, false> isLoadType = opcode == VEX_LDB | opcode == VEX_LDBU | opcode == VEX_LDH
 					| opcode == VEX_LDHU | opcode == VEX_LDW | opcode == VEX_LDWU | opcode == VEX_LDD;
 			ac_int<1, false> isStoreType = opcode == VEX_STB | opcode == VEX_STH | opcode == VEX_STW | opcode == VEX_STD;
@@ -356,7 +357,7 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 				dest_reg = reg14;
 			}
 
-			if (opcode == VEX_NOP){
+			if (isNop){
 				dest_ena = 0;
 				pred2_ena = 0;
 				pred1_ena = 0;
@@ -692,9 +693,13 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			else if (isFP){
 				oneBytecode = assembleFPBytecodeInstruction_hw(3, alloc, opcode, funct, pred2, pred1, destination, 0);
 			}
+			else if (isNop){
+
+			}
 			else{
 				#ifndef __CATAPULT
 				printf("While generating IR, this case should never happen... %x\n", oneInstruction);
+				std::cout << printDecodedInstr(oneInstruction);
 				#endif
 			}
 
