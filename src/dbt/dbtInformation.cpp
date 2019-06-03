@@ -464,9 +464,12 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock){
 		while (blockInfo[currentAddress>>2].block == NULL){
 			currentAddress -= 4;
 		}
-
-		fprintf(stderr, "Failed at finding block at %x   nearest is in %x\n", address>>2, currentAddress>>2);
-		return 0;
+		if (currentAddress - address < 9)
+			address = currentAddress;
+		else{
+			fprintf(stderr, "Failed at finding block at %x   nearest is in %x\n", address>>2, currentAddress>>2);
+			return 0;
+		}
 	}
 
 	unsigned int end = blockInfo[address>>2].block->sourceEndAddress;
