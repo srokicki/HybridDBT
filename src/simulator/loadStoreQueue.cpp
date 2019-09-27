@@ -47,8 +47,8 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 
 	static ac_int<64, false> addresses[4][PLSQ_BANK_SIZE];
 	static ac_int<1, false> ages[4][PLSQ_BANK_SIZE];
-	static ac_int<16, false> specCounters[4];
-	static ac_int<16, false> missCounters[4];
+	static ac_int<32, false> specCounters[4];
+	static ac_int<32, false> missCounters[4];
 	static ac_int<8, false> currentSpecParam[4];
 	static ac_int<128, false> currentSpecMasks[4];
 	static ac_int<64, false> firstLoad[4];
@@ -84,10 +84,11 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 
 		hasMissed[bank] = 0;
 
-		if (specCounters[bank][15]){
+	/*	if (specCounters[bank][15]){
+fprintf(stderr, "CLEARING counters : %d %d\n",specCounters[bank], missCounters[bank]);
 			specCounters[bank] = specCounters[bank]>>6;
 			missCounters[bank] = missCounters[bank]>>6;
-		}
+		}*/
 //		ac_int<64+32, false> paramWord = specCounters[bank];
 //		paramWord.set_slc(16, missCounters[bank]);
 //		paramWord.set_slc(32, currentSpecMasks[bank]);
@@ -145,6 +146,8 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 				*mask = currentSpecMasks[bank];
 				*rollback_start = firstLoad[bank];
 				hasMissed[bank] = 1;
+
+//				fprintf(stderr, "After a miss, stat are %d/%d misses\n", missCounters[bank], specCounters[bank]);
 			}
 
 		}

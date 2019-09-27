@@ -1,6 +1,7 @@
 #include <simulator/loadQueueVexSimulator.h>
 #include <isa/vexISA.h>
 #include <lib/log.h>
+#include <stdio.h>
 
 
 ac_int<64, true> LoadQueueVexSimulator::lddSpec(ac_int<64, false> addr, unsigned char specId){
@@ -73,9 +74,10 @@ void LoadQueueVexSimulator::doMem(ExtoMem extoMem, MemtoWB *memtoWB){
 
 
 		if (rollback && !extoMem.isRollback && (extoMem.opCode >> 3) != (VEX_LDD>>3) && extoMem.opCode != VEX_FLW){
-//			fprintf(stderr, "In LQ vex simulator, system detected that we had to rollback...\n");
-//			fprintf(stderr, "Mask to apply would be %llx starting from %lld\n", (unsigned long long int) mask, (unsigned long long int) rollbackPoint);
-//			fprintf(stderr, "endrollback is %lld\n", (unsigned long long int) endRollback);
+	/*		fprintf(stderr, "In LQ vex simulator, system detected that we had to rollback...\n");
+			fprintf(stderr, "Mask to apply would be %llx starting from %lld\n", (unsigned long long int) mask.slc<64>(0), (unsigned long long int) rollbackPoint);
+			fprintf(stderr, "endrollback is %lld\n", (unsigned long long int) endRollback); */
+
 			this->rollback = 1;
 			this->rollBackPoint = rollbackPoint;
 			this->endRollback = extoMem.pc;

@@ -22,6 +22,11 @@ DBTPlateform::DBTPlateform(int binarySize){
 	freeRegisters = (unsigned char*) malloc(64*sizeof(unsigned char));
 	placeOfInstr = (unsigned int*) malloc(256*sizeof(unsigned int));
 	specInfo = (unsigned int*) malloc(4*256*sizeof(unsigned int));
+
+
+	for (int i = 0; i<256*4; i++){
+		specInfo[i] = 0;
+	}
 }
 
 DBTPlateform::~DBTPlateform(){

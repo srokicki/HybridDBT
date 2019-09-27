@@ -174,8 +174,7 @@ int main(int argc, char *argv[])
 
 	Config cfg(argc, argv);
 
-
-
+	counterMeasureType = cfg.has("countermeasure") ? std::stoi(cfg["countermeasure"]) : 0;
 	int CONFIGURATION = cfg.has("c") ? std::stoi(cfg["c"]) : 2;
 
 	int VERBOSE = cfg.has("v") ? std::stoi(cfg["v"]) : 0;
@@ -551,7 +550,8 @@ int main(int argc, char *argv[])
 				block->blockState = IRBLOCK_PROC;
 
 				if (!errorCode){
-					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1], OPTLEVEL);
+					if (counterMeasureType != 11)
+						buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1], OPTLEVEL);
 					checkSpeculation(application.procedures[application.numberProcedures-1]);
 					placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
 					dbtPlateform.procedureOptCounter++;

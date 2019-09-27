@@ -41,10 +41,11 @@ struct speculationDef {
 	MemoryDependencyGraph *graph;
 	unsigned char loads[PLSQ_BANK_SIZE];
 	unsigned char stores[PLSQ_BANK_SIZE];
-	short nbUse;
-	short nbFail;
+	unsigned int nbUse;
+	unsigned int nbFail;
 	char type, nbLoads, nbStores;
 	char init;
+	char stateMachine;
 
 };
 

@@ -160,8 +160,14 @@ void MemoryDependencyGraph::applyGraph(IRBlock *block){
 		clearControlDep(block->instructions, this->idMem[oneMemoryInstr]);
 
 		for (int onePred = 0; onePred < nbPred; onePred++){
+			bool duplicatedDep = false;
+			for (int oneOtherPred = onePred+1; oneOtherPred < nbPred; oneOtherPred++)
+				if (pred[onePred] == pred[oneOtherPred])
+					duplicatedDep = true;
+
+
 			char opcode = getOpcode(block->instructions, pred[onePred]);
-			if (!((opcode >> 4) == 1 || opcode == VEX_FLW || opcode == VEX_FSW) || opcode == VEX_SPEC_INIT || opcode == VEX_SPEC_RST){
+			if (!((opcode >> 4) == 1 || opcode == VEX_FLW || opcode == VEX_FSW) || opcode == VEX_SPEC_INIT || opcode == VEX_SPEC_RST || duplicatedDep){
 				addControlDep(block->instructions, pred[onePred], this->idMem[oneMemoryInstr]);
 			}
 		}
@@ -563,23 +569,41 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
  *
  ***************************************************/
 
+int threshold = 70;
+
 void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 
 	for (int oneSpecDef = 1; oneSpecDef<speculationCounter; oneSpecDef++){
 		struct speculationDef *currentSpecDef = &speculationDefinitions[oneSpecDef];
-		unsigned short newNbUse = platform->specInfo[4*oneSpecDef];
-		unsigned short newNbMiss = platform->specInfo[4*oneSpecDef+1];
+		unsigned int newNbUse = platform->specInfo[8*oneSpecDef];
+		unsigned int newNbMiss = platform->specInfo[8*oneSpecDef+1];
 
 		if (newNbUse < currentSpecDef->nbUse){
 			currentSpecDef->nbUse = currentSpecDef->nbUse>>6;
 			currentSpecDef->nbFail = currentSpecDef->nbFail>>6;
 		}
 
-		if (newNbUse-currentSpecDef->nbUse > 70 || currentSpecDef->init == 1){
+		if (currentSpecDef->init == 1)
+			currentSpecDef->stateMachine = 0;
 
-			if (currentSpecDef->type == 1 && ((newNbMiss - currentSpecDef->nbFail) < (newNbUse-currentSpecDef->nbUse)/10 || currentSpecDef->init == 1)){
+		if (newNbUse-currentSpecDef->nbUse > threshold || currentSpecDef->init == 1){
+
+			if (currentSpecDef->type == 1 && (newNbMiss - currentSpecDef->nbFail) < (newNbUse-currentSpecDef->nbUse)/20){
+				if (currentSpecDef->stateMachine > 0)
+					currentSpecDef->stateMachine--;
+			}
+
+			if (currentSpecDef->type == 2 && (newNbMiss - currentSpecDef->nbFail) >= (newNbUse-currentSpecDef->nbUse)/10){
+				if (currentSpecDef->stateMachine < 10)
+					currentSpecDef->stateMachine+=3;
+			} 
+
+
+
+			if (currentSpecDef->stateMachine == 0 && currentSpecDef->type == 1 && ((newNbMiss - currentSpecDef->nbFail) < (newNbUse-currentSpecDef->nbUse)/20 || currentSpecDef->init == 1)){
 
 				//We turn the spec on
+//fprintf(stderr, "Turning spec on at %d (%f\%)\n", currentSpecDef->block->vliwStartAddress, ((float) (newNbMiss - currentSpecDef->nbFail)) / ((float) (newNbUse-currentSpecDef->nbUse)));
 
 				for (int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++){
 					for (int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++){
@@ -605,7 +629,7 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 			else if (currentSpecDef->type == 2 && (newNbMiss - currentSpecDef->nbFail) >= (newNbUse-currentSpecDef->nbUse)/10){
 
 				//We turn the spec off
-
+//fprintf(stderr, "Turning spec off at %d  (%f\%)\n", currentSpecDef->block->vliwStartAddress, ((float) (newNbMiss - currentSpecDef->nbFail)) / ((float) (newNbUse-currentSpecDef->nbUse)));
 				for (int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++){
 					for (int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++){
 						if (currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]] > currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]){
@@ -625,7 +649,10 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 				inPlaceBlockReschedule(currentSpecDef->block, platform, writePlace);
 
 
-				currentSpecDef->type = 1;
+				currentSpecDef->type = 3;
+
+
+
 			}
 
 

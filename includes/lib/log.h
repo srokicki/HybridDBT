@@ -24,6 +24,8 @@ extern unsigned int plsq_checks, plsq_positive,plsq_false_positive, spec_loop_co
 cache_l1_miss, cache_l2_miss, memory_accesses;
 extern unsigned short bitDifferentiation[64];
 
+extern char counterMeasureType;
+
 
 //*************************************************
 

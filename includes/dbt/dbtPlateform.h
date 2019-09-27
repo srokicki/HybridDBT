@@ -30,7 +30,10 @@
 #include <simulator/riscvSimulator.h>
 #include <types.h>
 
+
+
 #ifndef __NIOS
+
 class DBTPlateform
 {
 
