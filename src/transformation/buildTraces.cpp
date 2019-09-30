@@ -1285,6 +1285,16 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 				block->blockState = IRBLOCK_TRACE;
 				firstPredecessor->blockState = IRBLOCK_TRACE;
 
+				//We add the merged block in the predecessor's list of merged blockState
+				if (firstPredecessor->nbMergedBlocks < 10){
+					firstPredecessor->mergedBlocks[firstPredecessor->nbMergedBlocks] = block;
+					firstPredecessor->nbMergedBlocks++;
+				}
+				else{
+					printf("Error while building a trace: trying to add a merged block while there's no place left\n");
+				}
+
+
 				firstPredecessor->sourceEndAddress = block->sourceEndAddress;
 
 //					delete block;
@@ -1403,4 +1413,3 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 
 
 }
-

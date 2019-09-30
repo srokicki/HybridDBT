@@ -24,7 +24,7 @@
 #include <lib/log.h>
 
 #define TEMP_PROCEDURE_STORAGE_SIZE 50
-#define TEMP_BLOCK_STORAGE_SIZE 900
+#define TEMP_BLOCK_STORAGE_SIZE 2000
 
 
 void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStartAddress, int sectionStartAddress, int startAddress, int endAddress, IRApplication *application, Profiler *profiler){
@@ -237,7 +237,7 @@ compare_blocks (const void *a, const void *b)
 int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRApplication *application){
 
 	char incrementInBinaries = (platform->vliwInitialIssueWidth > 4) ? 2 : 1;
-	IRBlock *blocksToStudy[500];
+	IRBlock *blocksToStudy[TEMP_BLOCK_STORAGE_SIZE];
 	int numberBlockToStudy = 1;
 	blocksToStudy[0] = startBlock;
 	IRBlock *entryBlock = startBlock;
@@ -248,7 +248,11 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 
 	while (numberBlockToStudy != 0){
 
-		if (numberBlockToStudy>500){
+		if (numberBlockToStudy>TEMP_BLOCK_STORAGE_SIZE){
+			for (int oneBlockInProc = 0; oneBlockInProc<numberBlockInProcedure; oneBlockInProc++)
+				blockInProcedure[oneBlockInProc]->blockState = IRBLOCK_ERROR_PROC;
+
+			printf("Leavign because of too large waiting blocks (%d)\n", numberBlockToStudy);
 			return -1;
 		}
 
@@ -263,6 +267,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 			jumpInstruction = 0;
 
 
+		//If the block is marked as IRBLOCK_PROC, we ensure that it is own to the procedure being built
 		if (currentBlock->blockState == IRBLOCK_PROC){
 			bool isValidConstruction = false;
 			for (int oneAlreadySeenBlock = 0; oneAlreadySeenBlock<numberBlockInProcedure; oneAlreadySeenBlock++){
@@ -270,16 +275,30 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 				if (alreadySeenBlock == currentBlock)
 					isValidConstruction = true;
 			}
-			if (!isValidConstruction)
+			if (!isValidConstruction){
+				//If the block belongs to another procedure, we cancel the analysis
+				for (int oneBlockInProc = 0; oneBlockInProc<numberBlockInProcedure; oneBlockInProc++)
+					blockInProcedure[oneBlockInProc]->blockState = IRBLOCK_ERROR_PROC;
+
+				printf("Leavign because of malformed proc\n", numberBlockInProcedure);
 				return -1;
-			else
+			}
+			else{
 				continue;
+			}
 		}
 
 
-		if (numberBlockInProcedure>200){
+		if (numberBlockInProcedure>=TEMP_BLOCK_STORAGE_SIZE || currentBlock->blockState == IRBLOCK_ERROR_PROC){
+			//If the procedure has too many blocks, we cancel the analysis
+			for (int oneBlockInProc = 0; oneBlockInProc<numberBlockInProcedure; oneBlockInProc++)
+				blockInProcedure[oneBlockInProc]->blockState = IRBLOCK_ERROR_PROC;
+
+			printf("Leavign because of too large proc (%d)\n", numberBlockInProcedure);
 			return -1;
 		}
+
+
 		blockInProcedure[numberBlockInProcedure] = currentBlock;
 		numberBlockInProcedure++;
 		currentBlock->nbSucc = 0;

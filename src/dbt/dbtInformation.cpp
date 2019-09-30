@@ -17,9 +17,7 @@
 #include <stdlib.h>
 
 #include <lib/endianness.h>
-#include <simulator/vexSimulator.h>
-#include <simulator/vexTraceSimulator.h>
-#include <simulator/loadQueueVexSimulator.h>
+#include <simulator/emptySimulator.h>
 #include <simulator/riscvSimulator.h>
 
 #include <transformation/irGenerator.h>
@@ -63,7 +61,7 @@ extern "C"
 #define COST_OPT_1 10
 #define COST_OPT_2 100
 
-#define SIZE_TC 4096
+#define SIZE_TC 0
 
 /****************************************************************************************************************************/
 
@@ -180,6 +178,7 @@ void updateOpt2BlockSize(IRBlock *block){
 
 	int currentjumpId = 0;
 
+	int nbBlockAdded = 0;
 	if (block->blockState == IRBLOCK_TRACE)
 		for (int oneSourceCycle = block->sourceStartAddress+1; oneSourceCycle<block->sourceEndAddress; oneSourceCycle++){
 			if (blockInfo[oneSourceCycle].block != NULL){
@@ -190,8 +189,13 @@ void updateOpt2BlockSize(IRBlock *block){
 					blockInfo[oneSourceCycle].scheduleSizeOpt2 = block->vliwEndAddress - block->jumpPlaces[currentjumpId];
 				}
 				currentjumpId++;
+				nbBlockAdded++;
 			}
 		}
+
+	if (nbBlockAdded != block->nbMergedBlocks){
+		printf("Added %d block infor while there are %d merged blocks\n", nbBlockAdded, block->nbMergedBlocks);
+	}
 }
 
 IRProcedure* optimizeLevel2(unsigned int address){
@@ -228,6 +232,7 @@ IRProcedure* optimizeLevel2(unsigned int address){
 				return application->procedures[application->numberProcedures-1];
 			}
 			else{
+				printf("Met an error while trying to go to opt level 2 for %x\n", address);
 				return NULL;
 			}
 		}
@@ -295,7 +300,7 @@ void initializeDBTInfo(char* fileName)
 	for (int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
 		platform->placeOfRegisters[256+64+onePlaceOfRegister] = onePlaceOfRegister;
 
-  	platform->vexSimulator = new LoadQueueVexSimulator(platform->vliwBinaries, platform->specInfo);
+  	platform->vexSimulator = new EmptySimulator(platform->vliwBinaries, platform->specInfo);
 	setVLIWConfiguration(platform->vexSimulator, platform->vliwInitialConfiguration);
 
 
@@ -493,6 +498,15 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock){
 			if (blockInfo[address>>2].block->blockState > IRBLOCK_STATE_SCHEDULED)
 				updateOpt2BlockSize(blockInfo[address>>2].block);
 			else {
+				if (blockInfo[address>>2].block->nbInstr == 0){
+					int start = (address>>2)-1;
+					while (blockInfo[start].block==NULL)
+						start--;
+
+					printf("Previous start was %d and its original size are %d %d\n", start, blockInfo[start].block->sourceStartAddress,  blockInfo[start].block->sourceEndAddress);
+
+					fprintf(stderr, "the block has zero instructions and a type of %d and type of pred is %d\n", blockInfo[address>>2].block->blockState, blockInfo[start].block->blockState);
+				}
 				fprintf(stderr, "While asking for size at opt level 2, block is not found (this should never happen ?!)  %d\n", address>>2);
 				return 0;
 			}
@@ -675,7 +689,7 @@ bool allocateInTranslationCache(int size, IRProcedure *procedure, IRBlock *block
 
 
 	int currentSize = contentTranslationCache();
-	if (currentSize + size < SIZE_TC){
+	if (SIZE_TC == 0 || currentSize + size < SIZE_TC){
 		//We can store the translated element in the translation cache without having to evict anything
 		translationCacheContent->push_back(newEntry);
 		return true;
@@ -688,7 +702,7 @@ bool allocateInTranslationCache(int size, IRProcedure *procedure, IRBlock *block
 }
 
 
-void verifyBranchDestination(int dest){
+void verifyBranchDestination(int addressOfJump, int dest){
 
 	if (blockInfo[dest>>2].block == NULL){
 		//The destination of the jumps is not a block entry point. We have to modify everything.
@@ -797,14 +811,7 @@ void verifyBranchDestination(int dest){
 				}
 
 		}
-
-		fprintf(stderr, "test%d\n", newBlock->vliwStartAddress);
-		fprintf(stderr, "test%d\n", newBlock->vliwEndAddress);
-
 	}
 
 
 }
-
-
-

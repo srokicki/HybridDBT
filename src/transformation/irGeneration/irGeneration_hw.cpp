@@ -308,6 +308,7 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			ac_int<1, false> isLoadType = opcode == VEX_LDB | opcode == VEX_LDBU | opcode == VEX_LDH
 					| opcode == VEX_LDHU | opcode == VEX_LDW | opcode == VEX_LDWU | opcode == VEX_LDD;
 			ac_int<1, false> isStoreType = opcode == VEX_STB | opcode == VEX_STH | opcode == VEX_STW | opcode == VEX_STD;
+			ac_int<1, false> isSpecMemType = opcode == VEX_SPEC_RST | opcode == VEX_SPEC_INIT;
 			ac_int<1, false> isBranchWithNoReg = opcode == VEX_GOTO | opcode == VEX_CALL
 					| opcode == VEX_STOP | opcode == VEX_ECALL;
 			ac_int<1, false> isBranchWithReg = opcode == VEX_GOTOR | opcode == VEX_CALLR;
@@ -335,7 +336,7 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			ac_int<7, false> pred1_reg = reg26, pred2_reg = reg20, dest_reg=0;
 
 			//Solving accessed register 1
-			if (!isBranchWithNoReg && !isMovi && !isProfile)
+			if (!isBranchWithNoReg && !isMovi && !isProfile && !isSpecMemType)
 				pred1_ena = 1;
 
 			//Solving accessed register 2
@@ -554,7 +555,7 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			}
 			destination = temp_destination;
 
-			if (isStoreType || isFSW){
+			if (isStoreType || isFSW || isSpecMemType){
 
 				if (lastReaderOnMemoryCounter == 0 && lastWriterOnMemory != -1){
 					global_succ_ena_1 = 1;
@@ -692,6 +693,9 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			}
 			else if (isFP){
 				oneBytecode = assembleFPBytecodeInstruction_hw(3, alloc, opcode, funct, pred2, pred1, destination, 0);
+			}
+			else if (isSpecMemType){
+				oneBytecode = assembleRiBytecodeInstruction_hw(1, 0, opcode, 0, imm13, 0, 0);
 			}
 			else if (isNop){
 

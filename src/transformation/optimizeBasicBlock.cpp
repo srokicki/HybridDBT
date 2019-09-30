@@ -37,9 +37,8 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 	Log::printf(LOG_SCHEDULE_BLOCK, "Block from %x to %x is eligible for scheduling (dest %x) \n", block->sourceStartAddress, block->sourceEndAddress, block->sourceDestination);
 
-#ifndef __NIOS
 
-	//TODO make it work for nios too
+	//We ensure that the VLIW core is not inside the block being modified
 	char isCurrentlyInBlock = (platform->vexSimulator->PC >= basicBlockStart*4) &&
 			(platform->vexSimulator->PC < basicBlockEnd*4);
 
@@ -48,14 +47,14 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		if (instructionInEnd == 0){
 			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0x2f);
 
-//			platform->vexSimulator->doStep(1000);
+			platform->vexSimulator->doStep(1000);
 			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0);
 		}
 		else if (readInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4) == 0){
 			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0x2f);
 			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4, instructionInEnd);
 
-//			platform->vexSimulator->doStep(1000);
+			platform->vexSimulator->doStep(1000);
 			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, instructionInEnd);
 			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4, 0);
 
@@ -66,7 +65,6 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		}
 
 	}
-#endif
 
 
 
@@ -343,6 +341,3 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		block->blockState = IRBLOCK_STATE_SCHEDULED;
 
 }
-
-
-

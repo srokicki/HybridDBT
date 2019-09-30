@@ -86,6 +86,10 @@ public:
 	IRBlock* successor1;			//pointer to first successor
 	IRBlock* successor2;			//pointer to second successor
 
+	//Keeping trace of previous organization
+	int nbMergedBlocks = 0;
+	IRBlock* mergedBlocks[10];
+
 	short jumpID;					//Index of the jump instruction in the block's list of instruction
 	unsigned int jumpPlace; 		//Address of the jump instruction in the VLIW memory
 
@@ -125,13 +129,14 @@ public:
 #define IRBLOCK_STATE_FIRSTPASS 0
 #define IRBLOCK_STATE_PROFILED 1
 #define IRBLOCK_STATE_SCHEDULED 2
-#define IRBLOCK_PROC 3
-#define IRBLOCK_PERFECT_LOOP 4
-#define IRBLOCK_UNROLLED 5
-#define IRBLOCK_TRACE 6
+#define IRBLOCK_ERROR_PROC 3
+#define IRBLOCK_PROC 4
+#define IRBLOCK_PERFECT_LOOP 5
+#define IRBLOCK_UNROLLED 6
+#define IRBLOCK_TRACE 7
 
 
-#define IRBLOCK_STATE_RECONF 7
+#define IRBLOCK_STATE_RECONF 8
 
 class IRApplication{
 public:
