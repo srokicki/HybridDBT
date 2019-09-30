@@ -35,7 +35,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	int basicBlockStart = block->vliwStartAddress;
 	int basicBlockEnd = block->vliwEndAddress;
 
-	Log::printf(LOG_SCHEDULE_BLOCK, "Block from %x to %x is eligible for scheduling (dest %x) \n", block->sourceStartAddress, block->sourceEndAddress, block->sourceDestination);
+	Log::logScheduleBlocks << "Block from " << std::hex << block->sourceStartAddress << " to " << std::hex << block->sourceEndAddress << " is eligible for scheduling (dest " << std::hex << block->sourceDestination << ") \n";
 
 
 	//We ensure that the VLIW core is not inside the block being modified
@@ -60,7 +60,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 		}
 		else{
-			Log::printf(LOG_ERROR, "In optimize basic block, execution is in the middle of a block and programm cannot stop it...\n exiting...\n");
+			Log::logError << "In optimize basic block, execution is in the middle of a block and programm cannot stop it...\n exiting...\n";
 			exit(-1);
 		}
 
@@ -124,35 +124,35 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		block->addJump(blockSize-1, block->vliwEndAddress-2*incrementInBinaries);
 	}
 
-	Log::printf(LOG_SCHEDULE_BLOCK, "*************************************************************************\n");
-	Log::printf(LOG_SCHEDULE_BLOCK, "Previous version of sources:\n");
-	Log::printf(LOG_SCHEDULE_BLOCK, "*****************\n");
+	Log::logScheduleBlocks << "*************************************************************************\n";
+	Log::logScheduleBlocks << "Previous version of sources:\n";
+	Log::logScheduleBlocks << "*****************\n";
 
 
 	for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
-		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
-		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
-		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
-		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
+		Log::logScheduleBlocks <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
+		Log::logScheduleBlocks <<  printDecodedInstr(platform->vliwBinaries[i*4+1]);
+		Log::logScheduleBlocks <<  printDecodedInstr(platform->vliwBinaries[i*4+2]);
+		Log::logScheduleBlocks <<  printDecodedInstr(platform->vliwBinaries[i*4+3]);
 
 
 		if (platform->vliwInitialIssueWidth>4){
-			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
-			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
-			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
-			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
+			Log::logScheduleBlocks << printDecodedInstr(platform->vliwBinaries[i*4+4]);
+			Log::logScheduleBlocks << printDecodedInstr(platform->vliwBinaries[i*4+5]);
+			Log::logScheduleBlocks << printDecodedInstr(platform->vliwBinaries[i*4+6]);
+			Log::logScheduleBlocks << printDecodedInstr(platform->vliwBinaries[i*4+7]);
 			i++;
 		}
-		Log::printf(LOG_SCHEDULE_BLOCK,"\n");
+		Log::logScheduleBlocks << "\n";
 	}
 
 
-	Log::printf(LOG_SCHEDULE_BLOCK, "*************************************************************************\n");
-	Log::printf(LOG_SCHEDULE_BLOCK, "Bytecode is: \n");
-	Log::printf(LOG_SCHEDULE_BLOCK, "\n*****************\n");
+	Log::logScheduleBlocks << "*************************************************************************\n";
+	Log::logScheduleBlocks << "Bytecode is: \n";
+	Log::logScheduleBlocks << "\n*****************\n";
 	for (int i=0; i<blockSize; i++){
-		Log::printf(LOG_SCHEDULE_BLOCK,"%s", printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4),
-				readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12)).c_str());
+		Log::logScheduleBlocks << printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4),
+				readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
 	}
 
 
@@ -268,7 +268,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 			int newOffset = destination - (block->jumpPlaces[0]);
 			newOffset = newOffset;
 
-			Log::printf(LOG_SCHEDULE_BLOCK,"Correction of jump at end of block. Original offset was %d\n From it derivated destination %d and new offset %d\n", offset, destination, newOffset);
+			Log::logScheduleBlocks << "Correction of jump at end of block. Original offset was " << offset << "\n From it derivated destination " << destination << " and new offset " << newOffset << "\n";
 
 			jumpInstruction = (jumpInstruction & 0xfff0007f) | ((newOffset & 0x1fff) << 7);
 		}
@@ -295,7 +295,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 			newBlock->sourceEndAddress = -1;
 			application->addBlock(newBlock, block->section);
 
-			Log::printf(LOG_SCHEDULE_BLOCK,"Adding an extra block from %d to %d\n", basicBlockStart + binaSize, basicBlockStart + binaSize + 2);
+			Log::logScheduleBlocks << "Adding an extra block from " << (basicBlockStart + binaSize) << "to " << (basicBlockStart + binaSize + 2) << "\n";
 		}
 
 
@@ -308,33 +308,32 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		block->vliwEndAddress = basicBlockStart + binaSize;
 	}
 	else{
-		Log::printf(LOG_SCHEDULE_BLOCK, "Schedule is dropped (%d cycles)\n", binaSize);
+		Log::logScheduleBlocks << "Schedule is dropped (" << binaSize <<" cycles)\n";
 	}
 
 	/*****************************************************************/
 	// This only for debug
-	Log::printf(LOG_SCHEDULE_BLOCK,"*************************************************************************\n");
+	Log::logScheduleBlocks <<  "*************************************************************************\n";
 
 	for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
-		Log::printf(LOG_SCHEDULE_BLOCK,"%d ", i);
-		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
-		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
-		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
-		Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
+		Log::logScheduleBlocks <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
+		Log::logScheduleBlocks <<  printDecodedInstr(platform->vliwBinaries[i*4+1]);
+		Log::logScheduleBlocks <<  printDecodedInstr(platform->vliwBinaries[i*4+2]);
+		Log::logScheduleBlocks <<  printDecodedInstr(platform->vliwBinaries[i*4+3]);
 
 
 		if (platform->vliwInitialIssueWidth>4){
-			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
-			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
-			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
-			Log::printf(LOG_SCHEDULE_BLOCK,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
+			Log::logScheduleBlocks << printDecodedInstr(platform->vliwBinaries[i*4+4]);
+			Log::logScheduleBlocks << printDecodedInstr(platform->vliwBinaries[i*4+5]);
+			Log::logScheduleBlocks << printDecodedInstr(platform->vliwBinaries[i*4+6]);
+			Log::logScheduleBlocks << printDecodedInstr(platform->vliwBinaries[i*4+7]);
 			i++;
 		}
-		Log::printf(LOG_SCHEDULE_BLOCK,"\n");
+		Log::logScheduleBlocks << "\n";
 	}
 
-	Log::printf(LOG_SCHEDULE_BLOCK,"*************************************************************************\n");
-	Log::printf(LOG_SCHEDULE_BLOCK,"*************************************************************************\n");
+	Log::logScheduleBlocks <<  "*************************************************************************\n";
+	Log::logScheduleBlocks <<  "*************************************************************************\n";
 	/*****************************************************************/
 
 	if (block->blockState < IRBLOCK_STATE_SCHEDULED)

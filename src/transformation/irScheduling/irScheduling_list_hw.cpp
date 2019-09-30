@@ -454,7 +454,7 @@ ac_int<32, false> irScheduler_list_hw(ac_int<1, false> optLevel,
 						countToFail++;
 						if (countToFail == 7){
 							#ifndef __CATAPULT
-							Log::printf(LOG_ERROR, "Failed at allocating registers...\n");
+							Log::logError << "Failed at allocating registers...\n";
 							exit(-1);
 							#endif
 						}

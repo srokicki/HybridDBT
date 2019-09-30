@@ -49,22 +49,22 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 		blocks[oneBlock] = new IRBlock(-1,-1,-1);
 		if (1){
 			for (int i=procedure->blocks[oneBlock]->vliwStartAddress;i<procedure->blocks[oneBlock]->vliwEndAddress;i++){
-				Log::printf(LOG_SCHEDULE_PROC,"%d ", i);
+				Log::logScheduleProc << i;
 
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
+				Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
+				Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+1]);
+				Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+2]);
+				Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+3]);
 
 
 				if (platform->vliwInitialIssueWidth>4){
-					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
-					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
-					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
-					Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
+					Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+4]);
+					Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+5]);
+					Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+6]);
+					Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+7]);
 					i++;
 				}
-				Log::printf(LOG_SCHEDULE_PROC,"\n");
+				Log::logScheduleProc << "\n";
 			}
 		}
 
@@ -124,9 +124,9 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 		//This is only for debug
 		if (platform->debugLevel > 1 || 1){
-			Log::printf(LOG_SCHEDULE_PROC,"Block %x:\n", block->sourceStartAddress);
+			Log::logScheduleProc << "Block " << std::hex << block->sourceStartAddress << ":\n";
 			for (int i=0; i<block->nbInstr; i++)
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12)).c_str());
+				Log::logScheduleProc << printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
 		}
 
 
@@ -153,24 +153,23 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 
 		for (int i=result->blocks[oneBlock]->vliwStartAddress;i<result->blocks[oneBlock]->vliwEndAddress;i++){
-			Log::printf(LOG_SCHEDULE_PROC,"%d ", i);
+			Log::logScheduleProc << i;
 
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
+			Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
+			Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+1]);
+			Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+2]);
+			Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+3]);
 
 
 			if (platform->vliwInitialIssueWidth>4){
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
-				Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
+				Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+4]);
+				Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+5]);
+				Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+6]);
+				Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+7]);
 				i++;
 			}
-			Log::printf(LOG_SCHEDULE_PROC,"\n");
+			Log::logScheduleProc << "\n";
 		}
-
 		if ((isReturnBlock || isCallBlock) && readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1] + 16*incrementInBinaries) != 0){
 
 				//We need room for the reconf instruction, we add two lines at the end. TODO: this should be done only when reconf is activated
@@ -182,7 +181,7 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 //			}
 
 			if (readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 16*incrementInBinaries) != 0){
-				fprintf(stderr, "Failede at moving...\n");
+				Log::logError << "Failed at moving...\n";
 				exit(-1);
 			}
 
@@ -400,7 +399,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 				if (readInt(platform->vliwBinaries, 16*block->jumpPlaces[block->nbJumps-1] +16*incrementInBinaries) == 0)
 					writeInt(platform->vliwBinaries, 16*block->jumpPlaces[block->nbJumps-1] +16*incrementInBinaries, getReconfigurationInstruction(platform->vliwInitialConfiguration));
 				else{
-					Log::printf(LOG_ERROR,"Failing when inserting reconfs at the end of a procedure...\nExiting...");
+					Log::logError << "Failing when inserting reconfs at the end of a procedure...\nExiting...";
 					exit(-1);
 				}
 			}
@@ -408,7 +407,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 				if (readInt(platform->vliwBinaries, 16*block->vliwEndAddress -16*incrementInBinaries) == 0)
 					writeInt(platform->vliwBinaries, 16*block->vliwEndAddress -16*incrementInBinaries, getReconfigurationInstruction(platform->vliwInitialConfiguration));
 				else{
-					Log::printf(LOG_ERROR,"Failing when inserting reconfs at the end of a procedure...\nExiting...");
+					Log::logError << "Failing when inserting reconfs at the end of a procedure...\nExiting...";
 					exit(-1);
 				}
 			}
@@ -445,49 +444,26 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 	//*************************************************************************
 	//This is only for debug
 	for (int i=originalWritePlace;i<writePlace;i++){
-		Log::printf(LOG_SCHEDULE_PROC,"%d ", i);
+		Log::logScheduleProc << i;
 
-
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
-
-
-		if (platform->vliwInitialIssueWidth>4){
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
-			i++;
-		}
-		Log::printf(LOG_SCHEDULE_PROC,"\n");
-	}
-
-
-	for (int i=originalWritePlace;i<writePlace;i++){
-
-
-
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
+		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
+		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+1]);
+		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+2]);
+		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+3]);
 
 
 		if (platform->vliwInitialIssueWidth>4){
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
+			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+4]);
+			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+5]);
+			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+6]);
+			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+7]);
 			i++;
 		}
-		Log::printf(LOG_SCHEDULE_PROC,"\n");
+		Log::logScheduleProc << "\n";
 
 		platform->vexSimulator->typeInstr[i-1+incrementInBinaries] = 2;
-
-
 	}
+
 	//*************************************************************************
 	return writePlace;
 
@@ -517,33 +493,35 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 
 		}
 		else{
-			Log::printf(LOG_ERROR, "In optimize basic block, execution is in the middle of a block and programm cannot stop it...\n exiting...\n");
+			Log::logError << "In optimize basic block, execution is in the middle of a block and programm cannot stop it...\n exiting...\n";
 			exit(-1);
 		}
 	}
 
-	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
-	Log::printf(LOG_SCHEDULE_PROC,"****                 In place block reschedule !                    *****\n");
+	Log::logScheduleProc << "*************************************************************************\n";
+	Log::logScheduleProc << "****                 In place block reschedule !                    *****\n";
 
 	for (int i=block->vliwStartAddress-20;i<block->vliwEndAddress+20;i++){
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
+		Log::logScheduleProc << i << " ";
+
+		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
+		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+1]);
+		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+2]);
+		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+3]);
 
 
 		if (platform->vliwInitialIssueWidth>4){
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
+			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+4]);
+			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+5]);
+			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+6]);
+			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+7]);
 			i++;
 		}
-		Log::printf(LOG_SCHEDULE_PROC,"\n");
+		Log::logScheduleProc << "\n";
 	}
 
-	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
-	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
+	Log::logScheduleProc << "*************************************************************************\n";
+	Log::logScheduleProc << "*************************************************************************\n";
 
 	//TODO WARNING We do not handle in place rescheduling when the configuration have been modified. We will have to handle that.
 	char incrementInBinaries = (getIssueWidth(platform->vliwInitialConfiguration)>4) ? 2 : 1;
@@ -569,9 +547,9 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 
 	//This is only for debug
 	if (platform->debugLevel > 1 || 1){
-		Log::printf(LOG_SCHEDULE_PROC,"Block %x:\n", block->sourceStartAddress);
+		Log::logScheduleProc << "Block " << std::hex << block->sourceStartAddress << ":\n";
 		for (int i=0; i<block->nbInstr; i++)
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12)).c_str());
+			Log::logScheduleProc << printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
 	}
 
 
@@ -603,12 +581,12 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 		}
 
 
-		//We handle speculation information if necessary
+		//We handle speculation information if necessary FIXME is the ifdef necessary ?
 #ifndef __HW
 #ifndef __SW
 		for (int oneSpec = 0; oneSpec<4; oneSpec++){
 			if (block->specAddr[oneSpec] != 0){
-				Log::fprintf(LOG_SCHEDULE_PROC, stderr, "Mask is %llx %llx\n", (unsigned long long int ) maskVal[oneSpec].slc<64>(64),(unsigned long long int ) maskVal[oneSpec].slc<64>(0) );
+				Log::logScheduleProc << "Mask is " << std::hex << (unsigned long long int ) maskVal[oneSpec].slc<64>(64) << " " << std::hex << (unsigned long long int ) maskVal[oneSpec].slc<64>(0);
 				platform->specInfo[8*block->specAddr[oneSpec]+2] = readInt(maskVal, oneSpec*16+12);
 				platform->specInfo[8*block->specAddr[oneSpec]+3] = readInt(maskVal, oneSpec*16+8);
 				platform->specInfo[8*block->specAddr[oneSpec]+4] = readInt(maskVal, oneSpec*16+4);
@@ -673,36 +651,37 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 
 	}
 	else{
-		Log::printf(LOG_SCHEDULE_BLOCK, "Schedule is dropped (%d cycles)\n", binaSize);
+		Log::logScheduleProc << "Schedule is dropped (" << binaSize << " cycles)\n";
 	}
 
 	/*****************************************************************/
 	// This only for debug
-	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
-	Log::printf(LOG_SCHEDULE_PROC,"****                 In place block reschedule !                    *****\n");
+	Log::logScheduleProc << "*************************************************************************\n";
+	Log::logScheduleProc << "****                 In place block reschedule !                    *****\n";
 
 	for (int i=block->vliwStartAddress-20;i<block->vliwEndAddress+20;i++){
-		Log::printf(LOG_SCHEDULE_PROC,"%d %s ", 4*i,printDecodedInstr(platform->vliwBinaries[i*4+0]).c_str());
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+1]).c_str());
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+2]).c_str());
-		Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+3]).c_str());
+		Log::logScheduleProc << i << " ";
+
+		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
+		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+1]);
+		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+2]);
+		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+3]);
 
 
 		if (platform->vliwInitialIssueWidth>4){
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+4]).c_str());
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+5]).c_str());
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+6]).c_str());
-			Log::printf(LOG_SCHEDULE_PROC,"%s ", printDecodedInstr(platform->vliwBinaries[i*4+7]).c_str());
+			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+4]);
+			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+5]);
+			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+6]);
+			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+7]);
 			i++;
 		}
-		Log::printf(LOG_SCHEDULE_PROC,"\n");
+		Log::logScheduleProc << "\n";
 	}
 
-	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
-	Log::printf(LOG_SCHEDULE_PROC,"*************************************************************************\n");
+	Log::logScheduleProc << "*************************************************************************\n";
+	Log::logScheduleProc << "*************************************************************************\n";
 	/*****************************************************************/
 
 
 
 }
-

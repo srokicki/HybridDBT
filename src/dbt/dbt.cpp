@@ -74,7 +74,7 @@ void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressS
 			size = section->size/4 - 0;
 
 			if (size > MEMORY_SIZE){
-				Log::fprintf(0, stderr, "Error: binary file has %d instructions, we currently handle a maximum size of %d\n", size, MEMORY_SIZE);
+				Log::logError << "Error: binary file has " << size << " instructions, we currently handle a maximum size of " << MEMORY_SIZE << "\n";
 				exit(-1);
 			}
 
@@ -133,7 +133,6 @@ int run(DBTPlateform *platform, int nbCycle){
 	return platform->vexSimulator->doStep(nbCycle);
 
 #else
-  Log::printf(0, "starting run\n");
 
 //#define ALT_CI_COMPONENT_RUN_0(A,B) __builtin_custom_inii(ALT_CI_COMPONENT_RUN_0_N,(A),(B))
 //#define ALT_CI_COMPONENT_RUN_0_1(A,B) __builtin_custom_inii(ALT_CI_COMPONENT_RUN_0_1_N,(A),(B))
@@ -256,22 +255,23 @@ int main(int argc, char *argv[])
 
 
 	if (cfg.has("h") || binaryFile == NULL){
-		Log::printf(0, "Usage is %s -f elfFile [options] -- args\n", argv[0]);
-		Log::printf(0, "where elfFile is an RISCV64-imf elf file, args are the argument given to the simulated application and options are one of the following:\n");
+		Log::logError << "Usage is " << argv[0] << " -f elfFile [options] -- args\n";
 
-		Log::printf(0, "\t-O n\t\tSet optimization level between 0 and 3.\n");
-		Log::printf(0, "\t\t\t  Opt 0 means that instructions are only naively translated\n");
-		Log::printf(0, "\t\t\t  Opt 1 means that basic blocks are scheduled\n");
-		Log::printf(0, "\t\t\t  Opt 2 means that frequently executed procedure are built and optimized\n");
-		Log::printf(0, "\t\t\t  Opt 3 means that different VLIW configuration are explored\n");
-		Log::printf(0, "\t-c n\t\tSet the initial VLIW configuration to use.\n");
+		Log::logError << "where elfFile is an RISCV64-imf elf file, args are the argument given to the simulated application and options are one of the following:\n";
 
-		Log::printf(0, "\t-i file\t\tAdding an input file to use as standard input for simulated application\n");
-		Log::printf(0, "\t-o file\t\tAdding an output file to use as standard output for simulated application. Can add up to 10 files by repeating -o file\n");
+		Log::logError << "\t-O n\t\tSet optimization level between 0 and 3.\n";
+		Log::logError << "\t\t\t  Opt 0 means that instructions are only naively translated\n";
+		Log::logError << "\t\t\t  Opt 1 means that basic blocks are scheduled\n";
+		Log::logError << "\t\t\t  Opt 2 means that frequently executed procedure are built and optimized\n";
+		Log::logError << "\t\t\t  Opt 3 means that different VLIW configuration are explored\n";
+		Log::logError << "\t-c n\t\tSet the initial VLIW configuration to use.\n";
+
+		Log::logError << "\t-i file\t\tAdding an input file to use as standard input for simulated application\n";
+		Log::logError << "\t-o file\t\tAdding an output file to use as standard output for simulated application. Can add up to 10 files by repeating -o file\n";
 
 
-		Log::printf(0, "\t-v n\t\tSet verbose mode to a level between 0 and 9. Higher level means more messages.\n");
-		Log::printf(0, "\t-statmode n\tAllows to set stat mode to one in order to have parseable stats\n");
+		Log::logError << "\t-v n\t\tSet verbose mode to a level between 0 and 9. Higher level means more messages.\n";
+		Log::logError << "\t-statmode n\tAllows to set stat mode to one in order to have parseable stats\n";
 
 		return 1;
 	}
@@ -343,7 +343,7 @@ int main(int argc, char *argv[])
 
 
 	if (size > MEMORY_SIZE){
-		Log::printf(LOG_ERROR, "ERROR: Size of source binaries is %d. Current implementation only accept size lower then %d\n", size, MEMORY_SIZE);
+		Log::logError << "ERROR: Size of source binaries is " << size << ". Current implementation only accept size lower then " << MEMORY_SIZE << "\n";
 		exit(-1);
 	}
 
@@ -371,9 +371,7 @@ int main(int argc, char *argv[])
 	writeInt(dbtPlateform.vliwBinaries, 0*16, assembleIInstruction_sw(VEX_CALL, placeCode, 63));
 
 	initializeInsertionsMemory(size*4);
-//	for (int oneInsertion=0; oneInsertion<placeCode; oneInsertion++){
-//			Log::fprintf(0, stderr, "insert;%d\n", oneInsertion);
-//	}
+
 	/********************************************************
 	 * First part of DBT: generating the first pass translation of binaries
 	 *******************************************************
@@ -404,12 +402,6 @@ int main(int argc, char *argv[])
 		placeCode =  translateOneSection(dbtPlateform, placeCode, addressStart, startAddressSource,endAddressSource);
 
 		buildBasicControlFlow(&dbtPlateform, oneSection,addressStart, startAddressSource, oldPlaceCode, placeCode, &application, &profiler);
-
-//		int** insertions = (int**) malloc(sizeof(int **));
-//		int nbIns = getInsertionList(oneSection*1024, insertions);
-//		for (int oneInsertion=0; oneInsertion<nbIns; oneInsertion++){
-//				Log::fprintf(0, stderr, "insert;%d\n", (*insertions)[oneInsertion]+(*insertions)[-1]);
-//		}
 	}
 
 	for (int oneUnresolvedJump = 0; oneUnresolvedJump<unresolvedJumpsArray[0]; oneUnresolvedJump++){
@@ -421,7 +413,7 @@ int main(int argc, char *argv[])
 		unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(&dbtPlateform, initialDestination);
 
 		if (destinationInVLIWFromNewMethod == -1){
-			Log::printf(LOG_ERROR, "A jump from %d to %x is still unresolved... (%d insertions)\n", source, initialDestination, insertionsArray[(initialDestination>>10)<<11]);
+			Log::logError << "A jump from " << source << " to " << std::hex << initialDestination << " is still unresolved... (" << insertionsArray[(initialDestination>>10)<<11] << " insertions)\n";
 			exit(-1);
 		}
 		else{
@@ -431,7 +423,7 @@ int main(int argc, char *argv[])
 			writeInt(dbtPlateform.vliwBinaries, 16*(source), type + ((immediateValue & mask)<<7));
 
 			if (immediateValue > 0x7ffff){
-				Log::fprintf(LOG_ERROR, stderr, "error in immediate size...\n");
+				Log::logError << "Error in immediate size...\n";
 				exit(-1);
 			}
 			unsigned int instructionBeforePreviousDestination = readInt(dbtPlateform.vliwBinaries, 16*(destinationInVLIWFromNewMethod-1)+12);
@@ -653,7 +645,7 @@ int main(int argc, char *argv[])
 	//We print profiling result
 	#ifndef __NIOS
 	delete dbtPlateform.vexSimulator;
-  
+
   if (dbg)
     delete dbg;
 
@@ -667,4 +659,3 @@ int main(int argc, char *argv[])
 
   return 0;
 }
-

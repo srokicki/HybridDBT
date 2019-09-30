@@ -350,7 +350,7 @@ void IRProcedure::print(FILE * output){
 
 	fprintf(output, "digraph{\n");
 	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
-		fprintf(output, "node_%d[label=\"node %d - size %d  - nbJump %d place %lx\"];\n",this->blocks[oneBlockInProcedure]->sourceStartAddress,  this->blocks[oneBlockInProcedure]->vliwStartAddress, this->blocks[oneBlockInProcedure]->nbInstr, this->blocks[oneBlockInProcedure]->nbJumps, this->blocks[oneBlockInProcedure]);
+		fprintf(output, "node_%d[label=\"node %d - size %d  - nbJump %d place %p\"];\n",this->blocks[oneBlockInProcedure]->sourceStartAddress,  this->blocks[oneBlockInProcedure]->vliwStartAddress, this->blocks[oneBlockInProcedure]->nbInstr, this->blocks[oneBlockInProcedure]->nbJumps, this->blocks[oneBlockInProcedure]);
 	}
 	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
 
@@ -455,7 +455,7 @@ IRApplication::~IRApplication(){
 
 void IRApplication::addBlock(IRBlock* block, int sectionNumber){
 	if (sectionNumber>this->numberOfSections){
-		Log::printf(LOG_ERROR,"Error while adding a block in an application: section %d is higher than the total number of section (%d)\n", sectionNumber, this->numberOfSections);
+		Log::logError << "Error while adding a block in an application: section " << sectionNumber << " is higher than the total number of section (" << this->numberOfSections << ")\n";
 		exit(-1);
 	}
 

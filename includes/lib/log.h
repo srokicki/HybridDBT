@@ -3,6 +3,7 @@
 
 #include <cstdio>
 #include <iostream>
+#include <ostream>
 #include <dbt/dbtPlateform.h>
 #include <transformation/reconfigureVLIW.h>
 #include <isa/irISA.h>
@@ -33,12 +34,16 @@ class LogStream;
  * logging behaviour, just change this class members.
  */
 class Log
-{ 
+{
 public:
 	Log() = delete;
 	Log(const Log&) = delete;
 
-
+	static std::ostream logScheduleBlocks;
+	static std::ostream logScheduleProc;
+	static std::ostream logMemoryDisambiguation;
+	static std::ostream logWarning;
+	static std::ostream logError;
 
   /**
    * @brief This method should be called once to setup the Log state
@@ -47,30 +52,24 @@ public:
   {
     _verbose_level = verbose_level;
     _stat_mode = statMode;
+
+	if (verbose_level >= LOG_SCHEDULE_BLOCK)
+		logScheduleBlocks.rdbuf(std::clog.rdbuf());
+
+	if (verbose_level >= LOG_SCHEDULE_PROC)
+		logScheduleProc.rdbuf(std::clog.rdbuf());
+
+	if (verbose_level >= LOG_MEMORY_DISAMBIGUATION)
+		logMemoryDisambiguation.rdbuf(std::clog.rdbuf());
+
+	if (verbose_level >= LOG_WARNING)
+		logWarning.rdbuf(std::clog.rdbuf());
+
+	if (verbose_level >= LOG_ERROR)
+		logError.rdbuf(std::clog.rdbuf());
+
   }
 
-  /**
-   * @brief This method encapsulates the standard printf() function.
-   */
-  template<class ... Ts>
-  static void printf(char verbose, const char * format, Ts ... args)
-  {
-    if (_verbose_level >= verbose)
-      std::fprintf(stderr, format, args ...);
-  }
-
-  /**
-   * @brief This method encapsulates the standard fprintf() function.
-   */
-  template<class ... Ts>
-  static void fprintf(char verbose, FILE * f, const char * format, Ts ... args)
-  {
-	 if (verbose == 1 && _verbose_level == 1){
-		 std::fprintf(f, format, args ...);
-	 }
-	 else if (_verbose_level >= verbose)
-		 std::fprintf(f, format, args ...);
-  }
 
 static void printStat(DBTPlateform *platform, IRApplication *application){
 
@@ -81,21 +80,18 @@ static void printStat(DBTPlateform *platform, IRApplication *application){
 	  for (int oneConfig = 0; oneConfig<32; oneConfig++){
 		  float timeInConfig = platform->vexSimulator->timeInConfig[oneConfig];
 		  timeInConfig = timeInConfig / platform->vexSimulator->cycle;
-		  Log::fprintf(0, stdout, "%x;", oneConfig);
-		  Log::fprintf(0, stdout, "%d;%f;", timeInConfig*100, getPowerConsumption(oneConfig));
+		  Log::logError << std::hex << oneConfig << ";";
+		  Log::logError << timeInConfig*100 << ";" << getPowerConsumption(oneConfig) << ";";
 		  energyConsumption += platform->vexSimulator->timeInConfig[oneConfig] * period * getPowerConsumption(oneConfig) / 1000;
 	  }
 
-	  Log::fprintf(0, stdout, "%ld;%ld;%f;%d;%d;",	platform->vexSimulator->cycle,
-			  platform->vexSimulator->nbInstr,
-			  ((double) platform->vexSimulator->nbInstr)/((double) platform->vexSimulator->cycle),
-			  platform->blockScheduleCounter,
-			  platform->procedureOptCounter);
+	  Log::logError << platform->vexSimulator->cycle << ";"<< platform->vexSimulator->nbInstr << ";" << ((double) platform->vexSimulator->nbInstr)/((double) platform->vexSimulator->cycle)
+			 << ";" << platform->blockScheduleCounter << ";" << platform->procedureOptCounter << ";";
 
-	  Log::fprintf(0, stdout, "%d;", platform->vliwInitialConfiguration);
-	  Log::fprintf(0, stdout, "%f;", energyConsumption);
-	  Log::fprintf(0, stdout, "%d;", platform->optimizationCycles);
-	  Log::fprintf(0, stdout, "%f\n", platform->optimizationEnergy*period);
+	  Log::logError << platform->vliwInitialConfiguration << ";";
+	  Log::logError << energyConsumption << ";";
+	  Log::logError << platform->optimizationCycles << ";";
+	  Log::logError << platform->optimizationEnergy*period << "\n";
 
 	}
 	else{
@@ -105,55 +101,54 @@ static void printStat(DBTPlateform *platform, IRApplication *application){
 		for (int oneConfig = 0; oneConfig<32; oneConfig++){
 		  float timeInConfig = platform->vexSimulator->timeInConfig[oneConfig];
 		  timeInConfig = timeInConfig / platform->vexSimulator->cycle;
-		  Log::fprintf(0, stdout, "Conf %x\t[", oneConfig);
+		  Log::logError << "Conf " << std::hex << oneConfig << "\t[";
 		  int convertToPercent = timeInConfig * lineSize;
 		  for (int oneChar = 0; oneChar < convertToPercent; oneChar++){
-			  Log::fprintf(0, stdout, "|");
+			 Log::logError << "|";
 		  }
 		  for (int oneChar = convertToPercent; oneChar < lineSize; oneChar++){
-			  Log::fprintf(0, stdout, " ");
+			  Log::logError << " ";
 		  }
-		  Log::fprintf(0, stdout, "] %f  Power consumption : %f\n", timeInConfig*100, getPowerConsumption(oneConfig));
+		 Log::logError << "] " << timeInConfig*100 << "  Power consumption : " << getPowerConsumption(oneConfig) << "\n";
 		  energyConsumption += (platform->vexSimulator->timeInConfig[oneConfig] * period * getPowerConsumption(oneConfig));
 		}
 
-		Log::fprintf(0, stdout, "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: %ld\n\t Number of instruction executed: %ld\n\t Average IPC: %f\n",
-			  platform->vexSimulator->cycle, platform->vexSimulator->nbInstr, ((double) platform->vexSimulator->nbInstr)/((double) platform->vexSimulator->cycle));
-		Log::fprintf(0, stdout, "\t Configuration used: %d\n", platform->vliwInitialConfiguration);
-		Log::fprintf(0, stdout, "\t Energy consumed (exec, mJ): %f\n", energyConsumption);
+		Log::logError << "Execution is finished...\nStatistics on the execution:\n\t Number of cycles: " << platform->vexSimulator->cycle << "\n\t Number of instruction executed: " << platform->vexSimulator->nbInstr << "\n\t Average IPC: " << ((double) platform->vexSimulator->nbInstr)/((double) platform->vexSimulator->cycle) << "\n";
+		Log::logError << "\t Configuration used: " << platform->vliwInitialConfiguration << "\n";
+		Log::logError << "\t Energy consumed (exec, mJ): " << energyConsumption << "\n";
 
-		Log::fprintf(0, stdout, "\t Optimization cycles: %d\n", platform->optimizationCycles);
+		Log::logError << "\t Optimization cycles: " << platform->optimizationCycles << "\n";
 
-		Log::fprintf(0, stdout, "\t Optimization cycles: %d\n", platform->optimizationCycles);
-		Log::fprintf(0, stdout, "\t Optimization energy (mJ): %f\n", platform->optimizationEnergy/1000000000);
+		Log::logError << "\t Optimization cycles: " << platform->optimizationCycles << "\n";
+		Log::logError << "\t Optimization energy (mJ): " << platform->optimizationEnergy/1000000000 << "\n";
 
-		Log::fprintf(0, stdout, "\t\t Number of cycle spent on system code : %d\n", platform->vexSimulator->nbCycleType[3]);
+		Log::logError << "\t\t Number of cycle spent on system code : " << platform->vexSimulator->nbCycleType[3] << "\n";
 
-		Log::fprintf(0, stdout, "\t -----------------------------------------------------\n");
-		Log::fprintf(0, stdout, "\t Stats for optimization level 0\n");
-		Log::fprintf(0, stdout, "\t\t Number of cycle spent one level 0 code : %d\n", platform->vexSimulator->nbCycleType[0]);
-		Log::fprintf(0, stdout, "\t\t Number of instruction scheduled: %d\n", application->numberInstructions);
-
-
-		Log::fprintf(0, stdout, "\t -----------------------------------------------------\n");
-		Log::fprintf(0, stdout, "\t Stats for optimization level 1\n");
-		Log::fprintf(0, stdout, "\t\t Number of cycle spent one level 1 code: %d\n", platform->vexSimulator->nbCycleType[1]);
-		Log::fprintf(0, stdout, "\t\t Number of block scheduled: %d\n", platform->blockScheduleCounter);
-
-		Log::fprintf(0, stdout, "\t -----------------------------------------------------\n");
-		Log::fprintf(0, stdout, "\t Stats for optimization level 2\n");
-		Log::fprintf(0, stdout, "\t\t Number of cycle spent one level 2 code : %d\n", platform->vexSimulator->nbCycleType[2]);
-		Log::fprintf(0, stdout, "\t\t Number of procedure optimized: %d\n", platform->procedureOptCounter);
-		Log::fprintf(0, stdout, "\t\t Number of trace construction: %d\n", platform->traceConstructionCounter);
-		Log::fprintf(0, stdout, "\t\t Number of unrolling: %d\n", platform->unrollingCounter);
-		Log::fprintf(0, stdout, "\t\t Average block size BEFORE trace/unrolling: %f (M2 %f)\n", platform->blockProcAverageSizeBeforeTrace, platform->blockProcDistanceBeforeTrace/(platform->nbBlockProcedureBeforeTrace -1));
-		Log::fprintf(0, stdout, "\t\t Average block size AFTER trace/unrolling: %f (M2 %f)\n", platform->blockProcAverageSize, platform->blockProcDistance/(platform->nbBlockProcedure -1));
+		Log::logError << "\t -----------------------------------------------------\n";
+		Log::logError << "\t Stats for optimization level 0\n";
+		Log::logError << "\t\t Number of cycle spent one level 0 code : " << platform->vexSimulator->nbCycleType[0] << "\n";
+		Log::logError << "\t\t Number of instruction scheduled: " << application->numberInstructions << "\n";
 
 
-		Log::fprintf(0, stdout, "\t -----------------------------------------------------\n");
-		Log::fprintf(0, stdout, "\t Stats for reconfiguration \n");
+		Log::logError << "\t -----------------------------------------------------\n";
+		Log::logError << "\t Stats for optimization level 1\n";
+		Log::logError << "\t\t Number of cycle spent one level 1 code: " << platform->vexSimulator->nbCycleType[1] << "\n";
+		Log::logError << "\t\t Number of block scheduled: " << platform->blockScheduleCounter << "\n";
+
+		Log::logError << "\t -----------------------------------------------------\n";
+		Log::logError << "\t Stats for optimization level 2\n";
+		Log::logError << "\t\t Number of cycle spent one level 2 code : " << platform->vexSimulator->nbCycleType[2] << "\n";
+		Log::logError << "\t\t Number of procedure optimized: " << platform->procedureOptCounter << "\n";
+		Log::logError << "\t\t Number of trace construction: " << platform->traceConstructionCounter << "\n";
+		Log::logError << "\t\t Number of unrolling: " << platform->unrollingCounter << "\n";
+		Log::logError << "\t\t Average block size BEFORE trace/unrolling: " << platform->blockProcAverageSizeBeforeTrace << " (M2 " << platform->blockProcDistanceBeforeTrace/(platform->nbBlockProcedureBeforeTrace -1) << ")\n";
+		Log::logError << "\t\t Average block size AFTER trace/unrolling: " <<  platform->blockProcAverageSize << " (M2 " << platform->blockProcDistance/(platform->nbBlockProcedure -1) << ")\n";
+
+
+		Log::logError << "\t -----------------------------------------------------\n";
+		Log::logError << "\t Stats for reconfiguration \n";
 		for (int oneConfig = 0; oneConfig<14; oneConfig++){
-		  Log::fprintf(0, stdout, "\t\t #pareto in conf %d: %d\n", oneConfig, platform->nbTimesInPareto[oneConfig]);
+		  Log::logError << "\t\t #pareto in conf " << oneConfig << ": " << platform->nbTimesInPareto[oneConfig] << "\n";
 		}
 
 		int nbMem = 0;
@@ -172,21 +167,21 @@ static void printStat(DBTPlateform *platform, IRApplication *application){
 		  }
 
 		}
-		Log::fprintf(0, stdout, "\t\t Part of procedure instr that are memory: %f \%\n", 100*((float)nbMem)/((float)nbInstr));
+		Log::logError << "\t\t Part of procedure instr that are memory: " << 100*((float)nbMem)/((float)nbInstr) << "\%\n";
 
-		Log::fprintf(0, stdout, "\t -----------------------------------------------------\n");
-		Log::fprintf(0, stdout, "\t Stats for the Cache\n");
-		Log::fprintf(0, stdout, "\t\t Number of memory accesses: %d\n", memory_accesses);
-		Log::fprintf(0, stdout, "\t\t Number of l1 miss: %d\n", cache_l1_miss);
-		Log::fprintf(0, stdout, "\t\t Number of l2 miss: %d\n", cache_l2_miss);
+		Log::logError << "\t -----------------------------------------------------\n";
+		Log::logError << "\t Stats for the Cache\n";
+		Log::logError << "\t\t Number of memory accesses: " << memory_accesses << "\n";
+		Log::logError << "\t\t Number of l1 miss:" << cache_l1_miss << "\n";
+		Log::logError << "\t\t Number of l2 miss: " << cache_l2_miss << "\n";
 
-		Log::fprintf(0, stdout, "\t -----------------------------------------------------\n");
-		Log::fprintf(0, stdout, "\t Stats for the PLSQ\n");
-		Log::fprintf(0, stdout, "\t\t Number of PLSQ checks: %d\n", plsq_checks);
-		Log::fprintf(0, stdout, "\t\t Number of PLSQ false positive: %d\n", plsq_false_positive);
-		Log::fprintf(0, stdout, "\t\t Number of PLSQ true positive: %d\n", plsq_positive);
-		Log::fprintf(0, stdout, "\t\t Number of speculation groups (loop): %d\n", spec_loop_counter);
-		Log::fprintf(0, stdout, "\t\t Number of speculation groups (trace): %d\n", spec_trace_counter);
+		Log::logError << "\t -----------------------------------------------------\n";
+		Log::logError << "\t Stats for the PLSQ\n";
+		Log::logError << "\t\t Number of PLSQ checks: " << plsq_checks << "\n";
+		Log::logError << "\t\t Number of PLSQ false positive: " << plsq_false_positive << "\n";
+		Log::logError << "\t\t Number of PLSQ true positive: " << plsq_positive << "\n";
+		Log::logError << "\t\t Number of speculation groups (loop): " << spec_loop_counter << "\n";
+		Log::logError << "\t\t Number of speculation groups (trace): " << spec_trace_counter << "\n";
 
 //		int maxDiff = 1;
 //		for (int oneBit = 0; oneBit <64; oneBit++){

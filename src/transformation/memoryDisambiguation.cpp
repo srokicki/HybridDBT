@@ -63,17 +63,17 @@ MemoryDependencyGraph::~MemoryDependencyGraph(){
 }
 
 void MemoryDependencyGraph::print(){
-	Log::fprintf(LOG_MEMORY_DISAMBIGUATION, stderr, "    ");
+	Log::logMemoryDisambiguation << "    ";
 	for (int oneInstr=0; oneInstr<this->size; oneInstr++){
-		Log::fprintf(LOG_MEMORY_DISAMBIGUATION, stderr, "%3u ", (unsigned int) this->idMem[oneInstr]);
+		Log::logMemoryDisambiguation << (unsigned int) this->idMem[oneInstr]  << " ";
 	}
-	Log::fprintf(LOG_MEMORY_DISAMBIGUATION, stderr, "\n");
+	Log::logMemoryDisambiguation << "\n";
 	for (int oneInstr=0; oneInstr<this->size; oneInstr++){
-		Log::fprintf(LOG_MEMORY_DISAMBIGUATION, stderr, "%3d  ", this->idMem[oneInstr]);
+		Log::logMemoryDisambiguation << this->idMem[oneInstr] << " ";
 		for (int oneOtherInstr = 0; oneOtherInstr<oneInstr; oneOtherInstr++){
-			Log::fprintf(LOG_MEMORY_DISAMBIGUATION, stderr, "%d   ", graph[oneInstr*this->size + oneOtherInstr]?1:0);
+			Log::logMemoryDisambiguation << (graph[oneInstr*this->size + oneOtherInstr]?1:0)  << " ";
 		}
-		Log::fprintf(LOG_MEMORY_DISAMBIGUATION, stderr, "\n");
+		Log::logMemoryDisambiguation << "\n";
 	}
 }
 
@@ -214,12 +214,12 @@ void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock **pred
 
 
 		// We print debug
-		Log::printf(LOG_MEMORY_DISAMBIGUATION, "************************************************************\n");
-		Log::printf(LOG_MEMORY_DISAMBIGUATION, "*****             Memory disambiguation process       ******\n");
-		Log::printf(LOG_MEMORY_DISAMBIGUATION, "************************************************************\n");
-		Log::printf(LOG_MEMORY_DISAMBIGUATION, "Before disambiguation: \n");
+		Log::logMemoryDisambiguation << "************************************************************\n";
+		Log::logMemoryDisambiguation << "*****             Memory disambiguation process       ******\n";
+		Log::logMemoryDisambiguation << "************************************************************\n";
+		Log::logMemoryDisambiguation << "Before disambiguation: \n";
 		for (int i=0; i<block->nbInstr; i++)
-			Log::printf(LOG_MEMORY_DISAMBIGUATION, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+			Log::logMemoryDisambiguation << printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
 
 		//We perform disambiguation and apply it
 		basicMemorySimplification(block, graph);
@@ -228,11 +228,11 @@ void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock **pred
 		graph->applyGraph(block);
 
 		//We print debug
-		Log::printf(LOG_MEMORY_DISAMBIGUATION, "\n After disambiguation: \n");
+		Log::logMemoryDisambiguation << "\n After disambiguation: \n";
 		for (int i=0; i<block->nbInstr; i++)
-			Log::printf(LOG_MEMORY_DISAMBIGUATION, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+			Log::logMemoryDisambiguation << printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
 
-		Log::printf(LOG_MEMORY_DISAMBIGUATION, "************************************************************\n");
+		Log::logMemoryDisambiguation << "************************************************************\n";
 
 }
 
@@ -386,7 +386,7 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
 		}
 		else{
 			for (int i=0; i<block->nbInstr; i++){
-				Log::printf(4, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+				Log::logMemoryDisambiguation <<  printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
 			}
 			shiftBlock(block, 1);
 			for (int oneMemOperation = 0; oneMemOperation<graph->size; oneMemOperation++){
@@ -394,7 +394,7 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
 			}
 			write128(block->instructions, 0, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_INIT, 256, speculationCounter, 1, currentSpecId, 0, 0));
 			for (int i=0; i<block->nbInstr; i++){
-				Log::printf(4, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+				Log::logMemoryDisambiguation <<  printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
 			}
 
 
@@ -631,7 +631,6 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 
 			double val = newNbMiss - currentSpecDef->nbFail;
 			double val2 = newNbUse-currentSpecDef->nbUse;
-//			fprintf(stderr, "%lld; %f; %d\n", (long long) platform->vexSimulator->cycle, val2 == 0 ? 0 : 100 * val / val2, (currentSpecDef->type == 2) ? 1 : 0);
 
 
 			currentSpecDef->nbUse = newNbUse;

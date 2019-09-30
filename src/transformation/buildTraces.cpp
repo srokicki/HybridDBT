@@ -120,19 +120,19 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 	/*****************************************************
 	 * We start by print debug messages
 	 */
-	Log::printf(LOG_SCHEDULE_PROC, "***********Unrolling loop*******************\n");
+	Log::logScheduleProc << "***********Unrolling loop*******************\n";
 
-	Log::printf(LOG_SCHEDULE_PROC, "Successors of block (%d) : ", block->sourceStartAddress);
+	Log::logScheduleProc << "Successors of block (" << block->sourceStartAddress << ") : ";
 	for (int oneSuccessor = 0; oneSuccessor < block->nbSucc; oneSuccessor++)
-		Log::printf(LOG_SCHEDULE_PROC, " (instr %d, dest %d) ", oneSuccessor<block->nbJumps ? block->jumpIds[oneSuccessor] : -1 , block->successors[oneSuccessor]->sourceStartAddress);
+		Log::logScheduleProc << " (instr " << (oneSuccessor<block->nbJumps ? block->jumpIds[oneSuccessor] : -1) << ", dest " << (block->successors[oneSuccessor]->sourceStartAddress) << ") ";
 
-	Log::printf(LOG_SCHEDULE_PROC, "\n");
+	Log::logScheduleProc << "\n";
 
 
 	for (int i=0; i<block->nbInstr; i++){
-		Log::printf(LOG_SCHEDULE_PROC, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+		Log::logScheduleProc << printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
 	}
-	Log::printf(LOG_SCHEDULE_PROC, "\n");
+	Log::logScheduleProc << "\n";
 
 
 	//********************************************************
@@ -475,9 +475,9 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 	result->vliwEndAddress = block->vliwEndAddress;
 	result->blockState = IRBLOCK_UNROLLED;
 
-	Log::printf(LOG_SCHEDULE_PROC, "Successors of result (%d) : ", block->sourceStartAddress);
+	Log::logScheduleProc << "Successors of result (" << block->sourceStartAddress << ") : ";
 	for (int oneSuccessor = 0; oneSuccessor < result->nbSucc; oneSuccessor++)
-		Log::printf(LOG_SCHEDULE_PROC, " (instr %d, dest %d) ", oneSuccessor<result->nbJumps ? result->jumpIds[oneSuccessor] : -1 , result->successors[oneSuccessor]->sourceStartAddress);
+		Log::logScheduleProc << " (instr " << (oneSuccessor<result->nbJumps ? result->jumpIds[oneSuccessor] : -1) << ", dest " << (result->successors[oneSuccessor]->sourceStartAddress) << ") ";
 
 
 	return result;
@@ -548,26 +548,15 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 	/*****************************************************
 	 * We start by print debug messages
 	 */
-	Log::printf(LOG_SCHEDULE_PROC, "***********Merging blocks*******************\n");
-
-	Log::printf(LOG_SCHEDULE_PROC, "Successors of first block (%d) : ", entryBlock->sourceStartAddress);
-	for (int oneSuccessor = 0; oneSuccessor < entryBlock->nbSucc; oneSuccessor++)
-		Log::printf(LOG_SCHEDULE_PROC, " (instr %d, dest %d) ", oneSuccessor<entryBlock->nbJumps ? entryBlock->jumpIds[oneSuccessor] : -1 , entryBlock->successors[oneSuccessor]->sourceStartAddress);
-
-	Log::printf(LOG_SCHEDULE_PROC, "\nSuccessors of second block (%d) : ", secondBlock->sourceStartAddress);
-	for (int oneSuccessor = 0; oneSuccessor < secondBlock->nbSucc; oneSuccessor++)
-		Log::printf(LOG_SCHEDULE_PROC, " (instr %d, dest %d) ", oneSuccessor<secondBlock->nbJumps ? secondBlock->jumpIds[oneSuccessor] : -1 , secondBlock->successors[oneSuccessor]->sourceStartAddress);
-
-	Log::printf(LOG_SCHEDULE_PROC, "\n");
-
+	Log::logScheduleProc << "***********Merging blocks*******************\n";
 
 	for (int i=0; i<entryBlock->nbInstr; i++){
-		Log::printf(LOG_SCHEDULE_PROC, "%s ", printBytecodeInstruction(i, readInt(entryBlock->instructions, i*16+0), readInt(entryBlock->instructions, i*16+4), readInt(entryBlock->instructions, i*16+8), readInt(entryBlock->instructions, i*16+12)).c_str());
+		Log::logScheduleProc << printBytecodeInstruction(i, readInt(entryBlock->instructions, i*16+0), readInt(entryBlock->instructions, i*16+4), readInt(entryBlock->instructions, i*16+8), readInt(entryBlock->instructions, i*16+12));
 	}
-	Log::printf(LOG_SCHEDULE_PROC, "\n");
+	Log::logScheduleProc <<  "\n";
 
 	for (int i=0; i<secondBlock->nbInstr; i++){
-		Log::printf(LOG_SCHEDULE_PROC, "%s ", printBytecodeInstruction(i, readInt(secondBlock->instructions, i*16+0), readInt(secondBlock->instructions, i*16+4), readInt(secondBlock->instructions, i*16+8), readInt(secondBlock->instructions, i*16+12)).c_str());
+		Log::logScheduleProc << printBytecodeInstruction(i, readInt(secondBlock->instructions, i*16+0), readInt(secondBlock->instructions, i*16+4), readInt(secondBlock->instructions, i*16+8), readInt(secondBlock->instructions, i*16+12));
 	}
 
 	//********************************************************
@@ -952,13 +941,9 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 	}
 
 
-	Log::printf(LOG_SCHEDULE_PROC, "\nSuccessors of resulting block : ");
-	for (int oneSuccessor = 0; oneSuccessor < result->nbSucc; oneSuccessor++)
-		Log::printf(LOG_SCHEDULE_PROC, " (instr %d, dest %d) ", oneSuccessor<result->nbJumps ? result->jumpIds[oneSuccessor] : -1 , result->successors[oneSuccessor]->sourceStartAddress);
-
-	Log::printf(LOG_SCHEDULE_PROC, "\n Resulting block is: \n");
+	Log::logScheduleProc << "\n Resulting block is: \n";
 	for (int i=0; i<result->nbInstr; i++){
-		Log::printf(LOG_SCHEDULE_PROC, "%s ", printBytecodeInstruction(i, readInt(result->instructions, i*16+0), readInt(result->instructions, i*16+4), readInt(result->instructions, i*16+8), readInt(result->instructions, i*16+12)).c_str());
+		Log::logScheduleProc << printBytecodeInstruction(i, readInt(result->instructions, i*16+0), readInt(result->instructions, i*16+4), readInt(result->instructions, i*16+8), readInt(result->instructions, i*16+12));
 	}
 
 
@@ -1034,13 +1019,13 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 
 					block->blockState = IRBLOCK_UNROLLED;
 
-					Log::printf(LOG_SCHEDULE_PROC, "******************************************************************\n");
-					Log::printf(LOG_SCHEDULE_PROC, "******************** Perfect loop identified *********************\n");
-					Log::printf(LOG_SCHEDULE_PROC, "******************** %8x  ---  %8x *********************\n", (unsigned int) block->sourceStartAddress, (unsigned int) block->sourceEndAddress);
-					Log::printf(LOG_SCHEDULE_PROC, "******************************************************************\n");
+					Log::logScheduleProc << "******************************************************************\n";
+					Log::logScheduleProc << "******************** Perfect loop identified *********************\n";
+					Log::logScheduleProc << "******************** " << (unsigned int) block->sourceStartAddress << "  ---  " << (unsigned int) block->sourceEndAddress << " *********************\n";
+					Log::logScheduleProc << "******************************************************************\n";
 
 					for (int i=0; i<block->nbInstr; i++){
-						Log::printf(LOG_SCHEDULE_PROC, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+						Log::logScheduleProc << printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
 					}
 
 					getReadWriteRegisters(block, readRegs, writeRegs);
@@ -1080,12 +1065,12 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 					oneSuperBlock->nbJumps = 0;
 					oneSuperBlock->instructions = NULL;
 
-					Log::printf(LOG_SCHEDULE_PROC, "******************************************************************\n");
-					Log::printf(LOG_SCHEDULE_PROC, "********************     Modified loop       *********************\n");
-					Log::printf(LOG_SCHEDULE_PROC, "******************************************************************\n");
+					Log::logScheduleProc << "******************************************************************\n";
+					Log::logScheduleProc << "********************     Modified loop       *********************\n";
+					Log::logScheduleProc << "******************************************************************\n";
 
 					for (int i=0; i<block->nbInstr; i++){
-						Log::printf(LOG_SCHEDULE_PROC, "%s ", printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12)).c_str());
+						Log::logScheduleProc << printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
 					}
 
 					//We generate a block for the loop termination
@@ -1120,8 +1105,8 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 //						blocksToAdd[nbBlocksToAdd] = newBlock;
 //						nbBlocksToAdd++;
 
-						Log::printf(LOG_SCHEDULE_PROC, "********************   Successor identified  *********************\n");
-						Log::printf(LOG_SCHEDULE_PROC, "******************************************************************\n");
+						Log::logScheduleProc << "********************   Successor identified  *********************\n";
+						Log::logScheduleProc << "******************************************************************\n";
 
 //						for (int i=0; i<newBlock->nbInstr; i++){
 //							Log::printf(0, "%s ", printBytecodeInstruction(i, readInt(newBlock->instructions, i*16+0), readInt(newBlock->instructions, i*16+4), readInt(newBlock->instructions, i*16+8), readInt(newBlock->instructions, i*16+12)).c_str());
@@ -1148,7 +1133,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 						}
 					}
 
-					Log::printf(LOG_SCHEDULE_PROC, "Block has %d predecessor\n", nbPred);
+					Log::logScheduleProc << "Block has " << nbPred << " predecessor\n";
 					if (optLevel>=3){
 						memoryDisambiguation(platform, block, predecessors, 1);
 						spec_loop_counter++;
@@ -1289,7 +1274,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 					firstPredecessor->nbMergedBlocks++;
 				}
 				else{
-					printf("Error while building a trace: trying to add a merged block while there's no place left\n");
+					Log::logError << "Error while building a trace: trying to add a merged block while there's no place left\n";
 				}
 
 

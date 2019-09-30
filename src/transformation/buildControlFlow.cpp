@@ -252,7 +252,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 			for (int oneBlockInProc = 0; oneBlockInProc<numberBlockInProcedure; oneBlockInProc++)
 				blockInProcedure[oneBlockInProc]->blockState = IRBLOCK_ERROR_PROC;
 
-			printf("Leavign because of too large waiting blocks (%d)\n", numberBlockToStudy);
+			Log::logScheduleProc << "Leavign because of too large proc (" << numberBlockInProcedure << ")\n";
 			return -1;
 		}
 
@@ -280,7 +280,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 				for (int oneBlockInProc = 0; oneBlockInProc<numberBlockInProcedure; oneBlockInProc++)
 					blockInProcedure[oneBlockInProc]->blockState = IRBLOCK_ERROR_PROC;
 
-				printf("Leavign because of malformed proc\n", numberBlockInProcedure);
+				Log::logScheduleProc << "Leavign because of malformed proc\n";
 				return -1;
 			}
 			else{
@@ -294,7 +294,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 			for (int oneBlockInProc = 0; oneBlockInProc<numberBlockInProcedure; oneBlockInProc++)
 				blockInProcedure[oneBlockInProc]->blockState = IRBLOCK_ERROR_PROC;
 
-			printf("Leavign because of too large proc (%d)\n", numberBlockInProcedure);
+			Log::logScheduleProc << "Leavign because of too large proc (" << numberBlockInProcedure << ")\n";
 			return -1;
 		}
 

@@ -361,7 +361,7 @@ void initializeDBTInfo(char* fileName)
 		unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(platform, initialDestination);
 
 		if (destinationInVLIWFromNewMethod == -1){
-			Log::printf(LOG_ERROR, "A jump from %d to %x is still unresolved... (%d insertions)\n", source, initialDestination, insertionsArray[(initialDestination>>10)<<11]);
+			Log::logError << "A jump from " << source << " to " << std::hex << initialDestination << " is still unresolved... (" << insertionsArray[(initialDestination>>10)<<11] << " insertions)\n";
 			exit(-1);
 		}
 		else{
@@ -372,8 +372,7 @@ void initializeDBTInfo(char* fileName)
 
 			if (immediateValue > 0x7ffff){
 
-				Log::fprintf(LOG_ERROR, stderr, "error in immediate size... Should be corrected in real life...%x\n", immediateValue);
-//				exit(-1);
+				Log::logError << "Error in immediate size... Should be corrected in real life\n";
 				immediateValue &= 0x7ffff;
 			}
 			unsigned int instructionBeforePreviousDestination = readInt(platform->vliwBinaries, 16*(destinationInVLIWFromNewMethod-1)+12);

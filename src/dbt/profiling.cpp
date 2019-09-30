@@ -92,7 +92,7 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 		if (!successfullInsertion){
 			fprintf(stderr, "Faile dprofiling %d\n", oneBlock->sourceStartAddress);
 
-			Log::printf(LOG_WARNING, "Failed at inserting profiling, need alternative method\n");
+			Log::logWarning << "Failed at inserting profiling, need alternative method\n";
 		}
 		else{
 			this->platform->vexSimulator->profileResult[numberProfiledBlocks] = 0;
@@ -136,4 +136,3 @@ Profiler::Profiler(DBTPlateform *platform){
 	this->platform = platform;
 	this->numberProfiledBlocks = 0;
 }
-
