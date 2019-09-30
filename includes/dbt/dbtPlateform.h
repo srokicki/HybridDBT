@@ -25,10 +25,8 @@
 #define DBT_TYPE_HW 0
 #define DBT_TYPE_SW 1
 
-#ifndef __DBT_INFORMATION
 #include <simulator/vexSimulator.h>
 #include <simulator/riscvSimulator.h>
-#endif
 
 
 #include <types.h>
@@ -67,11 +65,8 @@ public:
 	unsigned char *freeRegisters;
 	unsigned int *placeOfInstr;
 	unsigned int *specInfo;
-
-#ifndef __DBT_INFORMATION
 	VexSimulator* vexSimulator;
 	RiscvSimulator* riscvSimulator;
-#endif
 
 	int vliwInitialConfiguration;
 	char vliwInitialIssueWidth;

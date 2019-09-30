@@ -409,12 +409,11 @@ IRBlock::IRBlock(int startAddress, int endAddress, int section){
 }
 
 IRBlock::~IRBlock(){
-	fprintf(stderr, "I'm destroying a block !!!\n");
 	if (placeInProfiler != 0)
 		*placeInProfiler = 0;
-	if (!this->instructions)
+	if (this->isDestroyable && !this->instructions)
 		free(this->instructions);
-	if (this->nbJumps > 0){
+	if (this->isDestroyable && this->nbJumps > 0){
 		free(this->jumpIds);
 		free(this->jumpPlaces);
 	}
@@ -1039,4 +1038,3 @@ void shiftBlock(IRBlock *block, char value){
 		block->jumpIds[oneJump] += value;
 
 }
-

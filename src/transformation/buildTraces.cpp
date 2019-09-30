@@ -1272,15 +1272,13 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 				for (int oneSuccessor = 0; oneSuccessor<oneSuperBlock->nbSucc; oneSuccessor++)
 					firstPredecessor->successors[oneSuccessor] = oneSuperBlock->successors[oneSuccessor];
 
-			//	firstPredecessor->sourceEndAddress = block->sourceEndAddress; //FIXME removed only for dbt information
-
 
 				block->nbSucc = 0;
 				block->nbInstr = 0;
 //				block->vliwStartAddress = 0;
 				nbBlock--;
 
-//				delete (oneSuperBlock);
+				delete (oneSuperBlock);
 
 				block->blockState = IRBLOCK_TRACE;
 				firstPredecessor->blockState = IRBLOCK_TRACE;
@@ -1347,8 +1345,8 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 			double delta2 = procedure->blocks[oneBlock]->nbInstr - platform->blockProcAverageSize;
 			platform->blockProcDistance += delta*delta2;
 		}
-//		else
-//			delete procedure->blocks[oneBlock];
+		else
+			delete procedure->blocks[oneBlock];
 	}
 
 

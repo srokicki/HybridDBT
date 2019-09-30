@@ -1,7 +1,7 @@
 /**************************************************************************
- * 
+ *
                        PipeLined Four Issues Processor  CUSTOM MOV
- * 
+ *
  **************************************************************************/
 
 
@@ -12,12 +12,12 @@
 *		->	Way 1 can perform Branch operations too
 *		->	Way 2 can perform Memory access operations too
 * 		->	Way 4 can perform Multiplication operations too
-*		
+*
 *		The different stages are :
 *		-> Fetch (F) 		: Access Instruction registers and store current instruction
 *		-> Decode (DC)		: Decode the instruction and select the needed operands for the next stage (including accessing to registers)
 *		-> Execute (EX) 	: Do the calculating part
-*		-> Memory (M)		: Access memory if needed (Only for Way 2) 
+*		-> Memory (M)		: Access memory if needed (Only for Way 2)
 *		-> Write Back (WB) 	: Update registers value if needed
 *
 *		For any questions, please contact yo.uguen@gmail.com
@@ -1597,7 +1597,6 @@ void VexSimulator::initializeDataMemory(unsigned char* content, unsigned int siz
 
 
 int VexSimulator::doStep(int numberCycles){
-	return 0;
 
 	this->stop = 0;
 	int initialCycleCounter = cycle;

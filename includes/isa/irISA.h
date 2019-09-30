@@ -106,6 +106,8 @@ public:
 	int section;
 	IRBlock** placeInProfiler;
 
+	bool isDestroyable = true; //If set to false, the delete won't free memory (used in dbtInformation that needs to keep it)
+
 	short specAddr[4];
 
 	void addJump(unsigned char jumpID, unsigned int jumpPlace);
