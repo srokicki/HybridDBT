@@ -183,7 +183,7 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 					| opcode == VEX_LDHU | opcode == VEX_LDW | opcode == VEX_LDWU | opcode == VEX_LDD;
 			bool isStoreType = opcode == VEX_STB | opcode == VEX_STH | opcode == VEX_STW | opcode == VEX_STD;
 			bool isBranchWithNoReg = opcode == VEX_GOTO | opcode == VEX_CALL
-					| opcode == VEX_STOP | opcode == VEX_ECALL;
+					| opcode == VEX_STOP | opcode == VEX_SYSTEM;
 			bool isBranchWithReg = opcode == VEX_GOTOR | opcode == VEX_CALLR;
 			bool isBranchWithTwoReg = opcode == VEX_BR | opcode == VEX_BRF | opcode == VEX_BGE | opcode == VEX_BLT | opcode == VEX_BGEU | opcode == VEX_BLTU;
 			bool isMovi = opcode == VEX_MOVI;

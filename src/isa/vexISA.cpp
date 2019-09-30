@@ -196,7 +196,12 @@ std::string printDecodedInstr(unsigned int instruction){
 
 	std::stringstream stream;
 
-	stream << opcodeNames[OP];
+	if (OP == 0x2e && IMM19 == 1){
+		stream << "csrrs";
+	}
+	else
+		stream << opcodeNames[OP];
+
 	if (OP == VEX_FP){
 			stream << " " << fpNames[funct];
 	}

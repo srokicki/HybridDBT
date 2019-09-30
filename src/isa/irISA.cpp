@@ -529,7 +529,7 @@ short getDestinationRegister(unsigned int *bytecode, unsigned char index){
 
 	unsigned char opcode = (bytecodeWord96>>19) & 0x7f;
 	if ((opcode != 0) //not a nop
-			&&((opcode>>4) != 2 || opcode == VEX_MOVI) //if I-type then movi
+			&&((opcode>>4) != 2 || opcode == VEX_MOVI || (opcode == VEX_SYSTEM && ((bytecodeWord64>>23) & 1))) //if I-type then movi (we handle the case for csrrs)
 			&& ((opcode>>3) != 0x3) //not a store
 		    && opcode != VEX_FSB && opcode != VEX_FSH && opcode != VEX_FSW) //not a FP store
 		return (bytecodeWord64>>14) & 0x1ff;
@@ -714,7 +714,7 @@ void setDestinationRegister(unsigned int *bytecode, unsigned char index, short n
 	unsigned int newDestinationRegisterExtended = newDestinationRegister;
 	unsigned char opcode = (bytecodeWord96>>19) & 0x7f;
 	if ((opcode != 0) //not a nop
-			&&((opcode>>4) != 2 || opcode == VEX_MOVI) //if I-type then movi
+			&&((opcode>>4) != 2 || opcode == VEX_MOVI  || (VEX_SYSTEM && ((bytecodeWord64>>23) & 1))) //if I-type then movi
 			&& ((opcode>>3) != 0x3) //not a store
 		    && opcode != VEX_FSB && opcode != VEX_FSH && opcode != VEX_FSW) //not a FP store
 		bytecodeWord64 = (bytecodeWord64 & 0xff803fff) | (newDestinationRegisterExtended << 14);

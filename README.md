@@ -145,6 +145,9 @@ Main contributors are <a href="http://people.irisa.fr/Simon.Rokicki/index.html">
 
 The Hybrid-DBT framework has been presented/used in different publications:
  - "<a href="https://hal.archives-ouvertes.fr/hal-01856163v1">Hybrid-DBT: Hardware/Software Dynamic Binary Translation Targeting VLIW</a>", in IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems, 2018
+ - Poster presentation at RISC-V Workshop, 2019, Zurich, Switzerland
+ - "<a href="https://hal.archives-ouvertes.fr/hal-01941876v1">Aggressive Memory Speculation in HW/SW Co-Designed Machines
+</a>", in IEEE/ACM Design, Automation & Test in Europe (DATE), 2019, Florence, Italy
  - "<a href="https://hal.archives-ouvertes.fr/hal-01653110v2">Supporting Runtime Reconfigurable VLIWs Cores Through Dynamic Binary Translation</a>", in IEEE/ACM Design, Automation & Test in Europe (DATE), 2018, Dresden, Germany
  - Presentation at 6th RISC-V Workshop in Shanghai, 2017 (<a href="https://www.youtube.com/watch?v=WViYgkqtDAA">video</a>, <a href="https://riscv.org/wp-content/uploads/2017/05/Wed1545-HybridDBT-Rokicki.pdf">slides</a>) 
  - "<a href="https://hal.archives-ouvertes.fr/hal-01423639v1">Hardware-Accelerated Dynamic Binary Translation</a>", in IEEE/ACM Design, Automation & Test in Europe (DATE), 2017, Lausanne, Switzerland. 

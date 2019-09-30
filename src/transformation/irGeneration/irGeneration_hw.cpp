@@ -136,9 +136,9 @@ inline unsigned int writeDependency_ac(ac_int<128, false> bytecode[1024], ac_int
 	//Note: the IR_SUCC should be defined in irISA.h
 
 #ifdef IR_SUCC
-	writeSuccessor_ac(bytecode, srcInstr, destInstr, isData, currentInstruction);
+	return writeSuccessor_ac(bytecode, srcInstr, destInstr, isData, currentInstruction);
 #else
-	writePredecessor_ac(bytecode, srcInstr, destInstr, isData, currentInstruction);
+	return writePredecessor_ac(bytecode, srcInstr, destInstr, isData, currentInstruction);
 #endif
 
 }
@@ -310,10 +310,10 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			ac_int<1, false> isStoreType = opcode == VEX_STB | opcode == VEX_STH | opcode == VEX_STW | opcode == VEX_STD;
 			ac_int<1, false> isSpecMemType = opcode == VEX_SPEC_RST | opcode == VEX_SPEC_INIT;
 			ac_int<1, false> isBranchWithNoReg = opcode == VEX_GOTO | opcode == VEX_CALL
-					| opcode == VEX_STOP | opcode == VEX_ECALL;
+					| opcode == VEX_STOP | (opcode == VEX_SYSTEM && imm19 == 0);
 			ac_int<1, false> isBranchWithReg = opcode == VEX_GOTOR | opcode == VEX_CALLR;
 			ac_int<1, false> isBranchWithTwoReg = opcode == VEX_BR | opcode == VEX_BRF | opcode == VEX_BGE | opcode == VEX_BLT | opcode == VEX_BGEU | opcode == VEX_BLTU;
-			ac_int<1, false> isMovi = opcode == VEX_MOVI;
+			ac_int<1, false> isMovi = opcode == VEX_MOVI | (opcode == VEX_SYSTEM && imm19==1);
 			ac_int<1, false> isArith1 = opcode == VEX_NOT;
 			ac_int<1, false> isArith2 = (opcode.slc<3>(4) == 4 | opcode.slc<3>(4) == 5) & !isArith1;
 			ac_int<1, false> isArithImm = opcode.slc<3>(4) == 6 | opcode.slc<3>(4) == 7;
