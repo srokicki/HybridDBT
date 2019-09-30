@@ -252,7 +252,7 @@ ac_int<64, false> GenericSimulator::solveSyscall(ac_int<64, false> syscallId, ac
 			result = profilingDomains[arg1];
 		break;
 		default:
-			printf("Unknown syscall with code %d\n", syscallId.slc<32>(0));
+			Log::logError << "Unknown syscall with code " << syscallId.slc<32>(0) << "\n";
 			exit(-1);
 		break;
 		}
@@ -329,21 +329,21 @@ ac_int<64, false> GenericSimulator::doOpen(ac_int<64, false> path, ac_int<64, fa
 	for (int i=0; i<pathSize; i++)
 		localPath[i] = this->ldb(path + i);
 
-	char* localMode;
+	std::string localMode = "";
 	if (flags==0)
-		localMode = "r";
+		localMode += "r";
 	else if (flags == 577)
-		localMode = "w";
+		localMode += "w";
 	else if (flags == 1089)
-		localMode = "a";
+		localMode += "a";
 	else if (flags == O_WRONLY|O_CREAT|O_EXCL)
-		localMode = "wx";
+		localMode += "wx";
 	else{
-		fprintf(stderr, "Trying to open files with unknown flags... %d\n", flags);
+		Log::logError << "Trying to open files with unknown flags... " << flags << "\n";
 		exit(-1);
 	}
 
-	FILE* test = fopen(localPath, localMode);
+	FILE* test = fopen(localPath, localMode.c_str());
 	uint64_t result = (uint64_t) test;
 	ac_int<64, true> result_ac = result;
 

@@ -13,8 +13,7 @@
 
 #ifndef __CATAPULT
 //Includes that are not used in catapult
-#include <cstdio>
-#include <cstdlib>
+#include <lib/log.h>
 
 #include <lib/endianness.h>
 #include <dbt/insertions.h>
@@ -951,7 +950,7 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 			}
 			else{
 				#ifndef __CATAPULT
-				printf("In first pass translator, instr %x is not handled yet...\n", oneInstruction);
+				Log::logError << "In first pass translator, instr " << std::hex << oneInstruction << " is not handled yet...\n";
 				exit(-1);
 				#endif
 			}

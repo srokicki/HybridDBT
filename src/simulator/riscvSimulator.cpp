@@ -935,7 +935,7 @@ void RiscvSimulator::doStep(){
 				break;
 
 			default:
-				printf("In FP part of switch opcode, instr %x is not handled yet(%x)  pC is %x\n", (int) ins, this->heapAddress, this->cycle);
+				printf("In FP part of switch opcode, instr %x is not handled yet(%x)  pC is %x\n", (int) ins, this->heapAddress, (int) this->cycle);
 			break;
 		}
 

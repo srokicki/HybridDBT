@@ -101,7 +101,7 @@ ElfFile::ElfFile(char* pathToElfFile){
 
 
 	if (DEBUG)
-		printf("Section table is at %hu and contains %u entries of %u bytes\n", start, tableSize, entrySize);
+		printf("Section table is at %lu and contains %lu entries of %lu bytes\n", start, tableSize, entrySize);
 
 
 	unsigned int res = fseek(elfFile, start, SEEK_SET);
@@ -118,7 +118,7 @@ ElfFile::ElfFile(char* pathToElfFile){
 
 		res = fread(localSectionTable, entrySize,tableSize, elfFile);
 		if (res != tableSize)
-			printf("Error while reading the section table ! (section size is %u while we only read %u entries)\n", tableSize, res);
+			printf("Error while reading the section table ! (section size is %lu while we only read %u entries)\n", tableSize, res);
 
 		//We then copy the section table into it
 		this->sectionTable = new std::vector<ElfSection*>();
@@ -132,7 +132,7 @@ ElfFile::ElfFile(char* pathToElfFile){
 
 		res = fread(localSectionTable, entrySize,tableSize, elfFile);
 		if (res != tableSize)
-			printf("Error while reading the section table ! (section size is %u while we only read %u entries)\n", tableSize, res);
+			printf("Error while reading the section table ! (section size is %lu while we only read %u entries)\n", tableSize, res);
 
 		//We then copy the section table into it
 		this->sectionTable = new std::vector<ElfSection*>();
@@ -355,7 +355,7 @@ ElfSymbol::ElfSymbol(Elf64_Sym sym){
 ElfRelocation::ElfRelocation(Elf32_Rel header){
 	this->offset = FIX_INT(header.r_offset);
 
-	unsigned int tempInfo = FIX_INT(header.r_info);
+	unsigned long long int tempInfo = FIX_INT(header.r_info);
 	this->symbol = ELF32_R_SYM(tempInfo);
 	this->type = ELF32_R_TYPE(tempInfo);
 	this->info = 0;
@@ -364,7 +364,7 @@ ElfRelocation::ElfRelocation(Elf32_Rel header){
 ElfRelocation::ElfRelocation(Elf64_Rel header){
 	this->offset = FIX_INT(header.r_offset);
 
-	unsigned int tempInfo = FIX_INT(header.r_info);
+	unsigned long long int tempInfo = FIX_INT(header.r_info);
 	this->symbol = ELF64_R_SYM(tempInfo);
 	this->type = ELF64_R_TYPE(tempInfo);
 	this->info = 0;
@@ -373,7 +373,7 @@ ElfRelocation::ElfRelocation(Elf64_Rel header){
 ElfRelocation::ElfRelocation(Elf32_Rela header){
 	this->offset = FIX_INT(header.r_offset);
 
-	unsigned int tempInfo = FIX_INT(header.r_info);
+	unsigned long long int tempInfo = FIX_INT(header.r_info);
 	this->symbol = ELF32_R_SYM(tempInfo);
 	this->type = ELF32_R_TYPE(tempInfo);
 	this->info = 0;
@@ -382,7 +382,7 @@ ElfRelocation::ElfRelocation(Elf32_Rela header){
 ElfRelocation::ElfRelocation(Elf64_Rela header){
 	this->offset = FIX_INT(header.r_offset);
 
-	unsigned int tempInfo = FIX_INT(header.r_info);
+	unsigned long long int tempInfo = FIX_INT(header.r_info);
 	this->symbol = ELF64_R_SYM(tempInfo);
 	this->type = ELF64_R_TYPE(tempInfo);
 	this->info = 0;

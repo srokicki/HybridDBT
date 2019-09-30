@@ -20,8 +20,6 @@
 #include <transformation/rescheduleProcedure.h>
 #include <transformation/memoryDisambiguation.h>
 
-#include <lib/debugFunctions.h>
-
 #include <isa/vexISA.h>
 #include <isa/riscvISA.h>
 

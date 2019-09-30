@@ -10,8 +10,7 @@
 
 #ifndef __CATAPULT
 //Includes not required by catapult
-#include <cstdio>
-#include <cstdlib>
+#include <lib/log.h>
 
 #include <lib/endianness.h>
 #include <dbt/dbtPlateform.h>
@@ -702,8 +701,8 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			}
 			else{
 				#ifndef __CATAPULT
-				printf("While generating IR, this case should never happen... %x\n", oneInstruction);
-				std::cout << printDecodedInstr(oneInstruction);
+				Log::logError<<"While generating IR, this case should never happen... " << std::hex << oneInstruction << "\n";
+				Log::logError << printDecodedInstr(oneInstruction) << "\n";
 				#endif
 			}
 

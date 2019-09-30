@@ -165,15 +165,15 @@ int main(int argc, char* argv[]){
 
 		}
 	}
-	fprintf(stderr, "PC start is %x\n", simulator->pc);
+	fprintf(stderr, "PC start is %x\n", (unsigned int) simulator->pc);
 
 	int error = simulator->doSimulation(50000000);
 
 	if (error){
-		fprintf(stdout,"Simulation finished ! \n\t Number of cycles: 0 \n\t Number of instruction executed: 0\n", simulator->cycle, simulator->n_inst);
+		fprintf(stdout,"Simulation finished ! \n\t Number of cycles: 0 \n\t Number of instruction executed: 0\n");
 
 	}
 	else{
-		fprintf(stdout,"Simulation finished ! \n\t Number of cycles: %d \n\t Number of instruction executed: %d\n", simulator->cycle, simulator->n_inst);
+		fprintf(stdout,"Simulation finished ! \n\t Number of cycles: %d \n\t Number of instruction executed: %d\n", (int) simulator->cycle, (int) simulator->n_inst);
 	}
 }
