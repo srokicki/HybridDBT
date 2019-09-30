@@ -398,6 +398,7 @@ void initializeDBTInfo(char* fileName)
 	for (int oneSection = 0; oneSection<numberOfSections; oneSection++){
 		for (int oneBlock = 0; oneBlock<application->numbersBlockInSections[oneSection]; oneBlock++){
 			IRBlock* block = application->blocksInSections[oneSection][oneBlock];
+			block->isDestroyable = false;
 			blockInfo[block->sourceStartAddress].block = block;
 			blockInfo[block->sourceStartAddress].scheduleSizeOpt0 = block->vliwEndAddress - block->vliwStartAddress;
 			blockInfo[block->sourceStartAddress].scheduleSizeOpt1 = -1;
@@ -724,6 +725,7 @@ void verifyBranchDestination(int addressOfJump, int dest){
 
 
 		IRBlock *newBlock = new IRBlock(correspondingVliwAddress, solveUnresolvedJump(platform, containingBlock->sourceEndAddress), containingBlock->section);
+		newBlock->isDestroyable = false;
 		newBlock->sourceStartAddress = dest >> 2;
 		newBlock->sourceEndAddress = containingBlock->sourceEndAddress;
 		newBlock->sourceDestination = containingBlock->sourceDestination;
