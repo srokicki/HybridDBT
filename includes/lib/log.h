@@ -76,7 +76,6 @@ static void printStat(DBTPlateform *platform, IRApplication *application){
 	if (_stat_mode == 1){
 	  float energyConsumption = 0;
 	  float period = 1.4/1000000000;
-	  const int lineSize = 100;
 	  for (int oneConfig = 0; oneConfig<32; oneConfig++){
 		  float timeInConfig = platform->vexSimulator->timeInConfig[oneConfig];
 		  timeInConfig = timeInConfig / platform->vexSimulator->cycle;

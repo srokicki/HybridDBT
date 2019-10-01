@@ -8,7 +8,6 @@
 
 #include <lib/endianness.h>
 #include <simulator/vexSimulator.h>
-#include <simulator/vexTraceSimulator.h>
 #include <simulator/loadQueueVexSimulator.h>
 #include <simulator/riscvSimulator.h>
 
@@ -25,8 +24,6 @@
 
 #include <lib/config.h>
 #include <lib/log.h>
-#include <lib/traceQueue.h>
-#include <lib/threadedDebug.h>
 #include <transformation/firstPassTranslation.h>
 
 
@@ -40,7 +37,6 @@
 
 
 int translateOneSection(DBTPlateform &dbtPlateform, unsigned int placeCode, int sourceStartAddress, int sectionStartAddress, int sectionEndAddress){
-	int previousPlaceCode = placeCode;
 	unsigned int size = (sectionEndAddress - sectionStartAddress)>>2;
 	placeCode = firstPassTranslator(&dbtPlateform,
 			size,
@@ -96,7 +92,7 @@ void readSourceBinaries(char* path, unsigned char *&code, unsigned int &addressS
 	}
 	platform->vexSimulator->heapAddress = localHeapAddress;
 
-	for (int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++){
+	for (unsigned int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++){
 		ElfSymbol *symbol = elfFile.symbols->at(oneSymbol);
 		const char* name = (const char*) &(elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode()[symbol->name]);
 
@@ -305,20 +301,6 @@ int main(int argc, char *argv[])
 		dbtPlateform.placeOfRegisters[256+64+onePlaceOfRegister] = onePlaceOfRegister;
 
 
-
-	#ifndef __NIOS
-
-  ThreadedDebug * dbg = nullptr;
-  TraceQueue * tracer = nullptr;
-  if (cfg.has("trace")) {
-    TraceQueue * tracer = new TraceQueue();
-
-    dbg = new ThreadedDebug(tracer);
-    dbg->run();
-
-  	dbtPlateform.vexSimulator = new VexTraceSimulator(dbtPlateform.vliwBinaries, tracer);
-  }
-  else
   	dbtPlateform.vexSimulator = new LoadQueueVexSimulator(dbtPlateform.vliwBinaries, dbtPlateform.specInfo);
 
 	dbtPlateform.vexSimulator->inStreams = inStreams;
@@ -327,8 +309,6 @@ int main(int argc, char *argv[])
 	dbtPlateform.vexSimulator->nbOutStreams = nbOutStreams;
 
 	setVLIWConfiguration(dbtPlateform.vexSimulator, dbtPlateform.vliwInitialConfiguration);
-
-	#endif
 
 	unsigned char* code;
 	unsigned int addressStart;
@@ -354,7 +334,7 @@ int main(int argc, char *argv[])
 
 
 	//we copy the binaries in the corresponding memory
-	for (int oneInstruction = 0; oneInstruction<size; oneInstruction++)
+	for (unsigned int oneInstruction = 0; oneInstruction<size; oneInstruction++)
 		dbtPlateform.mipsBinaries[oneInstruction] = ((unsigned int*) code)[oneInstruction];
 
 
@@ -378,21 +358,21 @@ int main(int argc, char *argv[])
 	 *
 	 ********************************************************/
 
-	for (int i=0; i<placeCode; i++){
+	for (unsigned int i=0; i<placeCode; i++){
 		dbtPlateform.vexSimulator->typeInstr[i] = 3;
 	}
 	int endOfInitSection = placeCode;
 
-	for (int oneSection=0; oneSection<(size>>10)+1; oneSection++){
+	for (unsigned int oneSection=0; oneSection<(size>>10)+1; oneSection++){
 
-		int startAddressSource = addressStart + oneSection*1024*4;
-		int endAddressSource = startAddressSource + 1024*4;
+		unsigned int startAddressSource = addressStart + oneSection*1024*4;
+		unsigned int endAddressSource = startAddressSource + 1024*4;
 		if (endAddressSource > addressStart + size*4)
 			endAddressSource = addressStart + (size<<2);
 
 
-		int effectiveSize = (endAddressSource - startAddressSource)>>2;
-		for (int j = 0; j<effectiveSize; j++){
+		unsigned int effectiveSize = (endAddressSource - startAddressSource)>>2;
+		for (unsigned int j = 0; j<effectiveSize; j++){
 			dbtPlateform.mipsBinaries[j] = ((unsigned int*) code)[j+oneSection*1024];
 		}
 		int oldPlaceCode = placeCode;
@@ -408,7 +388,7 @@ int main(int argc, char *argv[])
 		unsigned int type = unresolvedJumpsTypeArray[oneUnresolvedJump+1];
 
 		unsigned char isAbsolute = ((type & 0x7f) != VEX_BR) && ((type & 0x7f) != VEX_BRF && (type & 0x7f) != VEX_BLTU) && ((type & 0x7f) != VEX_BGE && (type & 0x7f) != VEX_BGEU) && ((type & 0x7f) != VEX_BLT);
-		unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(&dbtPlateform, initialDestination);
+		int destinationInVLIWFromNewMethod = solveUnresolvedJump(&dbtPlateform, initialDestination);
 
 		if (destinationInVLIWFromNewMethod == -1){
 			Log::logError << "A jump from " << source << " to " << std::hex << initialDestination << " is still unresolved... (" << insertionsArray[(initialDestination>>10)<<11] << " insertions)\n";
@@ -430,23 +410,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	for (int i=endOfInitSection; i<placeCode; i++){
+	for (unsigned int i=endOfInitSection; i<placeCode; i++){
 		dbtPlateform.vexSimulator->typeInstr[i] = 0;
 	}
 
-
-	//We also add information on insertions
-	int insertionSize = 65536;
-	int areaCodeStart=1;
-	int areaStartAddress = 0;
-
-	#ifndef __NIOS
 	dbtPlateform.vexSimulator->initializeDataMemory((unsigned char*) insertionsArray, 65536*4, 0x80000000);
-	#endif
-
-	#ifndef __NIOS
 	dbtPlateform.vexSimulator->initializeRun(0, localArgc, localArgv);
-	#endif
 
 	//We change the init code to jump at the correct place
 	unsigned int translatedStartPC = solveUnresolvedJump(&dbtPlateform, (pcStart-addressStart)>>2);
@@ -457,7 +426,6 @@ int main(int argc, char *argv[])
 
 
 	int runStatus=0;
-	int abortCounter = 0;
 
 
 	//We modelize the translation time
@@ -633,22 +601,10 @@ int main(int argc, char *argv[])
 
 
 
-	int nbFirstPass = 0;
-	int nbScheduled = 0;
-	int nbProc = 0;
-
-
-
-
 	//We print profiling result
 	#ifndef __NIOS
 	delete dbtPlateform.vexSimulator;
 
-  if (dbg)
-    delete dbg;
-
-  if (tracer)
-    delete tracer;
 
 	free(code);
 	#endif

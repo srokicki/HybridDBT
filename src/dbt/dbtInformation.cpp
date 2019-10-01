@@ -18,7 +18,6 @@
 
 #include <lib/endianness.h>
 #include <simulator/emptySimulator.h>
-#include <simulator/riscvSimulator.h>
 
 #include <transformation/irGenerator.h>
 #include <transformation/optimizeBasicBlock.h>
@@ -33,8 +32,7 @@
 
 #include <lib/config.h>
 #include <lib/log.h>
-#include <lib/traceQueue.h>
-#include <lib/threadedDebug.h>
+
 #include <transformation/firstPassTranslation.h>
 
 #include <dbt/dbtInformation.h>

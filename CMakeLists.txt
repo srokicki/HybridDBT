@@ -6,7 +6,7 @@ enable_testing()
 
 project (HybridDBT)
 
- 
+
 # add the binary tree to the search path for include files
 include_directories(./includes)
 
@@ -14,7 +14,7 @@ include_directories(./includes)
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ggdb -std=c++11 -D__LINUX_API -D__USE_AC -D AC_NOT_USING_INTN -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ggdb -std=c++11 -Wall -D__LINUX_API -D__USE_AC -D AC_NOT_USING_INTN -pthread")
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 set (EXECUTABLE  "")
@@ -35,16 +35,16 @@ foreach(oneExecutable ${EXECUTABLE})
   if (execName MATCHES "dbt")
     add_executable(dbtSw ${SOURCE} ${oneExecutable})
     set_target_properties(dbtSw PROPERTIES COMPILE_DEFINITIONS "__SW")
-    
+
     add_executable(dbtHwSim ${SOURCE} ${oneExecutable})
     set_target_properties(dbtHwSim PROPERTIES COMPILE_DEFINITIONS "__HW_SIM")
-    
+
     add_executable(dbt ${SOURCE} ${oneExecutable})
     set_target_properties(dbt PROPERTIES COMPILE_DEFINITIONS "__HW_SIM")
   else()
 	  add_executable(${execName} ${SOURCE} ${oneExecutable})
 	  set_target_properties(${execName} PROPERTIES COMPILE_DEFINITIONS "__SW")
-	  
+
   endif()
 
 endforeach(oneExecutable)
