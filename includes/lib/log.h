@@ -152,12 +152,12 @@ static void printStat(DBTPlateform *platform, IRApplication *application){
 
 		int nbMem = 0;
 		int nbInstr = 0;
-		for (int oneProcedure = 0; oneProcedure<application->numberProcedures; oneProcedure++){
+		for (unsigned int oneProcedure = 0; oneProcedure<application->numberProcedures; oneProcedure++){
 		  IRProcedure *procedure = application->procedures[oneProcedure];
-		  for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
+		  for (unsigned int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
 
 			  IRBlock *block = procedure->blocks[oneBlock];
-			  for (int oneInstr = 0; oneInstr<block->nbInstr; oneInstr++){
+			  for (unsigned int oneInstr = 0; oneInstr<block->nbInstr; oneInstr++){
 				  int opcode = getOpcode(block->instructions, oneInstr);
 				  if ((opcode>>4) == 1)
 					  nbMem++;

@@ -45,10 +45,10 @@ class IRProcedure
 public:
 	IRBlock *entryBlock;			//pointer to the entry block of the procedure
 	IRBlock **blocks;				//A pointer to an array of blocks
-	int nbBlock;
-	char configuration, previousConfiguration;
+	unsigned int nbBlock;
+	uint8_t configuration, previousConfiguration;
 	int configurationScores[32];
-	char state;
+	signed char state;
 
 	unsigned int procedureState;	//A value to store its state (optimized/translated or other things like that)
 
@@ -77,33 +77,27 @@ public:
 	//Link with VLIW binaries
 	unsigned int vliwStartAddress;	//Address of the first instruction in the block
 	unsigned int oldVliwStartAddress;	//Address of the first instruction in the block
-
 	unsigned int vliwEndAddress;   	//End address is the address of the first instruction not in the block
 
 	//Control flow graph
-	char nbSucc;					//Number of successors
+	unsigned char nbSucc;					//Number of successors
 	IRBlock* successors[10];
-	IRBlock* successor1;			//pointer to first successor
-	IRBlock* successor2;			//pointer to second successor
 
 	//Keeping trace of previous organization
-	int nbMergedBlocks = 0;
+	unsigned int nbMergedBlocks = 0;
 	IRBlock* mergedBlocks[10];
 
-	short jumpID;					//Index of the jump instruction in the block's list of instruction
-	unsigned int jumpPlace; 		//Address of the jump instruction in the VLIW memory
-
-	char nbJumps;
+	unsigned char nbJumps;
 	unsigned char *jumpIds;
 	unsigned int *jumpPlaces;
 
 	unsigned int *instructions;			//A pointer to an array of uint128 describing the instructions
-	int nbInstr;					//The number of instructions
+	unsigned int nbInstr;					//The number of instructions
 
 	unsigned int blockState;		//A value to store its state (optimized/translated or other things like that)
 	short unrollingFactor;
 
-	int section;
+	unsigned int section;
 	IRBlock** placeInProfiler;
 
 	bool isDestroyable = true; //If set to false, the delete won't free memory (used in dbtInformation that needs to keep it)
@@ -142,23 +136,23 @@ public:
 
 class IRApplication{
 public:
-	int numberOfSections;
+	unsigned int numberOfSections;
 	IRBlock*** blocksInSections;
-	int *numbersBlockInSections;
+	unsigned int *numbersBlockInSections;
 
 	IRProcedure** procedures;
-	int numberProcedures;
-	int numberInstructions;
+	unsigned int numberProcedures;
+	unsigned int numberInstructions;
 
 
-	void addBlock(IRBlock *block, int sectionNumber);
+	void addBlock(IRBlock *block, unsigned int sectionNumber);
 	void addProcedure(IRProcedure *procedure);
 
-	IRApplication(int numberSections);
+	IRApplication(unsigned int numberSections);
 	~IRApplication();
 
-	int numberAllocatedProcedures;
-	int *numbersAllocatedBlockInSections;
+	unsigned int numberAllocatedProcedures;
+	unsigned int *numbersAllocatedBlockInSections;
 
 
 };
@@ -173,16 +167,16 @@ public:
  *
  *******************************************************************/
 
-struct uint128_struct assembleRBytecodeInstruction(char stageCode, char isAlloc,
-		char opcode, short regA, short regB, short regDest,	unsigned char nbDep);
-struct uint128_struct assembleFPBytecodeInstruction(char stageCode, char isAlloc,
-		char opcode, char funct, short regA, short regB, short regDest, unsigned char nbDep);
-struct uint128_struct assembleRiBytecodeInstruction(char stageCode, char isAlloc,
-		char opcode, short regA, short imm13, short regDest, unsigned char nbDep);
-struct uint128_struct assembleIBytecodeInstruction(char stageCode, char isAlloc,
-		char opcode, short reg, int imm19, unsigned char nbDep);
-struct uint128_struct assembleMemoryBytecodeInstruction(char stageCode, char isAlloc,
-		char opcode, short regA, short imm12, bool isSpec, char specId,
+struct uint128_struct assembleRBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc,
+		unsigned char opcode, short regA, short regB, short regDest,	unsigned char nbDep);
+struct uint128_struct assembleFPBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc,
+		unsigned char opcode, unsigned char funct, short regA, short regB, short regDest, unsigned char nbDep);
+struct uint128_struct assembleRiBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc,
+		unsigned char opcode, short regA, short imm13, short regDest, unsigned char nbDep);
+struct uint128_struct assembleIBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc,
+		unsigned char opcode, short reg, int imm19, unsigned char nbDep);
+struct uint128_struct assembleMemoryBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc,
+		unsigned char opcode, short regA, short imm12, bool isSpec, unsigned char specId,
 		short regDest, unsigned char nbDep);
 
 
@@ -233,10 +227,10 @@ void setImmediateValue(unsigned int *bytecode, unsigned char index, int value);
 bool getImmediateValue(unsigned int *bytecode, unsigned char index, int* result);
 
 char getOpcode(unsigned int *bytecode, unsigned char index);
-void setOpcode(unsigned int *bytecode, unsigned char index, char newOpcode);
+void setOpcode(unsigned int *bytecode, unsigned char index, unsigned char newOpcode);
 
 void setDestinationRegister(unsigned int *bytecode, unsigned char index, short newDestinationRegister);
-void setAlloc(unsigned int *bytecode, unsigned char index, char newAlloc);
+void setAlloc(unsigned int *bytecode, unsigned char index, unsigned char newAlloc);
 void addDataDep(unsigned int *bytecode, unsigned char index, unsigned char successor);
 void addControlDep(unsigned int *bytecode, unsigned char index, unsigned char successor);
 void clearControlDep(unsigned int *ir, unsigned char index);
@@ -246,7 +240,7 @@ char getStageCode(unsigned int *bytecode, unsigned char index);
 
 int getNbInstr(IRProcedure *procedure);
 int getNbInstr(IRProcedure *procedure, int type);
-void shiftBlock(IRBlock *block, char value);
+void shiftBlock(IRBlock *block, unsigned char value);
 
 /********************************************************************
  * Declaration of stage codes

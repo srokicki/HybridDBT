@@ -10,7 +10,7 @@ ac_int<64, true> LoadQueueVexSimulator::lddSpec(ac_int<64, false> addr, unsigned
 
 
 ac_int<1, false> LoadQueueVexSimulator::checkSpec(ac_int<64, false> addr, unsigned char specId){
-	ac_int<3, false> bankId = bankId >> 2;
+	ac_int<3, false> bankId = specId >> 2;
 	ac_int<2, false> indexInBank = specId & 0x3;
 
 	for (int oneLoad = 0; oneLoad < LOAD_QUEUE_BANK_SIZE; oneLoad++){
@@ -19,6 +19,8 @@ ac_int<1, false> LoadQueueVexSimulator::checkSpec(ac_int<64, false> addr, unsign
 			exit(-1);
 		}
 	}
+
+	return 1;
 }
 
 ac_int<1, false> LoadQueueVexSimulator::stbSpec(ac_int<64, false> addr, ac_int<8, true> value, unsigned char specId){
@@ -246,9 +248,6 @@ int LoadQueueVexSimulator::doStep(){
 
 	// Retrieving new instruction
 
-	ac_int<64, false> secondLoadAddress = (PC>>2)+1;
-
-
 	ac_int<32, false> instructions[8];
 	instructions[0] = RI[(int) PC+0];
 	instructions[1] = RI[(int) PC+1];
@@ -452,4 +451,3 @@ int LoadQueueVexSimulator::doStep(){
 
 	return 0;
 }
-

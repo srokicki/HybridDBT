@@ -15,17 +15,17 @@
 #include <string.h>
 
 int MAX_DISAMB_COUNT = -1;
-unsigned char speculationCounter = 1;
+unsigned int speculationCounter = 1;
 struct speculationDef speculationDefinitions[256];
 
 
 MemoryDependencyGraph::MemoryDependencyGraph(IRBlock *block){
 	this->size = 0;
 	this->idMem = (unsigned char*) malloc(block->nbInstr*sizeof(unsigned char));
-	this->idSpec = (char*) malloc(block->nbInstr*sizeof(char));
+	this->idSpec = (unsigned char*) malloc(block->nbInstr*sizeof(char));
 	this->isStore = (bool*) malloc(block->nbInstr*sizeof(bool));
 
-	for (int oneInstruction = 0; oneInstruction<block->nbInstr; oneInstruction++){
+	for (unsigned int oneInstruction = 0; oneInstruction<block->nbInstr; oneInstruction++){
 		int opcode = getOpcode(block->instructions, oneInstruction);
 		if (((opcode >> 3) == (VEX_STW>>3) || (opcode >> 3) == (VEX_LDW>>3) || opcode == VEX_FSW || opcode == VEX_FLW) && opcode != VEX_SPEC_INIT && opcode != VEX_SPEC_RST){
 			this->idMem[size] = oneInstruction;
@@ -37,19 +37,19 @@ MemoryDependencyGraph::MemoryDependencyGraph(IRBlock *block){
 
 	this->graph = (bool*) malloc(this->size * this->size * sizeof(bool));
 
-	for (int oneDep = 0; oneDep<this->size*this->size; oneDep++){
+	for (unsigned int oneDep = 0; oneDep<this->size*this->size; oneDep++){
 		this->graph[oneDep] = false;
 	}
 
-	for (int oneInstruction = 0; oneInstruction<this->size; oneInstruction++){
+	for (unsigned int oneInstruction = 0; oneInstruction<this->size; oneInstruction++){
 		int opcode = getOpcode(block->instructions, this->idMem[oneInstruction]);
 		if ((opcode >> 3) == (VEX_STW>>3) || opcode == VEX_FSW){
-			for (int oneOtherInstr = 0; oneOtherInstr<oneInstruction; oneOtherInstr++)
+			for (unsigned int oneOtherInstr = 0; oneOtherInstr<oneInstruction; oneOtherInstr++)
 				this->graph[oneInstruction*this->size + oneOtherInstr] = true;
 		}
 		else if ((opcode >> 3) == (VEX_LDW>>3) || opcode == VEX_FLW){
 
-			for (int oneOtherInstr = 0; oneOtherInstr<oneInstruction; oneOtherInstr++)
+			for (unsigned int oneOtherInstr = 0; oneOtherInstr<oneInstruction; oneOtherInstr++)
 				if (this->isStore[oneOtherInstr])
 					this->graph[oneInstruction*this->size + oneOtherInstr] = true;
 		}
@@ -64,13 +64,13 @@ MemoryDependencyGraph::~MemoryDependencyGraph(){
 
 void MemoryDependencyGraph::print(){
 	Log::logMemoryDisambiguation << "    ";
-	for (int oneInstr=0; oneInstr<this->size; oneInstr++){
+	for (unsigned int oneInstr=0; oneInstr<this->size; oneInstr++){
 		Log::logMemoryDisambiguation << (unsigned int) this->idMem[oneInstr]  << " ";
 	}
 	Log::logMemoryDisambiguation << "\n";
-	for (int oneInstr=0; oneInstr<this->size; oneInstr++){
+	for (unsigned int oneInstr=0; oneInstr<this->size; oneInstr++){
 		Log::logMemoryDisambiguation << this->idMem[oneInstr] << " ";
-		for (int oneOtherInstr = 0; oneOtherInstr<oneInstr; oneOtherInstr++){
+		for (unsigned int oneOtherInstr = 0; oneOtherInstr<oneInstr; oneOtherInstr++){
 			Log::logMemoryDisambiguation << (graph[oneInstr*this->size + oneOtherInstr]?1:0)  << " ";
 		}
 		Log::logMemoryDisambiguation << "\n";
@@ -81,14 +81,14 @@ void MemoryDependencyGraph::transitiveReduction(){
 
 	char *longestPaths = (char*) malloc(this->size * sizeof(longestPaths));
 
-	for (int startPoint = 0; startPoint < this->size - 1; startPoint++){
-		for (int oneDest = startPoint+1; oneDest<this->size; oneDest++){
+	for (unsigned int startPoint = 0; startPoint < this->size - 1; startPoint++){
+		for (unsigned int oneDest = startPoint+1; oneDest<this->size; oneDest++){
 			int longestPath = 0;
 
 			if (graph[oneDest * this->size + startPoint]){
 				longestPath = 1;
 			}
-			for (int onePred = startPoint+1; onePred<oneDest; onePred++){
+			for (unsigned int onePred = startPoint+1; onePred<oneDest; onePred++){
 				if (graph[oneDest * this->size + onePred] && longestPaths[onePred] != 0){
 					longestPath = 2;
 				}
@@ -106,10 +106,10 @@ void MemoryDependencyGraph::transitiveReduction(){
 void MemoryDependencyGraph::reduceArity(){
 
 	//This function will reduce the arity of the first node having more than four pred
-	for (int oneMemInstruction = 0; oneMemInstruction<this->size; oneMemInstruction++){
+	for (unsigned int oneMemInstruction = 0; oneMemInstruction<this->size; oneMemInstruction++){
 		int nbPred = 0;
 
-		for (int onePredecessor = 0; onePredecessor<oneMemInstruction; onePredecessor++)
+		for (unsigned int onePredecessor = 0; onePredecessor<oneMemInstruction; onePredecessor++)
 			if (this->graph[oneMemInstruction * this->size + onePredecessor])
 				nbPred++;
 
@@ -120,7 +120,7 @@ void MemoryDependencyGraph::reduceArity(){
 
 
 		if (nbPred > 4){
-			for (int onePredecessor = oneMemInstruction-1; onePredecessor>=0; onePredecessor--){
+			for (unsigned int onePredecessor = oneMemInstruction-1; onePredecessor>=0; onePredecessor--){
 				if (this->graph[oneMemInstruction * this->size + onePredecessor]){
 					if (nbLastPred<4){
 						lastPred[writeLastPred] = onePredecessor;
@@ -154,12 +154,12 @@ void MemoryDependencyGraph::applyGraph(IRBlock *block){
 	this->print();
 
 	//We remove previous dependencies
-	for (int oneMemoryInstr = 0; oneMemoryInstr<this->size; oneMemoryInstr++){
+	for (unsigned int oneMemoryInstr = 0; oneMemoryInstr<this->size; oneMemoryInstr++){
 		unsigned char pred[7];
-		char nbPred = getControlDep(block->instructions, this->idMem[oneMemoryInstr], pred);
+		unsigned char nbPred = getControlDep(block->instructions, this->idMem[oneMemoryInstr], pred);
 		clearControlDep(block->instructions, this->idMem[oneMemoryInstr]);
 
-		for (int onePred = 0; onePred < nbPred; onePred++){
+		for (unsigned int onePred = 0; onePred < nbPred; onePred++){
 			char opcode = getOpcode(block->instructions, pred[onePred]);
 			if (!((opcode >> 4) == 1 || opcode == VEX_FLW || opcode == VEX_FSW) || opcode == VEX_SPEC_INIT || opcode == VEX_SPEC_RST){
 				addControlDep(block->instructions, pred[onePred], this->idMem[oneMemoryInstr]);
@@ -169,8 +169,8 @@ void MemoryDependencyGraph::applyGraph(IRBlock *block){
 	}
 
 	//We add dependencies when needed
-	for (int oneMemoryInstr = 0; oneMemoryInstr<this->size; oneMemoryInstr++)
-		for (int oneOtherMemoryInstr = 0; oneOtherMemoryInstr<oneMemoryInstr; oneOtherMemoryInstr++)
+	for (unsigned int oneMemoryInstr = 0; oneMemoryInstr<this->size; oneMemoryInstr++)
+		for (unsigned int oneOtherMemoryInstr = 0; oneOtherMemoryInstr<oneMemoryInstr; oneOtherMemoryInstr++)
 			if (graph[oneMemoryInstr*this->size + oneOtherMemoryInstr])
 				addControlDep(block->instructions, this->idMem[oneOtherMemoryInstr], this->idMem[oneMemoryInstr]);
 
@@ -178,10 +178,10 @@ void MemoryDependencyGraph::applyGraph(IRBlock *block){
 
 void basicMemorySimplification(IRBlock *block, MemoryDependencyGraph *graph){
 
-	for (int oneMemInstruction = 0; oneMemInstruction<graph->size; oneMemInstruction++){
+	for (unsigned int oneMemInstruction = 0; oneMemInstruction<graph->size; oneMemInstruction++){
 		int memInstruction = graph->idMem[oneMemInstruction];
 
-		for (int onePredecessor = 0; onePredecessor<oneMemInstruction; onePredecessor++){
+		for (unsigned int onePredecessor = 0; onePredecessor<oneMemInstruction; onePredecessor++){
 			int predecessor = graph->idMem[onePredecessor];
 			if (graph->graph[oneMemInstruction * graph->size + onePredecessor]){
 				short operandsPred[2], operandsInstr[2];
@@ -205,7 +205,7 @@ void basicMemorySimplification(IRBlock *block, MemoryDependencyGraph *graph){
 
 void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock **predecessors, int nbPred){
 
-	if (speculationCounter >= 256)
+	if (speculationCounter == 255)
 		return;
 
 	MemoryDependencyGraph *graph = new MemoryDependencyGraph(block);
@@ -218,7 +218,7 @@ void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock **pred
 		Log::logMemoryDisambiguation << "*****             Memory disambiguation process       ******\n";
 		Log::logMemoryDisambiguation << "************************************************************\n";
 		Log::logMemoryDisambiguation << "Before disambiguation: \n";
-		for (int i=0; i<block->nbInstr; i++)
+		for (unsigned int i=0; i<block->nbInstr; i++)
 			Log::logMemoryDisambiguation << printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
 
 		//We perform disambiguation and apply it
@@ -229,7 +229,7 @@ void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock **pred
 
 		//We print debug
 		Log::logMemoryDisambiguation << "\n After disambiguation: \n";
-		for (int i=0; i<block->nbInstr; i++)
+		for (unsigned int i=0; i<block->nbInstr; i++)
 			Log::logMemoryDisambiguation << printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
 
 		Log::logMemoryDisambiguation << "************************************************************\n";
@@ -250,7 +250,7 @@ void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock **pred
  *  specInit un predecessor's instructions.
  *
  ***************************************************/
-void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBlock **predecessors, int nbPred){
+void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBlock **predecessors, unsigned int nbPred){
 	//A good candidate is a list of loads which all depends on a given set of stores
 
 	char currentSpecId = 0;
@@ -270,12 +270,11 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
 	currentSpeculationDef->nbStores = 0;
 
 	//We find a store with an ID strictly greater than 0 and with imm eligible
-	int index = 0;
+	unsigned int index = 0;
 	while (index<graph->size){
 
 		//We check imm value
 		int imm = 0;
-		bool hasImm = getImmediateValue(block->instructions, graph->idMem[index], &imm);
 		if (imm >= 64 || imm < -64){
 			//We reset spec group and continue
 			currentSpeculationDef->nbStores = 0;
@@ -292,7 +291,7 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
 			}
 
 			bool isStillSpec = false;
-			for (int oneOtherMem = index+1; oneOtherMem<graph->size; oneOtherMem++){
+			for (unsigned int oneOtherMem = index+1; oneOtherMem<graph->size; oneOtherMem++){
 				if (!graph->isStore[oneOtherMem])
 					isStillSpec = true;
 			}
@@ -340,11 +339,10 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
 		block->nbInstr++;
 
 		//We modify the instructions
-		for (int oneStore = 0; oneStore<currentSpeculationDef->nbStores; oneStore++){
+		for (unsigned int oneStore = 0; oneStore<currentSpeculationDef->nbStores; oneStore++){
 			int storeIndex = currentSpeculationDef->stores[oneStore];
 
 			int imm = 0;
-			bool hasImm = getImmediateValue(block->instructions, graph->idMem[storeIndex], &imm);
 
 			if (imm != 0){
 				setImmediateValue(block->instructions, graph->idMem[storeIndex], imm<<5);
@@ -357,12 +355,10 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
 		addControlDep(block->instructions, graph->idMem[currentSpeculationDef->stores[currentSpeculationDef->nbStores-1]], block->nbInstr-1);
 
 
-		for (int oneLoad = 0; oneLoad < currentSpeculationDef->nbLoads; oneLoad++){
+		for (unsigned int oneLoad = 0; oneLoad < currentSpeculationDef->nbLoads; oneLoad++){
 			int loadIndex = currentSpeculationDef->loads[oneLoad];
 
 			int imm = 0;
-			bool hasImm = getImmediateValue(block->instructions, graph->idMem[loadIndex], &imm);
-
 			if (imm != 0){
 				setImmediateValue(block->instructions, graph->idMem[loadIndex], imm<<5);
 			}
@@ -374,7 +370,7 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
 
 		//We also have to insert a spec init in every previous block
 		if (nbPred>0){
-			for (int onePred = 0; onePred<nbPred; onePred++){
+			for (unsigned int onePred = 0; onePred<nbPred; onePred++){
 				IRBlock *predecessor = predecessors[onePred];
 				unsigned int *newInstrsPred = (unsigned int*) malloc((predecessor->nbInstr+1) * 4 * sizeof(unsigned int));
 				memcpy(newInstrsPred, predecessor->instructions, 4*predecessor->nbInstr*sizeof(unsigned int));
@@ -385,15 +381,15 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
 			}
 		}
 		else{
-			for (int i=0; i<block->nbInstr; i++){
+			for (unsigned int i=0; i<block->nbInstr; i++){
 				Log::logMemoryDisambiguation <<  printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
 			}
 			shiftBlock(block, 1);
-			for (int oneMemOperation = 0; oneMemOperation<graph->size; oneMemOperation++){
+			for (unsigned int oneMemOperation = 0; oneMemOperation<graph->size; oneMemOperation++){
 				graph->idMem[oneMemOperation] += 1;
 			}
 			write128(block->instructions, 0, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_INIT, 256, speculationCounter, 1, currentSpecId, 0, 0));
-			for (int i=0; i<block->nbInstr; i++){
+			for (unsigned int i=0; i<block->nbInstr; i++){
 				Log::logMemoryDisambiguation <<  printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
 			}
 
@@ -565,7 +561,7 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
 
 void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 
-	for (int oneSpecDef = 1; oneSpecDef<speculationCounter; oneSpecDef++){
+	for (unsigned int oneSpecDef = 1; oneSpecDef<speculationCounter; oneSpecDef++){
 		struct speculationDef *currentSpecDef = &speculationDefinitions[oneSpecDef];
 		unsigned short newNbUse = platform->specInfo[4*oneSpecDef];
 		unsigned short newNbMiss = platform->specInfo[4*oneSpecDef+1];
@@ -581,17 +577,17 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 
 				//We turn the spec on
 
-				for (int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++){
-					for (int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++){
+				for (unsigned int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++){
+					for (unsigned int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++){
 						if (currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]] > currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]){
 							currentSpecDef->graph->graph[currentSpecDef->loads[oneLoad]*currentSpecDef->graph->size + currentSpecDef->stores[oneStore]] = false;
 						}
 					}
 				}
-				for (int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++)
+				for (unsigned int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++)
 					currentSpecDef->block->instructions[4*currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]]] |= 0x20;
 
-				for (int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++)
+				for (unsigned int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++)
 					currentSpecDef->block->instructions[4*currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]] &= 0xffffffdf;
 
 
@@ -606,17 +602,17 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 
 				//We turn the spec off
 
-				for (int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++){
-					for (int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++){
+				for (unsigned int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++){
+					for (unsigned int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++){
 						if (currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]] > currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]){
 							currentSpecDef->graph->graph[currentSpecDef->loads[oneLoad]*currentSpecDef->graph->size + currentSpecDef->stores[oneStore]] = true;
 						}
 					}
 				}
-				for (int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++)
+				for (unsigned int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++)
 					currentSpecDef->block->instructions[4*currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]]] &= 0xffffffdf;
 
-				for (int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++)
+				for (unsigned int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++)
 					currentSpecDef->block->instructions[4*currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]] |= 0x20;
 
 
@@ -628,9 +624,6 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 				currentSpecDef->type = 1;
 			}
 
-
-			double val = newNbMiss - currentSpecDef->nbFail;
-			double val2 = newNbUse-currentSpecDef->nbUse;
 
 
 			currentSpecDef->nbUse = newNbUse;

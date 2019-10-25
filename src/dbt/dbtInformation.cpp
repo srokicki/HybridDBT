@@ -114,7 +114,6 @@ bool allocateInTranslationCache(int size, IRProcedure *procedure, IRBlock *block
 
 
 int translateOneSection(DBTPlateform &dbtPlateform, unsigned int placeCode, int sourceStartAddress, int sectionStartAddress, int sectionEndAddress){
-	int previousPlaceCode = placeCode;
 	unsigned int size = (sectionEndAddress - sectionStartAddress)>>2;
 	placeCode = firstPassTranslator(&dbtPlateform,
 			size,
@@ -326,8 +325,6 @@ void initializeDBTInfo(char* fileName)
 
 
 
-	int endOfInitSection = placeCode;
-
 	for (int oneSection=0; oneSection<(size>>10)+1; oneSection++){
 
 		int startAddressSource = addressStart + oneSection*1024*4;
@@ -438,6 +435,8 @@ char useIndirectionTable(int address){
 		if (blockInfo[currentAddress>>2].block->nbSucc > 0)
 			return 0;
 	}
+
+	return 1;
 }
 
 
@@ -539,7 +538,6 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock){
 
 
 char getOptLevel(int address, uint64_t nb_cycle){
-	bool inTC = false;
 	bool inTranslationCache= false;
 	char optLevel = 0;
 

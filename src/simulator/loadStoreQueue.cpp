@@ -12,29 +12,6 @@
 #include <lib/log.h>
 #include <transformation/memoryDisambiguation.h>
 
-//void loadStoreQueue(ac_int<64, false> address, ac_int<LSQ_SIZE_AGE, false> age, ac_int<64, false> value, ac_int<1, false> isStore, ac_int<1, false> isRm,
-//					ac_int<1, false> *match, ac_int<1, false> *flush, ac_int<64, false> *result){
-//
-//	static ac_int<64+LSQ_SIZE_AGE+64+1, false> stores[LSQ_SIZE_STORE_QUEUE];
-//
-//
-//	if (isStore){
-//
-//	}
-//	else{
-//		for (int oneStore = 0; oneStore<LSQ_SIZE_STORE_QUEUE; oneStore++){
-//			ac_int<64+LSQ_SIZE_AGE+64+1, false> store = stores[oneStore];
-//			ac_int<1, false> storeOccupied = store[64+LSQ_SIZE_AGE+64];
-//			ac_int<64, false> storeAddress = store.slc<64>(LSQ_SIZE_AGE+64);
-//			ac_int<LSQ_SIZE_AGE, false> storeAge = store.slc<LSQ_SIZE_AGE>(64);
-//			ac_int<64, false> storeValue = store.slc<64>(0);
-//
-//		}
-//
-//	}
-//
-//
-//}
 
 #ifdef __CATAPULT
 #include <ac_int.h>
@@ -99,7 +76,6 @@ void partitionnedLoadQueue(ac_int<64, false> pc, ac_int<64, false> address, ac_i
 
 	}
 	else if (specInit){
-		ac_int<256, false> param = speculationData[specParam];
 		currentSpecParam[bank] = specParam;
 		currentSpecMasks[bank] = speculationData[8*currentSpecParam[bank]+5];
 		ac_int<32, false> hi_mask4 = speculationData[8*currentSpecParam[bank]+4];

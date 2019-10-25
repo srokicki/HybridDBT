@@ -155,7 +155,7 @@ int main(int argc, char* argv[]){
 	simulator->heapAddress = heapAddress;
 	simulator->pc = 0x10000;
 
-	for (int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++){
+	for (unsigned int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++){
 		ElfSymbol *symbol = elfFile.symbols->at(oneSymbol);
 		const char* name = (const char*) &(elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode()[symbol->name]);
 

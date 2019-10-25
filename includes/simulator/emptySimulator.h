@@ -3,15 +3,16 @@
 #define INCLUDES_SIMULATOR_EMPTYSIMULATOR_CPP_
 
 #include <types.h>
-#include <simulator/vexSimulator.h>
+#include <simulator/loadQueueVexSimulator.h>
 
 
-class EmptySimulator : public VexSimulator {
+class EmptySimulator : public LoadQueueVexSimulator {
 public:
 
 	EmptySimulator(unsigned int *instructionMemory, unsigned int *specData);
 	~EmptySimulator(void);
 
+	int doStep();
 };
 
 

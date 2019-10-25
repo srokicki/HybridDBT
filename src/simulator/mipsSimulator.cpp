@@ -218,7 +218,7 @@ int Simulator::doSimulation(int start){
 	while (1){
 		int i;
 		int n_inst;
-		unsigned int ivalue;
+		unsigned int ivalue = 0;
 		float fvalue;
 
 

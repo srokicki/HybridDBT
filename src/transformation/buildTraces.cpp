@@ -17,9 +17,6 @@
 #include <cstring>
 #include <string>
 
-IRBlock* ifConversion(IRBlock *entryBlock, IRBlock *thenBlock, IRBlock *elseBlock){
-
-}
 bool VERBOSE = 1;
 
 
@@ -176,7 +173,6 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 
 	//last jump/condition of entry block 	short indexOfJump = -1;
 	short indexOfJump = -1;
-	unsigned short indexOfCondition = -1;
 
 	//****************************************************************************************************
 	//We go through the first block to find all written register and memory accesses
@@ -245,7 +241,6 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 
 	//We insert the first jump
 	for (int oneJump = 0; oneJump<block->nbJumps; oneJump++){
-		char jumpOpcode = getOpcode(block->instructions, block->jumpIds[oneJump]);
 			result->addJump(block->jumpIds[oneJump], -1);
 			result->successors[result->nbSucc] = block->successors[oneJump+1];
 			result->nbSucc++;
@@ -389,7 +384,6 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 
 		//We register the jump
 		for (int oneJump = 0; oneJump<block->nbJumps; oneJump++){
-			char jumpOpcode = getOpcode(block->instructions, block->jumpIds[oneJump]);
 				result->addJump(block->jumpIds[oneJump]+result->nbInstr, -1);
 				if (oneUnroll != unrollingFactor-1)
 					result->successors[result->nbSucc] = block->successors[oneJump+1];
@@ -542,8 +536,6 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 
 	char isEscape = (entryBlock->nbSucc > 1);
 	char useSetc = 0 && (entryBlock->nbInstr<8 ||  secondBlock->nbInstr < 4);
-	bool isDropEscape = isEscape && useSetc && secondBlock->nbSucc == secondBlock->nbJumps + 1 && entryBlock->successors[entryBlock->nbSucc - 2] == secondBlock->successors[secondBlock->nbSucc-1];
-
 
 	/*****************************************************
 	 * We start by print debug messages
@@ -631,7 +623,6 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 
 			if (useSetc){
 				short operands[2];
-				char nbOperands = getOperands(entryBlock->instructions, oneInstr, operands);
 
 				fprintf(stderr, "Error: truying to build a trace using setc while no code has been written to build the condition for the setc...\n");
 				exit(-1);
@@ -819,7 +810,6 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 			char jumpopcode = getOpcode(result->instructions, indexOfSecondJump);
 			if (jumpopcode == VEX_BR || jumpopcode == VEX_BRF || jumpopcode == VEX_BGE || jumpopcode == VEX_BLT || jumpopcode == VEX_BGEU || jumpopcode == VEX_BLTU){
 				short operands[2];
-				short nbOperand = getOperands(result->instructions, indexOfSecondJump, operands);
 				if (operands[0] < 256){
 					char physicalDest = getDestinationRegister(result->instructions, operands[0]);
 					operands[0] = lastWriteRegForSecond[physicalDest];
@@ -910,7 +900,6 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 
 	if (useSetc){
 		for (int oneJump = 0; oneJump<secondBlock->nbJumps; oneJump++){
-			char jumpOpcode = getOpcode(secondBlock->instructions, secondBlock->jumpIds[oneJump]);
 
 			//The last jump is moved while using setc
 			if (oneJump == secondBlock->nbJumps-1)
@@ -926,7 +915,6 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 	}
 	else{
 		for (int oneJump = 0; oneJump<secondBlock->nbJumps; oneJump++){
-			char jumpOpcode = getOpcode(secondBlock->instructions, secondBlock->jumpIds[oneJump]);
 			result->addJump(secondBlock->jumpIds[oneJump]+entryBlock->nbInstr, -1);
 			if (oneJump<secondBlock->nbSucc){
 				result->successors[result->nbSucc] = secondBlock->successors[oneJump];
@@ -1002,7 +990,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 			IRBlock *block = procedure->blocks[oneBlock];
 
 			//We first check if it is a perfect block
-			if (block->nbJumps + 1 == block->nbSucc && block->nbSucc == 2 && block->successor1 == block){
+			if (block->nbJumps + 1 == block->nbSucc && block->nbSucc == 2 && block->successors[0] == block){
 				block->blockState = IRBLOCK_PERFECT_LOOP;
 
 				if (block->nbInstr<100 && nbBlocksToAdd < 10){
@@ -1052,7 +1040,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 					block->instructions = oneSuperBlock->instructions;
 					oneSuperBlock->instructions = oldInstruction;
 
-					block->jumpID = oneSuperBlock->jumpID;
 					block->jumpIds = oneSuperBlock->jumpIds;
 					block->nbJumps = oneSuperBlock->nbJumps;
 					block->jumpPlaces = oneSuperBlock->jumpPlaces;
@@ -1166,7 +1153,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 			bool predecessorFound = false;
 			bool eligible = false;
 			IRBlock *firstPredecessor;
-			int firstPredecessorId;
 
 			if (block->nbInstr>0){
 
@@ -1235,7 +1221,6 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 				firstPredecessor->instructions = (unsigned int*) malloc(sizeof(unsigned int) * 4 * oneSuperBlock->nbInstr);
 				memcpy(firstPredecessor->instructions, oneSuperBlock->instructions, 4*oneSuperBlock->nbInstr*sizeof(unsigned int));
 
-				firstPredecessor->jumpID = oneSuperBlock->jumpID;
 				if (firstPredecessor->nbJumps>0){
 					firstPredecessor->nbJumps = 0;
 					free(firstPredecessor->jumpIds);

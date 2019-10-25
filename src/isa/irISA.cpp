@@ -21,8 +21,8 @@
  * Declaration functions to assemble uint128 instruction for IR
  * ******************************************************************/
 
-struct uint128_struct assembleRBytecodeInstruction(char stageCode, char isAlloc,
-		char opcode, short regA, short regB, short regDest,
+struct uint128_struct assembleRBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc,
+		unsigned char opcode, short regA, short regB, short regDest,
 		unsigned char nbDep){
 
 
@@ -42,8 +42,8 @@ struct uint128_struct assembleRBytecodeInstruction(char stageCode, char isAlloc,
 	return result;
 }
 
-struct uint128_struct assembleFPBytecodeInstruction(char stageCode, char isAlloc,
-		char opcode, char funct, short regA, short regB, short regDest,
+struct uint128_struct assembleFPBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc,
+		unsigned char opcode, unsigned char funct, short regA, short regB, short regDest,
 		unsigned char nbDep){
 
 	struct uint128_struct result = {0, 0, 0, 0};
@@ -63,8 +63,8 @@ struct uint128_struct assembleFPBytecodeInstruction(char stageCode, char isAlloc
 	return result;
 }
 
-struct uint128_struct assembleRiBytecodeInstruction(char stageCode, char isAlloc,
-		char opcode, short regA, short imm13,
+struct uint128_struct assembleRiBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc,
+		unsigned char opcode, short regA, short imm13,
 		short regDest, unsigned char nbDep){
 
 	struct uint128_struct result = {0, 0, 0, 0};
@@ -86,8 +86,8 @@ struct uint128_struct assembleRiBytecodeInstruction(char stageCode, char isAlloc
 	return result;
 }
 
-struct uint128_struct assembleMemoryBytecodeInstruction(char stageCode, char isAlloc,
-		char opcode, short regA, short imm12, bool isSpec, char specId,
+struct uint128_struct assembleMemoryBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc,
+		unsigned char opcode, short regA, short imm12, bool isSpec, unsigned char specId,
 		short regDest, unsigned char nbDep){
 
 	struct uint128_struct result = {0, 0, 0, 0};
@@ -117,8 +117,8 @@ struct uint128_struct assembleMemoryBytecodeInstruction(char stageCode, char isA
 	return result;
 }
 
-struct uint128_struct assembleIBytecodeInstruction(char stageCode, char isAlloc,
-		char opcode, short reg, int imm19, unsigned char nbDep){
+struct uint128_struct assembleIBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc,
+		unsigned char opcode, short reg, int imm19, unsigned char nbDep){
 
 	struct uint128_struct result = {0, 0, 0, 0};
 	char typeCode = 2;
@@ -235,24 +235,19 @@ ac_int<128, false> assembleIBytecodeInstruction_hw(ac_int<2, false> stageCode, a
 
 std::string printBytecodeInstruction(int index, unsigned int  instructionPart1, unsigned int  instructionPart2, unsigned int instructionPart3, unsigned int instructionPart4){
 
-	int stageCode = ((instructionPart1>>30) & 0x3);
 	int typeCode = ((instructionPart1>>28) & 0x3);
 	int alloc = ((instructionPart1>>27) & 0x1);
-	int allocBr = ((instructionPart1>>26) & 0x1);
 	int opCode = ((instructionPart1>>19) & 0x7f);
 	int isImm = ((instructionPart1>>18) & 0x1);
-	int isBr = ((instructionPart1>>17) & 0x1);
 	short virtualRDest = ((instructionPart2>>14) & 0x1ff);
 	short virtualRIn2 = ((instructionPart2>>23) & 0x1ff);
 	short virtualRIn1_imm9 = ((instructionPart1>>0) & 0x1ff);
 	short imm13 = ((instructionPart1>>0) & 0x1fff);
 	int funct = (instructionPart1 >> 7) & 0x1f;
 
-	short imm11 = ((instructionPart1>>23) & 0x7ff);
 	short imm19 = 0;
 	imm19 = ((instructionPart2>>23) & 0x1ff);
 	imm19 += ((instructionPart1>>0) & 0x3ff)<<9;
-	short brCode = ((instructionPart1>>9) & 0x1ff);;
 
 	int nbDep = ((instructionPart2>>6) & 0xff);
 	int nbDSucc = ((instructionPart2>>3) & 7);
@@ -307,7 +302,7 @@ std::string printBytecodeInstruction(int index, unsigned int  instructionPart1, 
 
 	result << " alloc=" << alloc << "  successors:";
 
-	for (int oneSucc = 0; oneSucc < 7; oneSucc++){
+	for (unsigned int oneSucc = 0; oneSucc < 7; oneSucc++){
 		int succ = 0;
 		if (oneSucc >= 4)
 			succ = (instructionPart3 >> (8*(oneSucc-4))) & 0xff;
@@ -335,7 +330,7 @@ IRProcedure::IRProcedure(IRBlock *entryBlock, int nbBlock){
 	this->entryBlock = entryBlock;
 	this->nbBlock = nbBlock;
 
-	for (int oneConfiguration = 0; oneConfiguration < 32; oneConfiguration++){
+	for (unsigned int oneConfiguration = 0; oneConfiguration < 32; oneConfiguration++){
 		configurationScores[oneConfiguration] = 0;
 	}
 	this->state = 0;
@@ -349,19 +344,19 @@ void IRProcedure::print(FILE * output){
 	 ********************************************************************************************/
 
 	fprintf(output, "digraph{\n");
-	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
+	for (unsigned int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
 		fprintf(output, "node_%d[label=\"node %d - size %d  - nbJump %d place %p\"];\n",this->blocks[oneBlockInProcedure]->sourceStartAddress,  this->blocks[oneBlockInProcedure]->vliwStartAddress, this->blocks[oneBlockInProcedure]->nbInstr, this->blocks[oneBlockInProcedure]->nbJumps, this->blocks[oneBlockInProcedure]);
 	}
-	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
+	for (unsigned int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
 
-		for (int oneSuccessor = 0; oneSuccessor<this->blocks[oneBlockInProcedure]->nbSucc; oneSuccessor++){
+		for (unsigned int oneSuccessor = 0; oneSuccessor<this->blocks[oneBlockInProcedure]->nbSucc; oneSuccessor++){
 			fprintf(output, "node_%d -> node_%d;\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->successors[oneSuccessor]->sourceStartAddress);
 		}
 
 	}
 	fprintf(output, "}\n");
 
-	for (int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock-1; oneBlockInProcedure++){
+	for (unsigned int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock-1; oneBlockInProcedure++){
 		if (this->blocks[oneBlockInProcedure]->sourceEndAddress != this->blocks[oneBlockInProcedure+1]->sourceStartAddress){
 			fprintf(output, "test block 1 %d to %d and block 2 is %d to %d\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->sourceEndAddress, this->blocks[oneBlockInProcedure+1]->sourceStartAddress, this->blocks[oneBlockInProcedure+1]->sourceEndAddress);
 		}
@@ -398,7 +393,6 @@ IRBlock::IRBlock(int startAddress, int endAddress, int section){
 	this->nbSucc = -1;
 	this->section = section;
 	this->nbInstr = 0;
-	this->jumpID=-1;
 	this->nbJumps = 0;
 	this->placeInProfiler = NULL;
 	this->instructions = NULL;
@@ -419,14 +413,14 @@ IRBlock::~IRBlock(){
 	}
 }
 
-IRApplication::IRApplication(int numberSections){
+IRApplication::IRApplication(unsigned int numberSections){
 
 	this->numberOfSections = numberSections;
 	this->blocksInSections = (IRBlock***) malloc(sizeof(IRBlock**) * numberOfSections);
-	this->numbersBlockInSections= (int*) malloc(sizeof(int) * numberOfSections);
+	this->numbersBlockInSections= (unsigned int*) malloc(sizeof(unsigned int) * numberOfSections);
 
-	this->numbersAllocatedBlockInSections = (int*) malloc(sizeof(int) * numberOfSections);
-	for (int oneSection = 0; oneSection<numberSections; oneSection++){
+	this->numbersAllocatedBlockInSections = (unsigned int*) malloc(sizeof(unsigned int) * numberOfSections);
+	for (unsigned int oneSection = 0; oneSection<numberSections; oneSection++){
 		this->numbersBlockInSections[oneSection] = 0;
 		this->numbersAllocatedBlockInSections[oneSection] = 0;
 	}
@@ -440,20 +434,20 @@ IRApplication::IRApplication(int numberSections){
 IRApplication::~IRApplication(){
 
 
-//	for (int oneSection = 0; oneSection<this->numberOfSections; oneSection++){
-//		for (int oneBlock = 0; oneBlock<this->numbersBlockInSections[oneSection]; oneBlock++){
+//	for (unsigned int oneSection = 0; oneSection<this->numberOfSections; oneSection++){
+//		for (unsigned int oneBlock = 0; oneBlock<this->numbersBlockInSections[oneSection]; oneBlock++){
 //			if (this->blocksInSections[oneSection][oneBlock] != NULL)
 //				delete this->blocksInSections[oneSection][oneBlock];
 //		}
 //	}
 
 
-	for (int oneProcedure = 0; oneProcedure<this->numberProcedures; oneProcedure++){
+	for (unsigned int oneProcedure = 0; oneProcedure<this->numberProcedures; oneProcedure++){
 		delete this->procedures[oneProcedure];
 	}
 }
 
-void IRApplication::addBlock(IRBlock* block, int sectionNumber){
+void IRApplication::addBlock(IRBlock* block, unsigned int sectionNumber){
 	if (sectionNumber>this->numberOfSections){
 		Log::logError << "Error while adding a block in an application: section " << sectionNumber << " is higher than the total number of section (" << this->numberOfSections << ")\n";
 		exit(-1);
@@ -461,13 +455,13 @@ void IRApplication::addBlock(IRBlock* block, int sectionNumber){
 
 	if (this->numbersAllocatedBlockInSections[sectionNumber] == this->numbersBlockInSections[sectionNumber]){
 		//We allocate new blocks
-		int numberBlocks = this->numbersBlockInSections[sectionNumber];
-		int newAllocation = numberBlocks + 5;
+		unsigned int numberBlocks = this->numbersBlockInSections[sectionNumber];
+		unsigned int newAllocation = numberBlocks + 5;
 		IRBlock** oldList = this->blocksInSections[sectionNumber];
 		this->blocksInSections[sectionNumber] = (IRBlock**) malloc(newAllocation * sizeof(IRBlock*));
 		memcpy(this->blocksInSections[sectionNumber], oldList, numberBlocks*sizeof(IRBlock*));
 		this->numbersAllocatedBlockInSections[sectionNumber] = newAllocation;
-		for (int oneBlock = 0; oneBlock<numberBlocks; oneBlock++){
+		for (unsigned int oneBlock = 0; oneBlock<numberBlocks; oneBlock++){
 			this->blocksInSections[sectionNumber][oneBlock]->reference = &(this->blocksInSections[sectionNumber][oneBlock]);
 		}
 
@@ -508,7 +502,7 @@ char getOpcode(unsigned int *bytecode, unsigned char index){
 	return (bytecodeWord96>>19) & 0x7f;
 }
 
-void setOpcode(unsigned int *bytecode, unsigned char index, char newOpcode){
+void setOpcode(unsigned int *bytecode, unsigned char index, unsigned char newOpcode){
 	//This function returns the destination register of a bytecode instruction
 	//If bytecode instruction do not write any register then it returns -1
 
@@ -587,7 +581,6 @@ void setImmediateValue(unsigned int *bytecode, unsigned char index, int value){
 	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
 
 	unsigned char opcode = (bytecodeWord96>>19) & 0x7f;
-	unsigned char shiftedOpcode = opcode>>4;
 
 	bool isMemType = (opcode>>4) == 1 || opcode == VEX_FLW || opcode == VEX_FSW;
 	bool isImmArith = (opcode>>4) >= 6;
@@ -634,7 +627,6 @@ bool getImmediateValue(unsigned int *bytecode, unsigned char index, int *result)
 		imm19 -= 524288;
 
 	unsigned char opcode = (bytecodeWord96>>19) & 0x7f;
-	unsigned char shiftedOpcode = opcode>>4;
 
 	bool isMemType = (opcode>>4) == 1 || opcode == VEX_FLW || opcode == VEX_FSW;
 	bool isImmArith = (opcode>>4) >= 6;
@@ -663,10 +655,6 @@ void setOperands(unsigned int *bytecode, unsigned char index, short operands[2])
 
 	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
 	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
-
-	short virtualRDest = ((bytecodeWord64>>14) & 0x1ff);
-	short virtualRIn2 = ((bytecodeWord64>>23) & 0x1ff);
-	short virtualRIn1 = ((bytecodeWord96>>0) & 0x1ff);
 
 	unsigned char opcode = (bytecodeWord96>>19) & 0x7f;
 	unsigned char shiftedOpcode = opcode>>4;
@@ -721,7 +709,7 @@ void setDestinationRegister(unsigned int *bytecode, unsigned char index, short n
 	writeInt(bytecode, index*16+4, bytecodeWord64);
 }
 
-void setAlloc(unsigned int *bytecode, unsigned char index, char newAlloc){
+void setAlloc(unsigned int *bytecode, unsigned char index, unsigned char newAlloc){
 	unsigned int bytecodeWord96 = readInt(bytecode, index*16+0);
 
 	if (newAlloc)
@@ -902,11 +890,11 @@ char getControlDep(unsigned int *ir, unsigned char index, unsigned char *result)
 	unsigned int irWord32 = readInt(ir, index*16+8);
 	unsigned int irWord64 = readInt(ir, index*16+4);
 
-	char nbDSucc = ((irWord64>>3) & 7);
-	char nbSucc = ((irWord64>>0) & 7);
-	char nbCSucc = nbSucc - nbDSucc;
+	unsigned int nbDSucc = ((irWord64>>3) & 7);
+	unsigned int nbSucc = ((irWord64>>0) & 7);
+	unsigned int nbCSucc = nbSucc - nbDSucc;
 
-	for (int onePred = 0; onePred < nbCSucc; onePred++){
+	for (unsigned int onePred = 0; onePred < nbCSucc; onePred++){
 		if (onePred >= 4)
 			result[onePred] = (irWord32 >> (8*(onePred-4))) & 0xff;
 		else
@@ -919,20 +907,18 @@ char getControlDep(unsigned int *ir, unsigned char index, unsigned char *result)
 #endif
 
 void addOffsetToDep(unsigned int *bytecode, unsigned char index, unsigned char offset){
-	unsigned int bytecodeWord0 = readInt(bytecode, index*16+12);
-	unsigned int bytecodeWord32 = readInt(bytecode, index*16+8);
 	unsigned int bytecodeWord64 = readInt(bytecode, index*16+4);
 
-	char nbDSucc = ((bytecodeWord64>>3) & 7);
-	char nbSucc = ((bytecodeWord64>>0) & 7);
-	char nbCSucc = nbSucc - nbDSucc;
+	unsigned int nbDSucc = ((bytecodeWord64>>3) & 7);
+	unsigned int nbSucc = ((bytecodeWord64>>0) & 7);
+	unsigned int nbCSucc = nbSucc - nbDSucc;
 
-	for (int oneDep = 0; oneDep < nbDSucc; oneDep++){
+	for (unsigned int oneDep = 0; oneDep < nbDSucc; oneDep++){
 		char oldDep = readChar(bytecode, index*16+9+oneDep);
 		writeChar(bytecode, index*16+9+oneDep, oldDep+offset);
 	}
 
-	for (int oneDep = 6; oneDep > 6-nbCSucc; oneDep--){
+	for (unsigned int oneDep = 6; oneDep > 6-nbCSucc; oneDep--){
 		char oldDep = readChar(bytecode, index*16+9+oneDep);
 		writeChar(bytecode, index*16+9+oneDep, oldDep+offset);
 	}
@@ -947,7 +933,7 @@ char getStageCode(unsigned int *bytecode, unsigned char index){
 
 int getNbInstr(IRProcedure *procedure){
 	int result = 0;
-	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
+	for (unsigned int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
 		result += procedure->blocks[oneBlock]->nbInstr;
 	}
 	return result;
@@ -955,8 +941,8 @@ int getNbInstr(IRProcedure *procedure){
 
 int getNbInstr(IRProcedure *procedure, int type){
 	int result = 0;
-	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++)
-		for (int oneInstruction = 0; oneInstruction<procedure->blocks[oneBlock]->nbInstr; oneInstruction++)
+	for (unsigned int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++)
+		for (unsigned int oneInstruction = 0; oneInstruction<procedure->blocks[oneBlock]->nbInstr; oneInstruction++)
 			if (getStageCode(procedure->blocks[oneBlock]->instructions, oneInstruction) == type)
 				result++;
 
@@ -969,11 +955,9 @@ void IRBlock::print(FILE * output)
 	fprintf(output, "digraph cgra {");
 	for (uint32_t i = 0; i < this->nbInstr; ++i)
 	{
-		uint32_t instruction96, instruction64, instruction32, instruction0;
+		uint32_t instruction96, instruction64;
 		instruction96 = readInt(instructions, i*16+0);
 		instruction64 = readInt(instructions, i*16+4);
-		instruction32 = readInt(instructions, i*16+8);
-		instruction0 = readInt(instructions, i*16+12);
 
 		uint8_t opCode = ((instruction96>>19) & 0x7f);
 		uint8_t typeCode = ((instruction96>>28) & 0x3);
@@ -986,12 +970,12 @@ void IRBlock::print(FILE * output)
 
 		if (typeCode == 0)
 		{
-			if (opCode == VEX_STD || opCode == VEX_STW || opCode == VEX_STH || opCode == VEX_STB)
+			if (opCode == VEX_STD || opCode == VEX_STW || opCode == VEX_STH || opCode == VEX_STB){
 				if (dst < 256)
 					fprintf(output, "i%d -> i%d;", dst, i);
 				else
 					fprintf(output, "r%d -> i%d;", dst-256, i);
-
+			}
 			if (src2 < 256)
 				fprintf(output, "i%d -> i%d;", src2, i);
 			else
@@ -1009,7 +993,7 @@ void IRBlock::print(FILE * output)
 	fprintf(output, "}");
 }
 
-void shiftBlock(IRBlock *block, char value){
+void shiftBlock(IRBlock *block, unsigned char value){
 	//We alloc the new block and copy all instructions inside
 	unsigned int *newInstr = (unsigned int *) malloc(4*(block->nbInstr + value)*sizeof(unsigned int));
 	memcpy(&(newInstr[4*value]), block->instructions, 4*block->nbInstr*sizeof(unsigned int));
@@ -1019,12 +1003,12 @@ void shiftBlock(IRBlock *block, char value){
 	block->instructions = newInstr;
 
 	//We update dependencies
-	for (int oneInstruction = value; oneInstruction < block->nbInstr; oneInstruction++){
+	for (unsigned int oneInstruction = value; oneInstruction < block->nbInstr; oneInstruction++){
 		addOffsetToDep(block->instructions, oneInstruction, value);
 
 		short operands[3];
-		char nbOperand = getOperands(block->instructions, oneInstruction, operands);
-		for (int oneOperand = 0; oneOperand<nbOperand; oneOperand++){
+		unsigned int nbOperand = getOperands(block->instructions, oneInstruction, operands);
+		for (unsigned int oneOperand = 0; oneOperand<nbOperand; oneOperand++){
 			if (operands[oneOperand] < 256){
 				operands[oneOperand] += value;
 			}
@@ -1034,7 +1018,7 @@ void shiftBlock(IRBlock *block, char value){
 	}
 
 	//We update the jump table
-	for (int oneJump = 0; oneJump<block->nbJumps; oneJump++)
+	for (unsigned int oneJump = 0; oneJump<block->nbJumps; oneJump++)
 		block->jumpIds[oneJump] += value;
 
 }

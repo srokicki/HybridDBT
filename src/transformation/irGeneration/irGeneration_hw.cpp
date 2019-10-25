@@ -153,7 +153,7 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 	#endif
 
 	ac_int<1, false> const0 = 0;
-	ac_int<1, false> const1 = 1;
+
 	//**************************************************************************
 	//Procedure header is placed at 16 + oneProcedure * 8
 	//Its size is 8 bytes...
@@ -179,17 +179,13 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 
 		/* Generated code */
 		unsigned char numbersSuccessor[256];
-		unsigned char numbersDataSuccessor[256];
-		unsigned char successors[256][30];
-
 		unsigned char numbersPredecessor[256];
-		int predecessors[256][8];
 
 		/* Datastructure for RAW dependencies on global registers */
 		int lastWriterOnGlobal[128] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 		ac_int<2, false> lastReaderOnGlobalCounter[128] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 		ac_int<2, false> lastReaderOnGlobalPlaceToWrite[128] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-		int lastReaderOnGlobal[128][4] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+		int lastReaderOnGlobal[128][4] = {{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0}};
 
 		/* Datastructure for control dependencies on memories */
 		int lastWriterOnMemory = -1;
@@ -253,7 +249,6 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			ac_int<1, false> takeC_instr0 = (oneVLIWSyllabus.slc<32>(96) != 0);
 			ac_int<1, false> takeC_instr1 = (oneVLIWSyllabus.slc<32>(64) != 0);
 			ac_int<1, false> takeC_instr2 = (oneVLIWSyllabus.slc<32>(32) != 0);
-			ac_int<1, false> takeC_instr3 = (oneVLIWSyllabus.slc<32>(0) != 0);
 
 
 			oneInstruction = takeCm1_instr1 ? previousVLIWSyllabus.slc<32>(64) :
@@ -295,24 +290,23 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			ac_int<7, false> opcode = oneInstruction.slc<7>(0);
 			ac_int<13, true> imm13 = oneInstruction.slc<13>(7);
 			ac_int<19, true> imm19 = oneInstruction.slc<19>(7);
-			ac_int<6, false> reg8 = oneInstruction.slc<6>(8);
 			ac_int<6, false> reg14 = oneInstruction.slc<6>(14);
 			ac_int<6, false> reg20 = oneInstruction.slc<6>(20);
 			ac_int<6, false> reg26 = oneInstruction.slc<6>(26);
 
 			ac_int<5, false> funct = oneInstruction.slc<5>(7);
-			ac_int<1, false> isIType = (opcode.slc<3>(4) == 2);
 
-			ac_int<1, false> isNop = opcode == VEX_NOP | opcode == VEX_RECONFFS;
-			ac_int<1, false> isLoadType = opcode == VEX_LDB | opcode == VEX_LDBU | opcode == VEX_LDH
-					| opcode == VEX_LDHU | opcode == VEX_LDW | opcode == VEX_LDWU | opcode == VEX_LDD;
-			ac_int<1, false> isStoreType = opcode == VEX_STB | opcode == VEX_STH | opcode == VEX_STW | opcode == VEX_STD;
-			ac_int<1, false> isSpecMemType = opcode == VEX_SPEC_RST | opcode == VEX_SPEC_INIT;
-			ac_int<1, false> isBranchWithNoReg = opcode == VEX_GOTO | opcode == VEX_CALL
-					| opcode == VEX_STOP | (opcode == VEX_SYSTEM && imm19 == 0);
-			ac_int<1, false> isBranchWithReg = opcode == VEX_GOTOR | opcode == VEX_CALLR;
-			ac_int<1, false> isBranchWithTwoReg = opcode == VEX_BR | opcode == VEX_BRF | opcode == VEX_BGE | opcode == VEX_BLT | opcode == VEX_BGEU | opcode == VEX_BLTU;
-			ac_int<1, false> isMovi = opcode == VEX_MOVI | (opcode == VEX_SYSTEM && imm19==1);
+			ac_int<1, false> isNop = (opcode == VEX_NOP) | (opcode == VEX_RECONFFS);
+			ac_int<1, false> isLoadType = (opcode == VEX_LDB) | (opcode == VEX_LDBU) | (opcode == VEX_LDH)
+					| (opcode == VEX_LDHU) | (opcode == VEX_LDW) | (opcode == VEX_LDWU) | (opcode == VEX_LDD);
+			ac_int<1, false> isStoreType = (opcode == VEX_STB) | (opcode == VEX_STH) | (opcode == VEX_STW) | (opcode == VEX_STD);
+			ac_int<1, false> isSpecMemType = (opcode == VEX_SPEC_RST) | (opcode == VEX_SPEC_INIT);
+			ac_int<1, false> isBranchWithNoReg = (opcode == VEX_GOTO) | (opcode == VEX_CALL)
+					| (opcode == VEX_STOP) | ((opcode == VEX_SYSTEM) && (imm19 == 0));
+			ac_int<1, false> isBranchWithReg = (opcode == VEX_GOTOR) | (opcode == VEX_CALLR);
+			ac_int<1, false> isBranchWithTwoReg = (opcode == VEX_BR) | (opcode == VEX_BRF) | (opcode == VEX_BGE)
+			| (opcode == VEX_BLT) | (opcode == VEX_BGEU) | (opcode == VEX_BLTU);
+			ac_int<1, false> isMovi = (opcode == VEX_MOVI) | ((opcode == VEX_SYSTEM) && (imm19==1));
 			ac_int<1, false> isArith1 = opcode == VEX_NOT;
 			ac_int<1, false> isArith2 = (opcode.slc<3>(4) == 4 | opcode.slc<3>(4) == 5) & !isArith1;
 			ac_int<1, false> isArithImm = opcode.slc<3>(4) == 6 | opcode.slc<3>(4) == 7;
@@ -395,35 +389,26 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 
 			//We perform memory accesses for pred1
 			ac_int<9, false> pred1;
-			ac_int<1, false> pred1_global = 0;
 			ac_int<9, false> pred1_global_address = pred1_reg;
 			ac_int<10, true> pred1_global_access = globalVariables[pred1_reg];
 			ac_int<2, false> lastReaderOnGlobalCounter_access_pred1 = lastReaderOnGlobalCounter[pred1_reg];
 			ac_int<2, false> lastReaderOnGlobalPlaceToWrite_access_pred1 = lastReaderOnGlobalPlaceToWrite[pred1_reg];
 			ac_int<2, false> lastReaderOnGlobalPlaceToWrite_access_pred1_old = lastReaderOnGlobalPlaceToWrite_access_pred1;
-			ac_int<10, true> lastWriterOnGlobal_access_pred1 = lastWriterOnGlobal[pred1_reg];
 			ac_int<10, true> lastReaderOnGlobal_value_pred1 = lastReaderOnGlobal[pred1_reg][lastReaderOnGlobalPlaceToWrite_access_pred1];
-			ac_int<9, false> pred1_global_value = 0;
 
 			//We perform memory accesses for pred2
-			ac_int<1, false> pred2_global = 0;
 			ac_int<9, false> pred2_global_address = pred2_reg;
 			ac_int<10, true> pred2_global_access = globalVariables[pred2_reg];
 			ac_int<2, false> lastReaderOnGlobalCounter_access_pred2 = lastReaderOnGlobalCounter[pred2_reg];
 			ac_int<2, false> lastReaderOnGlobalPlaceToWrite_access_pred2 = lastReaderOnGlobalPlaceToWrite[pred2_reg];
 			ac_int<2, false> lastReaderOnGlobalPlaceToWrite_access_pred2_old = lastReaderOnGlobalPlaceToWrite_access_pred2;
-			ac_int<10, true> lastWriterOnGlobal_access_pred2 = lastWriterOnGlobal[pred2_reg];
 			ac_int<10, true> lastReaderOnGlobal_value_pred2 = lastReaderOnGlobal[pred2_reg][lastReaderOnGlobalPlaceToWrite_access_pred2];
-			ac_int<9, false> pred2_global_value = 0;
 
 			//We perform memory accesses for dest
 			ac_int<9, false> dest_global_address = dest_reg;
 			ac_int<10, true> dest_global_access = globalVariables[dest_reg];
 			ac_int<2, false> lastReaderOnGlobalCounter_access_dest = lastReaderOnGlobalCounter[dest_reg];
 			ac_int<10, true> lastWriterOnGlobal_access_dest = lastWriterOnGlobal[dest_reg];
-			ac_int<10, true> lastReaderOnGlobal_value_dest_1 = lastReaderOnGlobal[dest_reg][0];
-			ac_int<10, true> lastReaderOnGlobal_value_dest_2 = lastReaderOnGlobal[dest_reg][1];
-			ac_int<10, true> lastReaderOnGlobal_value_dest_3 = lastReaderOnGlobal[dest_reg][2];
 			ac_int<2, false> lastReaderOnGlobalPlaceToWrite_access_dest = lastReaderOnGlobalPlaceToWrite[dest_reg];
 
 
@@ -478,7 +463,7 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			if (isLoadType || isFLW){
 				/****************************/
 				/* We update lastReaderOneMemory and add required dependencies to keep memory coherence */
-				ac_int<16, false> succ_src;
+				ac_int<16, false> succ_src = 0;
 				if (lastReaderOnMemoryCounter < 3){
 					lastReaderOnMemoryCounter++;
 					if (lastWriterOnMemory != -1 && !(lastWriterOnMemoryRegUnchanged && lastWriterOnMemoryReg == pred1_reg && lastWriterOnMemoryImm != imm13)){
@@ -510,7 +495,6 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 			ac_int<1, false> global_succ_ena_1 = 0;
 			ac_int<1, false> global_succ_ena_2 = 0;
 			ac_int<1, false> global_succ_ena_3 = 0;
-			ac_int<1, false> global_succ_ena_4 = 0;
 
 			ac_int<8, false> global_succ_src_1;
 			ac_int<8, false> global_succ_src_2;
@@ -785,8 +769,6 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 
 		//Addint dependencies to the jump
 		if (haveJump/* &&  bytecode[jumpID].slc<7>(96+19) == VEX_CALL*/){
-			ac_int<128, false> jumpBytecodeWord = bytecode[jumpID];
-			ac_int<8, false> numberDependencies = jumpBytecodeWord.slc<8>(64+6);
 
 			#ifdef IR_SUCC
 
@@ -860,8 +842,6 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
 					writeDependency_ac(bytecode, lastReaderOnGlobal[oneRegister][2], lastWriter, const0, &bytecode[lastWriter]);
 					depToAdd++;
 				}
-				ac_int<8, false> newDepNumber = bytecode[lastWriter].slc<8>(64+6);
-			//	bytecode[lastWriter].set_slc(64+6, newDepNumber);
 			}
 		}
 

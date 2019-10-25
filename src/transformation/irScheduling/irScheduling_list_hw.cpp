@@ -16,9 +16,7 @@
 
 char countToFail;
 
-const int numberOfFUs = 4;                      //Correspond to the number of concurent instructions possible
 int latencies[4] = {4,4,4,4};   //The latencies of the different pipeline stages
-const int maxLatency = 4;
 unsigned int mask[4] = {0xff000000, 0xff0000, 0xff00, 0xff};
 
 ac_int<6, false> stages[8] = {0,3,1,2,4,5,6,7};
@@ -71,7 +69,7 @@ unsigned char stall =0;
 unsigned char aliveInstructions=0;
 
 ac_int<8, false> reservationTableNum[4][MAX_ISSUE_WIDTH];
-ac_int<1,false> reservationTableEnable[4][MAX_ISSUE_WIDTH] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+ac_int<1,false> reservationTableEnable[4][MAX_ISSUE_WIDTH] = {{0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0}};
 
 
 ac_int<8, false> fifoInsertReadyInstruction[64];
@@ -85,7 +83,7 @@ ac_int<8, false> scheduledInstructions = 0;
 //We declare array for used registers and used successors
 ac_int<8*7, false> successors[4][2][MAX_ISSUE_WIDTH];
 ac_int<3, false> successorNumbers[4][2][MAX_ISSUE_WIDTH];
-ac_int<3, false> successorStageNumber[4][2] = {0,0,0,0,0,0,0,0};
+ac_int<3, false> successorStageNumber[4][2] = {{0,0},{0,0},{0,0},{0,0}};
 
 ac_int<8, false> totalNumberOfSuccessors[4];
 ac_int<8, false> totalNumberOfDataSuccessors[4];
@@ -381,9 +379,6 @@ ac_int<32, false> irScheduler_list_hw(ac_int<1, false> optLevel,
 
 				fifoNumberElement = 0;
 
-				//We declare array for used registers and used successors
-				ac_int<3, false> stageForSuccessors = 0;
-
 				ac_int<256, false> binariesWord = 0;
 
 				//For each functional unit, we assign the most prior instruction
@@ -400,7 +395,6 @@ ac_int<32, false> irScheduler_list_hw(ac_int<1, false> optLevel,
 				//  -> For multiplication, this number is the next lineNumber (lineNumber + 1 % 2)
 
 				ac_int<2, false> nextLineNumber = lineNumber + 1;
-				ac_int<2, false> secondNextLineNumber = lineNumber + 2;
 				ac_int<2, false> lineNumberForStage = (complexType[1] || complexType[3]) ?  nextLineNumber : lineNumber; //Note : the modulo is useless but here to remind that it is a 1 bit variable
 
 
@@ -428,10 +422,8 @@ ac_int<32, false> irScheduler_list_hw(ac_int<1, false> optLevel,
 				//We split different information from the instruction:
 				ac_int<2, false> typeCode = instruction.slc<2>(46);
 				ac_int<1, false> alloc = instruction[45];
-				ac_int<1, false> allocBr = instruction[44];
 				ac_int<7, false> opCode = instruction.slc<7>(37);
 				ac_int<1, false> isImm = instruction[36];
-				ac_int<1, false> isBr = instruction[35];
 				ac_int<9, false> virtualRDest = instruction.slc<9>(0);
 				ac_int<9, false> virtualRIn2 = instruction.slc<9>(9);
 				ac_int<9, false> virtualRIn1_imm9 = instruction.slc<9>(18);
@@ -732,8 +724,6 @@ ac_int<32, false> irScheduler_list_hw(ac_int<1, false> optLevel,
 				writeInBinaries++;
 			}
 		}
-		ac_int<32, false> const0 = 0;
-		//binaries[jumpPlace].set_slc(96, const0);
 	}
 
 	return writeInBinaries-addressInBinaries;

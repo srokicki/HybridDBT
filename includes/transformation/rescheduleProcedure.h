@@ -8,6 +8,8 @@
 #ifndef INCLUDES_TRANSFORMATION_RESCHEDULEPROCEDURE_H_
 #define INCLUDES_TRANSFORMATION_RESCHEDULEPROCEDURE_H_
 
+#include <isa/irISA.h>
+#include <dbt/dbtPlateform.h>
 
 int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int writePlace);
 

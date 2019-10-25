@@ -28,10 +28,8 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction){
 	char opcode = oneInstruction & 0x7f;
 	char rs1 = ((oneInstruction >> 15) & 0x1f);
 	char rs2 = ((oneInstruction >> 20) & 0x1f);
-	char rs3 = ((oneInstruction >> 27) & 0x1f);
 	char rd = ((oneInstruction >> 7) & 0x1f);
 	char funct7 = ((oneInstruction >> 25) & 0x7f);
-	char funct7_smaller = funct7 & 0x3e;
 
 	char funct3 = ((oneInstruction >> 12) & 0x7);
 	unsigned short imm12_I = ((oneInstruction >> 20) & 0xfff);
@@ -46,10 +44,6 @@ std::string printDecodedInstrRISCV(unsigned int oneInstruction){
 	short imm13_signed = (imm13 >= 4096) ? imm13 - 8192 : imm13;
 
 	unsigned int imm31_12 = oneInstruction & 0xfffff000;
-	int imm31_12_signed = imm31_12;
-
-	unsigned int imm21_1 = (oneInstruction & 0xff000) + ((oneInstruction >> 9) & 0x800) + ((oneInstruction >> 20) & 0x7fe) + ((oneInstruction >> 11) & 0x100000);
-	int imm21_1_signed = (imm21_1 >= 1048576) ? imm21_1 - 2097152 : imm21_1;
 
 	char shamt = ((oneInstruction >> 20) & 0x3f);
 

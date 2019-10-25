@@ -33,7 +33,6 @@ ac_int<32, false> readInt(ac_int<128, false>* bytecode, int place){
 }
 
 void writeInt(ac_int<8, false>* bytecode, int place, unsigned int value){
-	unsigned int *bytecodeAsInt = (unsigned int *) bytecode;
 	place = place >> 2;
 
 	bytecode[place+3] = (value >> 24) & 0xff;
@@ -85,7 +84,6 @@ void writeChar(unsigned int* bytecode, int place, unsigned char value){
 }
 
 void writeInt(unsigned char* bytecode, int place, unsigned int value){
-	unsigned int *bytecodeAsInt = (unsigned int *) bytecode;
 	place = place >> 2;
 
 	bytecode[place+3] = (value >> 24) & 0xff;
@@ -116,7 +114,6 @@ unsigned char readChar(unsigned int* bytecode, int place){
 
 void acintMemcpy(ac_int<128, false> *to, unsigned int *from, int sizeInByte){
 	for (int oneDestValue = 0; oneDestValue < sizeInByte/16; oneDestValue++){
-		ac_int<128, false> value = 0;
 
 		to[oneDestValue].set_slc(96, ac_int<32, false>(from[4*oneDestValue+0]));
 		to[oneDestValue].set_slc(64, ac_int<32, false>(from[4*oneDestValue+1]));
@@ -128,7 +125,6 @@ void acintMemcpy(ac_int<128, false> *to, unsigned int *from, int sizeInByte){
 
 void acintMemcpy(unsigned int *to, ac_int<128, false>  *from, int sizeInByte){
 	for (int oneSourceValue = 0; oneSourceValue < sizeInByte/16; oneSourceValue++){
-		ac_int<128, false> value = 0;
 
 		writeInt(to, 16*oneSourceValue + 0, readInt(from, 16*oneSourceValue + 0));
 		writeInt(to, 16*oneSourceValue + 4, readInt(from, 16*oneSourceValue + 4));
@@ -220,7 +216,6 @@ void acintMemcpy(unsigned char *to, ac_int<1, false>  *from, int sizeInByte){
 
 bool acintCmp(unsigned int *to, ac_int<128, false>  *from, int sizeInByte){
 	for (int oneSourceValue = 0; oneSourceValue < sizeInByte/16; oneSourceValue++){
-		ac_int<128, false> value = 0;
 		if (to[4*oneSourceValue+0] != readInt(from, 16*oneSourceValue + 0)
 				|| to[4*oneSourceValue+1] != readInt(from, 16*oneSourceValue + 4)
 				|| to[4*oneSourceValue+2] != readInt(from, 16*oneSourceValue + 8)

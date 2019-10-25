@@ -91,12 +91,12 @@ void addInsertions(unsigned int blockStartAddressInSources, unsigned int blockSt
 	storeWordFromInsertionMemory(offset + 1, blockStartAddressInVLIW);
 
 	//We copy the insertions
-	for (int oneInsertion = 0; oneInsertion<numberInsertions; oneInsertion++){
+	for (unsigned int oneInsertion = 0; oneInsertion<numberInsertions; oneInsertion++){
 		storeWordFromInsertionMemory(offset+oneInsertion+2, insertionsToInsert[1+oneInsertion]-blockStartAddressInVLIW);
 	}
 
 	//We fill the rest with -1
-	for (int oneInsertion = numberInsertions; oneInsertion<MAX_INSERTION_PER_SECTION-2; oneInsertion++){
+	for (unsigned int oneInsertion = numberInsertions; oneInsertion<MAX_INSERTION_PER_SECTION-2; oneInsertion++){
 		storeWordFromInsertionMemory(offset+oneInsertion+2, 0x7fffffff);
 	}
 }
@@ -114,10 +114,9 @@ unsigned int solveUnresolvedJump(DBTPlateform *platform, unsigned int initialDes
 
 //	fprintf(stderr, "While solving unrsolved jump, destination is 0x%x (%d)\n", initialDestination, initialDestination);
 
-	int destination = 0;
 
-	int section = initialDestination >> 10;
-	int offset = section << (SHIFT_FOR_INSERTION_SECTION-2); // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
+	unsigned int section = initialDestination >> 10;
+	unsigned int offset = section << (SHIFT_FOR_INSERTION_SECTION-2); // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
 
 	//Currently offset point to the struct corresponding to the code section.
 	int nbInsertion = loadWordFromInsertionMemory(offset);
@@ -125,10 +124,10 @@ unsigned int solveUnresolvedJump(DBTPlateform *platform, unsigned int initialDes
 	if (nbInsertion == -1)
 		return -1;
 
-	int size = MAX_INSERTION_PER_SECTION;
-	int VLIWBase = loadWordFromInsertionMemory(offset + 1);
+	unsigned int size = MAX_INSERTION_PER_SECTION;
+	unsigned int VLIWBase = loadWordFromInsertionMemory(offset + 1);
 	unsigned int init = (initialDestination % 1024);
-	int start = 0;
+	unsigned int start = 0;
 
 //	fprintf(stderr, "Section has %d insertions, base address is %d\n", nbInsertion, VLIWBase);
 
@@ -136,7 +135,7 @@ unsigned int solveUnresolvedJump(DBTPlateform *platform, unsigned int initialDes
 //		fprintf(stderr, "\t Dichotomie: start = %d, size=%d, value = %d\n", start, size, loadWordFromInsertionMemory(offset + 2 + start + size/2));
 		size = size / 2;
 
-		int value = loadWordFromInsertionMemory(offset + 2 + start + size);
+		unsigned int value = loadWordFromInsertionMemory(offset + 2 + start + size);
 		if (platform->vliwInitialIssueWidth>4)
 			value = value / 2;
 
@@ -144,7 +143,7 @@ unsigned int solveUnresolvedJump(DBTPlateform *platform, unsigned int initialDes
 			start += size;
 	}
 
-	int value = loadWordFromInsertionMemory(offset + 2 + start + 0);
+	unsigned int value = loadWordFromInsertionMemory(offset + 2 + start + 0);
 	if (platform->vliwInitialIssueWidth>4)
 		value = value / 2;
 
@@ -730,8 +729,6 @@ unsigned int insertCodeForInsertions(DBTPlateform *platform, int start, unsigned
 int getInsertionList(int mipsStartAddress, int** result){
 	//Note: the mips start address taken is already divided by 4 (address of the instruction, not the byte)
 
-	int destination = 0;
-
 	int section = mipsStartAddress >> 10;
 	int offset = section << (SHIFT_FOR_INSERTION_SECTION-2); // globalSection * size = globalSection * 16 * (4+4) = globalSection * 0x80
 
@@ -745,4 +742,3 @@ int getInsertionList(int mipsStartAddress, int** result){
 	return nbInsertion;
 
 }
-

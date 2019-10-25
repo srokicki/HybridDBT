@@ -186,8 +186,6 @@ std::string printDecodedInstr(unsigned int instruction){
 
 	int funct = (instruction >> 7) & 0x1f;
 	int OP = (instruction & 0x7f);
-	int BEXT = (instruction >> 8) & 0x7;
-	short IMM9 = (instruction >> 11) & 0x1ff;
 	char isSpec = (instruction>>7) & 0x1;
 
 

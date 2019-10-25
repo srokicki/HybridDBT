@@ -25,8 +25,6 @@ float regf[32];
 
 
 int RiscvSimulator::doSimulation(int nbkCycle){
-	long long hilo;
-
 	//We initialize shiftmask
 	ac_int<64, false> value = 0xffffffff;
 	value = (value << 32) + value;

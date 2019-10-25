@@ -8,10 +8,12 @@
 #ifndef INCLUDES_TRANSFORMATION_MEMORYDISAMBIGUATION_H_
 #define INCLUDES_TRANSFORMATION_MEMORYDISAMBIGUATION_H_
 
+#include <isa/irISA.h>
+#include <dbt/dbtPlateform.h>
 
 
 extern int MAX_DISAMB_COUNT;
-extern unsigned char speculationCounter;
+extern unsigned int speculationCounter;
 extern struct speculationDef speculationDefinitions[256];
 
 #define PLSQ_BANK_SIZE 8
@@ -19,9 +21,9 @@ extern struct speculationDef speculationDefinitions[256];
 
 class MemoryDependencyGraph{
 public:
-	int size;
+	unsigned int size;
 	unsigned char *idMem;
-	char *idSpec;
+	unsigned char *idSpec;
 	bool *graph;
 	bool *isStore;
 
@@ -41,15 +43,15 @@ struct speculationDef {
 	MemoryDependencyGraph *graph;
 	unsigned char loads[PLSQ_BANK_SIZE];
 	unsigned char stores[PLSQ_BANK_SIZE];
-	short nbUse;
-	short nbFail;
-	char type, nbLoads, nbStores;
-	char init;
+	unsigned short nbUse;
+	unsigned short nbFail;
+	unsigned char type, nbLoads, nbStores;
+	unsigned char init;
 
 };
 
 
-void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBlock **predecessors, int nbPred);
+void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBlock **predecessors, unsigned int nbPred);
 void updateSpeculationsStatus(DBTPlateform *platform, int writePlace);
 
 

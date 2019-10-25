@@ -74,7 +74,7 @@ void Profiler::profileBlock(IRBlock *oneBlock){
 		char incrementInBinaries = (getIssueWidth(this->platform->vliwInitialConfiguration) > 4) ? 2 : 1;
 
 
-		for (int oneInstruction = start; oneInstruction<oneBlock->vliwEndAddress; oneInstruction+=incrementInBinaries){
+		for (unsigned int oneInstruction = start; oneInstruction<oneBlock->vliwEndAddress; oneInstruction+=incrementInBinaries){
 			unsigned int instr64 = readInt(this->platform->vliwBinaries, oneInstruction*16+4);
 
 			//We now place the profile instr
@@ -120,6 +120,8 @@ int Profiler::getProfilingInformation(int ID){
 	if (profiledBlocks[ID] != NULL){
 		return this->platform->vexSimulator->profileResult[ID];
 	}
+
+	return -1;
 	//return this->platform->vexSimulator->ldw(0x8000000 + ID*4);
 	#else
 	return this->platform->vliwDataMemory[0];

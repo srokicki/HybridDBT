@@ -1,6 +1,5 @@
 #include <stdio.h>
 
-#include <lib/tools.h>
 #include <lib/endianness.h>
 #include <lib/elfFile.h>
 

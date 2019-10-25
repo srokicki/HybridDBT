@@ -154,7 +154,7 @@ class VexSimulator : public GenericSimulator {
 	void initializeDataMemory(unsigned char* content, unsigned int size, unsigned int start);
 	int initializeRun(int mainPc, int argc, char* argv[]);
 	virtual int doStep();
-	int doStep(int nbStep);
+	int doStep(unsigned int nbStep);
 
 	//Statistics
 	float getAverageIPC();

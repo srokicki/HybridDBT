@@ -226,7 +226,6 @@ unsigned int firstPassTranslator(DBTPlateform *platform,
 
 	//We translate the result
 	unsigned int destinationIndex = returnedValue & 0x3ffff;
-	unsigned int numberUnresolvedJumps = returnedValue >> 18;
 
 	//We copy insertions
 	addInsertions((sectionStartAddress-sourceStartAddress)>>2, placeCode, platform->insertions, platform->insertions[0]);

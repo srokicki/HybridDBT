@@ -53,8 +53,6 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 	application->blocksInSections[section] = (IRBlock**) malloc(TEMP_BLOCK_STORAGE_SIZE * sizeof(IRBlock**));
 	application->numbersAllocatedBlockInSections[section] = TEMP_BLOCK_STORAGE_SIZE;
 
-	int blockCounter = 0;
-
 	int indexInMipsBinaries = 0;
 	int indexInVLIWBinaries = 0;
 	int previousBlockStart = 0;
@@ -71,7 +69,7 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 			blockBoundary = (dbtPlateform->blockBoundaries[offset]);
 
 		char isInsertion = (oneInstruction == sizeNewlyTranslated) ? 0 : insertionMap[oneInstruction];
-		if (blockBoundary && !isInsertion & previousBlockStart<indexInVLIWBinaries){
+		if (blockBoundary && !isInsertion && previousBlockStart<indexInVLIWBinaries){
 
 
 			/******************************************************************************************
@@ -368,9 +366,9 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 				for (int oneBlock = 0; oneBlock < application->numbersBlockInSections[oneSection]; oneBlock++){
 					IRBlock *block = application->blocksInSections[oneSection][oneBlock];
 					if (block != NULL && block->sourceStartAddress == successor1)
-						currentBlock->successor1 = block;
+						currentBlock->successors[0] = block;
 					else if (block != NULL && nbSucc > 1 && block->sourceStartAddress == successor2)
-						currentBlock->successor2 = block;
+						currentBlock->successors[1] = block;
 				}
 			}
 
@@ -379,12 +377,10 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 		currentBlock->nbSucc = nbSucc;
 
 		if (nbSucc > 0){
-			blocksToStudy[numberBlockToStudy] = currentBlock->successor1;
-			currentBlock->successors[0] = currentBlock->successor1;
+			blocksToStudy[numberBlockToStudy] = currentBlock->successors[0];
 		}
 		if (nbSucc > 1){
-			blocksToStudy[numberBlockToStudy+1] = currentBlock->successor2;
-			currentBlock->successors[1] = currentBlock->successor2;
+			blocksToStudy[numberBlockToStudy+1] = currentBlock->successors[1];
 		}
 		numberBlockToStudy += nbSucc;
 
@@ -405,7 +401,6 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 
 
 				//We determine the name of successor(s)
-				int successor1, successor2, nbSucc;
 				if (isConditionalBranch && (application->blocksInSections[oneSection][oneBlock]->sourceDestination == currentBlock->sourceStartAddress || application->blocksInSections[oneSection][oneBlock]->sourceEndAddress == currentBlock->sourceStartAddress)){
 					blocksToStudy[numberBlockToStudy] = application->blocksInSections[oneSection][oneBlock];
 
@@ -444,7 +439,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 	procedure->configuration = platform->vliwInitialConfiguration;
 	procedure->previousConfiguration = procedure->configuration;
 
-	memcpy(procedure->blocks, blockInProcedure, numberBlockInProcedure*sizeof(struct IRBlock*));
+	memcpy(procedure->blocks, blockInProcedure, numberBlockInProcedure*sizeof(IRBlock*));
 	qsort(procedure->blocks, numberBlockInProcedure, sizeof(IRBlock *), compare_blocks);
 
 
@@ -491,7 +486,6 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 
 
 			unsigned int irGeneratorResult = irGenerator(platform, block->vliwStartAddress, originalScheduleSize, globalVariableCounter);
-			int endAddress = irGeneratorResult >> 16;
 			int blockSize = irGeneratorResult & 0xffff;
 
 
@@ -505,9 +499,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 			}
 
 			//We check if we find a jump as last instruction
-			char opcodeOfLastInstr = getOpcode(block->instructions, blockSize-1);
 			if (block->nbJumps == 1){
-				block->jumpID = blockSize-1;
 				block->jumpIds[0] = blockSize-1;
 			}
 

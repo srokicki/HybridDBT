@@ -107,25 +107,15 @@ ac_int<WINDOW_SIZE_L2+1, false> offset(ac_int<WINDOW_SIZE_L2+1, false> off) {
  */
 ac_int<32, false> createInstruction(ac_int<50, false> instruction, ac_int<6, false> operand1, ac_int<6, false> operand2, ac_int<6, false> dest) {
 
-	// Type of Functional Unit needed by this instruction
-	ac_int<2, false> unitType = getType(instruction);
-
 	// We split different information from the instruction
 	ac_int<2, false> typeCode = instruction.slc<2>(46);
-	ac_int<1, false> alloc = instruction[45];
-	ac_int<1, false> allocBr = instruction[44];
 	ac_int<7, false> opCode = instruction.slc<7>(37);
 
 	ac_int<1, false> isImm = instruction[36];
 	ac_int<7, false> funct = instruction.slc<5>(31);
 
-	ac_int<1, false> isBr = instruction[35];
-	ac_int<9, false> virtualRDest = instruction.slc<9>(0);
-	ac_int<9, false> virtualRIn2 = instruction.slc<9>(9);
-	ac_int<9, false> virtualRIn1_imm9 = instruction.slc<9>(18);
 	ac_int<13, false> imm13 = instruction.slc<13>(18); //TODO
 	ac_int<19, false> imm19 = instruction.slc<19>(9);
-	ac_int<9, false> brCode = instruction.slc<9>(27);
 
 	//***************************************
 	//We generate the instruction
@@ -204,7 +194,6 @@ void sort_ways(ac_int<MAX_ISSUE_WIDTH * 4, false> ways)
   }
 }
 
-#pragma hls_design top
 ac_int<32, false> irScheduler_scoreboard_hw(
 		ac_int<1, false> optLevel,
 		ac_int<8, false> basicBlockSize,
@@ -293,17 +282,11 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 
 		ac_int<2, false> typeCode = instruction.slc<2>(46);
 		ac_int<1, false> alloc = instruction[45];
-		ac_int<1, false> allocBr = instruction[44];
 		ac_int<7, false> opCode = instruction.slc<7>(37);
-		ac_int<1, false> isImm = instruction[36];
 		ac_int<5, false> funct = instruction.slc<5>(31);
-		ac_int<1, false> isBr = instruction[35];
 		ac_int<9, false> virtualRDest = instruction.slc<9>(0);
 		ac_int<9, false> virtualRIn2 = instruction.slc<9>(9);
 		ac_int<9, false> virtualRIn1_imm9 = instruction.slc<9>(18);
-		ac_int<13, false> imm13 = instruction.slc<13>(18); //TODO
-		ac_int<19, false> imm19 = instruction.slc<19>(9);
-		ac_int<9, false> brCode = instruction.slc<9>(27);
 
 		ac_int<4, false> specId = instruction.slc<4>(19);
 		ac_int<1, false> isSpec = instruction[18];
@@ -400,7 +383,6 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		unsigned char shiftedOpcode = opCode>>4;
 
 		ac_int<1, false> isNop = (opCode == 0);
-		ac_int<1, false> isITypeWithDest = (opCode == VEX_MOVI || opCode == VEX_CALL || (opCode == VEX_SYSTEM && imm19 == VEX_SYSTEM_CSRRS));
 		ac_int<1, false> isArith2 = (shiftedOpcode == 4 || shiftedOpcode == 5 || shiftedOpcode == 0);
 
 		ac_int<1, false> isArith1 = (shiftedOpcode == 6 || shiftedOpcode == 7);
@@ -618,11 +600,11 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 				}
 
 				for (int oneBit = 0; oneBit<4; oneBit++){
-					if (issue_width <= 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]) {
+					if (issue_width <= 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[oneBit][127] && !maskVal[oneBit][126] && !maskVal[oneBit][125] && !maskVal[oneBit][124]) {
 						maskVal[oneBit] = (maskVal[oneBit]<<4) + mask_spec[oneBit][off];
 						mask_spec[oneBit][off] = 0;
 					}
-					else if (issue_width > 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]){
+					else if (issue_width > 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[oneBit][127] && !maskVal[oneBit][126] && !maskVal[oneBit][125] && !maskVal[oneBit][124]){
 						maskVal[oneBit] = (maskVal[oneBit]<<8) + mask_spec[oneBit][off];
 						mask_spec[oneBit][off] = 0;
 
@@ -749,10 +731,10 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		}
 
 		for (int oneBit = 0; oneBit<4; oneBit++){
-			if (issue_width <= 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]) {
+			if (issue_width <= 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[oneBit][127] && !maskVal[oneBit][126] && !maskVal[oneBit][125] && !maskVal[oneBit][124]) {
 				maskVal[oneBit] = (maskVal[oneBit]<<4) + mask_spec[oneBit][off];
 			}
-			else if (issue_width > 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[127] && !maskVal[126] && !maskVal[125] && !maskVal[124]){
+			else if (issue_width > 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[oneBit][127] && !maskVal[oneBit][126] && !maskVal[oneBit][125] && !maskVal[oneBit][124]){
 				maskVal[oneBit] = (maskVal[oneBit]<<8) + mask_spec[oneBit][off];
 
 			}
@@ -782,7 +764,6 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 	}
 
 
-	ac_int<32, false> newEnd = addressInBinaries+newSize;
 	#ifndef __CATAPULT
 	//Performance simulation
 	timeTakenIRScheduler += 8;

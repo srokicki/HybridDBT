@@ -63,6 +63,9 @@ ElfFile::ElfFile(char* pathToElfFile){
 
 	if (this->is32Bits){
 		result = fread(&this->fileHeader32, sizeof(this->fileHeader32), 1, elfFile);
+        if (result < 0)
+            printf("Error while reading elf file.");
+
 
 		if (this->fileHeader32.e_ident[0] == 0x7f)
 			needToFixEndianness = 0;
@@ -79,7 +82,7 @@ ElfFile::ElfFile(char* pathToElfFile){
 	}
 
 	if (DEBUG && this->is32Bits)
-		printf("Program table is at %hu and contains %u entries of %u bytes\n", FIX_INT(this->fileHeader32.e_phoff), FIX_SHORT(this->fileHeader32.e_phnum), FIX_SHORT(this->fileHeader32.e_phentsize));
+		printf("Program table is at %u and contains %u entries of %u bytes\n", FIX_INT(this->fileHeader32.e_phoff), FIX_SHORT(this->fileHeader32.e_phnum), FIX_SHORT(this->fileHeader32.e_phentsize));
 
 	//*************************************************************************************
 	//Parsing section table
@@ -281,7 +284,15 @@ unsigned char* ElfSection::getSectionCode(){
 	unsigned char* sectionContent = (unsigned char*) malloc(this->size);
 	unsigned int result;
 	result = fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
+    if (result < 0){
+        printf("Error while doing fseek elfFile.cpp:getSectionCode\n");
+        exit(-1);
+    }
 	result = fread(sectionContent, 1, this->size, this->containingElfFile->elfFile);
+    if (result < 0){
+        printf("Error while doing fread elfFile.cpp:getSectionCode\n");
+        exit(-1);
+    }
 
 	return sectionContent;
 }
@@ -300,15 +311,35 @@ std::vector<ElfRelocation*>* ElfSection::getRelocations(){
 	if (this->isRelSection()){
 		Elf32_Rel* sectionContent = (Elf32_Rel*) malloc(this->size);
 		readResult = fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
+        if (readResult < 0){
+            printf("In read elf, error while doing fseek in relocation part\n");
+            exit(-1);
+        }
+
 		readResult = fread(sectionContent, sizeof(Elf32_Rel), this->size/sizeof(Elf32_Rel), this->containingElfFile->elfFile);
-		for (unsigned int relCounter = 0; relCounter<this->size/sizeof(Elf32_Rel); relCounter++)
+        if (readResult < 0){
+            printf("In read elf, error while doing fread in relocation part\n");
+            exit(-1);
+        }
+
+        for (unsigned int relCounter = 0; relCounter<this->size/sizeof(Elf32_Rel); relCounter++)
 			result->push_back(new ElfRelocation(sectionContent[relCounter]));
 	}
 	else {
 		Elf32_Rela* sectionContent = (Elf32_Rela*) malloc(this->size);
 		readResult = fseek(this->containingElfFile->elfFile, this->offset, SEEK_SET);
+        if (readResult < 0){
+            printf("In read elf, error while doing fseek in relocation part\n");
+            exit(-1);
+        }
+
 		readResult = fread(sectionContent, sizeof(Elf32_Rela), this->size/sizeof(Elf32_Rela), this->containingElfFile->elfFile);
-		for (unsigned int relCounter = 0; relCounter<this->size/sizeof(Elf32_Rela); relCounter++)
+        if (readResult < 0){
+            printf("In read elf, error while doing fread in relocation part\n");
+            exit(-1);
+        }
+
+        for (unsigned int relCounter = 0; relCounter<this->size/sizeof(Elf32_Rela); relCounter++)
 			result->push_back(new ElfRelocation(sectionContent[relCounter]));
 	}
 

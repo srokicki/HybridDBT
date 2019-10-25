@@ -102,22 +102,16 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 	int indexInDestinationBinaries = placeCode;
 
 
-	ac_int<32, 0> nextInstruction, nextInstruction_stage;
-	ac_int<6, false> nextInstruction_rs1, nextInstruction_rs2, nextInstruction_rd;
-	ac_int<6, false> secondNextInstruction_rs1, secondNextInstuction_rs2, secondNextInstruction_rd;
+	ac_int<32, 0> nextInstruction = 1, nextInstruction_stage = 1;
+	ac_int<6, false> nextInstruction_rs1 = 1, nextInstruction_rs2 = 1, nextInstruction_rd = 1;
+	ac_int<6, false> secondNextInstruction_rs1 = 1, secondNextInstuction_rs2 = 1, secondNextInstruction_rd = 1;
 
-	ac_int<32, 0> secondNextInstruction, secondNextInstruction_stage;
+	ac_int<32, 0> secondNextInstruction = 1, secondNextInstruction_stage = 1;
 
 	unsigned char enableNextInstruction = 0;
 	unsigned char enableSecondNextInstruction = 0;
 
 	unsigned char nextInstructionNop = 0;
-
-
-	ac_int<5, false> reg1_mul = 0, reg2_mul = 0;
-	ac_int<16, false> imm_mul = 0;
-	ac_int<1, false> is_imm_mul = 0;
-
 
 	blocksBoundaries[(codeSectionStart-addressStart)>>2] = 1;
 
@@ -266,9 +260,6 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 			imm21_1_signed.set_slc(0, imm21_1);
 
 			ac_int<6, false> shamt = oneInstruction.slc<6>(20);
-
-			ac_int<26, false> correctedTgtadr = imm21_1 - (addressStart>>2);
-
 
 			if (rs1 == 1)
 				rs1 = 63;
@@ -984,7 +975,6 @@ int firstPassTranslator_riscv_hw(ac_int<32, false> code[1024],
 
 
 		if (setBoundaries1){
-			ac_int<1, false> const1 = 1;
 			ac_int<32, false> boundaryAddress = (boundary1 + ((codeSectionStart - addressStart)>>2));
 			ac_int<22, false> offset = boundaryAddress.slc<22>(0);
 			//ac_int<3, false> bitOffset = boundaryAddress.slc<3>(0);

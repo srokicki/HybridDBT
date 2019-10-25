@@ -31,15 +31,15 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	 * vliw binaries.
 	 *
 	 *********************************************************************************/
-	char incrementInBinaries = (platform->vliwInitialIssueWidth>4) ? 2 : 1;
-	int basicBlockStart = block->vliwStartAddress;
-	int basicBlockEnd = block->vliwEndAddress;
+	unsigned char incrementInBinaries = (platform->vliwInitialIssueWidth>4) ? 2 : 1;
+	unsigned int basicBlockStart = block->vliwStartAddress;
+	unsigned int basicBlockEnd = block->vliwEndAddress;
 
 	Log::logScheduleBlocks << "Block from " << std::hex << block->sourceStartAddress << " to " << std::hex << block->sourceEndAddress << " is eligible for scheduling (dest " << std::hex << block->sourceDestination << ") \n";
 
 
 	//We ensure that the VLIW core is not inside the block being modified
-	char isCurrentlyInBlock = (platform->vexSimulator->PC >= basicBlockStart*4) &&
+	bool isCurrentlyInBlock = (platform->vexSimulator->PC >= basicBlockStart*4) &&
 			(platform->vexSimulator->PC < basicBlockEnd*4);
 
 	if (isCurrentlyInBlock){
@@ -74,21 +74,21 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	 * In this step we call the IRGenerator to generate the IR of the block we want to schedule
 	 *
 	 *****************************************************************/
-	int globalVariableCounter = 288;
+	unsigned int globalVariableCounter = 288;
 
-	for (int oneGlobalVariable = 0; oneGlobalVariable < 128; oneGlobalVariable++)
+	for (unsigned int oneGlobalVariable = 0; oneGlobalVariable < 128; oneGlobalVariable++)
 		platform->globalVariables[oneGlobalVariable] = 256 + oneGlobalVariable;
 
-	int originalScheduleSize = basicBlockEnd - basicBlockStart - 1;
+	unsigned int originalScheduleSize = basicBlockEnd - basicBlockStart - 1;
 
 
-	int irGeneratorResult = irGenerator(platform, basicBlockStart, originalScheduleSize, globalVariableCounter);
+	unsigned int irGeneratorResult = irGenerator(platform, basicBlockStart, originalScheduleSize, globalVariableCounter);
 
-	int endAddress = irGeneratorResult >>16;
+	unsigned int endAddress = irGeneratorResult >>16;
 	unsigned char blockSize = irGeneratorResult & 0xffff;
 
 	if (endAddress < originalScheduleSize){
-		int oldEndAddress = block->vliwEndAddress;
+		unsigned int oldEndAddress = block->vliwEndAddress;
 		block->vliwEndAddress = block->vliwStartAddress + endAddress;
 
 		IRBlock *splittedBlock = new IRBlock(block->vliwEndAddress, oldEndAddress, block->section);
@@ -104,13 +104,13 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 	//We store old jump instruction. Its places is known from the basicBlockEnd value
 	unsigned int jumpInstruction = readInt(platform->vliwBinaries, (block->vliwEndAddress-2*incrementInBinaries)*16 + 0);
-	char isRelativeJump = (jumpInstruction & 0x7f) == VEX_BR || (jumpInstruction & 0x7f) == VEX_BRF || (jumpInstruction & 0x7f) == VEX_BGE || (jumpInstruction & 0x7f) == VEX_BLT || (jumpInstruction & 0x7f) == VEX_BGEU || (jumpInstruction & 0x7f) == VEX_BLTU;
-	char isNoJump = (jumpInstruction & 0x70) != (VEX_CALL&0x70);
-	char isPassthroughJump = isRelativeJump || (jumpInstruction & 0x7f) == VEX_CALL || (jumpInstruction & 0x7f) == VEX_CALLR || isNoJump;
+	unsigned char isRelativeJump = (jumpInstruction & 0x7f) == VEX_BR || (jumpInstruction & 0x7f) == VEX_BRF || (jumpInstruction & 0x7f) == VEX_BGE || (jumpInstruction & 0x7f) == VEX_BLT || (jumpInstruction & 0x7f) == VEX_BGEU || (jumpInstruction & 0x7f) == VEX_BLTU;
+	unsigned char isNoJump = (jumpInstruction & 0x70) != (VEX_CALL&0x70);
+	unsigned char isPassthroughJump = isRelativeJump || (jumpInstruction & 0x7f) == VEX_CALL || (jumpInstruction & 0x7f) == VEX_CALLR || isNoJump;
 
 	//We store the result in an array cause it can be used later
 	block->instructions = (unsigned int*) malloc(blockSize*4*sizeof(unsigned int));
-	for (int oneBytecodeInstr = 0; oneBytecodeInstr<blockSize; oneBytecodeInstr++){
+	for (unsigned int oneBytecodeInstr = 0; oneBytecodeInstr<blockSize; oneBytecodeInstr++){
 		block->instructions[4*oneBytecodeInstr + 0] = readInt(platform->bytecode, 16*oneBytecodeInstr + 0);
 		block->instructions[4*oneBytecodeInstr + 1] = readInt(platform->bytecode, 16*oneBytecodeInstr + 4);
 		block->instructions[4*oneBytecodeInstr + 2] = readInt(platform->bytecode, 16*oneBytecodeInstr + 8);
@@ -118,9 +118,8 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	}
 
 	block->nbInstr = blockSize;
-	char opcodeOfLastInstr = jumpInstruction & 0x7f;
+	unsigned char opcodeOfLastInstr = jumpInstruction & 0x7f;
 	if ((opcodeOfLastInstr >> 4) == 2 && opcodeOfLastInstr != VEX_MOVI){
-		block->jumpID = blockSize-1;
 		block->addJump(blockSize-1, block->vliwEndAddress-2*incrementInBinaries);
 	}
 
@@ -129,7 +128,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	Log::logScheduleBlocks << "*****************\n";
 
 
-	for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
+	for (unsigned int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
 		Log::logScheduleBlocks <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
 		Log::logScheduleBlocks <<  printDecodedInstr(platform->vliwBinaries[i*4+1]);
 		Log::logScheduleBlocks <<  printDecodedInstr(platform->vliwBinaries[i*4+2]);
@@ -150,7 +149,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	Log::logScheduleBlocks << "*************************************************************************\n";
 	Log::logScheduleBlocks << "Bytecode is: \n";
 	Log::logScheduleBlocks << "\n*****************\n";
-	for (int i=0; i<blockSize; i++){
+	for (unsigned int i=0; i<blockSize; i++){
 		Log::logScheduleBlocks << printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4),
 				readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
 	}
@@ -166,18 +165,18 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 
 	//Preparation of required memories
-	for (int oneFreeRegister = 33; oneFreeRegister<63; oneFreeRegister++)
+	for (unsigned int oneFreeRegister = 33; oneFreeRegister<63; oneFreeRegister++)
 		platform->freeRegisters[oneFreeRegister-33] = oneFreeRegister;
 
 
-	for (int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
+	for (unsigned int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
 		platform->placeOfRegisters[256+onePlaceOfRegister] = onePlaceOfRegister;
 	//same for FP registers
-	for (int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
+	for (unsigned int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
 		platform->placeOfRegisters[256+64+onePlaceOfRegister] = onePlaceOfRegister;
 
 	//Calling scheduler
-	int binaSize = irScheduler(platform, true,blockSize, placeCode, 29, platform->vliwInitialConfiguration);
+	unsigned int binaSize = irScheduler(platform, true,blockSize, placeCode, 29, platform->vliwInitialConfiguration);
 	binaSize = binaSize & 0xffff;
 
 
@@ -221,7 +220,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		memcpy(&platform->vliwBinaries[4*basicBlockStart], &platform->vliwBinaries[4*placeCode], (binaSize+1)*4*sizeof(unsigned int));
 
 
-		for (int i=basicBlockStart+binaSize;i<block->vliwEndAddress;i++){
+		for (unsigned int i=basicBlockStart+binaSize;i<block->vliwEndAddress;i++){
 			writeInt(platform->vliwBinaries, i*16+0, 0);
 			writeInt(platform->vliwBinaries, i*16+4, 0);
 			writeInt(platform->vliwBinaries, i*16+8, 0);
@@ -230,7 +229,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		}
 
 		//We gather jump places
-		for (int oneJump = 0; oneJump<block->nbJumps; oneJump++){
+		for (unsigned int oneJump = 0; oneJump<block->nbJumps; oneJump++){
 			#ifdef IR_SUCC
 			block->jumpPlaces[oneJump] = ((int) platform->placeOfInstr[block->jumpIds[oneJump]])+basicBlockStart;
 			#else
@@ -257,16 +256,15 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 		if (isRelativeJump){
 
 			//We read the offset and correct its sign if needed
-			int offset = (jumpInstruction >> 7) & 0x1fff;
+			unsigned int offset = (jumpInstruction >> 7) & 0x1fff;
 			if ((offset & 0x1000) != 0)
 				offset = offset - 0x2000;
 
 			//We compute the original destination
-			int destination = block->vliwEndAddress - 2*incrementInBinaries + (offset);
+			unsigned int destination = block->vliwEndAddress - 2*incrementInBinaries + (offset);
 
 			//We compute the new offset, considering the new destination
-			int newOffset = destination - (block->jumpPlaces[0]);
-			newOffset = newOffset;
+			unsigned int newOffset = destination - (block->jumpPlaces[0]);
 
 			Log::logScheduleBlocks << "Correction of jump at end of block. Original offset was " << offset << "\n From it derivated destination " << destination << " and new offset " << newOffset << "\n";
 
@@ -315,7 +313,7 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 	// This only for debug
 	Log::logScheduleBlocks <<  "*************************************************************************\n";
 
-	for (int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
+	for (unsigned int i=basicBlockStart-10;i<basicBlockEnd+10;i++){
 		Log::logScheduleBlocks <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
 		Log::logScheduleBlocks <<  printDecodedInstr(platform->vliwBinaries[i*4+1]);
 		Log::logScheduleBlocks <<  printDecodedInstr(platform->vliwBinaries[i*4+2]);

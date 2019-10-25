@@ -24,13 +24,7 @@ template<> struct l2<1> { enum { value = 1 }; };
 
 // window constants
 const int STAGE_NUMBER = 8;
-const int STAGE_NUMBER_L2 = l2<STAGE_NUMBER>::value;
 const int WINDOW_SIZE  = 16;
-const int WINDOW_SIZE_L2  = l2<WINDOW_SIZE>::value;
-
-// useful constants
-const short cst1ff = 0x1ff;
-const unsigned int zero32 = 0;
 
 // for replacing the jump instruction at a basic block end
 bool haveJump_sw;
@@ -85,20 +79,14 @@ int offset(int off) {
  */
 unsigned int createInstruction(unsigned int irInstr96, unsigned int irInstr64, unsigned short rIn1, unsigned short rIn2, unsigned short rDest) {
 	// Type of Functional Unit needed by this instruction
-	char unitType = irInstr96>>30;
 
 	// We split different information from the instruction
 	char typeCode = ((irInstr96 >> 28) & 0x3);
-	unsigned char alloc = ((irInstr96 >> 27) & 0x1);
-	unsigned char allocBr = ((irInstr96 >> 26) & 0x1);
 	unsigned char opCode = ((irInstr96 >> 19) & 0x7f);
 
 	unsigned char  isImm = ((irInstr96 >> 18) & 0x1);
 	unsigned char funct = ((irInstr96 >> 13) & 0x1f);
 
-	unsigned short virtualRDest = (irInstr64 >> 14) & 0x1ff;
-	unsigned short virtualRIn2 = (irInstr64 >> 23) & 0x1ff;
-	unsigned short virtualRIn1_imm9 = (irInstr96 >> 0) & 0x1ff;
 	unsigned short imm13 = (irInstr96 >> 0) & 0x1fff;
 	unsigned int imm19 = (((irInstr96 >> 0) & 0x3ff)<<9) + ((irInstr64 >> 23) & 0x1ff);
 
@@ -161,7 +149,6 @@ void sort_ways(unsigned int ways)
   }
 }
 
-#pragma hls_design top
 unsigned int irScheduler_scoreboard_sw(
 		bool optLevel,
 		unsigned char basicBlockSize,
@@ -217,7 +204,6 @@ unsigned int irScheduler_scoreboard_sw(
 		// We split different information from the instruction
 		char typeCode = ((irInstr96 >> 28) & 0x3);
 		unsigned char alloc = ((irInstr96 >> 27) & 0x1);
-		unsigned char allocBr = ((irInstr96 >> 26) & 0x1);
 		unsigned char opCode = ((irInstr96 >> 19) & 0x7f);
 
 		unsigned char  isImm = ((irInstr96 >> 18) & 0x1);
@@ -226,8 +212,6 @@ unsigned int irScheduler_scoreboard_sw(
 		unsigned short virtualRDest = (irInstr64 >> 14) & 0x1ff;
 		unsigned short virtualRIn2 = (irInstr64 >> 23) & 0x1ff;
 		unsigned short virtualRIn1_imm9 = (irInstr96 >> 0) & 0x1ff;
-		unsigned short imm13 = (irInstr96 >> 0) & 0x1fff;
-		unsigned int imm19 = ((irInstr96 >> 0) & 0x3ff) + ((irInstr64 >> 23) & 0x1ff);
 
 		// real dest register (after alloc/dereferencing)
 		unsigned char dest;
@@ -326,7 +310,6 @@ unsigned int irScheduler_scoreboard_sw(
 
 		unsigned char shiftedOpcode = opCode>>4;
 
-		char isNop = (opCode == 0);
 		char isArith2 = (shiftedOpcode == 4 || shiftedOpcode == 5 || shiftedOpcode == 0);
 		char isLoad = (opCode>>3) == 0x2;
 		char isStore = (opCode>>3) == 0x3;
@@ -567,11 +550,7 @@ unsigned int irScheduler_scoreboard_sw(
 
 	newSize = newSize * incrementInBinaries;
 
-	unsigned int newEnd = addressInBinaries+newSize;
 
 
 	return newSize;
 }
-
-
-

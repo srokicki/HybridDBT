@@ -71,18 +71,13 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 
 
 		/* Generated code */
-		unsigned char numbersSuccessor[256];
-		unsigned char numbersDataSuccessor[256];
-		unsigned char successors[256][30];
-
 		unsigned char numbersPredecessor[256];
-		int predecessors[256][8];
 
 		/* Datastructure for RAW dependencies on global registers */
 		int lastWriterOnGlobal[128] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 		unsigned char lastReaderOnGlobalCounter[128] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 		unsigned char lastReaderOnGlobalPlaceToWrite[128] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-		int lastReaderOnGlobal[128][4] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+		int lastReaderOnGlobal[128][4] = {{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0}};
 
 		/* Datastructure for control dependencies on memories */
 		int lastWriterOnMemory = -1;
@@ -95,11 +90,9 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 		unsigned char lastReaderOnMemoryPlaceToWrite = 0;
 		int lastReaderOnMemory[4] = {0,0,0,0};
 
-		int isCallBlock = 0;
 		bool haveJump = 0;
 		unsigned char jumpID = 0;
 		short indexInSourceBinaries_instr = -1;
-		unsigned char instructionTranslatedFromPreviousSyllabus = 0;
 
 		do {
 
@@ -113,8 +106,6 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 			//FIXME handle the mov insertion
 			bool insertMove_ena = 0;
 			droppedInstruction_sw = 0;
-			unsigned short insertMove_src;
-
 
 			/* Note: How the instruction to translate is selected:
 			 * We have possibly 7 sources for the instruction :
@@ -133,7 +124,7 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 			bool found = false;
 
 			indexInSourceBinaries_instr++;
-			for (int oneOffset = 0; indexInSourceBinaries_instr+oneOffset<(blockSize+1)*4; oneOffset++){
+			for (unsigned int oneOffset = 0; indexInSourceBinaries_instr+oneOffset<(blockSize+1)*4; oneOffset++){
 				if (srcBinaries[indexInSourceBinaries_instr+oneOffset+addressInBinaries*4] != 0){
 					oneInstruction = srcBinaries[indexInSourceBinaries_instr+oneOffset+addressInBinaries*4];
 					indexInSourceBinaries_instr = indexInSourceBinaries_instr+oneOffset;
@@ -171,25 +162,24 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 				imm13 -= 8192;
 
 			int imm19 = ((oneInstruction>>7) & 0x7ffff);
-			unsigned char reg8 = ((oneInstruction>>8) & 0x3f);
 			unsigned char reg14 = ((oneInstruction>>14) & 0x3f);
 			unsigned char reg20 = ((oneInstruction>>20) & 0x3f);
 			unsigned char reg26 = ((oneInstruction>>26) & 0x3f);
 
 			unsigned char funct = ((oneInstruction>>7) & 0x1f);
-			bool isIType = ((opcode>>4) & 0x7) == 2;
 
-			bool isLoadType = opcode == VEX_LDB | opcode == VEX_LDBU | opcode == VEX_LDH
-					| opcode == VEX_LDHU | opcode == VEX_LDW | opcode == VEX_LDWU | opcode == VEX_LDD;
-			bool isStoreType = opcode == VEX_STB | opcode == VEX_STH | opcode == VEX_STW | opcode == VEX_STD;
-			bool isBranchWithNoReg = opcode == VEX_GOTO | opcode == VEX_CALL
-					| opcode == VEX_STOP | opcode == VEX_SYSTEM;
-			bool isBranchWithReg = opcode == VEX_GOTOR | opcode == VEX_CALLR;
-			bool isBranchWithTwoReg = opcode == VEX_BR | opcode == VEX_BRF | opcode == VEX_BGE | opcode == VEX_BLT | opcode == VEX_BGEU | opcode == VEX_BLTU;
+			bool isLoadType = (opcode == VEX_LDB) | (opcode == VEX_LDBU) | (opcode == VEX_LDH)
+					| (opcode == VEX_LDHU) | (opcode == VEX_LDW) | (opcode == VEX_LDWU) | (opcode == VEX_LDD);
+			bool isStoreType = (opcode == VEX_STB) | (opcode == VEX_STH) | (opcode == VEX_STW) | (opcode == VEX_STD);
+			bool isBranchWithNoReg = (opcode == VEX_GOTO) | (opcode == VEX_CALL)
+					| (opcode == VEX_STOP) | (opcode == VEX_SYSTEM);
+			bool isBranchWithReg = (opcode == VEX_GOTOR) | (opcode == VEX_CALLR);
+			bool isBranchWithTwoReg = (opcode == VEX_BR) | (opcode == VEX_BRF) | (opcode == VEX_BGE)
+			 | (opcode == VEX_BLT) | (opcode == VEX_BGEU) | (opcode == VEX_BLTU);
 			bool isMovi = opcode == VEX_MOVI;
 			bool isArith1 = opcode == VEX_NOT;
-			bool isArith2 = (((opcode>>4) & 0x7) == 4 | ((opcode>>4) & 0x7) == 5) & !isArith1;
-			bool isArithImm = ((opcode>>4) & 0x7) == 6 | ((opcode>>4) & 0x7) == 7;
+			bool isArith2 = ((((opcode>>4) & 0x7) == 4) | (((opcode>>4) & 0x7) == 5)) & !isArith1;
+			bool isArithImm = (((opcode>>4) & 0x7) == 6) | (((opcode>>4) & 0x7) == 7);
 			bool isMultType = ((opcode>>4) & 0x7) == 0;
 			bool isProfile = opcode == VEX_PROFILE;
 			bool isFMADD = opcode == VEX_FMADD || opcode == VEX_FMSUB ||opcode == VEX_FNMADD ||opcode == VEX_FNMSUB;
@@ -247,9 +237,6 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 			if (isFloatDest)
 				dest_reg += 64;
 
-
-
-			numbersSuccessor[indexInCurrentBlock] = 0;
 			numbersPredecessor[indexInCurrentBlock] = 0;
 
 			/********************************************************************
@@ -261,14 +248,14 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 
 
 			bool pred1_succ_ena = 0;
-			unsigned char pred1_succ_src;
+			unsigned char pred1_succ_src = 0;
 			bool pred1_succ_isData = 0;
 
 			short temp_pred1 = registers[pred1_reg];
 
 
 			//We perform memory accesses for pred1
-			short pred1;
+			short pred1 = 1;
 			bool pred1_global = 0;
 			short pred1_global_address = pred1_reg;
 			short pred1_global_access = globalVariables[pred1_reg];
@@ -277,7 +264,6 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 			unsigned char lastReaderOnGlobalPlaceToWrite_access_pred1_old = lastReaderOnGlobalPlaceToWrite_access_pred1;
 			short lastWriterOnGlobal_access_pred1 = lastWriterOnGlobal[pred1_reg];
 			short lastReaderOnGlobal_value_pred1 = lastReaderOnGlobal[pred1_reg][lastReaderOnGlobalPlaceToWrite_access_pred1];
-			unsigned short pred1_global_value = 0;
 
 			//We perform memory accesses for pred2
 			bool pred2_global = 0;
@@ -288,7 +274,6 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 			unsigned char lastReaderOnGlobalPlaceToWrite_access_pred2_old = lastReaderOnGlobalPlaceToWrite_access_pred2;
 			short lastWriterOnGlobal_access_pred2 = lastWriterOnGlobal[pred2_reg];
 			short lastReaderOnGlobal_value_pred2 = lastReaderOnGlobal[pred2_reg][lastReaderOnGlobalPlaceToWrite_access_pred2];
-			unsigned short pred2_global_value = 0;
 
 			//We perform memory accesses for dest
 			unsigned short dest_global_address = dest_reg;
@@ -316,10 +301,6 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 
 						temp_pred1 = pred1_global_access;
 					}
-
-
-
-					pred1_global_value = temp_pred1;
 
 					//** We also mark this node as a reader of the global value. Should this value be modified
 					//** in the block, we will add dependencies
@@ -368,7 +349,7 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 
 			/************** Pred 2 ****************/
 			short temp_pred2 = registers[pred2_reg];
-			unsigned short pred2;
+			unsigned short pred2 = 0;
 
 
 			bool pred2_succ_ena = 0;
@@ -391,9 +372,6 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 					}
 					else
 						temp_pred2 = pred2_global_access;
-
-
-					pred2_global_value = temp_pred2;
 
 					//If the global register has been used in the current block, we add a control dependency
 
@@ -431,16 +409,13 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 
 				pred2 = temp_pred2;
 
-
-
-				predecessors[indexInCurrentBlock][numbersPredecessor[indexInCurrentBlock]++] = pred2;
 			}
 
 
 			if (isLoadType || isFLW){
 				/****************************/
 				/* We update lastReaderOneMemory and add required dependencies to keep memory coherence */
-				unsigned short succ_src;
+				unsigned short succ_src = 0;
 				if (lastReaderOnMemoryCounter < 3){
 					lastReaderOnMemoryCounter++;
 					if (lastWriterOnMemory != -1 && !(lastWriterOnMemoryRegUnchanged && lastWriterOnMemoryReg == pred1_reg && lastWriterOnMemoryImm != imm13)){
@@ -470,12 +445,10 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 			bool global_succ_ena_1 = 0;
 			bool global_succ_ena_2 = 0;
 			bool global_succ_ena_3 = 0;
-			bool global_succ_ena_4 = 0;
 
 			unsigned char global_succ_src_1;
 			unsigned char global_succ_src_2;
 			unsigned char global_succ_src_3;
-			unsigned char global_succ_src_4;
 
 
 			short temp_destination = indexInCurrentBlock;
@@ -618,7 +591,6 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 					pred1 = 0;
 				}
 				else if (opcode == VEX_CALL){
-					isCallBlock = 1;
 					pred1 = destination;
 				}
 
@@ -689,7 +661,6 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 				unsigned char nbSucc_pred1 = writeDependency_sw(bytecode, pred1_succ_src, indexInCurrentBlock, pred1_succ_isData);
 				if (pred1_succ_isData & (nbSucc_pred1 == 7)){
 						insertMove_ena = 1;
-						insertMove_src = pred1;
 						alloc = 1;
 						destination = indexInCurrentBlock;
 						dest_ena = 1;
@@ -700,7 +671,6 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 				unsigned char nbSucc_pred2 = writeDependency_sw(bytecode, pred2_succ_src, indexInCurrentBlock, pred2_succ_isData);
 				if (pred2_succ_isData & (nbSucc_pred2 == 7)){
 						insertMove_ena = 1;
-						insertMove_src = pred2;
 						alloc = 1;
 						destination = indexInCurrentBlock;
 						dest_ena = 1;
@@ -718,13 +688,6 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 
 			if (global_succ_ena_3)
 				writeDependency_sw(bytecode, global_succ_src_3, indexInCurrentBlock, false);
-
-
-
-
-
-
-
 
 
 			if (!insertMove_ena & !droppedInstruction_sw)
@@ -752,8 +715,8 @@ unsigned int irGenerator_sw(unsigned int *srcBinaries, unsigned int addressInBin
 
 			#ifdef IR_SUCC
 
-			for (int oneInstructionFromBlock = 0; oneInstructionFromBlock < indexInCurrentBlock; oneInstructionFromBlock++){
-//TODO
+			for (unsigned int oneInstructionFromBlock = 0; oneInstructionFromBlock < indexInCurrentBlock; oneInstructionFromBlock++){
+
 				ac_int<128, false> bytecodeWord = bytecode[oneInstructionFromBlock];
 				unsigned char nbSucc = bytecodeWord.slc<3>(64);
 

@@ -5,7 +5,7 @@
 #include <transformation/reconfigureVLIW.h>
 #include <lib/endianness.h>
 
-#include <stdlib.h> 
+#include <stdlib.h>
 
 int firstPassTranslator_riscv_sw(unsigned int code[1024],
 		unsigned int size,
@@ -64,38 +64,31 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 	char stageMult = ((conf & 0xf) == 1) ? 3 : ((conf & 0xf) == 3) ? 2 : 1;
 
 
-	int indexInSourceBinaries = 0;
-	int indexInDestinationBinaries = placeCode;
+	unsigned int indexInSourceBinaries = 0;
+	unsigned int indexInDestinationBinaries = placeCode;
 
 
-	unsigned int nextInstruction, nextInstruction_stage;
-	char nextInstruction_rs1, nextInstruction_rs2, nextInstruction_rd;
-	char secondNextInstruction_rs1, secondNextInstuction_rs2, secondNextInstruction_rd;
+	unsigned int nextInstruction = 0, nextInstruction_stage = 0;
+	char nextInstruction_rs1 = 0, nextInstruction_rs2 = 0, nextInstruction_rd = 0;
+	char secondNextInstruction_rs1 = 0, secondNextInstuction_rs2 = 0, secondNextInstruction_rd = 0;
 
-	unsigned int secondNextInstruction, secondNextInstruction_stage;
+	unsigned int secondNextInstruction = 0, secondNextInstruction_stage = 0;
 
 	unsigned char enableNextInstruction = 0;
 	unsigned char enableSecondNextInstruction = 0;
 
 	unsigned char nextInstructionNop = 0;
 
-
-	char reg1_mul = 0, reg2_mul = 0;
-	short imm_mul = 0;
-	bool is_imm_mul = 0;
-
-
 	blocksBoundaries[(codeSectionStart-addressStart)>>2] = 1;
 
-	unsigned int previousBinaries[8];
+	unsigned int previousBinaries[8] = {0,0,0,0,0,0,0,0};
 	unsigned int previousIndex = 0;
-	char previousStage = 0;
 	unsigned int localNumberInsertions = 0;
 
 	bool currentBoundaryJustSet = 0;
 
 	bool setNextBoundaries = 0;
-	unsigned int nextBoundaries;
+	unsigned int nextBoundaries = 0;
 
 	char previousWrittenRegister = 0;
 	char lastWrittenRegister = 0;
@@ -212,7 +205,6 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 			int imm21_1_signed = (imm21_1 >= 1048576) ? imm21_1 - 2097152 : imm21_1;
 
 			char shamt = ((oneInstruction >> 20) & 0x3f);
-			unsigned int correctedTgtadr = imm21_1 - (addressStart>>2);
 
 			if (rs1 == 1)
 				rs1 = 63;
@@ -876,7 +868,6 @@ int firstPassTranslator_riscv_sw(unsigned int code[1024],
 		previousBinaries[7] = 0;
 
 		previousIndex = indexInDestinationBinaries;
-		previousStage = stage;
 
 		if (isInsertion)
 			insertions[1+localNumberInsertions++] = indexInDestinationBinaries;

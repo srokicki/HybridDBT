@@ -98,7 +98,6 @@ void GenericSimulator::std(ac_int<64, false> addr, ac_int<64, true> value){
 ac_int<8, true> GenericSimulator::ldb(ac_int<64, false> addr){
 
 	//Trying to simulate cache
-	ac_int<6, false> offset = addr.slc<6>(0);
 	ac_int<6, false> index = addr.slc<6>(6);
 
 	ac_int<64-12, false> tag = addr.slc<64-12>(12);
@@ -336,7 +335,7 @@ ac_int<64, false> GenericSimulator::doOpen(ac_int<64, false> path, ac_int<64, fa
 		localMode += "w";
 	else if (flags == 1089)
 		localMode += "a";
-	else if (flags == O_WRONLY|O_CREAT|O_EXCL)
+	else if (flags == (O_WRONLY|O_CREAT|O_EXCL))
 		localMode += "wx";
 	else{
 		Log::logError << "Trying to open files with unknown flags... " << flags << "\n";
@@ -408,7 +407,7 @@ ac_int<64, false> GenericSimulator::doStat(ac_int<64, false> filename, ac_int<64
 	int result = stat(localPath, &fileStat);
 
 	//We copy the result in simulator memory
-	for (int oneChar = 0; oneChar<sizeof(struct stat); oneChar++)
+	for (unsigned int oneChar = 0; oneChar<sizeof(struct stat); oneChar++)
 		this->stb(ptr+oneChar, ((char*)(&stat))[oneChar]);
 
 	return result;
@@ -425,12 +424,9 @@ ac_int<64, false> GenericSimulator::doSbrk(ac_int<64, false> value){
 }
 
 ac_int<64, false> GenericSimulator::doGettimeofday(ac_int<64, false> timeValPtr){
-	timeval* oneTimeVal;
-	struct timezone* oneTimeZone;
-	int result = gettimeofday(oneTimeVal, oneTimeZone);
-
-//	this->std(timeValPtr, oneTimeVal->tv_sec);
-//	this->std(timeValPtr+8, oneTimeVal->tv_usec);
+	timeval oneTimeVal;
+	struct timezone oneTimeZone;
+	int result = gettimeofday(&oneTimeVal, &oneTimeZone);
 
 	return result;
 

@@ -8,6 +8,7 @@
 #ifndef INCLUDES_DBT_DBTINFORMATION_H_
 #define INCLUDES_DBT_DBTINFORMATION_H_
 
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

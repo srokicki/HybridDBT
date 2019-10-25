@@ -41,14 +41,13 @@ int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int write
 
 IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *procedure,int writePlace){
 
-	char issueWidth = getIssueWidth(procedure->configuration);
 	char incrementInBinaries = (getIssueWidth(procedure->configuration)>4) ? 2 : 1;
 
 	IRBlock **blocks = (IRBlock **) malloc(procedure->nbBlock * sizeof(IRBlock*));
-	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
+	for (unsigned int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
 		blocks[oneBlock] = new IRBlock(-1,-1,-1);
 		if (1){
-			for (int i=procedure->blocks[oneBlock]->vliwStartAddress;i<procedure->blocks[oneBlock]->vliwEndAddress;i++){
+			for (unsigned int i=procedure->blocks[oneBlock]->vliwStartAddress;i<procedure->blocks[oneBlock]->vliwEndAddress;i++){
 				Log::logScheduleProc << i;
 
 				Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
@@ -80,7 +79,7 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 	 * previous start address as well as the place where the jump instruction (if any) as been scheduled.
 	 ******************************************************************************************/
 
-	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
+	for (unsigned int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
 		IRBlock *block = procedure->blocks[oneBlock];
 
 		bool isCallBlock = false;
@@ -103,7 +102,7 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 
 		//We move instructions into bytecode memory
-		for (int oneBytecodeInstr = 0; oneBytecodeInstr<block->nbInstr; oneBytecodeInstr++){
+		for (unsigned int oneBytecodeInstr = 0; oneBytecodeInstr<block->nbInstr; oneBytecodeInstr++){
 			writeInt(platform->bytecode, 16*oneBytecodeInstr + 0, block->instructions[4*oneBytecodeInstr + 0]);
 			writeInt(platform->bytecode, 16*oneBytecodeInstr + 4, block->instructions[4*oneBytecodeInstr + 1]);
 			writeInt(platform->bytecode, 16*oneBytecodeInstr + 8, block->instructions[4*oneBytecodeInstr + 2]);
@@ -111,21 +110,21 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 		}
 
 		//We initialize other memories
-		for (int oneFreeRegister = 34; oneFreeRegister<63; oneFreeRegister++)
+		for (unsigned int oneFreeRegister = 34; oneFreeRegister<63; oneFreeRegister++)
 			platform->freeRegisters[oneFreeRegister-34] = oneFreeRegister;
 
-		for (int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
+		for (unsigned int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
 			platform->placeOfRegisters[256+onePlaceOfRegister] = onePlaceOfRegister;
 
 		//same for FP registers
-		for (int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
+		for (unsigned int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
 			platform->placeOfRegisters[256+64+onePlaceOfRegister] = onePlaceOfRegister;
 
 
 		//This is only for debug
 		if (platform->debugLevel > 1 || 1){
 			Log::logScheduleProc << "Block " << std::hex << block->sourceStartAddress << ":\n";
-			for (int i=0; i<block->nbInstr; i++)
+			for (unsigned int i=0; i<block->nbInstr; i++)
 				Log::logScheduleProc << printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
 		}
 
@@ -141,7 +140,7 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 		result->blocks[oneBlock]->jumpPlaces = (unsigned int*) malloc(block->nbJumps * sizeof(unsigned int));
 		result->blocks[oneBlock]->nbJumps = block->nbJumps;
 
-		for (int oneJump=0; oneJump<block->nbJumps; oneJump++){
+		for (unsigned int oneJump=0; oneJump<block->nbJumps; oneJump++){
 			result->blocks[oneBlock]->jumpIds[oneJump] = block->jumpIds[oneJump];
 #ifdef IR_SUCC
 			result->blocks[oneBlock]->jumpPlaces[oneJump] = ((int) platform->placeOfInstr[block->jumpIds[oneJump]])+writePlace;
@@ -152,7 +151,7 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 		}
 
 
-		for (int i=result->blocks[oneBlock]->vliwStartAddress;i<result->blocks[oneBlock]->vliwEndAddress;i++){
+		for (unsigned int i=result->blocks[oneBlock]->vliwStartAddress;i<result->blocks[oneBlock]->vliwEndAddress;i++){
 			Log::logScheduleProc << i;
 
 			Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
@@ -196,7 +195,7 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 		//We handle speculation information if necessary
 #ifndef __HW
 #ifndef __SW
-		for (int oneSpec = 0; oneSpec<4; oneSpec++){
+		for (unsigned int oneSpec = 0; oneSpec<4; oneSpec++){
 			if (block->specAddr[oneSpec] != 0){
 				platform->specInfo[8*block->specAddr[oneSpec]+2] = readInt(maskVal, oneSpec*16+12);
 				platform->specInfo[8*block->specAddr[oneSpec]+3] = readInt(maskVal, oneSpec*16+8);
@@ -241,14 +240,14 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 	int originalWritePlace = writePlace;
 
 
-	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
+	for (unsigned int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
 		oldBlockStarts[oneBlock] = procedure->blocks[oneBlock]->vliwStartAddress;
 
 
 		procedure->blocks[oneBlock]->vliwStartAddress = scheduledProc->blocks[oneBlock]->vliwStartAddress;
 		procedure->blocks[oneBlock]->vliwEndAddress = scheduledProc->blocks[oneBlock]->vliwEndAddress;
 
-		for (int oneJump = 0; oneJump<procedure->blocks[oneBlock]->nbJumps; oneJump++)
+		for (unsigned int oneJump = 0; oneJump<procedure->blocks[oneBlock]->nbJumps; oneJump++)
 			procedure->blocks[oneBlock]->jumpPlaces[oneJump] = scheduledProc->blocks[oneBlock]->jumpPlaces[oneJump];
 
 
@@ -265,10 +264,10 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 	 * modify their destination to fit with the new block position.
 	 ******************************************************************************************/
 
-	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
+	for (unsigned int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
 		IRBlock *block = procedure->blocks[oneBlock];
 
-		for (int oneJump = 0; oneJump<block->nbJumps; oneJump++){
+		for (unsigned int oneJump = 0; oneJump<block->nbJumps; oneJump++){
 			char jumpOpcode = getOpcode(block->instructions, block->jumpIds[oneJump]);
 			if (jumpOpcode == VEX_BR || jumpOpcode == VEX_BRF || jumpOpcode == VEX_BGE || jumpOpcode == VEX_BLT || jumpOpcode == VEX_BGEU || jumpOpcode == VEX_BLTU){
 				//Conditional block (br)
@@ -305,7 +304,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 	 * generated binaries.
 	 ******************************************************************************************/
 
-	for (int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
+	for (unsigned int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
 		IRBlock *block = procedure->blocks[oneBlock];
 		int originalEntry = oldBlockStarts[oneBlock];
 
@@ -443,7 +442,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 	//*************************************************************************
 	//This is only for debug
-	for (int i=originalWritePlace;i<writePlace;i++){
+	for (unsigned int i=originalWritePlace;i<writePlace;i++){
 		Log::logScheduleProc << i;
 
 		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
@@ -501,7 +500,7 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 	Log::logScheduleProc << "*************************************************************************\n";
 	Log::logScheduleProc << "****                 In place block reschedule !                    *****\n";
 
-	for (int i=block->vliwStartAddress-20;i<block->vliwEndAddress+20;i++){
+	for (unsigned int i=block->vliwStartAddress-20;i<block->vliwEndAddress+20;i++){
 		Log::logScheduleProc << i << " ";
 
 		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
@@ -527,18 +526,18 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 	char incrementInBinaries = (getIssueWidth(platform->vliwInitialConfiguration)>4) ? 2 : 1;
 
 	//Preparation of required memories
-	for (int oneFreeRegister = 33; oneFreeRegister<63; oneFreeRegister++)
+	for (unsigned int oneFreeRegister = 33; oneFreeRegister<63; oneFreeRegister++)
 		platform->freeRegisters[oneFreeRegister-33] = oneFreeRegister;
 
 
-	for (int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
+	for (unsigned int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
 		platform->placeOfRegisters[256+onePlaceOfRegister] = onePlaceOfRegister;
 	//same for FP registers
-	for (int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
+	for (unsigned int onePlaceOfRegister = 0; onePlaceOfRegister<64; onePlaceOfRegister++)
 		platform->placeOfRegisters[256+64+onePlaceOfRegister] = onePlaceOfRegister;
 
 	//We move instructions into bytecode memory
-	for (int oneBytecodeInstr = 0; oneBytecodeInstr<block->nbInstr; oneBytecodeInstr++){
+	for (unsigned int oneBytecodeInstr = 0; oneBytecodeInstr<block->nbInstr; oneBytecodeInstr++){
 		writeInt(platform->bytecode, 16*oneBytecodeInstr + 0, block->instructions[4*oneBytecodeInstr + 0]);
 		writeInt(platform->bytecode, 16*oneBytecodeInstr + 4, block->instructions[4*oneBytecodeInstr + 1]);
 		writeInt(platform->bytecode, 16*oneBytecodeInstr + 8, block->instructions[4*oneBytecodeInstr + 2]);
@@ -548,7 +547,7 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 	//This is only for debug
 	if (platform->debugLevel > 1 || 1){
 		Log::logScheduleProc << "Block " << std::hex << block->sourceStartAddress << ":\n";
-		for (int i=0; i<block->nbInstr; i++)
+		for (unsigned int i=0; i<block->nbInstr; i++)
 			Log::logScheduleProc << printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
 	}
 
@@ -563,7 +562,7 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 		memcpy(&platform->vliwBinaries[4*block->vliwStartAddress], &platform->vliwBinaries[4*writePlace], (binaSize)*4*sizeof(unsigned int));
 
 
-		for (int i=block->vliwStartAddress+binaSize;i<block->vliwEndAddress;i++){
+		for (unsigned int i=block->vliwStartAddress+binaSize;i<block->vliwEndAddress;i++){
 			writeInt(platform->vliwBinaries, i*16+0, 0);
 			writeInt(platform->vliwBinaries, i*16+4, 0);
 			writeInt(platform->vliwBinaries, i*16+8, 0);
@@ -572,7 +571,7 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 		}
 
 		//We gather jump places
-		for (int oneJump = 0; oneJump<block->nbJumps; oneJump++){
+		for (unsigned int oneJump = 0; oneJump<block->nbJumps; oneJump++){
 			#ifdef IR_SUCC
 			block->jumpPlaces[oneJump] = ((int) platform->placeOfInstr[block->jumpIds[oneJump]])+basicBlockStart;
 			#else
@@ -584,7 +583,7 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 		//We handle speculation information if necessary FIXME is the ifdef necessary ?
 #ifndef __HW
 #ifndef __SW
-		for (int oneSpec = 0; oneSpec<4; oneSpec++){
+		for (unsigned int oneSpec = 0; oneSpec<4; oneSpec++){
 			if (block->specAddr[oneSpec] != 0){
 				Log::logScheduleProc << "Mask is " << std::hex << (unsigned long long int ) maskVal[oneSpec].slc<64>(64) << " " << std::hex << (unsigned long long int ) maskVal[oneSpec].slc<64>(0);
 				platform->specInfo[8*block->specAddr[oneSpec]+2] = readInt(maskVal, oneSpec*16+12);
@@ -610,7 +609,7 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 		 *****************************************************************/
 
 
-		for (int oneJump = 0; oneJump<block->nbJumps; oneJump++){
+		for (unsigned int oneJump = 0; oneJump<block->nbJumps; oneJump++){
 			char jumpOpcode = getOpcode(block->instructions, block->jumpIds[oneJump]);
 
 			if (jumpOpcode == VEX_BR || jumpOpcode == VEX_BRF || jumpOpcode == VEX_BGE || jumpOpcode == VEX_BLT || jumpOpcode == VEX_BGEU || jumpOpcode == VEX_BLTU){
@@ -659,7 +658,7 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 	Log::logScheduleProc << "*************************************************************************\n";
 	Log::logScheduleProc << "****                 In place block reschedule !                    *****\n";
 
-	for (int i=block->vliwStartAddress-20;i<block->vliwEndAddress+20;i++){
+	for (unsigned int i=block->vliwStartAddress-20;i<block->vliwEndAddress+20;i++){
 		Log::logScheduleProc << i << " ";
 
 		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
