@@ -125,10 +125,8 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 
 	Log::logScheduleProc << "\n";
 
+	block->printBytecode(Log::logScheduleProc);
 
-	for (int i=0; i<block->nbInstr; i++){
-		Log::logScheduleProc << printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
-	}
 	Log::logScheduleProc << "\n";
 
 
@@ -541,15 +539,9 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 	 * We start by print debug messages
 	 */
 	Log::logScheduleProc << "***********Merging blocks*******************\n";
-
-	for (int i=0; i<entryBlock->nbInstr; i++){
-		Log::logScheduleProc << printBytecodeInstruction(i, readInt(entryBlock->instructions, i*16+0), readInt(entryBlock->instructions, i*16+4), readInt(entryBlock->instructions, i*16+8), readInt(entryBlock->instructions, i*16+12));
-	}
+	entryBlock->printBytecode(Log::logScheduleProc);
 	Log::logScheduleProc <<  "\n";
-
-	for (int i=0; i<secondBlock->nbInstr; i++){
-		Log::logScheduleProc << printBytecodeInstruction(i, readInt(secondBlock->instructions, i*16+0), readInt(secondBlock->instructions, i*16+4), readInt(secondBlock->instructions, i*16+8), readInt(secondBlock->instructions, i*16+12));
-	}
+	secondBlock->printBytecode(Log::logScheduleProc);
 
 	//********************************************************
 
@@ -930,10 +922,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 
 
 	Log::logScheduleProc << "\n Resulting block is: \n";
-	for (int i=0; i<result->nbInstr; i++){
-		Log::logScheduleProc << printBytecodeInstruction(i, readInt(result->instructions, i*16+0), readInt(result->instructions, i*16+4), readInt(result->instructions, i*16+8), readInt(result->instructions, i*16+12));
-	}
-
+	result->printBytecode(Log::logScheduleProc);
 
 
 	result->vliwStartAddress = entryBlock->vliwStartAddress;
@@ -1012,9 +1001,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 					Log::logScheduleProc << "******************** " << (unsigned int) block->sourceStartAddress << "  ---  " << (unsigned int) block->sourceEndAddress << " *********************\n";
 					Log::logScheduleProc << "******************************************************************\n";
 
-					for (int i=0; i<block->nbInstr; i++){
-						Log::logScheduleProc << printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
-					}
+					block->printBytecode(Log::logScheduleProc);
 
 					getReadWriteRegisters(block, readRegs, writeRegs);
 					int nbIgnoredRegs = 0;
@@ -1055,10 +1042,8 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 					Log::logScheduleProc << "******************************************************************\n";
 					Log::logScheduleProc << "********************     Modified loop       *********************\n";
 					Log::logScheduleProc << "******************************************************************\n";
+					block->printBytecode(Log::logScheduleProc);
 
-					for (int i=0; i<block->nbInstr; i++){
-						Log::logScheduleProc << printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
-					}
 
 					//We generate a block for the loop termination
 					if (nbIgnoredRegs>0){
@@ -1095,9 +1080,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 						Log::logScheduleProc << "********************   Successor identified  *********************\n";
 						Log::logScheduleProc << "******************************************************************\n";
 
-//						for (int i=0; i<newBlock->nbInstr; i++){
-//							Log::printf(0, "%s ", printBytecodeInstruction(i, readInt(newBlock->instructions, i*16+0), readInt(newBlock->instructions, i*16+4), readInt(newBlock->instructions, i*16+8), readInt(newBlock->instructions, i*16+12)).c_str());
-//						}
+
 					}
 
 

@@ -10,6 +10,7 @@
 
 #include <types.h>
 #include <string>
+#include <dbt/dbtPlateform.h>
 
 /********************************************************************
  * IR configuration
@@ -105,6 +106,9 @@ public:
 	short specAddr[4];
 
 	void addJump(unsigned char jumpID, unsigned int jumpPlace);
+	void printBytecode(std::ostream &stream);
+	void printCode(std::ostream &stream, DBTPlateform *platform);
+
 
 	IRBlock(int vliwStartAddress, int vliwEndAddress, int section);
 	~IRBlock();

@@ -218,8 +218,7 @@ void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock **pred
 		Log::logMemoryDisambiguation << "*****             Memory disambiguation process       ******\n";
 		Log::logMemoryDisambiguation << "************************************************************\n";
 		Log::logMemoryDisambiguation << "Before disambiguation: \n";
-		for (unsigned int i=0; i<block->nbInstr; i++)
-			Log::logMemoryDisambiguation << printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
+		block->printBytecode(Log::logMemoryDisambiguation);
 
 		//We perform disambiguation and apply it
 		basicMemorySimplification(block, graph);
@@ -229,8 +228,7 @@ void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock **pred
 
 		//We print debug
 		Log::logMemoryDisambiguation << "\n After disambiguation: \n";
-		for (unsigned int i=0; i<block->nbInstr; i++)
-			Log::logMemoryDisambiguation << printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
+		block->printBytecode(Log::logMemoryDisambiguation);
 
 		Log::logMemoryDisambiguation << "************************************************************\n";
 
@@ -381,17 +379,15 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
 			}
 		}
 		else{
-			for (unsigned int i=0; i<block->nbInstr; i++){
-				Log::logMemoryDisambiguation <<  printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
-			}
+			block->printBytecode(Log::logMemoryDisambiguation);
+
 			shiftBlock(block, 1);
 			for (unsigned int oneMemOperation = 0; oneMemOperation<graph->size; oneMemOperation++){
 				graph->idMem[oneMemOperation] += 1;
 			}
 			write128(block->instructions, 0, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_INIT, 256, speculationCounter, 1, currentSpecId, 0, 0));
-			for (unsigned int i=0; i<block->nbInstr; i++){
-				Log::logMemoryDisambiguation <<  printBytecodeInstruction(i, readInt(block->instructions, i*16+0), readInt(block->instructions, i*16+4), readInt(block->instructions, i*16+8), readInt(block->instructions, i*16+12));
-			}
+			block->printBytecode(Log::logMemoryDisambiguation);
+
 
 
 		}

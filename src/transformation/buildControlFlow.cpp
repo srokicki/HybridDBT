@@ -495,7 +495,6 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 				block->instructions[4*oneBytecodeInstr + 1] = readInt(platform->bytecode, 16*oneBytecodeInstr + 4);
 				block->instructions[4*oneBytecodeInstr + 2] = readInt(platform->bytecode, 16*oneBytecodeInstr + 8);
 				block->instructions[4*oneBytecodeInstr + 3] = readInt(platform->bytecode, 16*oneBytecodeInstr + 12);
-				printBytecodeInstruction(oneBytecodeInstr, readInt(platform->bytecode, oneBytecodeInstr*16+0), readInt(platform->bytecode, oneBytecodeInstr*16+4), readInt(platform->bytecode, oneBytecodeInstr*16+8), readInt(platform->bytecode, oneBytecodeInstr*16+12));
 			}
 
 			//We check if we find a jump as last instruction

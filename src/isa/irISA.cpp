@@ -386,6 +386,31 @@ void IRBlock::addJump(unsigned char jumpID, unsigned int jumpPlace){
 
 }
 
+void IRBlock::printBytecode(std::ostream &stream){
+	for (unsigned int i=0; i<this->nbInstr; i++){
+		stream << printBytecodeInstruction(i, this->instructions[4*i + 0], this->instructions[4*i + 1],
+				this->instructions[4*i + 2], this->instructions[4*i + 3]);
+	}
+}
+
+void IRBlock::printCode(std::ostream &stream, DBTPlateform *platform){
+	for (unsigned int i=oldVliwStartAddress-10;i<vliwEndAddress+10;i++){
+		stream <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
+		stream <<  printDecodedInstr(platform->vliwBinaries[i*4+1]);
+		stream <<  printDecodedInstr(platform->vliwBinaries[i*4+2]);
+		stream <<  printDecodedInstr(platform->vliwBinaries[i*4+3]);
+
+		if (platform->vliwInitialIssueWidth>4){
+			stream << printDecodedInstr(platform->vliwBinaries[i*4+4]);
+			stream << printDecodedInstr(platform->vliwBinaries[i*4+5]);
+			stream << printDecodedInstr(platform->vliwBinaries[i*4+6]);
+			stream << printDecodedInstr(platform->vliwBinaries[i*4+7]);
+			i++;
+		}
+		stream << "\n";
+	}
+}
+
 IRBlock::IRBlock(int startAddress, int endAddress, int section){
 	this->vliwEndAddress = endAddress;
 	this->vliwStartAddress = startAddress;

@@ -46,28 +46,9 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 	IRBlock **blocks = (IRBlock **) malloc(procedure->nbBlock * sizeof(IRBlock*));
 	for (unsigned int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
 		blocks[oneBlock] = new IRBlock(-1,-1,-1);
-		if (1){
-			for (unsigned int i=procedure->blocks[oneBlock]->vliwStartAddress;i<procedure->blocks[oneBlock]->vliwEndAddress;i++){
-				Log::logScheduleProc << i;
-
-				Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
-				Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+1]);
-				Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+2]);
-				Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+3]);
-
-
-				if (platform->vliwInitialIssueWidth>4){
-					Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+4]);
-					Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+5]);
-					Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+6]);
-					Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+7]);
-					i++;
-				}
-				Log::logScheduleProc << "\n";
-			}
-		}
-
+		procedure->blocks[oneBlock]->printCode(Log::logScheduleProc, platform);
 	}
+
 	IRProcedure *result = new IRProcedure(blocks[0], procedure->nbBlock);
 	result->blocks = blocks;
 	result->configuration = procedure->configuration;
@@ -122,11 +103,9 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 
 		//This is only for debug
-		if (platform->debugLevel > 1 || 1){
-			Log::logScheduleProc << "Block " << std::hex << block->sourceStartAddress << ":\n";
-			for (unsigned int i=0; i<block->nbInstr; i++)
-				Log::logScheduleProc << printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
-		}
+		Log::logScheduleProc << "Block " << std::hex << block->sourceStartAddress << ":\n";
+		block->printBytecode(Log::logScheduleProc);
+
 
 
 		//We call the scheduler
@@ -150,25 +129,8 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 		}
 
+		result->blocks[oneBlock]->printCode(Log::logScheduleProc, platform);
 
-		for (unsigned int i=result->blocks[oneBlock]->vliwStartAddress;i<result->blocks[oneBlock]->vliwEndAddress;i++){
-			Log::logScheduleProc << i;
-
-			Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
-			Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+1]);
-			Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+2]);
-			Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+3]);
-
-
-			if (platform->vliwInitialIssueWidth>4){
-				Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+4]);
-				Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+5]);
-				Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+6]);
-				Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+7]);
-				i++;
-			}
-			Log::logScheduleProc << "\n";
-		}
 		if ((isReturnBlock || isCallBlock) && readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->jumpPlaces[result->blocks[oneBlock]->nbJumps-1] + 16*incrementInBinaries) != 0){
 
 				//We need room for the reconf instruction, we add two lines at the end. TODO: this should be done only when reconf is activated
@@ -442,25 +404,9 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 	//*************************************************************************
 	//This is only for debug
-	for (unsigned int i=originalWritePlace;i<writePlace;i++){
-		Log::logScheduleProc << i;
 
-		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
-		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+1]);
-		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+2]);
-		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+3]);
-
-
-		if (platform->vliwInitialIssueWidth>4){
-			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+4]);
-			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+5]);
-			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+6]);
-			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+7]);
-			i++;
-		}
-		Log::logScheduleProc << "\n";
-
-		platform->vexSimulator->typeInstr[i-1+incrementInBinaries] = 2;
+	for (unsigned int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++){
+		procedure->blocks[oneBlock]->printCode(Log::logScheduleProc, platform);
 	}
 
 	//*************************************************************************
@@ -500,24 +446,7 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 	Log::logScheduleProc << "*************************************************************************\n";
 	Log::logScheduleProc << "****                 In place block reschedule !                    *****\n";
 
-	for (unsigned int i=block->vliwStartAddress-20;i<block->vliwEndAddress+20;i++){
-		Log::logScheduleProc << i << " ";
-
-		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
-		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+1]);
-		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+2]);
-		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+3]);
-
-
-		if (platform->vliwInitialIssueWidth>4){
-			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+4]);
-			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+5]);
-			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+6]);
-			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+7]);
-			i++;
-		}
-		Log::logScheduleProc << "\n";
-	}
+	block->printCode(Log::logScheduleProc, platform);
 
 	Log::logScheduleProc << "*************************************************************************\n";
 	Log::logScheduleProc << "*************************************************************************\n";
@@ -545,11 +474,9 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 	}
 
 	//This is only for debug
-	if (platform->debugLevel > 1 || 1){
-		Log::logScheduleProc << "Block " << std::hex << block->sourceStartAddress << ":\n";
-		for (unsigned int i=0; i<block->nbInstr; i++)
-			Log::logScheduleProc << printBytecodeInstruction(i, readInt(platform->bytecode, i*16+0), readInt(platform->bytecode, i*16+4), readInt(platform->bytecode, i*16+8), readInt(platform->bytecode, i*16+12));
-	}
+	Log::logScheduleProc << "Block " << std::hex << block->sourceStartAddress << ":\n";
+	block->printBytecode(Log::logScheduleProc);
+
 
 
 	//Calling scheduler
@@ -658,24 +585,7 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePla
 	Log::logScheduleProc << "*************************************************************************\n";
 	Log::logScheduleProc << "****                 In place block reschedule !                    *****\n";
 
-	for (unsigned int i=block->vliwStartAddress-20;i<block->vliwEndAddress+20;i++){
-		Log::logScheduleProc << i << " ";
-
-		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
-		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+1]);
-		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+2]);
-		Log::logScheduleProc <<  printDecodedInstr(platform->vliwBinaries[i*4+3]);
-
-
-		if (platform->vliwInitialIssueWidth>4){
-			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+4]);
-			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+5]);
-			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+6]);
-			Log::logScheduleProc << printDecodedInstr(platform->vliwBinaries[i*4+7]);
-			i++;
-		}
-		Log::logScheduleProc << "\n";
-	}
+	block->printCode(Log::logScheduleProc, platform);
 
 	Log::logScheduleProc << "*************************************************************************\n";
 	Log::logScheduleProc << "*************************************************************************\n";
