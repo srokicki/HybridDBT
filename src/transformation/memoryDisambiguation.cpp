@@ -114,13 +114,12 @@ void MemoryDependencyGraph::reduceArity(){
 				nbPred++;
 
 		//If arity is greater than four we have to reduce it
-		char lastPred[4];
-		char nbLastPred = 0;
-		char writeLastPred = 0;
-
+		int lastPred[4];
+		int nbLastPred = 0;
+		int writeLastPred = 0;
 
 		if (nbPred > 4){
-			for (unsigned int onePredecessor = oneMemInstruction-1; onePredecessor>=0; onePredecessor--){
+			for (int onePredecessor = oneMemInstruction-1; onePredecessor>=0; onePredecessor--){
 				if (this->graph[oneMemInstruction * this->size + onePredecessor]){
 					if (nbLastPred<4){
 						lastPred[writeLastPred] = onePredecessor;

@@ -526,7 +526,7 @@ int main(int argc, char *argv[])
 
 		//We perform aggressive level 1 optimization: if a block takes more than 8 cycle we schedule it.
 		//If it has a backward loop, we also profile it.
-		for (int oneSection = 0; oneSection<numberOfSections; oneSection++){
+		for (unsigned int oneSection = 0; oneSection<numberOfSections; oneSection++){
 			for (int oneBlock = 0; oneBlock<application.numbersBlockInSections[oneSection]; oneBlock++){
 				IRBlock* block = application.blocksInSections[oneSection][oneBlock];
 
@@ -569,16 +569,16 @@ int main(int argc, char *argv[])
 	}
 
 	//We compute pareto domains
-	for (int oneProcedure = 0; oneProcedure < application.numberProcedures; oneProcedure++){
+	for (unsigned int oneProcedure = 0; oneProcedure < application.numberProcedures; oneProcedure++){
 		IRProcedure *procedure = application.procedures[oneProcedure];
 
-		for (int oneConfiguration = 0; oneConfiguration<12; oneConfiguration++){
+		for (unsigned int oneConfiguration = 0; oneConfiguration<12; oneConfiguration++){
 			char configuration = validConfigurations[oneConfiguration];
 			float score = procedure->configurationScores[configuration];
 			float energy = (score * getPowerConsumption(configuration))/10;
 			bool isPareto = true;
 
-			for (int oneOtherConf = 0; oneOtherConf<12; oneOtherConf++){
+			for (unsigned int oneOtherConf = 0; oneOtherConf<12; oneOtherConf++){
 				char otherConf = validConfigurations[oneOtherConf];
 				float otherScore = procedure->configurationScores[otherConf];
 				float otherEnergy = (otherScore * getPowerConsumption(otherConf))/10;

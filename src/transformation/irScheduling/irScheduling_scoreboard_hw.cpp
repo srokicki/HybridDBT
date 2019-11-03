@@ -59,12 +59,12 @@ ac_int<32, false> window[WINDOW_SIZE][STAGE_NUMBER];
 ac_int<8, false> freeSlot[WINDOW_SIZE];
 
 //For speculation purpose
-ac_int<4, false> poisoned[64];
-ac_int<32, false> lastStore[4];
-ac_int<32, false> firstLoad[4];
-ac_int<8, false> mask_spec[4][WINDOW_SIZE];
+ac_int<16, false> poisoned[64];
+ac_int<32, false> lastStore[16];
+ac_int<32, false> firstLoad[16];
+ac_int<8, false> mask_spec[16][WINDOW_SIZE];
 
-ac_int<128, false> maskVal[4];
+ac_int<128, false> maskVal[16];
 
 ac_int<6, false> freeRegistersPlaceToRead;
 ac_int<6, false> freeRegistersPlaceToWrite;
@@ -435,7 +435,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 		//********************* For speculation ***********************************
 		//If we are not alloc and if the source is poisoned, we have to be after the last store to make the rollback possible...
 		if (!alloc){
-			for (int oneBit = 0; oneBit<4; oneBit++){
+			for (int oneBit = 0; oneBit<16; oneBit++){
 				if ((useOperand1 && poisoned[placeOfOperand1][oneBit]) || (useOperand2 && poisoned[placeOfOperand2][oneBit])){
 							earliest_place = max(earliest_place, lastStore[oneBit]+1);
 				}
@@ -599,7 +599,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 					binaries[addressInBinaries+(windowPosition+windowOffset)*2+1] = binariesWord.slc<128>(128);
 				}
 
-				for (int oneBit = 0; oneBit<4; oneBit++){
+				for (int oneBit = 0; oneBit<16; oneBit++){
 					if (issue_width <= 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[oneBit][127] && !maskVal[oneBit][126] && !maskVal[oneBit][125] && !maskVal[oneBit][124]) {
 						maskVal[oneBit] = (maskVal[oneBit]<<4) + mask_spec[oneBit][off];
 						mask_spec[oneBit][off] = 0;
@@ -676,7 +676,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 				poisoned[dest] |= poisoned[placeOfOperand2];
 		}
 
-		for (int oneBit = 0; oneBit<4; oneBit++){
+		for (int oneBit = 0; oneBit<16; oneBit++){
 			if ((unitType == 0 && lastStore[oneBit] != 0) || (useOperand1 && poisoned[placeOfOperand1][oneBit]) || (useOperand2 && poisoned[placeOfOperand2][oneBit])){
 				mask_spec[oneBit][offset(bestWindowOffset)][bestStageId] = 1;
 			}
@@ -730,7 +730,7 @@ ac_int<32, false> irScheduler_scoreboard_hw(
 			binaries[addressInBinaries+(windowPosition+windowOffset)*2+1] = binariesWord.slc<128>(128);
 		}
 
-		for (int oneBit = 0; oneBit<4; oneBit++){
+		for (int oneBit = 0; oneBit<16; oneBit++){
 			if (issue_width <= 4 && (mask_spec[oneBit][off]!=0 || maskVal[oneBit]!=0) && !maskVal[oneBit][127] && !maskVal[oneBit][126] && !maskVal[oneBit][125] && !maskVal[oneBit][124]) {
 				maskVal[oneBit] = (maskVal[oneBit]<<4) + mask_spec[oneBit][off];
 			}

@@ -104,7 +104,6 @@ int sizeLeftInTC = 8192;
 std::vector<struct entryInTranslationCache> *translationCacheContent = NULL;
 int globalBinarySize;
 
-
 /****************************************************************************************************************************/
 //Definition of internal function that are not visible from outside
 
@@ -249,14 +248,14 @@ IRProcedure* optimizeLevel2(unsigned int address){
 }
 
 
-
+unsigned int addressStart;
 
 void initializeDBTInfo(char* fileName)
 {
 
 
 	int CONFIGURATION = 2;
-	int VERBOSE = 0;
+	int VERBOSE = 3;
 	Log::Init(VERBOSE, 0);
 
 
@@ -273,7 +272,7 @@ void initializeDBTInfo(char* fileName)
 	platform = new DBTPlateform(MEMORY_SIZE);
 
 	unsigned char* code;
-	unsigned int addressStart;
+
 	unsigned int size;
 	unsigned int pcStart;
 
@@ -299,7 +298,8 @@ void initializeDBTInfo(char* fileName)
 	setVLIWConfiguration(platform->vexSimulator, platform->vliwInitialConfiguration);
 
 
-
+	//Setting blocks as impossible to destroy
+	IRBlock::isUndestroyable = true;
 
 
 	int numberOfSections = 1 + (size>>10);
@@ -351,7 +351,7 @@ void initializeDBTInfo(char* fileName)
 		unsigned int type = unresolvedJumpsTypeArray[oneUnresolvedJump+1];
 
 		unsigned char isAbsolute = ((type & 0x7f) != VEX_BR) && ((type & 0x7f) != VEX_BRF && (type & 0x7f) != VEX_BLTU) && ((type & 0x7f) != VEX_BGE && (type & 0x7f) != VEX_BGEU) && ((type & 0x7f) != VEX_BLT);
-		unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(platform, initialDestination);
+		int destinationInVLIWFromNewMethod = solveUnresolvedJump(platform, initialDestination);
 
 		if (destinationInVLIWFromNewMethod == -1){
 			Log::logError << "A jump from " << source << " to " << std::hex << initialDestination << " is still unresolved... (" << insertionsArray[(initialDestination>>10)<<11] << " insertions)\n";
@@ -390,7 +390,6 @@ void initializeDBTInfo(char* fileName)
 	for (int oneSection = 0; oneSection<numberOfSections; oneSection++){
 		for (int oneBlock = 0; oneBlock<application->numbersBlockInSections[oneSection]; oneBlock++){
 			IRBlock* block = application->blocksInSections[oneSection][oneBlock];
-			block->isDestroyable = false;
 			blockInfo[block->sourceStartAddress].block = block;
 			blockInfo[block->sourceStartAddress].scheduleSizeOpt0 = block->vliwEndAddress - block->vliwStartAddress;
 			blockInfo[block->sourceStartAddress].scheduleSizeOpt1 = -1;
@@ -407,6 +406,8 @@ void initializeDBTInfo(char* fileName)
 
 	nonOptPlatform->vliwBinaries = (unsigned int*) malloc(4*MEMORY_SIZE*sizeof(unsigned int));
 	memcpy(nonOptPlatform->vliwBinaries, platform->vliwBinaries, 4*MEMORY_SIZE*sizeof(unsigned int));
+
+	fprintf(stderr, "Greatest instr written is %d\n", placeCode);
 
 }
 
@@ -702,7 +703,7 @@ void verifyBranchDestination(int addressOfJump, int dest){
 		//The destination of the jumps is not a block entry point. We have to modify everything.
 		fprintf(stderr, "Correcting a wrong block boundary (address is %x)!\n", dest);
 
-		unsigned int correspondingVliwAddress = solveUnresolvedJump(platform, dest>>2);
+		unsigned int correspondingVliwAddress = solveUnresolvedJump(platform, (dest-addressStart)/4);
 
 		//We find the corresponding block
 		int currentStart = dest>>2;
@@ -713,12 +714,13 @@ void verifyBranchDestination(int addressOfJump, int dest){
 
 		IRBlock *containingBlock = blockInfo[currentStart].block;
 		assert((dest>>2) < containingBlock->sourceEndAddress);
+		assert(correspondingVliwAddress < containingBlock->vliwEndAddress && correspondingVliwAddress > containingBlock->vliwStartAddress);
+
 		int initialState = containingBlock->blockState;
 
 
 
-		IRBlock *newBlock = new IRBlock(correspondingVliwAddress, solveUnresolvedJump(platform, containingBlock->sourceEndAddress), containingBlock->section);
-		newBlock->isDestroyable = false;
+		IRBlock *newBlock = new IRBlock(correspondingVliwAddress, solveUnresolvedJump(platform, containingBlock->sourceEndAddress-addressStart*4), containingBlock->section);
 		newBlock->sourceStartAddress = dest >> 2;
 		newBlock->sourceEndAddress = containingBlock->sourceEndAddress;
 		newBlock->sourceDestination = containingBlock->sourceDestination;
@@ -735,8 +737,8 @@ void verifyBranchDestination(int addressOfJump, int dest){
 
 		containingBlock->sourceDestination = -1;
 		containingBlock->sourceEndAddress = dest >> 2;
-		containingBlock->vliwStartAddress = solveUnresolvedJump(platform, containingBlock->sourceStartAddress);
-		containingBlock->vliwEndAddress = solveUnresolvedJump(platform, containingBlock->sourceEndAddress);
+		containingBlock->vliwStartAddress = solveUnresolvedJump(platform, containingBlock->sourceStartAddress-addressStart*4);
+		containingBlock->vliwEndAddress = solveUnresolvedJump(platform, containingBlock->sourceEndAddress-addressStart*4);
 		containingBlock->blockState = IRBLOCK_STATE_FIRSTPASS;
 
 		//We update blockInfo data

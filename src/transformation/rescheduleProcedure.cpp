@@ -33,13 +33,13 @@
  * 	Transformation returns the sum of writePlace and the size of the generated binaries.
  ******************************************************************************************/
 
-int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int writePlace){
+int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure, unsigned int writePlace){
 
 	IRProcedure *scheduledProc = rescheduleProcedure_schedule(platform, procedure, writePlace);
 	return rescheduleProcedure_commit(platform, procedure, writePlace, scheduledProc);
 }
 
-IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *procedure,int writePlace){
+IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *procedure, unsigned int writePlace){
 
 	char incrementInBinaries = (getIssueWidth(procedure->configuration)>4) ? 2 : 1;
 
@@ -194,13 +194,11 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 }
 
-int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,int writePlace, IRProcedure *scheduledProc){
+int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure, unsigned int writePlace, IRProcedure *scheduledProc){
 
 	char issueWidth = getIssueWidth(procedure->configuration);
 	char incrementInBinaries = (getIssueWidth(procedure->configuration)>4) ? 2 : 1;
 	int *oldBlockStarts = (int*) malloc(procedure->nbBlock * sizeof(int));
-	int originalWritePlace = writePlace;
-
 
 	for (unsigned int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
 		oldBlockStarts[oneBlock] = procedure->blocks[oneBlock]->vliwStartAddress;
@@ -335,7 +333,6 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 		bool isReturnBlock = false;
 		bool isCallBlock = false;
-		bool isIndirectJump = false;
 
 		if (block->nbJumps > 0){
 			char opcode = getOpcode(block->instructions, block->jumpIds[block->nbJumps-1]);
@@ -350,9 +347,6 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 			}
 		}
 
-		if (block->nbJumps == 0 && block->nbSucc == 0){
-			isIndirectJump = true;
-		}
 
 		if (isReturnBlock){
 
@@ -379,14 +373,8 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 
 
 		if (isCallBlock){
-			char offsetSecondLine, offsetFirstLine;
+			char offsetFirstLine;
 
-			if (getIssueWidth(platform->vliwInitialConfiguration) > 4){
-				offsetSecondLine = 2*16;
-			}
-			else{
-				offsetSecondLine = 16;
-			}
 
 			if (issueWidth>4){
 				offsetFirstLine = 2*16;
@@ -415,7 +403,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,in
 }
 
 
-void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePlace){
+void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, unsigned int writePlace){
 
 	char isCurrentlyInBlock = (platform->vexSimulator->PC >= block->vliwStartAddress*4) &&
 			(platform->vexSimulator->PC < block->vliwEndAddress*4);

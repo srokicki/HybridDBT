@@ -6,6 +6,7 @@ set(SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/loadStoreQueue.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/riscvSimulator.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/mipsSimulator.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/emptySimulator.cpp
    PARENT_SCOPE
 )
 

@@ -394,7 +394,8 @@ void IRBlock::printBytecode(std::ostream &stream){
 }
 
 void IRBlock::printCode(std::ostream &stream, DBTPlateform *platform){
-	for (unsigned int i=oldVliwStartAddress-10;i<vliwEndAddress+10;i++){
+	for (unsigned int i=this->vliwStartAddress-10;i<this->vliwEndAddress+10;i++){
+		stream << i << " ";
 		stream <<  printDecodedInstr(platform->vliwBinaries[i*4+0]);
 		stream <<  printDecodedInstr(platform->vliwBinaries[i*4+1]);
 		stream <<  printDecodedInstr(platform->vliwBinaries[i*4+2]);
@@ -427,12 +428,14 @@ IRBlock::IRBlock(int startAddress, int endAddress, int section){
 	this->specAddr[3] = 0;
 }
 
+bool IRBlock::isUndestroyable = false;
+
 IRBlock::~IRBlock(){
 	if (placeInProfiler != 0)
 		*placeInProfiler = 0;
-	if (this->isDestroyable && !this->instructions)
+	if (!this->isUndestroyable && !this->instructions)
 		free(this->instructions);
-	if (this->isDestroyable && this->nbJumps > 0){
+	if (!this->isUndestroyable && this->nbJumps > 0){
 		free(this->jumpIds);
 		free(this->jumpPlaces);
 	}

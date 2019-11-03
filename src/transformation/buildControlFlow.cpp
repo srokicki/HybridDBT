@@ -108,7 +108,7 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 				//We save the destination
 				newBlock->sourceDestination = oneJumpInitialDestination+(sectionStartAddress>>2);
 				unsigned char isAbsolute = ((oneJumpType & 0x7f) != VEX_BR) && ((oneJumpType & 0x7f) != VEX_BRF && (oneJumpType & 0x7f) != VEX_BLTU) && ((oneJumpType & 0x7f) != VEX_BGE && (oneJumpType & 0x7f) != VEX_BGEU) && ((oneJumpType & 0x7f) != VEX_BLT);
-				unsigned int destinationInVLIWFromNewMethod = solveUnresolvedJump(dbtPlateform, oneJumpInitialDestination+((sectionStartAddress>>2)-mipsStartAddress));
+				int destinationInVLIWFromNewMethod = solveUnresolvedJump(dbtPlateform, oneJumpInitialDestination+((sectionStartAddress>>2)-mipsStartAddress));
 
 				if (destinationInVLIWFromNewMethod == -1){
 					//In this case, the jump cannot be resolved because the destination block is not translated yet.
@@ -246,6 +246,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 
 	while (numberBlockToStudy != 0){
 
+
 		if (numberBlockToStudy>TEMP_BLOCK_STORAGE_SIZE){
 			for (int oneBlockInProc = 0; oneBlockInProc<numberBlockInProcedure; oneBlockInProc++)
 				blockInProcedure[oneBlockInProc]->blockState = IRBLOCK_ERROR_PROC;
@@ -253,7 +254,6 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 			Log::logScheduleProc << "Leavign because of too large proc (" << numberBlockInProcedure << ")\n";
 			return -1;
 		}
-
 
 		IRBlock *currentBlock = blocksToStudy[numberBlockToStudy-1];
 		numberBlockToStudy--;
@@ -264,8 +264,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 		if ((endAddress-2*incrementInBinaries) < currentBlock->vliwStartAddress)
 			jumpInstruction = 0;
 
-
-		//If the block is marked as IRBLOCK_PROC, we ensure that it is own to the procedure being built
+		//If the block is marked as IRBLOCK_PROC, we ensure that it is owned by the procedure being built
 		if (currentBlock->blockState == IRBLOCK_PROC){
 			bool isValidConstruction = false;
 			for (int oneAlreadySeenBlock = 0; oneAlreadySeenBlock<numberBlockInProcedure; oneAlreadySeenBlock++){
@@ -320,6 +319,8 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 		//We determine the name of successor(s)
 		int successor1, successor2, nbSucc;
 		if (isConditionalBranch){
+			if (currentBlock->sourceDestination == -1)
+				currentBlock->printCode(std::cerr, platform);
 			successor1 = currentBlock->sourceDestination;
 			successor2 = currentBlock->sourceEndAddress;
 			nbSucc = 2;
@@ -416,6 +417,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 				else if (isCall || isNothing){
 					if (application->blocksInSections[oneSection][oneBlock]->sourceEndAddress == currentBlock->sourceStartAddress){
 						blocksToStudy[numberBlockToStudy] = application->blocksInSections[oneSection][oneBlock];
+
 						numberBlockToStudy++;
 					}
 				}

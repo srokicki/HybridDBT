@@ -102,7 +102,7 @@ void addInsertions(unsigned int blockStartAddressInSources, unsigned int blockSt
 }
 
 
-unsigned int solveUnresolvedJump(DBTPlateform *platform, unsigned int initialDestination){
+int solveUnresolvedJump(DBTPlateform *platform, unsigned int initialDestination){
 
 	/* This procedure will receive an initial destination (eg. the destination in source binaries) and will
 	 * compute and return the address of the new destination.
@@ -112,7 +112,7 @@ unsigned int solveUnresolvedJump(DBTPlateform *platform, unsigned int initialDes
 	 * In such a case, the procedure will return the value -1 which has to be understood as "not solvable yet".
 	 */
 
-//	fprintf(stderr, "While solving unrsolved jump, destination is 0x%x (%d)\n", initialDestination, initialDestination);
+	//fprintf(stderr, "While solving unrsolved jump, destination is 0x%x (%d)\n", initialDestination, initialDestination);
 
 
 	unsigned int section = initialDestination >> 10;
@@ -129,7 +129,7 @@ unsigned int solveUnresolvedJump(DBTPlateform *platform, unsigned int initialDes
 	unsigned int init = (initialDestination % 1024);
 	unsigned int start = 0;
 
-//	fprintf(stderr, "Section has %d insertions, base address is %d\n", nbInsertion, VLIWBase);
+	//fprintf(stderr, "Section has %d insertions, base address is %d\n", nbInsertion, VLIWBase);
 
 	while (size != 1){
 //		fprintf(stderr, "\t Dichotomie: start = %d, size=%d, value = %d\n", start, size, loadWordFromInsertionMemory(offset + 2 + start + size/2));

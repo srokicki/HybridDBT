@@ -11,11 +11,11 @@
 #include <isa/irISA.h>
 #include <dbt/dbtPlateform.h>
 
-int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure,int writePlace);
+int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure, unsigned int writePlace);
 
-IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *procedure,int writePlace);
-int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure,int writePlace, IRProcedure *schedulePlaces);
-void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, int writePlace);
+IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *procedure, unsigned int writePlace);
+int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure, unsigned int writePlace, IRProcedure *schedulePlaces);
+void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, unsigned int writePlace);
 
 
 #endif /* INCLUDES_TRANSFORMATION_RESCHEDULEPROCEDURE_H_ */

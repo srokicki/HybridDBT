@@ -75,18 +75,18 @@ public:
 	//For simulating the optimization time in the platform
 	long int optimizationCycles=0;
 	double optimizationEnergy=0;
-	int blockScheduleCounter=0;
-	int procedureOptCounter=0;
-	int unrollingCounter=0;
-	int traceConstructionCounter=0;
+	unsigned int blockScheduleCounter=0;
+	unsigned int procedureOptCounter=0;
+	unsigned int unrollingCounter=0;
+	unsigned int traceConstructionCounter=0;
 	double blockProcAverageSize = 0;
 	double blockProcDistance = 0;
-	int nbBlockProcedure = 0;
+	unsigned int nbBlockProcedure = 0;
 
 	double blockProcAverageSizeBeforeTrace = 0;
 	double blockProcDistanceBeforeTrace = 0;
-	int nbBlockProcedureBeforeTrace = 0;
-	int nbTimesInPareto[14] = {0};
+	unsigned int nbBlockProcedureBeforeTrace = 0;
+	unsigned int nbTimesInPareto[14] = {0};
 	char dbtType = DBT_TYPE_HW;
 
 	DBTPlateform(int binarySize);

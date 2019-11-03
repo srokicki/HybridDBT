@@ -1298,7 +1298,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 			double delta2 = procedure->blocks[oneBlock]->nbInstr - platform->blockProcAverageSize;
 			platform->blockProcDistance += delta*delta2;
 		}
-		else
+		else if (!procedure->blocks[oneBlock]->isUndestroyable)
 			delete procedure->blocks[oneBlock];
 	}
 

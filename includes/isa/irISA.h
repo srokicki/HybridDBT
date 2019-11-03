@@ -67,13 +67,16 @@ public:
 class IRBlock
 {
 public:
+	static bool isUndestroyable; //If set to false, the delete won't free memory (used in dbtInformation that needs to keep it)
+
+
 	//address of the unique reference to the pointer
 	IRBlock** reference = NULL;
 
 	//Link with source binaries
 	unsigned int sourceStartAddress; //This represent the block start address in source binaries
 	unsigned int sourceEndAddress;	 //This represent the block end address in source binaries
-	unsigned int sourceDestination;	 //This represent the jump destination if any. If there are no jump of unpredictable jump its value is 0.
+	int sourceDestination;	 //This represent the jump destination if any. If there are no jump of unpredictable jump its value is 0.
 
 	//Link with VLIW binaries
 	unsigned int vliwStartAddress;	//Address of the first instruction in the block
@@ -101,7 +104,6 @@ public:
 	unsigned int section;
 	IRBlock** placeInProfiler;
 
-	bool isDestroyable = true; //If set to false, the delete won't free memory (used in dbtInformation that needs to keep it)
 
 	short specAddr[4];
 
