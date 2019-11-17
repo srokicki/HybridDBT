@@ -416,7 +416,7 @@ IRBlock::IRBlock(int startAddress, int endAddress, int section){
 	this->vliwEndAddress = endAddress;
 	this->vliwStartAddress = startAddress;
 	this->blockState = IRBLOCK_STATE_FIRSTPASS;
-	this->nbSucc = -1;
+	this->nbSucc = 0;
 	this->section = section;
 	this->nbInstr = 0;
 	this->nbJumps = 0;

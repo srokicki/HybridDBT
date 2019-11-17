@@ -197,16 +197,18 @@ IRProcedure* optimizeLevel2(unsigned int address){
 	//We check if the block has already been optimized
 	if (blockInfo[address>>2].scheduleSizeOpt2 == -1){
 
-		if (blockInfo[address>>2].block->blockState >= IRBLOCK_PROC){
-				blockInfo[address>>2].scheduleSizeOpt1 = blockInfo[address>>2].block->vliwEndAddress - blockInfo[address>>2].block->vliwStartAddress;
-				blockInfo[address>>2].scheduleSizeOpt2 = blockInfo[address>>2].scheduleSizeOpt1;
+		if (blockInfo[address>>2].block->blockState >= IRBLOCK_ERROR_PROC){
+				if (blockInfo[address>>2].scheduleSizeOpt1 == -1)
+					blockInfo[address>>2].scheduleSizeOpt1 = blockInfo[address>>2].block->vliwEndAddress - blockInfo[address>>2].block->vliwStartAddress;
+
+				blockInfo[address>>2].scheduleSizeOpt2 = blockInfo[address>>2].block->vliwEndAddress - blockInfo[address>>2].block->vliwStartAddress;
 				return NULL;
 		}
 		else {
 			int errorCode = buildAdvancedControlFlow(platform, blockInfo[address>>2].block, application);
-			blockInfo[address>>2].block->blockState = IRBLOCK_PROC;
 
 			if (!errorCode){
+				blockInfo[address>>2].block->blockState = IRBLOCK_PROC;
 				buildTraces(platform, application->procedures[application->numberProcedures-1], 100);
 				placeCode = rescheduleProcedure(platform, application->procedures[application->numberProcedures-1], placeCode);
 				updateSpeculationsStatus(platform, placeCode);
@@ -226,7 +228,7 @@ IRProcedure* optimizeLevel2(unsigned int address){
 				return application->procedures[application->numberProcedures-1];
 			}
 			else{
-				printf("Met an error while trying to go to opt level 2 for %x\n", address);
+				printf("Met an error while trying to go to opt level 2 for %x (error code %d)\n", address, errorCode);
 				return NULL;
 			}
 		}
@@ -494,17 +496,10 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock){
 			if (blockInfo[address>>2].block->blockState > IRBLOCK_STATE_SCHEDULED)
 				updateOpt2BlockSize(blockInfo[address>>2].block);
 			else {
-				if (blockInfo[address>>2].block->nbInstr == 0){
-					int start = (address>>2)-1;
-					while (blockInfo[start].block==NULL)
-						start--;
+				optimizeBasicBlock(blockInfo[address>>2].block, platform, application, placeCode);
+				blockInfo[address>>2].scheduleSizeOpt1 = blockInfo[address>>2].block->vliwEndAddress - blockInfo[address>>2].block->vliwStartAddress;
 
-					printf("Previous start was %d and its original size are %d %d\n", start, blockInfo[start].block->sourceStartAddress,  blockInfo[start].block->sourceEndAddress);
-
-					fprintf(stderr, "the block has zero instructions and a type of %d and type of pred is %d\n", blockInfo[address>>2].block->blockState, blockInfo[start].block->blockState);
-				}
-				fprintf(stderr, "While asking for size at opt level 2, block is not found (this should never happen ?!)  %d\n", address>>2);
-				return 0;
+				updateOpt2BlockSize(blockInfo[address>>2].block);
 			}
 		}
 
@@ -518,6 +513,7 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock){
 	if (blockInfo[address>>2].scheduleSizeOpt0 == 0)
 		fprintf(stderr, "size 0 is equal to zero for %d\n", address>>2);
 	//If we are neither at opt level 1 or 2, we return the size at opt level 0
+
 	return blockInfo[address>>2].scheduleSizeOpt0;
 }
 
@@ -712,15 +708,15 @@ void verifyBranchDestination(int addressOfJump, int dest){
 
 
 
+
 		IRBlock *containingBlock = blockInfo[currentStart].block;
 		assert((dest>>2) < containingBlock->sourceEndAddress);
-		assert(correspondingVliwAddress < containingBlock->vliwEndAddress && correspondingVliwAddress > containingBlock->vliwStartAddress);
 
 		int initialState = containingBlock->blockState;
 
 
-
-		IRBlock *newBlock = new IRBlock(correspondingVliwAddress, solveUnresolvedJump(platform, containingBlock->sourceEndAddress-addressStart*4), containingBlock->section);
+		//Specifying information concerning the newly created block
+		IRBlock *newBlock = new IRBlock(correspondingVliwAddress, solveUnresolvedJump(platform, containingBlock->sourceEndAddress-addressStart/4), containingBlock->section);
 		newBlock->sourceStartAddress = dest >> 2;
 		newBlock->sourceEndAddress = containingBlock->sourceEndAddress;
 		newBlock->sourceDestination = containingBlock->sourceDestination;
@@ -729,83 +725,48 @@ void verifyBranchDestination(int addressOfJump, int dest){
 		fprintf(stderr, "Adding block in section : section %d has %d allocated and %d blocks\n", containingBlock->section, application->numbersAllocatedBlockInSections[containingBlock->section], application->numbersBlockInSections[containingBlock->section]);
 		application->addBlock(newBlock, containingBlock->section);
 
-
-		fprintf(stderr, "Adding block in section : section %d has %d allocated and %d blocks\n", containingBlock->section, application->numbersAllocatedBlockInSections[containingBlock->section], application->numbersBlockInSections[containingBlock->section]);
-
-		//We add the block in the application
-		//application->addBlock(newBlock, containingBlock->section);
-
+		//We modify the containing block (only source address and source destination)
 		containingBlock->sourceDestination = -1;
 		containingBlock->sourceEndAddress = dest >> 2;
-		containingBlock->vliwStartAddress = solveUnresolvedJump(platform, containingBlock->sourceStartAddress-addressStart*4);
-		containingBlock->vliwEndAddress = solveUnresolvedJump(platform, containingBlock->sourceEndAddress-addressStart*4);
-		containingBlock->blockState = IRBLOCK_STATE_FIRSTPASS;
+
+
 
 		//We update blockInfo data
 		blockInfo[newBlock->sourceStartAddress].block = newBlock;
 		blockInfo[newBlock->sourceStartAddress].scheduleSizeOpt0 = newBlock->vliwEndAddress - newBlock->vliwStartAddress;
-		blockInfo[containingBlock->sourceStartAddress].scheduleSizeOpt0 = containingBlock->vliwEndAddress - containingBlock->vliwStartAddress;
-
+		blockInfo[containingBlock->sourceStartAddress].scheduleSizeOpt0 = solveUnresolvedJump(platform, containingBlock->sourceEndAddress-addressStart/4) - solveUnresolvedJump(platform, containingBlock->sourceStartAddress-addressStart/4);
+		if (blockInfo[newBlock->sourceStartAddress].scheduleSizeOpt0 < 0 || blockInfo[containingBlock->sourceStartAddress].scheduleSizeOpt0 < 0){
+			printf("Error on block splitting, size is lower than zero\n");
+			assert(blockInfo[newBlock->sourceStartAddress].scheduleSizeOpt0>=0 &&  blockInfo[containingBlock->sourceStartAddress].scheduleSizeOpt0>=0);
+		}
 		fprintf(stderr, "While correcting a block %d -- %d = %d -- %d\n", containingBlock->vliwStartAddress, containingBlock->vliwEndAddress,newBlock->vliwStartAddress,  newBlock->vliwEndAddress);
 
+
 		if (initialState > IRBLOCK_STATE_FIRSTPASS){
+
+			unsigned int oldVliwStartAddress = containingBlock->vliwStartAddress;
+			unsigned int oldVliwEndAddress = containingBlock->vliwEndAddress;
+
+			containingBlock->vliwStartAddress = solveUnresolvedJump(platform, containingBlock->sourceStartAddress-addressStart/4);
+			containingBlock->vliwEndAddress = solveUnresolvedJump(platform, containingBlock->sourceEndAddress-addressStart/4);
+			containingBlock->blockState = IRBLOCK_STATE_FIRSTPASS;
 
 			optimizeBasicBlock(containingBlock, nonOptPlatform, application, placeCode);
 			optimizeBasicBlock(newBlock, nonOptPlatform, application, placeCode);
 
+			//We add information on block size
 			blockInfo[containingBlock->sourceStartAddress].scheduleSizeOpt1 = containingBlock->vliwEndAddress - containingBlock->vliwStartAddress;;
 			blockInfo[newBlock->sourceStartAddress].scheduleSizeOpt1 = newBlock->vliwEndAddress - newBlock->vliwStartAddress;
 
+			//We restore previous values of vliw adresses
+			containingBlock->vliwEndAddress = oldVliwEndAddress;
+			containingBlock->vliwStartAddress = oldVliwStartAddress;
 
-			if (containingBlock->blockState >= IRBLOCK_PROC){
-					//The containing block has been optimized at procedure level. Have to de-optimize it
-
-				//We search for the containing procedure
-					IRProcedure *containingProcedure = NULL;
-					for (int oneProcedure = 0; oneProcedure < application->numberProcedures; oneProcedure++){
-						IRProcedure *procedure = application->procedures[oneProcedure];
-						for (int oneBlockInProc = 0; oneBlockInProc < procedure->nbBlock; oneBlockInProc++){
-							if (containingBlock == procedure->blocks[oneBlockInProc]){
-								containingProcedure = procedure;
-								break;
-							}
-
-						}
-
-						if (containingProcedure != NULL)
-							break;
-					}
-
-
-
-
-					//we insert the block in the procedure
-					IRBlock ** blocks = (IRBlock**) malloc((containingProcedure->nbBlock + 1) * sizeof(IRBlock *));
-					int blockToCopy = 0;
-					int blockInDest = 0;
-					while (blockToCopy != containingProcedure->nbBlock){
-						if (containingProcedure->blocks[blockToCopy] == containingBlock){
-							blocks[blockInDest] = containingBlock;
-							blocks[blockInDest + 1] = newBlock;
-							blockInDest++;
-						}
-						blocks[blockInDest] = containingProcedure->blocks[blockToCopy];
-						blockInDest++;
-						blockToCopy++;
-					}
-
-					free(containingProcedure->blocks);
-					containingProcedure->blocks = blocks;
-					containingProcedure->nbBlock++;
-
-					//We reschedule th eprocedure
-					rescheduleProcedure(platform, containingProcedure, placeCode);
-
-					//We update information
-					blockInfo[containingBlock->sourceStartAddress].scheduleSizeOpt2 = containingBlock->vliwEndAddress - containingBlock->vliwStartAddress;;
-					blockInfo[newBlock->sourceStartAddress].scheduleSizeOpt2 = newBlock->vliwEndAddress - newBlock->vliwStartAddress;
-
-				}
+			if (containingBlock->blockState >= IRBLOCK_ERROR_PROC){
+					//The containing block was optimized at proc level, we have to mark the new block as impossible to optimize.
+					blockInfo[newBlock->sourceStartAddress].scheduleSizeOpt2 = blockInfo[newBlock->sourceStartAddress].scheduleSizeOpt1;
+					newBlock->blockState = IRBLOCK_ERROR_PROC;
+			}
 
 		}
 	}

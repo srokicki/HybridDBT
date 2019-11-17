@@ -251,7 +251,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 			for (int oneBlockInProc = 0; oneBlockInProc<numberBlockInProcedure; oneBlockInProc++)
 				blockInProcedure[oneBlockInProc]->blockState = IRBLOCK_ERROR_PROC;
 
-			Log::logScheduleProc << "Leavign because of too large proc (" << numberBlockInProcedure << ")\n";
+			Log::logScheduleProc << "Leaving because the generated procedure is too large (" << numberBlockInProcedure << ")\n";
 			return -1;
 		}
 
@@ -277,8 +277,8 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 				for (int oneBlockInProc = 0; oneBlockInProc<numberBlockInProcedure; oneBlockInProc++)
 					blockInProcedure[oneBlockInProc]->blockState = IRBLOCK_ERROR_PROC;
 
-				Log::logScheduleProc << "Leavign because of malformed proc\n";
-				return -1;
+				Log::logScheduleProc << "Leaving because the generated procedure is malformed\n";
+				return -3;
 			}
 			else{
 				continue;
@@ -286,13 +286,13 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 		}
 
 
-		if (numberBlockInProcedure>=TEMP_BLOCK_STORAGE_SIZE || currentBlock->blockState == IRBLOCK_ERROR_PROC){
+		if (numberBlockInProcedure >= TEMP_BLOCK_STORAGE_SIZE || currentBlock->blockState == IRBLOCK_ERROR_PROC){
 			//If the procedure has too many blocks, we cancel the analysis
 			for (int oneBlockInProc = 0; oneBlockInProc<numberBlockInProcedure; oneBlockInProc++)
 				blockInProcedure[oneBlockInProc]->blockState = IRBLOCK_ERROR_PROC;
 
 			Log::logScheduleProc << "Leavign because of too large proc (" << numberBlockInProcedure << ")\n";
-			return -1;
+			return -2;
 		}
 
 
@@ -362,21 +362,33 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 		}
 
 		//We find the corresponding block(s)
-		if (nbSucc > 0)
+		int numberSuccFound = 0;
+		if (nbSucc > 0){
 			for (int oneSection = 0; oneSection<application->numberOfSections; oneSection++){
 				for (int oneBlock = 0; oneBlock < application->numbersBlockInSections[oneSection]; oneBlock++){
 					IRBlock *block = application->blocksInSections[oneSection][oneBlock];
-					if (block != NULL && block->sourceStartAddress == successor1)
+					if (block != NULL && block->sourceStartAddress == successor1){
 						currentBlock->successors[0] = block;
-					else if (block != NULL && nbSucc > 1 && block->sourceStartAddress == successor2)
+						numberSuccFound++;
+					}
+					else if (block != NULL && nbSucc > 1 && block->sourceStartAddress == successor2){
 						currentBlock->successors[1] = block;
+						numberSuccFound++;
+					}
 				}
 			}
+		}
 
+		if (numberSuccFound != nbSucc){
+			Log::logScheduleProc << "In build advanced control flow, a successor has not been found. Cancelling procedure construction !\n";
+			for (int oneBlockInProc = 0; oneBlockInProc<numberBlockInProcedure; oneBlockInProc++)
+				blockInProcedure[oneBlockInProc]->blockState = IRBLOCK_ERROR_PROC;
+
+			return -4;
+		}
 
 		//We store the result and add the blocks to the list of block to study
 		currentBlock->nbSucc = nbSucc;
-
 		if (nbSucc > 0){
 			blocksToStudy[numberBlockToStudy] = currentBlock->successors[0];
 		}
@@ -404,20 +416,23 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 				//We determine the name of successor(s)
 				if (isConditionalBranch && (application->blocksInSections[oneSection][oneBlock]->sourceDestination == currentBlock->sourceStartAddress || application->blocksInSections[oneSection][oneBlock]->sourceEndAddress == currentBlock->sourceStartAddress)){
 					blocksToStudy[numberBlockToStudy] = application->blocksInSections[oneSection][oneBlock];
-
+					if (application->blocksInSections[oneSection][oneBlock] == 0)
+						printf("Inserting null block %d\n", application->blocksInSections[oneSection][oneBlock]->sourceStartAddress);
 					numberBlockToStudy++;
 				}
 				else if (isJump){
 					if (application->blocksInSections[oneSection][oneBlock]->sourceDestination == currentBlock->sourceStartAddress){
 						blocksToStudy[numberBlockToStudy] = application->blocksInSections[oneSection][oneBlock];
-
+						if (application->blocksInSections[oneSection][oneBlock] == 0)
+							printf("Inserting null block %d\n", application->blocksInSections[oneSection][oneBlock]->sourceStartAddress);
 						numberBlockToStudy++;
 					}
 				}
 				else if (isCall || isNothing){
 					if (application->blocksInSections[oneSection][oneBlock]->sourceEndAddress == currentBlock->sourceStartAddress){
 						blocksToStudy[numberBlockToStudy] = application->blocksInSections[oneSection][oneBlock];
-
+						if (application->blocksInSections[oneSection][oneBlock] == 0)
+							printf("Inserting null block %d\n", application->blocksInSections[oneSection][oneBlock]->sourceStartAddress);
 						numberBlockToStudy++;
 					}
 				}
