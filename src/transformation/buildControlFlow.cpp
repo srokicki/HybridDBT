@@ -89,7 +89,7 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 
 
 
-			application->addBlock(newBlock, section);
+			application->addBlock(newBlock);
 
 
 			/******************************************************************************************
@@ -161,7 +161,7 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 					if (!isDestinationAlreadyMarked){
 
 						IRBlock *splittedBlock = new IRBlock(destinationInVLIWFromNewMethod, blockToSplit->vliwEndAddress, sectionOfDestination);
-						application->addBlock(splittedBlock, sectionOfDestination);
+						application->addBlock(splittedBlock);
 
 						//We set metainfo for new block
 						splittedBlock->sourceStartAddress = newBlock->sourceDestination;
@@ -202,7 +202,7 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 			newBlock->sourceDestination = -1;
 
 
-			application->addBlock(newBlock, section);
+			application->addBlock(newBlock);
 
 			/******************************************************************************************/
 			// We update interLoop values
@@ -364,18 +364,17 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 		//We find the corresponding block(s)
 		int numberSuccFound = 0;
 		if (nbSucc > 0){
-			for (int oneSection = 0; oneSection<application->numberOfSections; oneSection++){
-				for (int oneBlock = 0; oneBlock < application->numbersBlockInSections[oneSection]; oneBlock++){
-					IRBlock *block = application->blocksInSections[oneSection][oneBlock];
-					if (block != NULL && block->sourceStartAddress == successor1){
-						currentBlock->successors[0] = block;
-						numberSuccFound++;
-					}
-					else if (block != NULL && nbSucc > 1 && block->sourceStartAddress == successor2){
-						currentBlock->successors[1] = block;
-						numberSuccFound++;
-					}
-				}
+			IRBlock *succ1 = application->getBlock(successor1);
+			if (succ1 != NULL){
+				currentBlock->successors[0] = succ1;
+				numberSuccFound++;
+			}
+		}
+		if (nbSucc > 1){
+			IRBlock *succ2 = application->getBlock(successor2);
+			if (succ2 != NULL){
+				currentBlock->successors[1] = succ2;
+				numberSuccFound++;
 			}
 		}
 

@@ -16,6 +16,9 @@
 #include <cstring>
 #include <lib/log.h>
 
+#include <fstream>
+#include <iostream>
+
 #ifndef __NIOS
 /********************************************************************
  * Declaration functions to assemble uint128 instruction for IR
@@ -426,6 +429,9 @@ IRBlock::IRBlock(int startAddress, int endAddress, int section){
 	this->specAddr[1] = 0;
 	this->specAddr[2] = 0;
 	this->specAddr[3] = 0;
+
+	this->sizeOpt0 = endAddress - startAddress;
+	this->sizeOpt1 = this->sizeOpt2 = -1;
 }
 
 bool IRBlock::isUndestroyable = false;
@@ -440,6 +446,10 @@ IRBlock::~IRBlock(){
 		free(this->jumpPlaces);
 	}
 }
+
+/****************************************************************************
+************************   IR Applications **********************************
+*****************************************************************************/
 
 IRApplication::IRApplication(unsigned int numberSections){
 
@@ -462,20 +472,14 @@ IRApplication::IRApplication(unsigned int numberSections){
 IRApplication::~IRApplication(){
 
 
-//	for (unsigned int oneSection = 0; oneSection<this->numberOfSections; oneSection++){
-//		for (unsigned int oneBlock = 0; oneBlock<this->numbersBlockInSections[oneSection]; oneBlock++){
-//			if (this->blocksInSections[oneSection][oneBlock] != NULL)
-//				delete this->blocksInSections[oneSection][oneBlock];
-//		}
-//	}
-
-
 	for (unsigned int oneProcedure = 0; oneProcedure<this->numberProcedures; oneProcedure++){
 		delete this->procedures[oneProcedure];
 	}
 }
 
-void IRApplication::addBlock(IRBlock* block, unsigned int sectionNumber){
+void IRApplication::addBlock(IRBlock* block){
+	unsigned int sectionNumber = block->section;
+
 	if (sectionNumber>this->numberOfSections){
 		Log::logError << "Error while adding a block in an application: section " << sectionNumber << " is higher than the total number of section (" << this->numberOfSections << ")\n";
 		exit(-1);
@@ -521,6 +525,63 @@ void IRApplication::addProcedure(IRProcedure *procedure){
 	this->procedures[this->numberProcedures] = procedure;
 	this->numberProcedures++;
 }
+
+IRBlock *IRApplication::getBlock(unsigned int blockStartAddressInSources){
+	for (unsigned int oneSection = 0; oneSection < this->numberOfSections; oneSection++){
+		for (unsigned int oneBlock = 0; oneBlock < numbersBlockInSections[oneSection]; oneBlock++){
+			IRBlock * block = blocksInSections[oneSection][oneBlock];
+			if (block != NULL && block->sourceStartAddress == blockStartAddressInSources){
+				return block;
+			}
+		}
+	}
+	return NULL;
+}
+
+void IRApplication::dumpApplication(char *path, unsigned int greatestAddr){
+
+	IRBlock *applicationBlocks = (IRBlock *) malloc((greatestAddr/4) * sizeof(IRBlock));
+	memset(applicationBlocks, 0, (greatestAddr/4) * sizeof(IRBlock));
+
+	for (unsigned int oneSection = 0; oneSection < this->numberOfSections; oneSection++){
+		for (unsigned int oneBlock = 0; oneBlock < numbersBlockInSections[oneSection]; oneBlock++){
+			IRBlock *block = this->blocksInSections[oneSection][oneBlock];
+
+			if (block != NULL && block->sourceStartAddress != 0)
+				memcpy(&applicationBlocks[block->sourceStartAddress], block, sizeof(IRBlock));
+
+
+		}
+	}
+
+	char *blocksAsChar = (char*) applicationBlocks;
+
+	std::ofstream fileOut;
+	fileOut.open(path);
+	fileOut.write(blocksAsChar, (greatestAddr/4) * sizeof(IRBlock));
+	fileOut.close();
+}
+
+void IRApplication::loadApplication(char *path, unsigned int greatestAddr){
+
+	std::ifstream fileIn;
+	fileIn.open(path);
+
+	char* blocksAsChar = (char*) malloc((greatestAddr/4) * sizeof(IRBlock));
+	fileIn.read(blocksAsChar, (greatestAddr/4) * sizeof(IRBlock));
+	fileIn.close();
+
+	IRBlock *applicationBlocks = (IRBlock *) blocksAsChar;
+
+	for (int oneInstr = 0; oneInstr< greatestAddr/4; oneInstr++){
+		if (applicationBlocks[oneInstr].sourceStartAddress != 0){
+			this->addBlock(&applicationBlocks[oneInstr]);
+		}
+	}
+}
+
+
+//*****************************************************************************
 
 char getOpcode(unsigned int *bytecode, unsigned char index){
 	//This function returns the destination register of a bytecode instruction

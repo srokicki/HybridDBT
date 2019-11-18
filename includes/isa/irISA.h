@@ -104,6 +104,9 @@ public:
 	unsigned int section;
 	IRBlock** placeInProfiler;
 
+	short sizeOpt0;
+	short sizeOpt1;
+	short sizeOpt2;
 
 	short specAddr[4];
 
@@ -150,16 +153,22 @@ public:
 	unsigned int numberProcedures;
 	unsigned int numberInstructions;
 
-
-	void addBlock(IRBlock *block, unsigned int sectionNumber);
-	void addProcedure(IRProcedure *procedure);
-
 	IRApplication(unsigned int numberSections);
 	~IRApplication();
 
 	unsigned int numberAllocatedProcedures;
 	unsigned int *numbersAllocatedBlockInSections;
 
+	IRBlock* getBlock(unsigned int blockStartAddressInSources);
+	void addBlock(IRBlock *block);
+	void addProcedure(IRProcedure *procedure);
+
+	void dumpApplication(char *path, unsigned int greatestAddr);
+	void loadApplication(char *path, unsigned int greatestAddr);
+
+private:
+
+	IRBlock *blocks;
 
 };
 

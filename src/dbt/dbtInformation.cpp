@@ -43,7 +43,8 @@
 #else
 #include <system.h>
 #endif
-
+#include <fstream>
+#include <iostream>
 #include <isa/irISA.h>
 #include <assert.h>
 extern "C"
@@ -91,11 +92,12 @@ struct indirectionTableEntry {
 /****************************************************************************************************************************/
 
 BlockInformation *blockInfo;
-
+char* execPath;
 
 DBTPlateform *platform, *nonOptPlatform;
 IRApplication *application;
 unsigned int  placeCode;
+int greatestAddr;
 
 struct indirectionTableEntry indirectionTable[IT_NB_WAY][IT_NB_SET];
 uint64_t nextAvailabilityDBTProc = 0;
@@ -260,6 +262,9 @@ void initializeDBTInfo(char* fileName)
 	int VERBOSE = 3;
 	Log::Init(VERBOSE, 0);
 
+	//We copy the filePath
+	execPath = (char *) malloc(strlen(fileName) + 10);
+	strcpy(execPath, fileName);
 
 	/***********************************
 	 *  Initialization of the DBT platform
@@ -376,6 +381,33 @@ void initializeDBTInfo(char* fileName)
 		}
 	}
 
+	//We check whether the application has already been optimized
+/*	int execPathLength = strlen(execPath);
+	execPath[execPathLength] = '.';
+	execPath[execPathLength+1] = 'd';
+	execPath[execPathLength+2] = 'b';
+	execPath[execPathLength+3] = 't';
+	execPath[execPathLength+4] = 0;
+
+	std::ifstream previousExecDump(execPath);
+	if (previousExecDump.good()){
+		greatestAddr = 0;
+		for (int oneSection = 0; oneSection<numberOfSections; oneSection++){
+			for (int oneBlock = 0; oneBlock<application->numbersBlockInSections[oneSection]; oneBlock++){
+				IRBlock* block = application->blocksInSections[oneSection][oneBlock];
+				if (block->sourceEndAddress>greatestAddr)
+					greatestAddr = block->sourceEndAddress;
+			}
+		}
+
+		delete(application);
+		application = new IRApplication(numberOfSections);
+
+		application->loadApplication(execPath, greatestAddr);
+		printf("Loaded an existing dump!\n");
+
+	}*/
+
 
 	/********************** We store the size of each block ***********************/
 	globalBinarySize = 10*size;
@@ -388,6 +420,7 @@ void initializeDBTInfo(char* fileName)
 
 	}
 
+	greatestAddr = 0;
 	int numberOfBlocks = 0;
 	for (int oneSection = 0; oneSection<numberOfSections; oneSection++){
 		for (int oneBlock = 0; oneBlock<application->numbersBlockInSections[oneSection]; oneBlock++){
@@ -396,6 +429,9 @@ void initializeDBTInfo(char* fileName)
 			blockInfo[block->sourceStartAddress].scheduleSizeOpt0 = block->vliwEndAddress - block->vliwStartAddress;
 			blockInfo[block->sourceStartAddress].scheduleSizeOpt1 = -1;
 			blockInfo[block->sourceStartAddress].scheduleSizeOpt2 = -1;
+			if (block->sourceEndAddress>greatestAddr)
+				greatestAddr = block->sourceEndAddress;
+
 			numberOfBlocks++;
 		}
 	}
@@ -723,7 +759,7 @@ void verifyBranchDestination(int addressOfJump, int dest){
 		newBlock->blockState = IRBLOCK_STATE_FIRSTPASS;
 
 		fprintf(stderr, "Adding block in section : section %d has %d allocated and %d blocks\n", containingBlock->section, application->numbersAllocatedBlockInSections[containingBlock->section], application->numbersBlockInSections[containingBlock->section]);
-		application->addBlock(newBlock, containingBlock->section);
+		application->addBlock(newBlock);
 
 		//We modify the containing block (only source address and source destination)
 		containingBlock->sourceDestination = -1;
@@ -772,4 +808,9 @@ void verifyBranchDestination(int addressOfJump, int dest){
 	}
 
 
+}
+
+
+void finalizeDBTInformation(){
+	application->dumpApplication(execPath, greatestAddr*4);
 }
