@@ -812,5 +812,12 @@ void verifyBranchDestination(int addressOfJump, int dest){
 
 
 void finalizeDBTInformation(){
+	int execPathLength = strlen(execPath);
+	execPath[execPathLength] = '.';
+	execPath[execPathLength+1] = 'd';
+	execPath[execPathLength+2] = 'b';
+	execPath[execPathLength+3] = 't';
+	execPath[execPathLength+4] = 0;
+
 	application->dumpApplication(execPath, greatestAddr*4);
 }
