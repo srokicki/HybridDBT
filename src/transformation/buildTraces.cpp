@@ -119,12 +119,6 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 	 */
 	Log::logScheduleProc << "***********Unrolling loop*******************\n";
 
-	Log::logScheduleProc << "Successors of block (" << block->sourceStartAddress << ") : ";
-	for (int oneSuccessor = 0; oneSuccessor < block->nbSucc; oneSuccessor++)
-		Log::logScheduleProc << " (instr " << (oneSuccessor<block->nbJumps ? block->jumpIds[oneSuccessor] : -1) << ", dest " << (block->successors[oneSuccessor]->sourceStartAddress) << ") ";
-
-	Log::logScheduleProc << "\n";
-
 	block->printBytecode(Log::logScheduleProc);
 
 	Log::logScheduleProc << "\n";
@@ -466,11 +460,6 @@ IRBlock* unrollLoops(IRBlock *block, bool ignoreRegs, short *outputRegsToIgnore,
 	result->vliwStartAddress = block->vliwStartAddress;
 	result->vliwEndAddress = block->vliwEndAddress;
 	result->blockState = IRBLOCK_UNROLLED;
-
-	Log::logScheduleProc << "Successors of result (" << block->sourceStartAddress << ") : ";
-	for (int oneSuccessor = 0; oneSuccessor < result->nbSucc; oneSuccessor++)
-		Log::logScheduleProc << " (instr " << (oneSuccessor<result->nbJumps ? result->jumpIds[oneSuccessor] : -1) << ", dest " << (result->successors[oneSuccessor]->sourceStartAddress) << ") ";
-
 
 	return result;
 
@@ -883,7 +872,7 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 			result->successors[result->nbSucc] = entryBlock->successors[oneJump+1];
 			result->nbSucc++;
 		}
-		else if (jumpOpcode != VEX_GOTO && jumpOpcode != VEX_GOTOR && (entryBlock->successors[oneJump] != secondBlock || (entryBlock->successors[oneJump] == secondBlock && entryBlock == secondBlock))){
+		else if (jumpOpcode != VEX_GOTO && jumpOpcode != VEX_GOTOR && (entryBlock->successors[oneJump] != secondBlock->sourceStartAddress || (entryBlock->successors[oneJump] == secondBlock->sourceStartAddress && entryBlock == secondBlock))){
 			result->addJump(entryBlock->jumpIds[oneJump], -1);
 			result->successors[result->nbSucc] = entryBlock->successors[oneJump];
 			result->nbSucc++;
@@ -979,7 +968,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 			IRBlock *block = procedure->blocks[oneBlock];
 
 			//We first check if it is a perfect block
-			if (block->nbJumps + 1 == block->nbSucc && block->nbSucc == 2 && block->successors[0] == block){
+			if (block->nbJumps + 1 == block->nbSucc && block->nbSucc == 2 && block->successors[0] == block->sourceStartAddress){
 				block->blockState = IRBLOCK_PERFECT_LOOP;
 
 				if (block->nbInstr<100 && nbBlocksToAdd < 10){
@@ -1093,9 +1082,9 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 						IRBlock *otherBlock = procedure->blocks[oneOtherBlock];
 						if (otherBlock != block){
 							for (int oneSuccessor = 0; oneSuccessor < otherBlock->nbSucc; oneSuccessor++){
-								IRBlock* successor = otherBlock->successors[oneSuccessor];
+								unsigned int successorAddr = otherBlock->successors[oneSuccessor];
 
-								if (successor == block){
+								if (successorAddr == block->sourceStartAddress){
 									nbPred++;
 									predecessors[0] = otherBlock;
 								}
@@ -1152,9 +1141,9 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 						continue;
 
 					for (int oneSuccessor = 0; oneSuccessor < otherBlock->nbSucc; oneSuccessor++){
-						IRBlock* successor = otherBlock->successors[oneSuccessor];
+						unsigned int successorAddr = otherBlock->successors[oneSuccessor];
 
-						if (successor == block){
+						if (successorAddr == block->sourceStartAddress){
 
 							//We found a predecessor of block, it needs to be the only one
 							if (predecessorFound){
@@ -1238,7 +1227,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 
 				//We add the merged block in the predecessor's list of merged blockState
 				if (firstPredecessor->nbMergedBlocks < 10){
-					firstPredecessor->mergedBlocks[firstPredecessor->nbMergedBlocks] = block;
+					firstPredecessor->mergedBlocks[firstPredecessor->nbMergedBlocks] = block->sourceStartAddress;
 					firstPredecessor->nbMergedBlocks++;
 				}
 				else{
@@ -1337,7 +1326,7 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 					continue;
 
 				for (int oneSuccessor = 0; oneSuccessor < otherBlock->nbSucc; oneSuccessor++){
-					if (otherBlock->successors[oneSuccessor] == block){
+					if (otherBlock->successors[oneSuccessor] == block->sourceStartAddress){
 						//The block 'otherBlock' is a predecessor of current block.
 						//To be eligible, we need it not to be a loop body...
 						if (otherBlock->blockState == IRBLOCK_PERFECT_LOOP){

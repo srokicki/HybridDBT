@@ -448,7 +448,7 @@ int main(int argc, char *argv[])
 		bool optimizationPerformed = false;
 
 
-		updateSpeculationsStatus(&dbtPlateform, placeCode);
+		updateSpeculationsStatus(&dbtPlateform, &application, placeCode);
 
 		if (OPTLEVEL >= 5){
 			for (int oneProcedure = 0; oneProcedure < application.numberProcedures; oneProcedure++){
@@ -459,14 +459,14 @@ int main(int argc, char *argv[])
 
 					changeConfiguration(procedure);
 					if (procedure->configuration != oldConf || procedure->configurationScores[procedure->configuration] == 0){
-						IRProcedure *scheduledProcedure = rescheduleProcedure_schedule(&dbtPlateform, procedure, placeCode);
+						IRProcedure *scheduledProcedure = rescheduleProcedure_schedule(&dbtPlateform, &application, procedure, placeCode);
 						suggestConfiguration(procedure, scheduledProcedure);
 
 						int score = computeScore(scheduledProcedure);
 						procedure->configurationScores[procedure->configuration] = score;
 
 						if (score > procedure->configurationScores[procedure->previousConfiguration]){
-							placeCode = rescheduleProcedure_commit(&dbtPlateform, procedure, placeCode, scheduledProcedure);
+							placeCode = rescheduleProcedure_commit(&dbtPlateform, &application, procedure, placeCode, scheduledProcedure);
 						}
 						else{
 							procedure->configuration = procedure->previousConfiguration;
@@ -492,7 +492,7 @@ int main(int argc, char *argv[])
 					}
 					procedure->previousConfiguration = procedure->configuration;
 					procedure->configuration = maxConf;
-					placeCode = rescheduleProcedure(&dbtPlateform, procedure, placeCode);
+					placeCode = rescheduleProcedure(&dbtPlateform, &application, procedure, placeCode);
 					procedure->state = 2;
 					dbtPlateform.procedureOptCounter++;
 					optimizationPerformed = true;
@@ -510,7 +510,7 @@ int main(int argc, char *argv[])
 
 				if (!errorCode){
 					buildTraces(&dbtPlateform, application.procedures[application.numberProcedures-1], OPTLEVEL);
-					placeCode = rescheduleProcedure(&dbtPlateform, application.procedures[application.numberProcedures-1], placeCode);
+					placeCode = rescheduleProcedure(&dbtPlateform, &application, application.procedures[application.numberProcedures-1], placeCode);
 					dbtPlateform.procedureOptCounter++;
 
 				}

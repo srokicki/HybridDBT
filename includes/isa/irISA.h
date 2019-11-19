@@ -37,6 +37,7 @@
  *
  *******************************************************************/
 class IRBlock;
+class IRApplication;
 
 
 /* IRProcedure is meant to represent a procedure in the binaries.
@@ -57,7 +58,7 @@ public:
 	 * @brief print: prints the procedure's CFG in .dot format in a file
 	 * @param output: the file to print in
 	 */
-	void print(FILE *output);
+	void print(FILE *output, IRApplication &application);
 	IRProcedure(IRBlock *entryBlock, int nbBlock);
 
 };
@@ -85,11 +86,11 @@ public:
 
 	//Control flow graph
 	unsigned char nbSucc;					//Number of successors
-	IRBlock* successors[10];
+	unsigned int successors[10]; 			//Souce start address of successors
 
 	//Keeping trace of previous organization
 	unsigned int nbMergedBlocks = 0;
-	IRBlock* mergedBlocks[10];
+	unsigned int mergedBlocks[10];
 
 	unsigned char nbJumps;
 	unsigned char *jumpIds;
@@ -102,11 +103,11 @@ public:
 	short unrollingFactor;
 
 	unsigned int section;
-	IRBlock** placeInProfiler;
 
 	short sizeOpt0;
 	short sizeOpt1;
 	short sizeOpt2;
+	int placeInProfiler;
 
 	short specAddr[4];
 

@@ -169,8 +169,10 @@ void updateOpt2BlockSize(IRBlock *block){
 	blockInfo[block->sourceStartAddress].scheduleSizeOpt2 = block->vliwEndAddress - block->vliwStartAddress;
 
 
-	if (block->blockState == IRBLOCK_UNROLLED && block->unrollingFactor != 0)
+	if (block->blockState == IRBLOCK_UNROLLED && block->unrollingFactor != 0){
 		blockInfo[block->sourceStartAddress].scheduleSizeOpt2 = blockInfo[block->sourceStartAddress].scheduleSizeOpt2 / block->unrollingFactor;
+		block->sizeOpt2 = blockInfo[block->sourceStartAddress].scheduleSizeOpt2;
+	}
 
 	int currentjumpId = 0;
 
@@ -180,9 +182,11 @@ void updateOpt2BlockSize(IRBlock *block){
 			if (blockInfo[oneSourceCycle].block != NULL){
 				if (currentjumpId >= block->nbJumps){
 					blockInfo[oneSourceCycle].scheduleSizeOpt2 = (block->vliwEndAddress - block->vliwStartAddress) / 2;
+					block->sizeOpt2 = blockInfo[block->sourceStartAddress].scheduleSizeOpt2;
 				}
 				else{
 					blockInfo[oneSourceCycle].scheduleSizeOpt2 = block->vliwEndAddress - block->jumpPlaces[currentjumpId];
+					block->sizeOpt2 = blockInfo[block->sourceStartAddress].scheduleSizeOpt2;
 				}
 				currentjumpId++;
 				nbBlockAdded++;
@@ -204,6 +208,8 @@ IRProcedure* optimizeLevel2(unsigned int address){
 					blockInfo[address>>2].scheduleSizeOpt1 = blockInfo[address>>2].block->vliwEndAddress - blockInfo[address>>2].block->vliwStartAddress;
 
 				blockInfo[address>>2].scheduleSizeOpt2 = blockInfo[address>>2].block->vliwEndAddress - blockInfo[address>>2].block->vliwStartAddress;
+				blockInfo[address>>2].block->sizeOpt2 = blockInfo[address>>2].scheduleSizeOpt2;
+
 				return NULL;
 		}
 		else {
@@ -212,8 +218,8 @@ IRProcedure* optimizeLevel2(unsigned int address){
 			if (!errorCode){
 				blockInfo[address>>2].block->blockState = IRBLOCK_PROC;
 				buildTraces(platform, application->procedures[application->numberProcedures-1], 100);
-				placeCode = rescheduleProcedure(platform, application->procedures[application->numberProcedures-1], placeCode);
-				updateSpeculationsStatus(platform, placeCode);
+				placeCode = rescheduleProcedure(platform, application, application->procedures[application->numberProcedures-1], placeCode);
+	 			updateSpeculationsStatus(platform, application, placeCode);
 
 				for (int oneBlock = 0; oneBlock<application->procedures[application->numberProcedures-1]->nbBlock; oneBlock++){
 					IRBlock* block = application->procedures[application->numberProcedures-1]->blocks[oneBlock];
@@ -265,6 +271,13 @@ void initializeDBTInfo(char* fileName)
 	//We copy the filePath
 	execPath = (char *) malloc(strlen(fileName) + 10);
 	strcpy(execPath, fileName);
+
+	int execPathLength = strlen(execPath);
+	execPath[execPathLength] = '.';
+	execPath[execPathLength+1] = 'd';
+	execPath[execPathLength+2] = 'b';
+	execPath[execPathLength+3] = 't';
+	execPath[execPathLength+4] = 0;
 
 	/***********************************
 	 *  Initialization of the DBT platform
@@ -382,13 +395,6 @@ void initializeDBTInfo(char* fileName)
 	}
 
 	//We check whether the application has already been optimized
-/*	int execPathLength = strlen(execPath);
-	execPath[execPathLength] = '.';
-	execPath[execPathLength+1] = 'd';
-	execPath[execPathLength+2] = 'b';
-	execPath[execPathLength+3] = 't';
-	execPath[execPathLength+4] = 0;
-
 	std::ifstream previousExecDump(execPath);
 	if (previousExecDump.good()){
 		greatestAddr = 0;
@@ -403,10 +409,10 @@ void initializeDBTInfo(char* fileName)
 		delete(application);
 		application = new IRApplication(numberOfSections);
 
-		application->loadApplication(execPath, greatestAddr);
+		application->loadApplication(execPath, greatestAddr*4);
 		printf("Loaded an existing dump!\n");
 
-	}*/
+	}
 
 
 	/********************** We store the size of each block ***********************/
@@ -426,9 +432,9 @@ void initializeDBTInfo(char* fileName)
 		for (int oneBlock = 0; oneBlock<application->numbersBlockInSections[oneSection]; oneBlock++){
 			IRBlock* block = application->blocksInSections[oneSection][oneBlock];
 			blockInfo[block->sourceStartAddress].block = block;
-			blockInfo[block->sourceStartAddress].scheduleSizeOpt0 = block->vliwEndAddress - block->vliwStartAddress;
-			blockInfo[block->sourceStartAddress].scheduleSizeOpt1 = -1;
-			blockInfo[block->sourceStartAddress].scheduleSizeOpt2 = -1;
+			blockInfo[block->sourceStartAddress].scheduleSizeOpt0 = block->sizeOpt0;
+			blockInfo[block->sourceStartAddress].scheduleSizeOpt1 = block->sizeOpt1;
+			blockInfo[block->sourceStartAddress].scheduleSizeOpt2 = block->sizeOpt2;
 			if (block->sourceEndAddress>greatestAddr)
 				greatestAddr = block->sourceEndAddress;
 
@@ -444,9 +450,6 @@ void initializeDBTInfo(char* fileName)
 
 	nonOptPlatform->vliwBinaries = (unsigned int*) malloc(4*MEMORY_SIZE*sizeof(unsigned int));
 	memcpy(nonOptPlatform->vliwBinaries, platform->vliwBinaries, 4*MEMORY_SIZE*sizeof(unsigned int));
-
-	fprintf(stderr, "Greatest instr written is %d\n", placeCode);
-
 }
 
 /******************************************************************************************************
@@ -492,6 +495,7 @@ char useIndirectionTable(int address){
 
 int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock){
 
+	// printf("Asking for %d\n", address>>2);
 	if ((address>>2) >= globalBinarySize){
 		fprintf(stderr, "too large !!\n");
 		return 0;
@@ -521,6 +525,7 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock){
 		if (blockInfo[address>>2].scheduleSizeOpt1 == -1){
 			//We have to schedule the block
 			optimizeBasicBlock(blockInfo[address>>2].block, platform, application, placeCode);
+			blockInfo[address>>2].block->sizeOpt1 = blockInfo[address>>2].block->vliwEndAddress - blockInfo[address>>2].block->vliwStartAddress;
 			blockInfo[address>>2].scheduleSizeOpt1 = blockInfo[address>>2].block->vliwEndAddress - blockInfo[address>>2].block->vliwStartAddress;
 		}
 
@@ -534,6 +539,7 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock){
 			else {
 				optimizeBasicBlock(blockInfo[address>>2].block, platform, application, placeCode);
 				blockInfo[address>>2].scheduleSizeOpt1 = blockInfo[address>>2].block->vliwEndAddress - blockInfo[address>>2].block->vliwStartAddress;
+				blockInfo[address>>2].block->sizeOpt1 = blockInfo[address>>2].scheduleSizeOpt1;
 
 				updateOpt2BlockSize(blockInfo[address>>2].block);
 			}
@@ -771,6 +777,9 @@ void verifyBranchDestination(int addressOfJump, int dest){
 		blockInfo[newBlock->sourceStartAddress].block = newBlock;
 		blockInfo[newBlock->sourceStartAddress].scheduleSizeOpt0 = newBlock->vliwEndAddress - newBlock->vliwStartAddress;
 		blockInfo[containingBlock->sourceStartAddress].scheduleSizeOpt0 = solveUnresolvedJump(platform, containingBlock->sourceEndAddress-addressStart/4) - solveUnresolvedJump(platform, containingBlock->sourceStartAddress-addressStart/4);
+		containingBlock->sizeOpt0 = blockInfo[containingBlock->sourceStartAddress].scheduleSizeOpt0;
+		newBlock->sizeOpt0 = blockInfo[newBlock->sourceStartAddress].scheduleSizeOpt0;
+
 		if (blockInfo[newBlock->sourceStartAddress].scheduleSizeOpt0 < 0 || blockInfo[containingBlock->sourceStartAddress].scheduleSizeOpt0 < 0){
 			printf("Error on block splitting, size is lower than zero\n");
 			assert(blockInfo[newBlock->sourceStartAddress].scheduleSizeOpt0>=0 &&  blockInfo[containingBlock->sourceStartAddress].scheduleSizeOpt0>=0);
@@ -793,6 +802,9 @@ void verifyBranchDestination(int addressOfJump, int dest){
 			//We add information on block size
 			blockInfo[containingBlock->sourceStartAddress].scheduleSizeOpt1 = containingBlock->vliwEndAddress - containingBlock->vliwStartAddress;;
 			blockInfo[newBlock->sourceStartAddress].scheduleSizeOpt1 = newBlock->vliwEndAddress - newBlock->vliwStartAddress;
+			containingBlock->sizeOpt1 = blockInfo[containingBlock->sourceStartAddress].scheduleSizeOpt1;
+			newBlock->sizeOpt1 = blockInfo[newBlock->sourceStartAddress].scheduleSizeOpt1;
+
 
 			//We restore previous values of vliw adresses
 			containingBlock->vliwEndAddress = oldVliwEndAddress;
@@ -801,6 +813,7 @@ void verifyBranchDestination(int addressOfJump, int dest){
 			if (containingBlock->blockState >= IRBLOCK_ERROR_PROC){
 					//The containing block was optimized at proc level, we have to mark the new block as impossible to optimize.
 					blockInfo[newBlock->sourceStartAddress].scheduleSizeOpt2 = blockInfo[newBlock->sourceStartAddress].scheduleSizeOpt1;
+					newBlock->sizeOpt2 = newBlock->sizeOpt1;
 					newBlock->blockState = IRBLOCK_ERROR_PROC;
 			}
 
@@ -812,12 +825,6 @@ void verifyBranchDestination(int addressOfJump, int dest){
 
 
 void finalizeDBTInformation(){
-	int execPathLength = strlen(execPath);
-	execPath[execPathLength] = '.';
-	execPath[execPathLength+1] = 'd';
-	execPath[execPathLength+2] = 'b';
-	execPath[execPathLength+3] = 't';
-	execPath[execPathLength+4] = 0;
 
 	application->dumpApplication(execPath, greatestAddr*4);
 }

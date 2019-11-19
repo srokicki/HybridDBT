@@ -554,7 +554,7 @@ void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBl
  *
  ***************************************************/
 
-void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
+void updateSpeculationsStatus(DBTPlateform *platform, IRApplication *application, int writePlace){
 
 	for (unsigned int oneSpecDef = 1; oneSpecDef<speculationCounter; oneSpecDef++){
 		struct speculationDef *currentSpecDef = &speculationDefinitions[oneSpecDef];
@@ -588,7 +588,7 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 
 				currentSpecDef->graph->applyGraph(currentSpecDef->block);
 
-				inPlaceBlockReschedule(currentSpecDef->block, platform, writePlace);
+				inPlaceBlockReschedule(currentSpecDef->block, platform, application, writePlace);
 				currentSpecDef->type = 2;
 				currentSpecDef->init = 0;
 
@@ -596,7 +596,7 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 			else if (currentSpecDef->type == 2 && (newNbMiss - currentSpecDef->nbFail) >= (newNbUse-currentSpecDef->nbUse)/10){
 
 				//We turn the spec off
-
+ 
 				for (unsigned int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++){
 					for (unsigned int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++){
 						if (currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]] > currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]){
@@ -613,7 +613,7 @@ void updateSpeculationsStatus(DBTPlateform *platform, int writePlace){
 
 				currentSpecDef->graph->applyGraph(currentSpecDef->block);
 
-				inPlaceBlockReschedule(currentSpecDef->block, platform, writePlace);
+				inPlaceBlockReschedule(currentSpecDef->block, platform, application, writePlace);
 
 
 				currentSpecDef->type = 1;

@@ -33,13 +33,13 @@
  * 	Transformation returns the sum of writePlace and the size of the generated binaries.
  ******************************************************************************************/
 
-int rescheduleProcedure(DBTPlateform *platform, IRProcedure *procedure, unsigned int writePlace){
+int rescheduleProcedure(DBTPlateform *platform, IRApplication *application, IRProcedure *procedure, unsigned int writePlace){
 
-	IRProcedure *scheduledProc = rescheduleProcedure_schedule(platform, procedure, writePlace);
-	return rescheduleProcedure_commit(platform, procedure, writePlace, scheduledProc);
+	IRProcedure *scheduledProc = rescheduleProcedure_schedule(platform, application, procedure, writePlace);
+	return rescheduleProcedure_commit(platform, application, procedure, writePlace, scheduledProc);
 }
 
-IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *procedure, unsigned int writePlace){
+IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRApplication *application, IRProcedure *procedure, unsigned int writePlace){
 
 	char incrementInBinaries = (getIssueWidth(procedure->configuration)>4) ? 2 : 1;
 
@@ -194,7 +194,7 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRProcedure *p
 
 }
 
-int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure, unsigned int writePlace, IRProcedure *scheduledProc){
+int rescheduleProcedure_commit(DBTPlateform *platform, IRApplication *application, IRProcedure *procedure, unsigned int writePlace, IRProcedure *scheduledProc){
 
 	char issueWidth = getIssueWidth(procedure->configuration);
 	char incrementInBinaries = (getIssueWidth(procedure->configuration)>4) ? 2 : 1;
@@ -231,13 +231,13 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure, u
 			char jumpOpcode = getOpcode(block->instructions, block->jumpIds[oneJump]);
 			if (jumpOpcode == VEX_BR || jumpOpcode == VEX_BRF || jumpOpcode == VEX_BGE || jumpOpcode == VEX_BLT || jumpOpcode == VEX_BGEU || jumpOpcode == VEX_BLTU){
 				//Conditional block (br)
-				int offset = (block->successors[oneJump]->vliwStartAddress - block->jumpPlaces[oneJump]);
+				int offset = (application->getBlock(block->successors[oneJump])->vliwStartAddress - block->jumpPlaces[oneJump]);
 				unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
 				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfff0007f) | ((offset & 0x1fff) << 7));
 			}
 			else if (jumpOpcode == VEX_GOTO){
 					if (block->nbSucc > oneJump){
-						int dest = block->successors[oneJump]->vliwStartAddress;
+						unsigned int dest = application->getBlock(block->successors[oneJump])->vliwStartAddress;
 						unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
 						writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
 					}
@@ -245,7 +245,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure, u
 			}
 			else if (jumpOpcode != VEX_CALL && jumpOpcode != VEX_CALLR && jumpOpcode != VEX_GOTOR){
 
-				int dest = block->successors[oneJump]->vliwStartAddress;
+				unsigned int dest = application->getBlock(block->successors[oneJump])->vliwStartAddress;
 				unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
 				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
 
@@ -400,10 +400,10 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRProcedure *procedure, u
 	//*************************************************************************
 	return writePlace;
 
-}
+} 
 
 
-void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, unsigned int writePlace){
+void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, IRApplication *application, unsigned int writePlace){
 
 	char isCurrentlyInBlock = (platform->vexSimulator->PC >= block->vliwStartAddress*4) &&
 			(platform->vexSimulator->PC < block->vliwEndAddress*4);
@@ -529,12 +529,12 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, unsigned int
 
 			if (jumpOpcode == VEX_BR || jumpOpcode == VEX_BRF || jumpOpcode == VEX_BGE || jumpOpcode == VEX_BLT || jumpOpcode == VEX_BGEU || jumpOpcode == VEX_BLTU){
 				//Conditional block (br)
-				int offset = (block->successors[oneJump]->vliwStartAddress - block->jumpPlaces[oneJump]);
+				int offset = (application->getBlock(block->successors[oneJump])->vliwStartAddress - block->jumpPlaces[oneJump]);
 				unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
 				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfff0007f) | ((offset & 0x1fff) << 7));
 			}
 			else if (jumpOpcode == VEX_GOTO){
-					int dest = block->successors[oneJump]->vliwStartAddress;
+					int dest = application->getBlock(block->successors[oneJump])->vliwStartAddress;
 					unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
 					writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
 
@@ -542,7 +542,7 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, unsigned int
 			}
 			else if (jumpOpcode != VEX_CALL && jumpOpcode != VEX_CALLR && jumpOpcode != VEX_GOTOR){
 
-				int dest = block->successors[oneJump]->vliwStartAddress;
+				int dest = application->getBlock(block->successors[oneJump])->vliwStartAddress;
 				unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
 				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
 

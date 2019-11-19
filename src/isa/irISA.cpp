@@ -340,7 +340,7 @@ IRProcedure::IRProcedure(IRBlock *entryBlock, int nbBlock){
 }
 
 
-void IRProcedure::print(FILE * output){
+void IRProcedure::print(FILE * output, IRApplication &application){
 	/********************************************************************************************
 	 * This procedure is a debug procedure that will print a CDFG representation of the procedure
 	 *
@@ -353,7 +353,7 @@ void IRProcedure::print(FILE * output){
 	for (unsigned int oneBlockInProcedure = 0; oneBlockInProcedure < this->nbBlock; oneBlockInProcedure++){
 
 		for (unsigned int oneSuccessor = 0; oneSuccessor<this->blocks[oneBlockInProcedure]->nbSucc; oneSuccessor++){
-			fprintf(output, "node_%d -> node_%d;\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, this->blocks[oneBlockInProcedure]->successors[oneSuccessor]->sourceStartAddress);
+			fprintf(output, "node_%d -> node_%d;\n", this->blocks[oneBlockInProcedure]->sourceStartAddress, application.getBlock(this->blocks[oneBlockInProcedure]->successors[oneSuccessor])->sourceStartAddress);
 		}
 
 	}
@@ -423,7 +423,7 @@ IRBlock::IRBlock(int startAddress, int endAddress, int section){
 	this->section = section;
 	this->nbInstr = 0;
 	this->nbJumps = 0;
-	this->placeInProfiler = NULL;
+	this->placeInProfiler = -1;
 	this->instructions = NULL;
 	this->specAddr[0] = 0;
 	this->specAddr[1] = 0;
@@ -437,8 +437,8 @@ IRBlock::IRBlock(int startAddress, int endAddress, int section){
 bool IRBlock::isUndestroyable = false;
 
 IRBlock::~IRBlock(){
-	if (placeInProfiler != 0)
-		*placeInProfiler = 0;
+	if (placeInProfiler != -1)
+		placeInProfiler = -1;
 	if (!this->isUndestroyable && !this->instructions)
 		free(this->instructions);
 	if (!this->isUndestroyable && this->nbJumps > 0){
@@ -486,6 +486,8 @@ void IRApplication::addBlock(IRBlock* block){
 	}
 
 	if (this->numbersAllocatedBlockInSections[sectionNumber] == this->numbersBlockInSections[sectionNumber]){
+
+		bool wasEmpty = this->numbersAllocatedBlockInSections[sectionNumber] == 0;
 		//We allocate new blocks
 		unsigned int numberBlocks = this->numbersBlockInSections[sectionNumber];
 		unsigned int newAllocation = numberBlocks + 5;
@@ -497,7 +499,8 @@ void IRApplication::addBlock(IRBlock* block){
 			this->blocksInSections[sectionNumber][oneBlock]->reference = &(this->blocksInSections[sectionNumber][oneBlock]);
 		}
 
-		free(oldList);
+		if (!wasEmpty)
+			free(oldList);
 	}
 
 

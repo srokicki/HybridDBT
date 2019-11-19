@@ -366,14 +366,14 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 		if (nbSucc > 0){
 			IRBlock *succ1 = application->getBlock(successor1);
 			if (succ1 != NULL){
-				currentBlock->successors[0] = succ1;
+				currentBlock->successors[0] = successor1;
 				numberSuccFound++;
 			}
 		}
 		if (nbSucc > 1){
 			IRBlock *succ2 = application->getBlock(successor2);
 			if (succ2 != NULL){
-				currentBlock->successors[1] = succ2;
+				currentBlock->successors[1] = successor2;
 				numberSuccFound++;
 			}
 		}
@@ -389,10 +389,10 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 		//We store the result and add the blocks to the list of block to study
 		currentBlock->nbSucc = nbSucc;
 		if (nbSucc > 0){
-			blocksToStudy[numberBlockToStudy] = currentBlock->successors[0];
+			blocksToStudy[numberBlockToStudy] = application->getBlock(currentBlock->successors[0]);
 		}
 		if (nbSucc > 1){
-			blocksToStudy[numberBlockToStudy+1] = currentBlock->successors[1];
+			blocksToStudy[numberBlockToStudy+1] = application->getBlock(currentBlock->successors[1]);
 		}
 		numberBlockToStudy += nbSucc;
 
@@ -487,7 +487,6 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 	for (int oneBasicBlock=0; oneBasicBlock<procedure->nbBlock; oneBasicBlock++){
 		IRBlock *block = procedure->blocks[oneBasicBlock];
 
-		*(block->reference) = NULL;
 		block->reference = &(procedure->blocks[oneBasicBlock]);
 
 		if (block->nbInstr == 0){

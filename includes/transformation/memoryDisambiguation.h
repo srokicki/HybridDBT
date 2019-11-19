@@ -52,7 +52,7 @@ struct speculationDef {
 
 
 void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBlock **predecessors, unsigned int nbPred);
-void updateSpeculationsStatus(DBTPlateform *platform, int writePlace);
+void updateSpeculationsStatus(DBTPlateform *platform, IRApplication *application, int writePlace);
 
 
 #endif /* INCLUDES_TRANSFORMATION_MEMORYDISAMBIGUATION_H_ */
