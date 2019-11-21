@@ -161,8 +161,6 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 					if (!isDestinationAlreadyMarked){
 
 						IRBlock *splittedBlock = new IRBlock(destinationInVLIWFromNewMethod, blockToSplit->vliwEndAddress, sectionOfDestination);
-						application->addBlock(splittedBlock);
-
 						//We set metainfo for new block
 						splittedBlock->sourceStartAddress = newBlock->sourceDestination;
 						splittedBlock->sourceEndAddress = blockToSplit->sourceEndAddress;
@@ -172,6 +170,9 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 						blockToSplit->sourceEndAddress = newBlock->sourceDestination;
 						blockToSplit->sourceDestination = -1;
 						blockToSplit->vliwEndAddress = destinationInVLIWFromNewMethod;
+
+						application->addBlock(splittedBlock);
+
 					}
 
 				}

@@ -323,7 +323,7 @@ void initializeDBTInfo(char* fileName)
 
 
 	int numberOfSections = 1 + (size>>10);
-	application = new IRApplication(numberOfSections);
+	application = new IRApplication(addressStart, size);
 	application->numberInstructions = size;
 	Profiler profiler = Profiler(platform);
 
@@ -395,7 +395,7 @@ void initializeDBTInfo(char* fileName)
 	}
 
 	//We check whether the application has already been optimized
-	std::ifstream previousExecDump(execPath);
+	/*std::ifstream previousExecDump(execPath);
 	if (previousExecDump.good()){
 		greatestAddr = 0;
 		for (int oneSection = 0; oneSection<numberOfSections; oneSection++){
@@ -407,12 +407,12 @@ void initializeDBTInfo(char* fileName)
 		}
 
 		delete(application);
-		application = new IRApplication(numberOfSections);
+		application = new IRApplication(addressStart, size);
 
 		application->loadApplication(execPath, greatestAddr*4);
 		printf("Loaded an existing dump!\n");
 
-	}
+	}*/
 
 
 	/********************** We store the size of each block ***********************/
@@ -826,5 +826,5 @@ void verifyBranchDestination(int addressOfJump, int dest){
 
 void finalizeDBTInformation(){
 
-	application->dumpApplication(execPath, greatestAddr*4);
+	//application->dumpApplication(execPath, greatestAddr*4);
 }

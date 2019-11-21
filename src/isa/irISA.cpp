@@ -451,7 +451,16 @@ IRBlock::~IRBlock(){
 ************************   IR Applications **********************************
 *****************************************************************************/
 
-IRApplication::IRApplication(unsigned int numberSections){
+
+IRApplication::IRApplication(unsigned int addressStart, unsigned int size){
+	this->nbInstr = size;
+	this->addressStart = addressStart;
+
+	this->blocks = (IRBlock**) malloc(this->nbInstr * sizeof(IRBlock*));
+	memset(this->blocks, 0, this->nbInstr*sizeof(IRBlock*));
+
+	//Keeping old version for a while
+	unsigned int numberSections = 1 + (size>>10);
 
 	this->numberOfSections = numberSections;
 	this->blocksInSections = (IRBlock***) malloc(sizeof(IRBlock**) * numberOfSections);
@@ -465,7 +474,7 @@ IRApplication::IRApplication(unsigned int numberSections){
 
 	this->numberAllocatedProcedures = 0;
 	this->numberProcedures = 0;
-  this->procedures = nullptr;
+	this->procedures = nullptr;
 
 }
 
@@ -507,6 +516,9 @@ void IRApplication::addBlock(IRBlock* block){
 	this->blocksInSections[sectionNumber][this->numbersBlockInSections[sectionNumber]] = block;
 	block->reference = &(this->blocksInSections[sectionNumber][this->numbersBlockInSections[sectionNumber]]);
 	this->numbersBlockInSections[sectionNumber]++;
+
+	//Adding in the new list
+	this->blocks[block->sourceStartAddress - (addressStart/4)] = block;
 }
 
 void IRApplication::addProcedure(IRProcedure *procedure){
@@ -530,15 +542,7 @@ void IRApplication::addProcedure(IRProcedure *procedure){
 }
 
 IRBlock *IRApplication::getBlock(unsigned int blockStartAddressInSources){
-	for (unsigned int oneSection = 0; oneSection < this->numberOfSections; oneSection++){
-		for (unsigned int oneBlock = 0; oneBlock < numbersBlockInSections[oneSection]; oneBlock++){
-			IRBlock * block = blocksInSections[oneSection][oneBlock];
-			if (block != NULL && block->sourceStartAddress == blockStartAddressInSources){
-				return block;
-			}
-		}
-	}
-	return NULL;
+	return this->blocks[blockStartAddressInSources - (addressStart/4)];
 }
 
 void IRApplication::dumpApplication(char *path, unsigned int greatestAddr){
@@ -578,6 +582,11 @@ void IRApplication::loadApplication(char *path, unsigned int greatestAddr){
 
 	for (int oneInstr = 0; oneInstr< greatestAddr/4; oneInstr++){
 		if (applicationBlocks[oneInstr].sourceStartAddress != 0){
+			applicationBlocks[oneInstr].blockState = 0;
+			applicationBlocks[oneInstr].instructions = NULL;
+			applicationBlocks[oneInstr].nbInstr = 0;
+			applicationBlocks[oneInstr].nbMergedBlocks = 0;
+			
 			this->addBlock(&applicationBlocks[oneInstr]);
 		}
 	}

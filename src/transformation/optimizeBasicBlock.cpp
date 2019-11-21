@@ -267,10 +267,10 @@ void optimizeBasicBlock(IRBlock *block, DBTPlateform *platform, IRApplication *a
 
 			//In this case, we also added a block in the design
 			//We need to insert it in the set of blocks
-			IRBlock* newBlock = new IRBlock(basicBlockStart + binaSize, basicBlockStart + binaSize + 2, block->section);
-			newBlock->sourceStartAddress = 0;
-			newBlock->sourceEndAddress = 0;
-			application->addBlock(newBlock);
+			// IRBlock* newBlock = new IRBlock(basicBlockStart + binaSize, basicBlockStart + binaSize + 2, block->section);
+			// newBlock->sourceStartAddress = 0;
+			// newBlock->sourceEndAddress = 0;
+			// application->addBlock(newBlock);
 
 			Log::logScheduleBlocks << "Adding an extra block from " << (basicBlockStart + binaSize) << "to " << (basicBlockStart + binaSize + 2) << "\n";
 		}

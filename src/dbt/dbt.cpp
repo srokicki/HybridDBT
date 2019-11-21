@@ -327,7 +327,7 @@ int main(int argc, char *argv[])
 
 
 	int numberOfSections = 1 + (size>>10);
-	IRApplication application = IRApplication(numberOfSections);
+	IRApplication application = IRApplication(addressStart, size);
 	Profiler profiler = Profiler(&dbtPlateform);
 	application.numberInstructions = size;
 

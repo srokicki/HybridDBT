@@ -154,7 +154,8 @@ public:
 	unsigned int numberProcedures;
 	unsigned int numberInstructions;
 
-	IRApplication(unsigned int numberSections);
+	IRApplication(unsigned int addressStart, unsigned int size);
+
 	~IRApplication();
 
 	unsigned int numberAllocatedProcedures;
@@ -168,8 +169,9 @@ public:
 	void loadApplication(char *path, unsigned int greatestAddr);
 
 private:
-
-	IRBlock *blocks;
+	unsigned int addressStart;
+	unsigned int nbInstr;
+	IRBlock **blocks;
 
 };
 
