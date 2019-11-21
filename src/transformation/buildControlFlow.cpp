@@ -24,7 +24,7 @@
 #include <lib/log.h>
 
 #define TEMP_PROCEDURE_STORAGE_SIZE 50
-#define TEMP_BLOCK_STORAGE_SIZE 2000
+#define TEMP_BLOCK_STORAGE_SIZE 4000
 
 
 void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStartAddress, int sectionStartAddress, int startAddress, int endAddress, IRApplication *application, Profiler *profiler){

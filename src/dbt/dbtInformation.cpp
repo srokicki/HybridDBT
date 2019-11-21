@@ -534,7 +534,7 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock){
 	else if (optLevel >= 2){ //Opt level 2
 
 		if (blockInfo[address>>2].scheduleSizeOpt2 == -1){
-			if (blockInfo[address>>2].block->blockState > IRBLOCK_STATE_SCHEDULED)
+			if (blockInfo[address>>2].block->blockState >= IRBLOCK_STATE_SCHEDULED)
 				updateOpt2BlockSize(blockInfo[address>>2].block);
 			else {
 				optimizeBasicBlock(blockInfo[address>>2].block, platform, application, placeCode);
