@@ -50,8 +50,6 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 	free(insertions);
 
 	//We declare a temporary storage for storing procedures.
-	application->blocksInSections[section] = (IRBlock**) malloc(TEMP_BLOCK_STORAGE_SIZE * sizeof(IRBlock**));
-	application->numbersAllocatedBlockInSections[section] = TEMP_BLOCK_STORAGE_SIZE;
 
 	int indexInMipsBinaries = 0;
 	int indexInVLIWBinaries = 0;
@@ -141,24 +139,15 @@ void buildBasicControlFlow(DBTPlateform *dbtPlateform, int section, int mipsStar
 				int offsetForDestination = (oneJumpInitialDestination + ((sectionStartAddress>>2) - mipsStartAddress));
 				int sectionOfDestination = offsetForDestination>>10;
 
-
 				if (sectionOfDestination < section){
-					bool isDestinationAlreadyMarked = false;
-					IRBlock *blockToSplit;
 
-					for (int oneBlockForSucc = 0; oneBlockForSucc<application->numbersBlockInSections[sectionOfDestination]; oneBlockForSucc++){
-						IRBlock* blockForSucc = application->blocksInSections[sectionOfDestination][oneBlockForSucc];
-						//fprintf(stderr, "Looking in block %x\n", blockForSucc->sourceStartAddress);
+					if (application->getBlock(newBlock->sourceDestination) == NULL){
 
-						if (blockForSucc->sourceStartAddress == newBlock->sourceDestination){
-							isDestinationAlreadyMarked = true;
-						}
-						if (blockForSucc->sourceStartAddress<newBlock->sourceDestination && blockForSucc->sourceEndAddress>newBlock->sourceDestination){
-							blockToSplit = blockForSucc;
-						}
-					}
+						unsigned int containingBlockStart = newBlock->sourceDestination-1;
+						while (application->getBlock(containingBlockStart) == NULL)
+							containingBlockStart--;
 
-					if (!isDestinationAlreadyMarked){
+						IRBlock *blockToSplit = application->getBlock(containingBlockStart);
 
 						IRBlock *splittedBlock = new IRBlock(destinationInVLIWFromNewMethod, blockToSplit->vliwEndAddress, sectionOfDestination);
 						//We set metainfo for new block
@@ -286,13 +275,21 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 			}
 		}
 
-
-		if (numberBlockInProcedure >= TEMP_BLOCK_STORAGE_SIZE || currentBlock->blockState == IRBLOCK_ERROR_PROC){
+		if (numberBlockInProcedure >= TEMP_BLOCK_STORAGE_SIZE){
 			//If the procedure has too many blocks, we cancel the analysis
 			for (int oneBlockInProc = 0; oneBlockInProc<numberBlockInProcedure; oneBlockInProc++)
 				blockInProcedure[oneBlockInProc]->blockState = IRBLOCK_ERROR_PROC;
 
 			Log::logScheduleProc << "Leavign because of too large proc (" << numberBlockInProcedure << ")\n";
+			return -5;
+		}
+
+		if (currentBlock->blockState == IRBLOCK_ERROR_PROC){
+			//If the procedure has too many blocks, we cancel the analysis
+			for (int oneBlockInProc = 0; oneBlockInProc<numberBlockInProcedure; oneBlockInProc++)
+				blockInProcedure[oneBlockInProc]->blockState = IRBLOCK_ERROR_PROC;
+
+			Log::logScheduleProc << "Leavign because of too erroneous block (" << numberBlockInProcedure << ")\n";
 			return -2;
 		}
 
@@ -398,43 +395,32 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 		numberBlockToStudy += nbSucc;
 
 		//We search for blowk which may jump to this one
-		for (int oneSection = 0; oneSection<application->numberOfSections; oneSection++){
-			for (int oneBlock = 0; oneBlock < application->numbersBlockInSections[oneSection]; oneBlock++){
-				//We determine the kind of jump we face
+		for (auto &block : *application){
 
-				if (application->blocksInSections[oneSection][oneBlock] == NULL)
-					continue;
+			unsigned int jumpInstruction = readInt(platform->vliwBinaries, (block.vliwEndAddress-2*incrementInBinaries)*16);
 
-				unsigned int jumpInstruction = readInt(platform->vliwBinaries, (application->blocksInSections[oneSection][oneBlock]->vliwEndAddress-2*incrementInBinaries)*16);
-
-				bool isConditionalBranch = ((jumpInstruction & 0x7f) == VEX_BR) || ((jumpInstruction & 0x7f) == VEX_BRF) || ((jumpInstruction & 0x7f) == VEX_BLT) || ((jumpInstruction & 0x7f) == VEX_BGE) || ((jumpInstruction & 0x7f) == VEX_BLTU) || ((jumpInstruction & 0x7f) == VEX_BGEU);
-				bool isJump = (jumpInstruction & 0x7f) == VEX_GOTO;
-				bool isCall = (jumpInstruction & 0x7f) == VEX_CALL;
-				bool isNothing = ((jumpInstruction & 0x7f) != VEX_CALL) && ((jumpInstruction & 0x7f) != VEX_CALLR) && ((jumpInstruction & 0x7f) != VEX_GOTOR) && ((jumpInstruction & 0x7f) != VEX_STOP);
+			bool isConditionalBranch = ((jumpInstruction & 0x7f) == VEX_BR) || ((jumpInstruction & 0x7f) == VEX_BRF) || ((jumpInstruction & 0x7f) == VEX_BLT) || ((jumpInstruction & 0x7f) == VEX_BGE) || ((jumpInstruction & 0x7f) == VEX_BLTU) || ((jumpInstruction & 0x7f) == VEX_BGEU);
+			bool isJump = (jumpInstruction & 0x7f) == VEX_GOTO;
+			bool isCall = (jumpInstruction & 0x7f) == VEX_CALL;
+			bool isNothing = ((jumpInstruction & 0x7f) != VEX_CALL) && ((jumpInstruction & 0x7f) != VEX_CALLR) && ((jumpInstruction & 0x7f) != VEX_GOTOR) && ((jumpInstruction & 0x7f) != VEX_STOP);
 
 
-				//We determine the name of successor(s)
-				if (isConditionalBranch && (application->blocksInSections[oneSection][oneBlock]->sourceDestination == currentBlock->sourceStartAddress || application->blocksInSections[oneSection][oneBlock]->sourceEndAddress == currentBlock->sourceStartAddress)){
-					blocksToStudy[numberBlockToStudy] = application->blocksInSections[oneSection][oneBlock];
-					if (application->blocksInSections[oneSection][oneBlock] == 0)
-						printf("Inserting null block %d\n", application->blocksInSections[oneSection][oneBlock]->sourceStartAddress);
+			//We determine the name of successor(s)
+			if (isConditionalBranch && (block.sourceDestination == currentBlock->sourceStartAddress
+					|| block.sourceEndAddress == currentBlock->sourceStartAddress)){
+				blocksToStudy[numberBlockToStudy] = &block;
+				numberBlockToStudy++;
+			}
+			else if (isJump){
+				if (block.sourceDestination == currentBlock->sourceStartAddress){
+					blocksToStudy[numberBlockToStudy] = &block;
 					numberBlockToStudy++;
 				}
-				else if (isJump){
-					if (application->blocksInSections[oneSection][oneBlock]->sourceDestination == currentBlock->sourceStartAddress){
-						blocksToStudy[numberBlockToStudy] = application->blocksInSections[oneSection][oneBlock];
-						if (application->blocksInSections[oneSection][oneBlock] == 0)
-							printf("Inserting null block %d\n", application->blocksInSections[oneSection][oneBlock]->sourceStartAddress);
-						numberBlockToStudy++;
-					}
-				}
-				else if (isCall || isNothing){
-					if (application->blocksInSections[oneSection][oneBlock]->sourceEndAddress == currentBlock->sourceStartAddress){
-						blocksToStudy[numberBlockToStudy] = application->blocksInSections[oneSection][oneBlock];
-						if (application->blocksInSections[oneSection][oneBlock] == 0)
-							printf("Inserting null block %d\n", application->blocksInSections[oneSection][oneBlock]->sourceStartAddress);
-						numberBlockToStudy++;
-					}
+			}
+			else if (isCall || isNothing){
+				if (block.sourceEndAddress == currentBlock->sourceStartAddress){
+					blocksToStudy[numberBlockToStudy] = &block;
+					numberBlockToStudy++;
 				}
 			}
 		}
@@ -452,6 +438,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 
 	//We instanciate the procedure
 	IRProcedure *procedure = new IRProcedure(entryBlock, numberBlockInProcedure);
+	procedure->nbBlock = numberBlockInProcedure;
 	procedure->blocks = (IRBlock**) malloc(numberBlockInProcedure * sizeof(IRBlock*));
 	procedure->configuration = platform->vliwInitialConfiguration;
 	procedure->previousConfiguration = procedure->configuration;
@@ -488,6 +475,7 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 	for (int oneBasicBlock=0; oneBasicBlock<procedure->nbBlock; oneBasicBlock++){
 		IRBlock *block = procedure->blocks[oneBasicBlock];
 
+		block->procedureSourceStartAddress = procedure->entryBlock->sourceStartAddress;
 		block->reference = &(procedure->blocks[oneBasicBlock]);
 
 		if (block->nbInstr == 0){

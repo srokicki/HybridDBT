@@ -1240,8 +1240,8 @@ void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel){
 //					delete block;
 //					continue;
 
-				if (firstPredecessor->nbJumps == 2 && firstPredecessor->jumpIds[0] == firstPredecessor->jumpIds[1])
-					exit(-1);
+				assert(!(firstPredecessor->nbJumps == 2 && firstPredecessor->jumpIds[0] == firstPredecessor->jumpIds[1]));
+
 				changeMade=1;
 				break;
 

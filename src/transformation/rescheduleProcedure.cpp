@@ -141,10 +141,7 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform *platform, IRApplication 
 				binaSize += 2*incrementInBinaries;
 //			}
 
-			if (readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 16*incrementInBinaries) != 0){
-				Log::logError << "Failed at moving...\n";
-				exit(-1);
-			}
+			assert(!(readInt(platform->vliwBinaries, 16*result->blocks[oneBlock]->vliwEndAddress - 16*incrementInBinaries) != 0));
 
 		}
 
@@ -351,20 +348,13 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRApplication *applicatio
 		if (isReturnBlock){
 
 			if (block->nbJumps == 1){
-				if (readInt(platform->vliwBinaries, 16*block->jumpPlaces[block->nbJumps-1] +16*incrementInBinaries) == 0)
-					writeInt(platform->vliwBinaries, 16*block->jumpPlaces[block->nbJumps-1] +16*incrementInBinaries, getReconfigurationInstruction(platform->vliwInitialConfiguration));
-				else{
-					Log::logError << "Failing when inserting reconfs at the end of a procedure...\nExiting...";
-					exit(-1);
-				}
+				assert(readInt(platform->vliwBinaries, 16*block->jumpPlaces[block->nbJumps-1] +16*incrementInBinaries) == 0);
+				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[block->nbJumps-1] +16*incrementInBinaries, getReconfigurationInstruction(platform->vliwInitialConfiguration));
 			}
 			else{
-				if (readInt(platform->vliwBinaries, 16*block->vliwEndAddress -16*incrementInBinaries) == 0)
-					writeInt(platform->vliwBinaries, 16*block->vliwEndAddress -16*incrementInBinaries, getReconfigurationInstruction(platform->vliwInitialConfiguration));
-				else{
-					Log::logError << "Failing when inserting reconfs at the end of a procedure...\nExiting...";
-					exit(-1);
-				}
+				assert(readInt(platform->vliwBinaries, 16*block->vliwEndAddress -16*incrementInBinaries) == 0);
+				writeInt(platform->vliwBinaries, 16*block->vliwEndAddress -16*incrementInBinaries, getReconfigurationInstruction(platform->vliwInitialConfiguration));
+
 			}
 
 		}
@@ -400,7 +390,7 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRApplication *applicatio
 	//*************************************************************************
 	return writePlace;
 
-} 
+}
 
 
 void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, IRApplication *application, unsigned int writePlace){
@@ -410,6 +400,9 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, IRApplicatio
 
 	if (isCurrentlyInBlock){
 		unsigned int instructionInEnd = readInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16);
+
+		assert(instructionInEnd == 0 || readInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4) == 0);
+
 		if (instructionInEnd == 0){
 			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, 0x2f);
 
@@ -424,10 +417,6 @@ void inPlaceBlockReschedule(IRBlock *block, DBTPlateform *platform, IRApplicatio
 			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16, instructionInEnd);
 			writeInt(platform->vliwBinaries, (block->vliwEndAddress-1)*16+4, 0);
 
-		}
-		else{
-			Log::logError << "In optimize basic block, execution is in the middle of a block and programm cannot stop it...\n exiting...\n";
-			exit(-1);
 		}
 	}
 

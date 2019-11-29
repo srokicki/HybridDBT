@@ -331,14 +331,31 @@ std::string printBytecodeInstruction(int index, unsigned int  instructionPart1, 
 
 IRProcedure::IRProcedure(IRBlock *entryBlock, int nbBlock){
 	this->entryBlock = entryBlock;
-	this->nbBlock = nbBlock;
+	this->nbBlock = 0;
 
 	for (unsigned int oneConfiguration = 0; oneConfiguration < 32; oneConfiguration++){
 		configurationScores[oneConfiguration] = 0;
 	}
 	this->state = 0;
+	this->blocks = (IRBlock**) malloc(nbBlock * sizeof(IRBlock*));
+	this->nbAllocatedBlocks = nbBlock;
 }
 
+void IRProcedure::addBlock(IRBlock &block){
+	if (this->nbBlock == this->nbAllocatedBlocks){
+		IRBlock **newArray = (IRBlock**) malloc((this->nbAllocatedBlocks + 20)*sizeof(IRBlock*));
+		memcpy(newArray, this->blocks, this->nbBlock*sizeof(IRBlock*));
+
+		if (this->nbAllocatedBlocks != 0)
+			free(this->blocks);
+
+		this->blocks = newArray;
+		this->nbAllocatedBlocks += 20;
+	}
+
+	this->blocks[this->nbBlock] = &block;
+	this->nbBlock++;
+}
 
 void IRProcedure::print(FILE * output, IRApplication &application){
 	/********************************************************************************************
@@ -365,6 +382,10 @@ void IRProcedure::print(FILE * output, IRApplication &application){
 		}
 	}
 }
+
+/****************************************************************************
+************************   IR BLOCKS       **********************************
+*****************************************************************************/
 
 void IRBlock::addJump(unsigned char jumpID, unsigned int jumpPlace){
 	unsigned char* tempJumpIds = (unsigned char*) malloc(sizeof(unsigned char) * (this->nbJumps+1));
@@ -415,6 +436,7 @@ void IRBlock::printCode(std::ostream &stream, DBTPlateform *platform){
 	}
 }
 
+
 IRBlock::IRBlock(int startAddress, int endAddress, int section){
 	this->vliwEndAddress = endAddress;
 	this->vliwStartAddress = startAddress;
@@ -459,19 +481,6 @@ IRApplication::IRApplication(unsigned int addressStart, unsigned int size){
 	this->blocks = (IRBlock**) malloc(this->nbInstr * sizeof(IRBlock*));
 	memset(this->blocks, 0, this->nbInstr*sizeof(IRBlock*));
 
-	//Keeping old version for a while
-	unsigned int numberSections = 1 + (size>>10);
-
-	this->numberOfSections = numberSections;
-	this->blocksInSections = (IRBlock***) malloc(sizeof(IRBlock**) * numberOfSections);
-	this->numbersBlockInSections= (unsigned int*) malloc(sizeof(unsigned int) * numberOfSections);
-
-	this->numbersAllocatedBlockInSections = (unsigned int*) malloc(sizeof(unsigned int) * numberOfSections);
-	for (unsigned int oneSection = 0; oneSection<numberSections; oneSection++){
-		this->numbersBlockInSections[oneSection] = 0;
-		this->numbersAllocatedBlockInSections[oneSection] = 0;
-	}
-
 	this->numberAllocatedProcedures = 0;
 	this->numberProcedures = 0;
 	this->procedures = nullptr;
@@ -480,46 +489,21 @@ IRApplication::IRApplication(unsigned int addressStart, unsigned int size){
 
 IRApplication::~IRApplication(){
 
+	for (auto &block : *this)
+		delete &block;
 
 	for (unsigned int oneProcedure = 0; oneProcedure<this->numberProcedures; oneProcedure++){
 		delete this->procedures[oneProcedure];
 	}
 }
 
+// Adding a block
+
 void IRApplication::addBlock(IRBlock* block){
-	unsigned int sectionNumber = block->section;
-
-	if (sectionNumber>this->numberOfSections){
-		Log::logError << "Error while adding a block in an application: section " << sectionNumber << " is higher than the total number of section (" << this->numberOfSections << ")\n";
-		exit(-1);
-	}
-
-	if (this->numbersAllocatedBlockInSections[sectionNumber] == this->numbersBlockInSections[sectionNumber]){
-
-		bool wasEmpty = this->numbersAllocatedBlockInSections[sectionNumber] == 0;
-		//We allocate new blocks
-		unsigned int numberBlocks = this->numbersBlockInSections[sectionNumber];
-		unsigned int newAllocation = numberBlocks + 5;
-		IRBlock** oldList = this->blocksInSections[sectionNumber];
-		this->blocksInSections[sectionNumber] = (IRBlock**) malloc(newAllocation * sizeof(IRBlock*));
-		memcpy(this->blocksInSections[sectionNumber], oldList, numberBlocks*sizeof(IRBlock*));
-		this->numbersAllocatedBlockInSections[sectionNumber] = newAllocation;
-		for (unsigned int oneBlock = 0; oneBlock<numberBlocks; oneBlock++){
-			this->blocksInSections[sectionNumber][oneBlock]->reference = &(this->blocksInSections[sectionNumber][oneBlock]);
-		}
-
-		if (!wasEmpty)
-			free(oldList);
-	}
-
-
-	this->blocksInSections[sectionNumber][this->numbersBlockInSections[sectionNumber]] = block;
-	block->reference = &(this->blocksInSections[sectionNumber][this->numbersBlockInSections[sectionNumber]]);
-	this->numbersBlockInSections[sectionNumber]++;
-
-	//Adding in the new list
 	this->blocks[block->sourceStartAddress - (addressStart/4)] = block;
 }
+
+//Adding a procedure
 
 void IRApplication::addProcedure(IRProcedure *procedure){
 
@@ -532,8 +516,8 @@ void IRApplication::addProcedure(IRProcedure *procedure){
 		memcpy(this->procedures, oldList, numberProc*sizeof(IRProcedure*));
 		this->numberAllocatedProcedures = newAllocation;
 
-    if (oldList)
-      free(oldList);
+	    if (oldList)
+	      free(oldList);
 	}
 
 
@@ -541,25 +525,48 @@ void IRApplication::addProcedure(IRProcedure *procedure){
 	this->numberProcedures++;
 }
 
+//Getting a block
+
 IRBlock *IRApplication::getBlock(unsigned int blockStartAddressInSources){
 	return this->blocks[blockStartAddressInSources - (addressStart/4)];
 }
 
+IRProcedure* IRApplication::getProcedure(unsigned int procedureSourceStartAddress){
+	for (unsigned int oneProcedure = 0; oneProcedure < this->numberProcedures; oneProcedure++){
+		IRProcedure *procedure = this->procedures[oneProcedure];
+		if (procedure->entryBlock->sourceStartAddress == procedureSourceStartAddress)
+			return procedure;
+	}
+
+	return NULL;
+}
+
+IRApplicationBlocksIterator IRApplication::begin() {
+	unsigned int start = addressStart/4;
+	while (this->getBlock(start) == NULL)
+		start++;
+
+	return IRApplicationBlocksIterator(start, this);
+}
+
+IRApplicationBlocksIterator IRApplication::end() {
+	unsigned int end = (addressStart/4) + nbInstr;
+	while (this->getBlock(end) == NULL)
+		end--;
+
+	return IRApplicationBlocksIterator(end, this);
+};
+
+//Dump and load operations
 void IRApplication::dumpApplication(char *path, unsigned int greatestAddr){
 
 	IRBlock *applicationBlocks = (IRBlock *) malloc((greatestAddr/4) * sizeof(IRBlock));
 	memset(applicationBlocks, 0, (greatestAddr/4) * sizeof(IRBlock));
 
-	for (unsigned int oneSection = 0; oneSection < this->numberOfSections; oneSection++){
-		for (unsigned int oneBlock = 0; oneBlock < numbersBlockInSections[oneSection]; oneBlock++){
-			IRBlock *block = this->blocksInSections[oneSection][oneBlock];
+	for (auto &block : *this)
+		if (block.sourceStartAddress != 0)
+			memcpy(&applicationBlocks[block.sourceStartAddress], &block, sizeof(IRBlock));
 
-			if (block != NULL && block->sourceStartAddress != 0)
-				memcpy(&applicationBlocks[block->sourceStartAddress], block, sizeof(IRBlock));
-
-
-		}
-	}
 
 	char *blocksAsChar = (char*) applicationBlocks;
 
@@ -584,11 +591,29 @@ void IRApplication::loadApplication(char *path, unsigned int greatestAddr){
 		if (applicationBlocks[oneInstr].sourceStartAddress != 0){
 			applicationBlocks[oneInstr].blockState = 0;
 			applicationBlocks[oneInstr].instructions = NULL;
-			applicationBlocks[oneInstr].nbInstr = 0;
-			applicationBlocks[oneInstr].nbMergedBlocks = 0;
-			
+
 			this->addBlock(&applicationBlocks[oneInstr]);
+
+			if (applicationBlocks[oneInstr].procedureSourceStartAddress != 0){
+				IRProcedure* procedure = this->getProcedure(applicationBlocks[oneInstr].procedureSourceStartAddress);
+				if (procedure == NULL){
+					procedure = new IRProcedure(&applicationBlocks[oneInstr], 20);
+					this->addProcedure(procedure);
+				}
+				procedure->addBlock(applicationBlocks[oneInstr]);
+
+			}
 		}
+	}
+
+	for (unsigned int oneProcedure = 0; oneProcedure < this->numberProcedures; oneProcedure++){
+		IRProcedure *procedure = this->procedures[oneProcedure];
+		unsigned int nbInstr = 0;
+		for (unsigned int oneBlock = 0; oneBlock<procedure->nbBlock; oneBlock++){
+			nbInstr += procedure->blocks[oneBlock]->nbInstr;
+		}
+
+		procedure->nbInstr = nbInstr;
 	}
 }
 

@@ -38,7 +38,7 @@
  *******************************************************************/
 class IRBlock;
 class IRApplication;
-
+class IRApplicationBlocksIterator;
 
 /* IRProcedure is meant to represent a procedure in the binaries.
  * Its current implementation only store its start/end address and a pointer to the basic blocks*/
@@ -51,7 +51,7 @@ public:
 	uint8_t configuration, previousConfiguration;
 	int configurationScores[32];
 	signed char state;
-
+	unsigned int nbInstr;
 	unsigned int procedureState;	//A value to store its state (optimized/translated or other things like that)
 
 	/**
@@ -61,6 +61,10 @@ public:
 	void print(FILE *output, IRApplication &application);
 	IRProcedure(IRBlock *entryBlock, int nbBlock);
 
+	void addBlock(IRBlock &block);
+
+private:
+	unsigned int nbAllocatedBlocks;
 };
 
 /* IRBlock represent a block in the binaries.
@@ -103,6 +107,7 @@ public:
 	short unrollingFactor;
 
 	unsigned int section;
+	unsigned int procedureSourceStartAddress;
 
 	short sizeOpt0;
 	short sizeOpt1;
@@ -146,33 +151,49 @@ public:
 
 class IRApplication{
 public:
-	unsigned int numberOfSections;
-	IRBlock*** blocksInSections;
-	unsigned int *numbersBlockInSections;
 
 	IRProcedure** procedures;
 	unsigned int numberProcedures;
 	unsigned int numberInstructions;
+	unsigned int numberAllocatedProcedures;
 
 	IRApplication(unsigned int addressStart, unsigned int size);
-
 	~IRApplication();
 
-	unsigned int numberAllocatedProcedures;
-	unsigned int *numbersAllocatedBlockInSections;
-
 	IRBlock* getBlock(unsigned int blockStartAddressInSources);
+	IRProcedure* getProcedure(unsigned int procedureSourceStartAddress);
+
 	void addBlock(IRBlock *block);
 	void addProcedure(IRProcedure *procedure);
 
 	void dumpApplication(char *path, unsigned int greatestAddr);
 	void loadApplication(char *path, unsigned int greatestAddr);
 
+	//For iterators
+	IRApplicationBlocksIterator begin();
+	IRApplicationBlocksIterator end();
+
+
 private:
 	unsigned int addressStart;
 	unsigned int nbInstr;
 	IRBlock **blocks;
 
+};
+
+//*****************************************************************
+// IRApplicationBlocksIterator
+
+class IRApplicationBlocksIterator{
+public:
+     IRApplicationBlocksIterator(unsigned int addr, IRApplication *application) {this->addr = addr; this->application = application;}
+     IRApplicationBlocksIterator operator++() {this->addr++; while(application->getBlock(this->addr) == NULL){this->addr++;}; return *this; }
+	 IRApplicationBlocksIterator operator--() {this->addr--; while(application->getBlock(this->addr) == NULL){this->addr--;}; return *this; }
+     bool operator!=(const IRApplicationBlocksIterator &other) const { return addr != other.addr; }
+     IRBlock& operator*() { return *(application->getBlock(addr));}
+private:
+	   IRApplication *application;
+	   unsigned int addr;
 };
 
 

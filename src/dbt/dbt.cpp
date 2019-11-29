@@ -526,33 +526,27 @@ int main(int argc, char *argv[])
 
 		//We perform aggressive level 1 optimization: if a block takes more than 8 cycle we schedule it.
 		//If it has a backward loop, we also profile it.
-		for (unsigned int oneSection = 0; oneSection<numberOfSections; oneSection++){
-			for (int oneBlock = 0; oneBlock<application.numbersBlockInSections[oneSection]; oneBlock++){
-				IRBlock* block = application.blocksInSections[oneSection][oneBlock];
+		for (auto &block : application){
+			if (block.sourceStartAddress != -1){
+				if ((MAX_SCHEDULE_COUNT==-1 || dbtPlateform.blockScheduleCounter < MAX_SCHEDULE_COUNT)
+					&& OPTLEVEL >= 1
+					&& (block.sourceEndAddress - block.sourceStartAddress > 4 || (block.sourceDestination != -1 && block.sourceDestination <= block.sourceStartAddress))
+					&& block.blockState < IRBLOCK_STATE_SCHEDULED){
 
-				if (block != NULL && block->sourceStartAddress != -1){
-					if ((MAX_SCHEDULE_COUNT==-1 || dbtPlateform.blockScheduleCounter < MAX_SCHEDULE_COUNT) && OPTLEVEL >= 1/* && block->sourceEndAddress - block->sourceStartAddress > profileGap */&& (block->sourceEndAddress - block->sourceStartAddress > 4 || (block->sourceDestination != -1 && block->sourceDestination <= block->sourceStartAddress) )  && block->blockState < IRBLOCK_STATE_SCHEDULED){
+					optimizeBasicBlock(&block, &dbtPlateform, &application, placeCode);
+					dbtPlateform.blockScheduleCounter++;
 
-						optimizeBasicBlock(block, &dbtPlateform, &application, placeCode);
-						dbtPlateform.blockScheduleCounter++;
+					if ((block.sourceDestination != -1 && block.sourceDestination <= block.sourceStartAddress) || block.nbInstr > 32){
 
-						if ((block->sourceDestination != -1 && block->sourceDestination <= block->sourceStartAddress) || block->nbInstr > 32){
-
-							profiler.profileBlock(block);
-						}
-
-						optimizationPerformed = true;
-						break;
+						profiler.profileBlock(&block);
 					}
 
+					optimizationPerformed = true;
+					break;
 				}
-
 			}
-
-			if (optimizationPerformed)
-				break;
-
 		}
+
 
 		int cyclesToRun = dbtPlateform.optimizationCycles - oldOptimizationCount;
 		if (cyclesToRun == 0){
