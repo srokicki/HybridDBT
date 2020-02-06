@@ -861,18 +861,13 @@ IRBlock* superBlock(IRBlock *entryBlock, IRBlock *secondBlock, bool ignoreRegs, 
 
 	for (int oneJump = 0; oneJump<entryBlock->nbJumps; oneJump++){
 		char jumpOpcode = getOpcode(entryBlock->instructions, entryBlock->jumpIds[oneJump]);
-		/*if (isDropEscape && oneJump == entryBlock->nbJumps-1){
-			//We remove the concerned jump
-			fprintf(stderr, "%d\n",entryBlock->jumpIds[oneJump]);
-			setOpcode(result->instructions, entryBlock->jumpIds[oneJump], VEX_NOP);
-//			break;
-		}
-		else */if (entryBlock == secondBlock){
+		if (entryBlock == secondBlock){
+			//Loop unrolling
 			result->addJump(entryBlock->jumpIds[oneJump], -1);
 			result->successors[result->nbSucc] = entryBlock->successors[oneJump+1];
 			result->nbSucc++;
 		}
-		else if (jumpOpcode != VEX_GOTO && jumpOpcode != VEX_GOTOR && (entryBlock->successors[oneJump] != secondBlock->sourceStartAddress || (entryBlock->successors[oneJump] == secondBlock->sourceStartAddress && entryBlock == secondBlock))){
+		else if (jumpOpcode != VEX_GOTO && jumpOpcode != VEX_GOTOR && entryBlock->successors[oneJump] != secondBlock->sourceStartAddress){
 			result->addJump(entryBlock->jumpIds[oneJump], -1);
 			result->successors[result->nbSucc] = entryBlock->successors[oneJump];
 			result->nbSucc++;

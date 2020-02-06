@@ -241,11 +241,11 @@ int rescheduleProcedure_commit(DBTPlateform *platform, IRApplication *applicatio
 
 			}
 			else if (jumpOpcode != VEX_CALL && jumpOpcode != VEX_CALLR && jumpOpcode != VEX_GOTOR){
-
-				unsigned int dest = application->getBlock(block->successors[oneJump])->vliwStartAddress;
-				unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
-				writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
-
+				if (block->nbSucc > oneJump){
+					unsigned int dest = application->getBlock(block->successors[oneJump])->vliwStartAddress;
+					unsigned int oldJump = readInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump]);
+					writeInt(platform->vliwBinaries, 16*block->jumpPlaces[oneJump], (oldJump & 0xfc00007f) | ((dest & 0x7ffff) << 7));
+				}
 
 			}
 

@@ -311,7 +311,8 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 		bool isConditionalBranch = ((jumpInstruction & 0x7f) == VEX_BR) || ((jumpInstruction & 0x7f) == VEX_BRF) || ((jumpInstruction & 0x7f) == VEX_BLT) || ((jumpInstruction & 0x7f) == VEX_BGE) || ((jumpInstruction & 0x7f) == VEX_BLTU) || ((jumpInstruction & 0x7f) == VEX_BGEU);
 		bool isJump = (jumpInstruction & 0x7f) == VEX_GOTO;
 		bool isCall = (jumpInstruction & 0x7f) == VEX_CALL;
-		bool isNothing = ((jumpInstruction & 0x7f) != VEX_CALL) && ((jumpInstruction & 0x7f) != VEX_CALLR) && ((jumpInstruction & 0x7f) != VEX_GOTOR) && ((jumpInstruction & 0x7f) != VEX_STOP);
+		bool isOtherJump = ((jumpInstruction & 0x7f) != VEX_CALLR) || ((jumpInstruction & 0x7f) != VEX_GOTOR);
+		bool isNothing = !isConditionalBranch && !isJump && !isCall && !isOtherJump;
 
 
 		//We determine the name of successor(s)
@@ -347,16 +348,15 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 				currentBlock->addJump(-1, (endAddress-2*incrementInBinaries));
 
 		}
-		else if (isNothing){
-			successor1 = currentBlock->sourceEndAddress;
-			nbSucc = 1;
-			currentBlock->nbJumps = 0;
-
-		}
-		else{
+		else if (isOtherJump){
 			nbSucc = 0;
 			if (currentBlock->nbJumps == 0)
 				currentBlock->addJump(-1, (endAddress-2*incrementInBinaries));
+		}
+		else{
+			successor1 = currentBlock->sourceEndAddress;
+			nbSucc = 1;
+			currentBlock->nbJumps = 0;
 		}
 
 		//We find the corresponding block(s)
@@ -501,13 +501,14 @@ int buildAdvancedControlFlow(DBTPlateform *platform, IRBlock *startBlock, IRAppl
 				block->instructions[4*oneBytecodeInstr + 3] = readInt(platform->bytecode, 16*oneBytecodeInstr + 12);
 			}
 
-			//We check if we find a jump as last instruction
-			if (block->nbJumps == 1){
-				block->jumpIds[0] = blockSize-1;
-			}
-
 			block->nbInstr = blockSize;
 		}
+
+		//We check if we find a jump as last instruction
+		if (block->nbJumps == 1){
+			block->jumpIds[0] = block->nbInstr-1;
+		}
+
 		block->oldVliwStartAddress = block->vliwStartAddress;
 		block->blockState = IRBLOCK_PROC;
 	}

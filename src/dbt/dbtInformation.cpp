@@ -409,6 +409,98 @@ void initializeDBTInfo(char* fileName)
 		application = new IRApplication(addressStart, size);
 
 		application->loadApplication(execPath, greatestAddr*4);
+
+		//We check if application has been optimized...
+		bool isOptimized = true;
+		for (auto &block : *application){
+			if (block.sizeOpt2 == -1){
+				isOptimized = false;
+				break;
+			}
+		}
+
+		if (!isOptimized){
+			printf("Starting level 1 optimizations...\n");
+			int nbBlocks = 0;
+			for (auto &block : *application)
+				nbBlocks++;
+
+			unsigned int step = nbBlocks/100;
+			unsigned int nbBlockOptimized = 0;
+			for (auto &block : *application){
+				if (block.blockState == IRBLOCK_STATE_FIRSTPASS){
+					optimizeBasicBlock(&block, platform, application, placeCode);
+					block.sizeOpt1 = block.vliwEndAddress - block.vliwStartAddress;
+				}
+
+				//Drawing progress bar
+				nbBlockOptimized++;
+				if (nbBlockOptimized%step == 0){
+					unsigned int progress = nbBlockOptimized/step;
+					int oneStep;
+					printf("\r");
+					for (oneStep = 0; oneStep < 100; oneStep++){
+						if (oneStep<progress)
+							printf("=");
+						else if (oneStep == progress)
+							printf(">");
+						else
+							printf(" ");
+					}
+
+					printf("  %d / %d", nbBlockOptimized, nbBlocks);
+				}
+			}
+
+			printf("\nStarting level 2 optimizations...\n");
+
+			step = nbBlocks/100;
+			nbBlockOptimized = 0;
+			for (auto &block : *application){
+				if (block.blockState <= IRBLOCK_STATE_SCHEDULED){
+					optimizeLevel2(block.sourceStartAddress * 4);
+				}
+
+				//Drawing progress bar
+				nbBlockOptimized++;
+				if (nbBlockOptimized%step == 0){
+					unsigned int progress = nbBlockOptimized/step;
+					int oneStep;
+					printf("\r");
+					for (oneStep = 0; oneStep < 100; oneStep++){
+						if (oneStep<progress)
+							printf("=");
+						else if (oneStep == progress)
+							printf(">");
+						else
+							printf(" ");
+					}
+
+					printf("  %d / %d", nbBlockOptimized, nbBlocks);
+				}
+			}
+			printf("\nDone!\n");
+
+			for (auto &block : *application){
+				if (block.sizeOpt0 == -1){
+					printf("For block %d, opt 0 is not computed\n", block.sourceStartAddress);
+				}
+
+				if (block.sizeOpt1 == -1){
+					printf("For block %d, opt 1 is not computed\n", block.sourceStartAddress);
+				}
+
+				if (block.sizeOpt2 == -1){
+					printf("For block %d, opt 2 is not computed (state is %d)\n", block.sourceStartAddress, block.blockState);
+					block.sizeOpt2 = block.sizeOpt1;
+				}
+			}
+
+			application->dumpApplication(execPath, greatestAddr*4);
+
+
+		}
+
 		printf("Loaded an existing dump!\n");
 
 	}
@@ -827,82 +919,6 @@ void verifyBranchDestination(int addressOfJump, int dest){
 void finalizeDBTInformation(){
 
 	if (isExploreOpts){
-		printf("Starting level 1 optimizations...\n");
-		int nbBlocks = 0;
-		for (auto &block : *application)
-			nbBlocks++;
-
-		unsigned int step = nbBlocks/100;
-		unsigned int nbBlockOptimized = 0;
-		for (auto &block : *application){
-			if (block.blockState == IRBLOCK_STATE_FIRSTPASS){
-				optimizeBasicBlock(&block, platform, application, placeCode);
-				block.sizeOpt1 = block.vliwEndAddress - block.vliwStartAddress;
-			}
-
-			//Drawing progress bar
-			nbBlockOptimized++;
-			if (nbBlockOptimized%step == 0){
-				unsigned int progress = nbBlockOptimized/step;
-				int oneStep;
-				printf("\r");
-				for (oneStep = 0; oneStep < 100; oneStep++){
-					if (oneStep<progress)
-						printf("=");
-					else if (oneStep == progress)
-						printf(">");
-					else
-						printf(" ");
-				}
-
-				printf("  %d / %d", nbBlockOptimized, nbBlocks);
-			}
-		}
-
-		printf("\nStarting level 2 optimizations...\n");
-
-		step = nbBlocks/100;
-		nbBlockOptimized = 0;
-		for (auto &block : *application){
-			if (block.blockState <= IRBLOCK_STATE_SCHEDULED){
-				optimizeLevel2(block.sourceStartAddress * 4);
-			}
-
-			//Drawing progress bar
-			nbBlockOptimized++;
-			if (nbBlockOptimized%step == 0){
-				unsigned int progress = nbBlockOptimized/step;
-				int oneStep;
-				printf("\r");
-				for (oneStep = 0; oneStep < 100; oneStep++){
-					if (oneStep<progress)
-						printf("=");
-					else if (oneStep == progress)
-						printf(">");
-					else
-						printf(" ");
-				}
-
-				printf("  %d / %d", nbBlockOptimized, nbBlocks);
-			}
-		}
-		printf("\nDone!\n");
-
-		for (auto &block : *application){
-			if (block.sizeOpt0 == -1){
-				printf("For block %d, opt 0 is not computed\n", block.sourceStartAddress);
-			}
-
-			if (block.sizeOpt1 == -1){
-				printf("For block %d, opt 1 is not computed\n", block.sourceStartAddress);
-			}
-
-			if (block.sizeOpt2 == -1){
-				printf("For block %d, opt 2 is not computed (state is %d)\n", block.sourceStartAddress, block.blockState);
-				block.sizeOpt2 = block.sizeOpt1;
-			}
-		}
-
 		application->dumpApplication(execPath, greatestAddr*4);
 	}
 }
