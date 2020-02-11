@@ -7,6 +7,9 @@ set(SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/riscvSimulator.cpp
    ${CMAKE_CURRENT_SOURCE_DIR}/mipsSimulator.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/emptySimulator.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/shadowedRegisterFile.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/riscvDecoder.cpp
+
    PARENT_SCOPE
 )
 
