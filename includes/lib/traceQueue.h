@@ -1,22 +1,19 @@
 #pragma once
 
-#include <vector>
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
+#include <vector>
 
 /**
  * @brief This class represents a concurrency-safe queue used to register execution
  * traces chunks. It is useful for threaded multi-simulators applications.
  */
-class TraceQueue
-{
+class TraceQueue {
 public:
-
   /**
    * @brief Entry represent an execution trace line
    */
-  typedef struct _Entry
-  {
+  typedef struct _Entry {
     uint32_t instructions[8];
     uint64_t registers[32];
     uint64_t pc;
@@ -41,14 +38,12 @@ public:
   bool hasNext();
 
 private:
-  std::vector<Entry> * _trace_queue;
+  std::vector<Entry>* _trace_queue;
 
   unsigned int _max_size;
   unsigned int _written_trace;
   unsigned int _read_trace;
 
-
   std::condition_variable _cv;
   std::mutex _mtx;
 };
-

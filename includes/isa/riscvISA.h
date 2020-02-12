@@ -8,8 +8,8 @@
 #ifndef INCLUDES_ISA_RISCVISA_H_
 #define INCLUDES_ISA_RISCVISA_H_
 
-#include <types.h>
 #include <string>
+#include <types.h>
 
 #define RISCV_LUI 0x37
 #define RISCV_AUIPC 0x17
@@ -30,7 +30,6 @@
 #define RISCV_BR_BLTU 0x6
 #define RISCV_BR_BGEU 0x7
 
-
 #define RISCV_LD_LB 0x0
 #define RISCV_LD_LH 0x1
 #define RISCV_LD_LW 0x2
@@ -39,13 +38,10 @@
 #define RISCV_LD_LHU 0x5
 #define RISCV_LD_LWU 0x6
 
-
 #define RISCV_ST_STB 0x0
 #define RISCV_ST_STH 0x1
 #define RISCV_ST_STW 0x2
 #define RISCV_ST_STD 0x3
-
-
 
 #define RISCV_OPI_ADDI 0x0
 #define RISCV_OPI_SLTI 0x2
@@ -83,7 +79,6 @@
 #define RISCV_OPIW_SRW_SRLIW 0x0
 #define RISCV_OPIW_SRW_SRAIW 0x20
 
-
 #define RISCV_OPW_ADDSUBW 0x0
 #define RISCV_OPW_SLLW 0x1
 #define RISCV_OPW_SRW 0x5
@@ -94,13 +89,10 @@
 #define RISCV_OPW_SRW_SRLW 0x0
 #define RISCV_OPW_SRW_SRAW 0x20
 
-
-
 #define RISCV_SYSTEM_ENV 0x0
 #define RISCV_SYSTEM_ENV_ECALL 0x0
 #define RISCV_SYSTEM_ENV_EBREAK 0x1
 #define RISCV_SYSTEM_CSRRS 0x2
-
 
 #define RISCV_SYSTEM_CSRRW 0x1
 #define RISCV_SYSTEM_CSRRS 0x2
@@ -150,20 +142,16 @@
 #define RISCV_FP_FCMP_FLT 1
 #define RISCV_FP_FCMP_FLE 0
 
-
-
-
-
-//FIXME some special operations of the base instruction set are not yet supported. (FENCE)
+// FIXME some special operations of the base instruction set are not yet supported. (FENCE)
 
 /******************************************************************************************************
-* Specification of the standard M extension
-********************************************
-* This extension brings the support for multiplication operation.
-* It is composed of the RISCV_OP opcode then a dedicated value for funct7 which identify it.
-* Then funct3 is used to determine which of the eight operation to use.
-* Added operations are MUL, MULH, MULHSU, MLHU, DIV, DIVU, REM, REMU
-*****************************************************************************************************/
+ * Specification of the standard M extension
+ ********************************************
+ * This extension brings the support for multiplication operation.
+ * It is composed of the RISCV_OP opcode then a dedicated value for funct7 which identify it.
+ * Then funct3 is used to determine which of the eight operation to use.
+ * Added operations are MUL, MULH, MULHSU, MLHU, DIV, DIVU, REM, REMU
+ *****************************************************************************************************/
 
 #define RISCV_OP_M 0x1
 
@@ -182,7 +170,6 @@
 #define RISCV_OPW_M_REMW 0x6
 #define RISCV_OPW_M_REMUW 0x7
 
-
 #ifndef __CATAPULT
 std::string printDecodedInstrRISCV(unsigned int instruction);
 
@@ -195,7 +182,6 @@ extern const char* riscvNamesST[8];
 extern const char* riscvNamesBR[8];
 extern const char* riscvNames[8];
 #endif
-
 
 #define SYS_exit 93
 #define SYS_exit_group 94
@@ -238,6 +224,5 @@ extern const char* riscvNames[8];
 #define SYS_fcntl 25
 #define SYS_getdents 61
 #define SYS_dup 23
-
 
 #endif /* INCLUDES_ISA_RISCVISA_H_ */

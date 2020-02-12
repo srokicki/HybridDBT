@@ -1,23 +1,21 @@
 #pragma once
 
-
 class TraceQueue;
 
-#include <thread>
 #include <atomic>
+#include <thread>
 
-class ThreadedDebug
-{
+class ThreadedDebug {
 public:
-  ThreadedDebug(TraceQueue * tracer);
+  ThreadedDebug(TraceQueue* tracer);
   ~ThreadedDebug();
 
   void run();
-private:
 
+private:
   void _run_func();
 
-  TraceQueue * _tracer;
+  TraceQueue* _tracer;
   bool _running;
-  std::thread * _thread;
+  std::thread* _thread;
 };

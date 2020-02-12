@@ -4,8 +4,8 @@
  *  Created on: 30 sept. 2016
  *      Author: simon
  */
-#include <types.h>
 #include <string>
+#include <types.h>
 #ifndef INCLUDES_VEX_H_
 #define INCLUDES_VEX_H_
 
@@ -56,8 +56,8 @@
 #define VEX_BLTU 0x2c
 #define VEX_BGEU 0x2d
 #define VEX_SYSTEM 0x2e
-	#define VEX_SYSTEM_ECALL 0x0
-	#define VEX_SYSTEM_CSRRS 0x1
+#define VEX_SYSTEM_ECALL 0x0
+#define VEX_SYSTEM_CSRRS 0x1
 
 #define VEX_STOP 0x2f
 
@@ -93,8 +93,6 @@
 #define VEX_FP_FCVTSW 17
 #define VEX_FP_FCVTSWU 18
 #define VEX_FP_FMVWX 19
-
-
 
 #define VEX_SETc 0x40
 #define VEX_ADD 0x41
@@ -172,21 +170,26 @@
 #ifndef __SW
 
 ac_int<32, false> assembleIInstruction(ac_int<7, false> opcode, ac_int<19, false> imm19, ac_int<6, false> regA);
-ac_int<32, false> assembleRInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<6, false> regB);
-ac_int<32, false> assembleRiInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<13, false> imm13);
-ac_int<32, false> assembleMemoryInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<12, false> imm12, ac_int<1, false> isSpec, ac_int<5, false> specID);
-ac_int<32, false> assembleFPInstruction(ac_int<7, false> opcode, ac_int<5, false> funct, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<6, false> regB);
-ac_int<32, false> assembleRRInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA, ac_int<6, false> regB, ac_int<6, false> regC);
+ac_int<32, false> assembleRInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA,
+                                       ac_int<6, false> regB);
+ac_int<32, false> assembleRiInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA,
+                                        ac_int<13, false> imm13);
+ac_int<32, false> assembleMemoryInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA,
+                                            ac_int<12, false> imm12, ac_int<1, false> isSpec, ac_int<5, false> specID);
+ac_int<32, false> assembleFPInstruction(ac_int<7, false> opcode, ac_int<5, false> funct, ac_int<6, false> regDest,
+                                        ac_int<6, false> regA, ac_int<6, false> regB);
+ac_int<32, false> assembleRRInstruction(ac_int<7, false> opcode, ac_int<6, false> regDest, ac_int<6, false> regA,
+                                        ac_int<6, false> regB, ac_int<6, false> regC);
 #endif
 #endif
 
 unsigned int assembleIInstruction_sw(char opcode, int imm19, char regA);
-unsigned int  assembleRInstruction_sw(char opcode, char regDest, char regA, char regB);
-unsigned int  assembleRiInstruction_sw(char opcode, char regDest, char regA, short imm13);
-unsigned int assembleMemoryInstruction_sw(char opcode, char regDest, char regA, short imm12_7, bool isSpec, char specID);
-unsigned int  assembleFPInstruction_sw(char opcode, char funct, char regDest, char regA, char regB);
-unsigned int  assembleRRInstruction_sw(char opcode, char regDest, char regA, char regB, char regC);
-
+unsigned int assembleRInstruction_sw(char opcode, char regDest, char regA, char regB);
+unsigned int assembleRiInstruction_sw(char opcode, char regDest, char regA, short imm13);
+unsigned int assembleMemoryInstruction_sw(char opcode, char regDest, char regA, short imm12_7, bool isSpec,
+                                          char specID);
+unsigned int assembleFPInstruction_sw(char opcode, char funct, char regDest, char regA, char regB);
+unsigned int assembleRRInstruction_sw(char opcode, char regDest, char regA, char regB, char regC);
 
 #ifndef __CATAPULT
 extern const char* opcodeNames[128];

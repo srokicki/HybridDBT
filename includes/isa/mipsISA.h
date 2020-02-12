@@ -1,6 +1,6 @@
 
 
-//opcodes
+// opcodes
 #define R 0x0
 #define REGIMM 0x1
 #define J 0x2
@@ -22,7 +22,6 @@
 #define COP3 0x13
 #define SPECIAL2 0x1c
 #define SEH 0x1f
-
 
 #define LB 0x20
 #define LH 0x21
@@ -46,8 +45,7 @@
 #define SWC1 0x39
 #define SDC1 0x3d
 
-
-//Funct
+// Funct
 #define SLL 0x0
 
 #define SRL 0x2
@@ -84,13 +82,9 @@
 
 #define TEQ 0x34
 
-
 #define SLT 0x2a
 #define SLTU 0x2b
 
-
-//REGIMM
+// REGIMM
 #define BLTZ 0
 #define BGEZ 1
-
-

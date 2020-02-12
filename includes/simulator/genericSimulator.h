@@ -10,8 +10,8 @@
 
 #ifndef __NIOS
 
-#include <map>
 #include <lib/ac_int.h>
+#include <map>
 
 /*********************************************************
  *    Definition of system calls IDs
@@ -62,13 +62,12 @@
 #define SYS_dup 23
 
 #define CACHE_WAYS 4
-#define CACHE_LINESIZE 64 //in bytes
+#define CACHE_LINESIZE 64 // in bytes
 #define CACHE_SETSIZE 64
 
 #define CACHEL2_WAYS 8
-#define CACHEL2_LINESIZE 128 //in bytes
+#define CACHEL2_LINESIZE 128 // in bytes
 #define CACHEL2_SETSIZE 1024
-
 
 /*********************************************************
  * 	Definition of the GenericSimulator class
@@ -78,72 +77,70 @@
  *
  *********************************************************/
 
-
 class GenericSimulator {
 public:
+  GenericSimulator(void) : memory()
+  {
+    this->debugLevel = 0;
+    for (int oneWay = 0; oneWay < CACHE_WAYS; oneWay++) {
+      for (int oneLine = 0; oneLine < CACHE_SETSIZE; oneLine++) {
+        dcacheTags[oneWay][oneLine] = 0;
+        dcacheAges[oneWay][oneLine] = 0;
+      }
+    }
+  };
 
-GenericSimulator(void) : memory(){
-	this->debugLevel = 0;
-	for (int oneWay = 0; oneWay<CACHE_WAYS; oneWay++){
-		for (int oneLine = 0; oneLine<CACHE_SETSIZE; oneLine++){
-			dcacheTags[oneWay][oneLine] = 0;
-			dcacheAges[oneWay][oneLine] = 0;
-		}
-	}
+  int debugLevel = 0;
+  int stop       = 0;
 
-};
+  uint64_t cycle;
 
-int debugLevel = 0;
-int stop = 0;
+  std::map<ac_int<64, false>, ac_int<8, true>> memory;
+  ac_int<64, false> dcacheTags[CACHE_WAYS][CACHE_SETSIZE];
+  ac_int<40, false> dcacheAges[CACHE_WAYS][CACHE_SETSIZE];
+  ac_int<64, false> l2cacheTags[CACHEL2_WAYS][CACHEL2_SETSIZE];
+  ac_int<40, false> l2cacheAges[CACHEL2_WAYS][CACHEL2_SETSIZE];
 
-uint64_t cycle;
+  ac_int<64, true> REG[64];
+  float regf[64];
+  void initialize(int argc, char* argv[]);
 
-std::map<ac_int<64, false>, ac_int<8, true>> memory;
-ac_int<64, false> dcacheTags[CACHE_WAYS][CACHE_SETSIZE];
-ac_int<40, false> dcacheAges[CACHE_WAYS][CACHE_SETSIZE];
-ac_int<64, false> l2cacheTags[CACHEL2_WAYS][CACHEL2_SETSIZE];
-ac_int<40, false> l2cacheAges[CACHEL2_WAYS][CACHEL2_SETSIZE];
+  //********************************************************
+  // Memory interfaces
 
-ac_int<64, true> REG[64];
-float regf[64];
-void initialize(int argc, char* argv[]);
+  void stb(ac_int<64, false> addr, ac_int<8, true> value);
+  void sth(ac_int<64, false> addr, ac_int<16, true> value);
+  void stw(ac_int<64, false> addr, ac_int<32, true> value);
+  void std(ac_int<64, false> addr, ac_int<64, true> value);
 
+  ac_int<8, true> ldb(ac_int<64, false> addr);
+  ac_int<16, true> ldh(ac_int<64, false> addr);
+  ac_int<32, true> ldw(ac_int<64, false> addr);
+  ac_int<64, true> ldd(ac_int<64, false> addr);
 
-//********************************************************
-//Memory interfaces
+  //********************************************************
+  // System calls
+  uint64_t profilingStarts[3];
+  uint64_t profilingDomains[3];
+  std::map<ac_int<16, true>, FILE*> fileMap;
+  FILE **inStreams, **outStreams;
+  int nbInStreams, nbOutStreams;
+  unsigned int heapAddress;
 
-void stb(ac_int<64, false> addr, ac_int<8, true> value);
-void sth(ac_int<64, false> addr, ac_int<16, true> value);
-void stw(ac_int<64, false> addr, ac_int<32, true> value);
-void std(ac_int<64, false> addr, ac_int<64, true> value);
+  ac_int<64, false> solveSyscall(ac_int<64, false> syscallId, ac_int<64, false> arg1, ac_int<64, false> arg2,
+                                 ac_int<64, false> arg3, ac_int<64, false> arg4);
 
-ac_int<8, true> ldb(ac_int<64, false> addr);
-ac_int<16, true> ldh(ac_int<64, false> addr);
-ac_int<32, true> ldw(ac_int<64, false> addr);
-ac_int<64, true> ldd(ac_int<64, false> addr);
-
-//********************************************************
-//System calls
-uint64_t profilingStarts[3];
-uint64_t profilingDomains[3];
-std::map<ac_int<16, true>, FILE*> fileMap;
-FILE **inStreams, **outStreams;
-int nbInStreams, nbOutStreams;
-unsigned int heapAddress;
-
-ac_int<64, false> solveSyscall(ac_int<64, false> syscallId, ac_int<64, false> arg1, ac_int<64, false> arg2, ac_int<64, false> arg3, ac_int<64, false> arg4);
-
-ac_int<64, false> doRead(ac_int<64, false> file, ac_int<64, false> bufferAddr, ac_int<64, false> size);
-ac_int<64, false> doWrite(ac_int<64, false> file, ac_int<64, false> bufferAddr, ac_int<64, false> size);
-ac_int<64, false> doOpen(ac_int<64, false> name, ac_int<64, false> flags, ac_int<64, false> mode);
-ac_int<64, false> doOpenat(ac_int<64, false> dir, ac_int<64, false> name, ac_int<64, false> flags, ac_int<64, false> mode);
-ac_int<64, true> doLseek(ac_int<64, false> file, ac_int<64, false> ptr, ac_int<64, false> dir);
-ac_int<64, false> doClose(ac_int<64, false> file);
-ac_int<64, false> doStat(ac_int<64, false> filename, ac_int<64, false> ptr);
-ac_int<64, false> doSbrk(ac_int<64, false> value);
-ac_int<64, false> doGettimeofday(ac_int<64, false> timeValPtr);
-ac_int<64, false> doUnlink(ac_int<64, false> path);
-
+  ac_int<64, false> doRead(ac_int<64, false> file, ac_int<64, false> bufferAddr, ac_int<64, false> size);
+  ac_int<64, false> doWrite(ac_int<64, false> file, ac_int<64, false> bufferAddr, ac_int<64, false> size);
+  ac_int<64, false> doOpen(ac_int<64, false> name, ac_int<64, false> flags, ac_int<64, false> mode);
+  ac_int<64, false> doOpenat(ac_int<64, false> dir, ac_int<64, false> name, ac_int<64, false> flags,
+                             ac_int<64, false> mode);
+  ac_int<64, true> doLseek(ac_int<64, false> file, ac_int<64, false> ptr, ac_int<64, false> dir);
+  ac_int<64, false> doClose(ac_int<64, false> file);
+  ac_int<64, false> doStat(ac_int<64, false> filename, ac_int<64, false> ptr);
+  ac_int<64, false> doSbrk(ac_int<64, false> value);
+  ac_int<64, false> doGettimeofday(ac_int<64, false> timeValPtr);
+  ac_int<64, false> doUnlink(ac_int<64, false> path);
 };
 
 #endif

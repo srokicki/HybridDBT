@@ -5,37 +5,33 @@
  *      Author: simon
  */
 
-
-
 #include <map>
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
 
 #ifndef SIMULATOR_H_
 #define SIMULATOR_H_
 
 #ifndef __NIOS
 
-
 class Simulator {
-	public:
-	std::map<int, int> memory;
-	std::unordered_map<unsigned long long, int> jumps;
+public:
+  std::map<int, int> memory;
+  std::unordered_map<unsigned long long, int> jumps;
 
-	Simulator(void): memory(){jumps={};};
+  Simulator(void) : memory() { jumps = {}; };
 
-	int doSimulation(int start);
-	void stw(int addr, unsigned int value);
-	void sth(int addr, unsigned int value);
-	void stb(int addr, unsigned int value);
+  int doSimulation(int start);
+  void stw(int addr, unsigned int value);
+  void sth(int addr, unsigned int value);
+  void stb(int addr, unsigned int value);
 
-	unsigned int ldw(int addr);
-	unsigned int ldh(int addr);
-	unsigned int ldb(int addr);
+  unsigned int ldw(int addr);
+  unsigned int ldh(int addr);
+  unsigned int ldb(int addr);
 
-	void dumpJumps();
+  void dumpJumps();
 };
 
 #endif
 #endif /* SIMULATOR_H_ */
-

@@ -19,11 +19,10 @@
 #endif
 
 struct uint128_struct {
-	unsigned int word96;
-	unsigned int word64;
-	unsigned int word32;
-	unsigned int word0;
+  unsigned int word96;
+  unsigned int word64;
+  unsigned int word32;
+  unsigned int word0;
 };
-
 
 #endif
