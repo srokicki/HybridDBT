@@ -14,7 +14,6 @@
 extern "C" {
 #endif
 
-
 /*************************************************************
  *   Function getBlockSize returns the size of a block schedule
  *   Arguments:
@@ -28,7 +27,7 @@ extern "C" {
  *	Returns the size of the schedule and place the address of
  *	next block in the argument nextBlock
  *************************************************************/
-int getBlockSize(int address, int optLevel, int timeFromSwitch, int *nextBlock);
+int getBlockSize(int address, int optLevel, int timeFromSwitch, int* nextBlock);
 
 /*************************************************************
  * 	Function initialize will read the the elf file and instantiate

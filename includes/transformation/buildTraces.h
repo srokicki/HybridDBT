@@ -8,8 +8,7 @@
 #ifndef INCLUDES_TRANSFORMATION_BUILDTRACES_H_
 #define INCLUDES_TRANSFORMATION_BUILDTRACES_H_
 
-
-void buildTraces(DBTPlateform *platform, IRProcedure *procedure, int optLevel);
-void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock **predecessors, int nbPred);
+void buildTraces(DBTPlateform* platform, IRProcedure* procedure, int optLevel);
+void memoryDisambiguation(DBTPlateform* platform, IRBlock* block, IRBlock** predecessors, int nbPred);
 
 #endif /* INCLUDES_TRANSFORMATION_BUILDTRACES_H_ */

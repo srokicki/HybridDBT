@@ -10,33 +10,36 @@
 
 #ifndef __NIOS
 
-
+#include <lib/ac_int.h>
 #include <map>
-#include <unordered_map>
+#include <simulator/genericSimulator.h>
 #include <string>
 #include <types.h>
-#include <simulator/genericSimulator.h>
-#include <lib/ac_int.h>
+#include <unordered_map>
 
-//Modelization of RISC-V pipeline
+// Modelization of RISC-V pipeline
 #define LOSS_INCORRECT_BRANCH 2
 #define LOSS_PIPELINE_HAZARD 2
 #define LOSS_PIPELINE_HAZARD_FORWARDED 1
 
+class RiscvSimulator : public GenericSimulator {
+public:
+  ac_int<64, true> pc;
+  uint64_t n_inst;
 
-class RiscvSimulator : public GenericSimulator{
-	public:
-	ac_int<64, true> pc;
-	uint64_t n_inst;
+  // Modelization of RISC-V pipeline
+  int lastWrittenRegister;
+  bool lastIsLoad;
 
-	//Modelization of RISC-V pipeline
-	int lastWrittenRegister;
-	bool lastIsLoad;
+  RiscvSimulator(void) : GenericSimulator()
+  {
+    lastIsLoad          = false;
+    lastWrittenRegister = -1;
+    cycle               = 0;
+  };
+  int doSimulation(int nbCycles);
 
-	RiscvSimulator(void) : GenericSimulator(){lastIsLoad = false; lastWrittenRegister = -1; cycle=0;};
-	int doSimulation(int nbCycles);
-
-	void doStep();
+  void doStep();
 };
 
 #endif

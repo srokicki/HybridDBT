@@ -10,229 +10,223 @@
 #include <isa/vexISA.h>
 #include <lib/endianness.h>
 #include <lib/log.h>
+#include <string.h>
 #include <transformation/memoryDisambiguation.h>
 #include <transformation/rescheduleProcedure.h>
-#include <string.h>
 
-int MAX_DISAMB_COUNT = -1;
+int MAX_DISAMB_COUNT            = -1;
 unsigned int speculationCounter = 1;
 struct speculationDef speculationDefinitions[256];
 
+MemoryDependencyGraph::MemoryDependencyGraph(IRBlock* block)
+{
+  this->size    = 0;
+  this->idMem   = (unsigned char*)malloc(block->nbInstr * sizeof(unsigned char));
+  this->idSpec  = (unsigned char*)malloc(block->nbInstr * sizeof(char));
+  this->isStore = (bool*)malloc(block->nbInstr * sizeof(bool));
 
-MemoryDependencyGraph::MemoryDependencyGraph(IRBlock *block){
-	this->size = 0;
-	this->idMem = (unsigned char*) malloc(block->nbInstr*sizeof(unsigned char));
-	this->idSpec = (unsigned char*) malloc(block->nbInstr*sizeof(char));
-	this->isStore = (bool*) malloc(block->nbInstr*sizeof(bool));
+  for (unsigned int oneInstruction = 0; oneInstruction < block->nbInstr; oneInstruction++) {
+    int opcode = getOpcode(block->instructions, oneInstruction);
+    if (((opcode >> 3) == (VEX_STW >> 3) || (opcode >> 3) == (VEX_LDW >> 3) || opcode == VEX_FSW ||
+         opcode == VEX_FLW) &&
+        opcode != VEX_SPEC_INIT && opcode != VEX_SPEC_RST) {
+      this->idMem[size]   = oneInstruction;
+      this->isStore[size] = (opcode >> 3) == (VEX_STW >> 3) || opcode == VEX_FSW;
+      this->idSpec[size]  = -1;
+      this->size++;
+    }
+  }
 
-	for (unsigned int oneInstruction = 0; oneInstruction<block->nbInstr; oneInstruction++){
-		int opcode = getOpcode(block->instructions, oneInstruction);
-		if (((opcode >> 3) == (VEX_STW>>3) || (opcode >> 3) == (VEX_LDW>>3) || opcode == VEX_FSW || opcode == VEX_FLW) && opcode != VEX_SPEC_INIT && opcode != VEX_SPEC_RST){
-			this->idMem[size] = oneInstruction;
-			this->isStore[size] = (opcode >> 3) == (VEX_STW>>3) || opcode == VEX_FSW;
-			this->idSpec[size] = -1;
-			this->size++;
-		}
-	}
+  this->graph = (bool*)malloc(this->size * this->size * sizeof(bool));
 
-	this->graph = (bool*) malloc(this->size * this->size * sizeof(bool));
+  for (unsigned int oneDep = 0; oneDep < this->size * this->size; oneDep++) {
+    this->graph[oneDep] = false;
+  }
 
-	for (unsigned int oneDep = 0; oneDep<this->size*this->size; oneDep++){
-		this->graph[oneDep] = false;
-	}
+  for (unsigned int oneInstruction = 0; oneInstruction < this->size; oneInstruction++) {
+    int opcode = getOpcode(block->instructions, this->idMem[oneInstruction]);
+    if ((opcode >> 3) == (VEX_STW >> 3) || opcode == VEX_FSW) {
+      for (unsigned int oneOtherInstr = 0; oneOtherInstr < oneInstruction; oneOtherInstr++)
+        this->graph[oneInstruction * this->size + oneOtherInstr] = true;
+    } else if ((opcode >> 3) == (VEX_LDW >> 3) || opcode == VEX_FLW) {
 
-	for (unsigned int oneInstruction = 0; oneInstruction<this->size; oneInstruction++){
-		int opcode = getOpcode(block->instructions, this->idMem[oneInstruction]);
-		if ((opcode >> 3) == (VEX_STW>>3) || opcode == VEX_FSW){
-			for (unsigned int oneOtherInstr = 0; oneOtherInstr<oneInstruction; oneOtherInstr++)
-				this->graph[oneInstruction*this->size + oneOtherInstr] = true;
-		}
-		else if ((opcode >> 3) == (VEX_LDW>>3) || opcode == VEX_FLW){
-
-			for (unsigned int oneOtherInstr = 0; oneOtherInstr<oneInstruction; oneOtherInstr++)
-				if (this->isStore[oneOtherInstr])
-					this->graph[oneInstruction*this->size + oneOtherInstr] = true;
-		}
-	}
+      for (unsigned int oneOtherInstr = 0; oneOtherInstr < oneInstruction; oneOtherInstr++)
+        if (this->isStore[oneOtherInstr])
+          this->graph[oneInstruction * this->size + oneOtherInstr] = true;
+    }
+  }
 }
 
-MemoryDependencyGraph::~MemoryDependencyGraph(){
-	free(this->graph);
-	free(this->idMem);
-	free(this->isStore);
+MemoryDependencyGraph::~MemoryDependencyGraph()
+{
+  free(this->graph);
+  free(this->idMem);
+  free(this->isStore);
 }
 
-void MemoryDependencyGraph::print(){
-	Log::logMemoryDisambiguation << "    ";
-	for (unsigned int oneInstr=0; oneInstr<this->size; oneInstr++){
-		Log::logMemoryDisambiguation << (unsigned int) this->idMem[oneInstr]  << " ";
-	}
-	Log::logMemoryDisambiguation << "\n";
-	for (unsigned int oneInstr=0; oneInstr<this->size; oneInstr++){
-		Log::logMemoryDisambiguation << this->idMem[oneInstr] << " ";
-		for (unsigned int oneOtherInstr = 0; oneOtherInstr<oneInstr; oneOtherInstr++){
-			Log::logMemoryDisambiguation << (graph[oneInstr*this->size + oneOtherInstr]?1:0)  << " ";
-		}
-		Log::logMemoryDisambiguation << "\n";
-	}
+void MemoryDependencyGraph::print()
+{
+  Log::logMemoryDisambiguation << "    ";
+  for (unsigned int oneInstr = 0; oneInstr < this->size; oneInstr++) {
+    Log::logMemoryDisambiguation << (unsigned int)this->idMem[oneInstr] << " ";
+  }
+  Log::logMemoryDisambiguation << "\n";
+  for (unsigned int oneInstr = 0; oneInstr < this->size; oneInstr++) {
+    Log::logMemoryDisambiguation << this->idMem[oneInstr] << " ";
+    for (unsigned int oneOtherInstr = 0; oneOtherInstr < oneInstr; oneOtherInstr++) {
+      Log::logMemoryDisambiguation << (graph[oneInstr * this->size + oneOtherInstr] ? 1 : 0) << " ";
+    }
+    Log::logMemoryDisambiguation << "\n";
+  }
 }
 
-void MemoryDependencyGraph::transitiveReduction(){
+void MemoryDependencyGraph::transitiveReduction()
+{
 
-	char *longestPaths = (char*) malloc(this->size * sizeof(longestPaths));
+  char* longestPaths = (char*)malloc(this->size * sizeof(longestPaths));
 
-	for (unsigned int startPoint = 0; startPoint < this->size - 1; startPoint++){
-		for (unsigned int oneDest = startPoint+1; oneDest<this->size; oneDest++){
-			int longestPath = 0;
+  for (unsigned int startPoint = 0; startPoint < this->size - 1; startPoint++) {
+    for (unsigned int oneDest = startPoint + 1; oneDest < this->size; oneDest++) {
+      int longestPath = 0;
 
-			if (graph[oneDest * this->size + startPoint]){
-				longestPath = 1;
-			}
-			for (unsigned int onePred = startPoint+1; onePred<oneDest; onePred++){
-				if (graph[oneDest * this->size + onePred] && longestPaths[onePred] != 0){
-					longestPath = 2;
-				}
-			}
+      if (graph[oneDest * this->size + startPoint]) {
+        longestPath = 1;
+      }
+      for (unsigned int onePred = startPoint + 1; onePred < oneDest; onePred++) {
+        if (graph[oneDest * this->size + onePred] && longestPaths[onePred] != 0) {
+          longestPath = 2;
+        }
+      }
 
-			if (longestPath == 2)
-				graph[oneDest * this->size + startPoint] = false;
+      if (longestPath == 2)
+        graph[oneDest * this->size + startPoint] = false;
 
-			longestPaths[oneDest] = longestPath;
-		}
-	}
-
+      longestPaths[oneDest] = longestPath;
+    }
+  }
 }
 
-void MemoryDependencyGraph::reduceArity(){
+void MemoryDependencyGraph::reduceArity()
+{
 
-	//This function will reduce the arity of the first node having more than four pred
-	for (unsigned int oneMemInstruction = 0; oneMemInstruction<this->size; oneMemInstruction++){
-		int nbPred = 0;
+  // This function will reduce the arity of the first node having more than four pred
+  for (unsigned int oneMemInstruction = 0; oneMemInstruction < this->size; oneMemInstruction++) {
+    int nbPred = 0;
 
-		for (unsigned int onePredecessor = 0; onePredecessor<oneMemInstruction; onePredecessor++)
-			if (this->graph[oneMemInstruction * this->size + onePredecessor])
-				nbPred++;
+    for (unsigned int onePredecessor = 0; onePredecessor < oneMemInstruction; onePredecessor++)
+      if (this->graph[oneMemInstruction * this->size + onePredecessor])
+        nbPred++;
 
-		//If arity is greater than four we have to reduce it
-		int lastPred[4];
-		int nbLastPred = 0;
-		int writeLastPred = 0;
+    // If arity is greater than four we have to reduce it
+    int lastPred[4];
+    int nbLastPred    = 0;
+    int writeLastPred = 0;
 
-		if (nbPred > 4){
-			for (int onePredecessor = oneMemInstruction-1; onePredecessor>=0; onePredecessor--){
-				if (this->graph[oneMemInstruction * this->size + onePredecessor]){
-					if (nbLastPred<4){
-						lastPred[writeLastPred] = onePredecessor;
-						nbLastPred++;
-						writeLastPred = (writeLastPred + 1) % 4;
-					}
-					else{
-						graph[lastPred[writeLastPred] * this->size + onePredecessor] = true;
-						graph[oneMemInstruction * this->size + onePredecessor] = false;
-						lastPred[writeLastPred] = onePredecessor;
-						writeLastPred = (writeLastPred + 1) % 4;
-					}
-
-				}
-
-			}
-		}
-
-	}
-
+    if (nbPred > 4) {
+      for (int onePredecessor = oneMemInstruction - 1; onePredecessor >= 0; onePredecessor--) {
+        if (this->graph[oneMemInstruction * this->size + onePredecessor]) {
+          if (nbLastPred < 4) {
+            lastPred[writeLastPred] = onePredecessor;
+            nbLastPred++;
+            writeLastPred = (writeLastPred + 1) % 4;
+          } else {
+            graph[lastPred[writeLastPred] * this->size + onePredecessor] = true;
+            graph[oneMemInstruction * this->size + onePredecessor]       = false;
+            lastPred[writeLastPred]                                      = onePredecessor;
+            writeLastPred                                                = (writeLastPred + 1) % 4;
+          }
+        }
+      }
+    }
+  }
 }
 
-void MemoryDependencyGraph::applyGraph(IRBlock *block){
+void MemoryDependencyGraph::applyGraph(IRBlock* block)
+{
 
-	//We first reduce the graph by applying transitive reduction
-	this->transitiveReduction();
+  // We first reduce the graph by applying transitive reduction
+  this->transitiveReduction();
 
+  // Then we reduce the arity to be compliant with IR constraints
+  this->reduceArity();
+  this->print();
 
-	//Then we reduce the arity to be compliant with IR constraints
-	this->reduceArity();
-	this->print();
+  // We remove previous dependencies
+  for (unsigned int oneMemoryInstr = 0; oneMemoryInstr < this->size; oneMemoryInstr++) {
+    unsigned char pred[7];
+    unsigned char nbPred = getControlDep(block->instructions, this->idMem[oneMemoryInstr], pred);
+    clearControlDep(block->instructions, this->idMem[oneMemoryInstr]);
 
-	//We remove previous dependencies
-	for (unsigned int oneMemoryInstr = 0; oneMemoryInstr<this->size; oneMemoryInstr++){
-		unsigned char pred[7];
-		unsigned char nbPred = getControlDep(block->instructions, this->idMem[oneMemoryInstr], pred);
-		clearControlDep(block->instructions, this->idMem[oneMemoryInstr]);
+    for (unsigned int onePred = 0; onePred < nbPred; onePred++) {
+      char opcode = getOpcode(block->instructions, pred[onePred]);
+      if (!((opcode >> 4) == 1 || opcode == VEX_FLW || opcode == VEX_FSW) || opcode == VEX_SPEC_INIT ||
+          opcode == VEX_SPEC_RST) {
+        addControlDep(block->instructions, pred[onePred], this->idMem[oneMemoryInstr]);
+      }
+    }
+  }
 
-		for (unsigned int onePred = 0; onePred < nbPred; onePred++){
-			char opcode = getOpcode(block->instructions, pred[onePred]);
-			if (!((opcode >> 4) == 1 || opcode == VEX_FLW || opcode == VEX_FSW) || opcode == VEX_SPEC_INIT || opcode == VEX_SPEC_RST){
-				addControlDep(block->instructions, pred[onePred], this->idMem[oneMemoryInstr]);
-			}
-		}
-
-	}
-
-	//We add dependencies when needed
-	for (unsigned int oneMemoryInstr = 0; oneMemoryInstr<this->size; oneMemoryInstr++)
-		for (unsigned int oneOtherMemoryInstr = 0; oneOtherMemoryInstr<oneMemoryInstr; oneOtherMemoryInstr++)
-			if (graph[oneMemoryInstr*this->size + oneOtherMemoryInstr])
-				addControlDep(block->instructions, this->idMem[oneOtherMemoryInstr], this->idMem[oneMemoryInstr]);
-
+  // We add dependencies when needed
+  for (unsigned int oneMemoryInstr = 0; oneMemoryInstr < this->size; oneMemoryInstr++)
+    for (unsigned int oneOtherMemoryInstr = 0; oneOtherMemoryInstr < oneMemoryInstr; oneOtherMemoryInstr++)
+      if (graph[oneMemoryInstr * this->size + oneOtherMemoryInstr])
+        addControlDep(block->instructions, this->idMem[oneOtherMemoryInstr], this->idMem[oneMemoryInstr]);
 }
 
-void basicMemorySimplification(IRBlock *block, MemoryDependencyGraph *graph){
+void basicMemorySimplification(IRBlock* block, MemoryDependencyGraph* graph)
+{
 
-	for (unsigned int oneMemInstruction = 0; oneMemInstruction<graph->size; oneMemInstruction++){
-		int memInstruction = graph->idMem[oneMemInstruction];
+  for (unsigned int oneMemInstruction = 0; oneMemInstruction < graph->size; oneMemInstruction++) {
+    int memInstruction = graph->idMem[oneMemInstruction];
 
-		for (unsigned int onePredecessor = 0; onePredecessor<oneMemInstruction; onePredecessor++){
-			int predecessor = graph->idMem[onePredecessor];
-			if (graph->graph[oneMemInstruction * graph->size + onePredecessor]){
-				short operandsPred[2], operandsInstr[2];
-				getOperands(block->instructions, predecessor, operandsPred);
-				getOperands(block->instructions, memInstruction, operandsInstr);
+    for (unsigned int onePredecessor = 0; onePredecessor < oneMemInstruction; onePredecessor++) {
+      int predecessor = graph->idMem[onePredecessor];
+      if (graph->graph[oneMemInstruction * graph->size + onePredecessor]) {
+        short operandsPred[2], operandsInstr[2];
+        getOperands(block->instructions, predecessor, operandsPred);
+        getOperands(block->instructions, memInstruction, operandsInstr);
 
-				int immediateValuePred, immediateValueInstr;
-				getImmediateValue(block->instructions, predecessor, &immediateValuePred);
-				getImmediateValue(block->instructions, memInstruction, &immediateValueInstr);
+        int immediateValuePred, immediateValueInstr;
+        getImmediateValue(block->instructions, predecessor, &immediateValuePred);
+        getImmediateValue(block->instructions, memInstruction, &immediateValueInstr);
 
-				if (operandsInstr[0] == operandsPred[0] && abs(immediateValueInstr - immediateValuePred)>8){
-					graph->graph[oneMemInstruction * graph->size + onePredecessor] = false;
-				}
-			}
-		}
-	}
+        if (operandsInstr[0] == operandsPred[0] && abs(immediateValueInstr - immediateValuePred) > 8) {
+          graph->graph[oneMemInstruction * graph->size + onePredecessor] = false;
+        }
+      }
+    }
+  }
 }
 
+void memoryDisambiguation(DBTPlateform* platform, IRBlock* block, IRBlock** predecessors, int nbPred)
+{
 
+  if (speculationCounter == 255)
+    return;
 
+  MemoryDependencyGraph* graph = new MemoryDependencyGraph(block);
 
-void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock **predecessors, int nbPred){
+  graph->print();
 
-	if (speculationCounter == 255)
-		return;
+  // We print debug
+  Log::logMemoryDisambiguation << "************************************************************\n";
+  Log::logMemoryDisambiguation << "*****             Memory disambiguation process       ******\n";
+  Log::logMemoryDisambiguation << "************************************************************\n";
+  Log::logMemoryDisambiguation << "Before disambiguation: \n";
+  block->printBytecode(Log::logMemoryDisambiguation);
 
-	MemoryDependencyGraph *graph = new MemoryDependencyGraph(block);
+  // We perform disambiguation and apply it
+  basicMemorySimplification(block, graph);
+  findAndInsertSpeculation(block, graph, predecessors, nbPred);
 
-		graph->print();
+  graph->applyGraph(block);
 
+  // We print debug
+  Log::logMemoryDisambiguation << "\n After disambiguation: \n";
+  block->printBytecode(Log::logMemoryDisambiguation);
 
-		// We print debug
-		Log::logMemoryDisambiguation << "************************************************************\n";
-		Log::logMemoryDisambiguation << "*****             Memory disambiguation process       ******\n";
-		Log::logMemoryDisambiguation << "************************************************************\n";
-		Log::logMemoryDisambiguation << "Before disambiguation: \n";
-		block->printBytecode(Log::logMemoryDisambiguation);
-
-		//We perform disambiguation and apply it
-		basicMemorySimplification(block, graph);
-		findAndInsertSpeculation(block, graph, predecessors, nbPred);
-
-		graph->applyGraph(block);
-
-		//We print debug
-		Log::logMemoryDisambiguation << "\n After disambiguation: \n";
-		block->printBytecode(Log::logMemoryDisambiguation);
-
-		Log::logMemoryDisambiguation << "************************************************************\n";
-
+  Log::logMemoryDisambiguation << "************************************************************\n";
 }
-
 
 /**************************************************************************************************************
  **************************************************************************************************************
@@ -240,396 +234,386 @@ void memoryDisambiguation(DBTPlateform *platform, IRBlock *block, IRBlock **pred
  *
  **************************************************************************************************************/
 
-
 /***************************************************
- *  Function findAndInserSpeculation takes a block, a graph and the block predecessor in the IRProcedure and insert speculation on its memory operations.
- *  This function modifies both the block (add the spec flag on memory operations, moves the imm... modifies the graph to remove dependencies and insert
- *  specInit un predecessor's instructions.
+ *  Function findAndInserSpeculation takes a block, a graph and the block predecessor in the IRProcedure and insert
+ *speculation on its memory operations. This function modifies both the block (add the spec flag on memory operations,
+ *moves the imm... modifies the graph to remove dependencies and insert specInit un predecessor's instructions.
  *
  ***************************************************/
-void findAndInsertSpeculation(IRBlock *block, MemoryDependencyGraph *graph, IRBlock **predecessors, unsigned int nbPred){
-	//A good candidate is a list of loads which all depends on a given set of stores
+void findAndInsertSpeculation(IRBlock* block, MemoryDependencyGraph* graph, IRBlock** predecessors, unsigned int nbPred)
+{
+  // A good candidate is a list of loads which all depends on a given set of stores
 
-	char currentSpecId = 0;
+  char currentSpecId = 0;
 
+  // The process will be done in two steps:
+  // First we build an eligible groups and if everything goes well, we commit it by modifying everything
 
+  //**************************************
+  // Step 1: building the group
 
-	//The process will be done in two steps:
-	//First we build an eligible groups and if everything goes well, we commit it by modifying everything
+  struct speculationDef* currentSpeculationDef = &(speculationDefinitions[speculationCounter]);
+  currentSpeculationDef->block                 = block;
 
-	//**************************************
-	//Step 1: building the group
+  currentSpeculationDef->nbLoads  = 0;
+  currentSpeculationDef->nbStores = 0;
 
-	struct speculationDef *currentSpeculationDef = &(speculationDefinitions[speculationCounter]);
-	currentSpeculationDef->block = block;
+  // We find a store with an ID strictly greater than 0 and with imm eligible
+  unsigned int index = 0;
+  while (index < graph->size) {
 
-	currentSpeculationDef->nbLoads = 0;
-	currentSpeculationDef->nbStores = 0;
+    // We check imm value
+    int imm = 0;
+    if (imm >= 64 || imm < -64) {
+      // We reset spec group and continue
+      currentSpeculationDef->nbStores = 0;
+      currentSpeculationDef->nbLoads  = 0;
+      index++;
+      continue;
+    }
 
-	//We find a store with an ID strictly greater than 0 and with imm eligible
-	unsigned int index = 0;
-	while (index<graph->size){
+    // If current mem instruction is a store, we check that there is at least one other mem instruction following
+    if (graph->isStore[index]) {
+      if (graph->idMem[index] == 0) {
+        index++;
+        continue;
+      }
 
-		//We check imm value
-		int imm = 0;
-		if (imm >= 64 || imm < -64){
-			//We reset spec group and continue
-			currentSpeculationDef->nbStores = 0;
-			currentSpeculationDef->nbLoads = 0;
-			index++;
-			continue;
-		}
+      bool isStillSpec = false;
+      for (unsigned int oneOtherMem = index + 1; oneOtherMem < graph->size; oneOtherMem++) {
+        if (!graph->isStore[oneOtherMem])
+          isStillSpec = true;
+      }
+      if (!isStillSpec) // speculation group construction is done
+        break;
+    }
 
-		//If current mem instruction is a store, we check that there is at least one other mem instruction following
-		if (graph->isStore[index]){
-			if (graph->idMem[index] == 0){
-				index++;
-				continue;
-			}
+    graph->idSpec[index] = currentSpecId;
 
-			bool isStillSpec = false;
-			for (unsigned int oneOtherMem = index+1; oneOtherMem<graph->size; oneOtherMem++){
-				if (!graph->isStore[oneOtherMem])
-					isStillSpec = true;
-			}
-			if (!isStillSpec) //speculation group construction is done
-				break;
-		}
+    if (graph->isStore[index]) {
+      if (currentSpeculationDef->nbStores == PLSQ_BANK_SIZE)
+        break;
 
-		graph->idSpec[index] = currentSpecId;
+      currentSpeculationDef->stores[currentSpeculationDef->nbStores] = index;
+      currentSpeculationDef->nbStores++;
+    } else {
+      if (currentSpeculationDef->nbStores == 0) {
+        index++;
+        continue; // It is useless to add a load when there were no store before
+      }
 
-		if (graph->isStore[index]){
-			if (currentSpeculationDef->nbStores == PLSQ_BANK_SIZE)
-				break;
+      if (currentSpeculationDef->nbLoads == PLSQ_BANK_SIZE)
+        break;
 
-			currentSpeculationDef->stores[currentSpeculationDef->nbStores] = index;
-			currentSpeculationDef->nbStores++;
-		}
-		else{
-			if (currentSpeculationDef->nbStores == 0){
-				index++;
-				continue; // It is useless to add a load when there were no store before
-			}
+      currentSpeculationDef->loads[currentSpeculationDef->nbLoads] = index;
+      currentSpeculationDef->nbLoads++;
+    }
 
-			if (currentSpeculationDef->nbLoads == PLSQ_BANK_SIZE)
-				break;
+    // Next iteration
+    index++;
+  }
 
-			currentSpeculationDef->loads[currentSpeculationDef->nbLoads] = index;
-			currentSpeculationDef->nbLoads++;
-		}
+  if (currentSpeculationDef->nbStores != 0 && currentSpeculationDef->nbLoads != 0) {
+    // We've succesfully built a speculation group, we now commit it
 
+    // We first add the reset instruction in the block
+    // Dependencies will be added to ensure that the instruction is scheduled after spec stores/loads
+    unsigned int* newInstrs = (unsigned int*)malloc((block->nbInstr + 1) * 4 * sizeof(unsigned int));
+    memcpy(newInstrs, block->instructions, 4 * block->nbInstr * sizeof(unsigned int));
+    free(block->instructions);
+    block->instructions = newInstrs;
+    write128(block->instructions, block->nbInstr * 16,
+             assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_RST, 256, speculationCounter, 1,
+                                               currentSpecId, 0, 0));
+    block->nbInstr++;
 
-		//Next iteration
-		index++;
-	}
+    // We modify the instructions
+    for (unsigned int oneStore = 0; oneStore < currentSpeculationDef->nbStores; oneStore++) {
+      int storeIndex = currentSpeculationDef->stores[oneStore];
 
-	if (currentSpeculationDef->nbStores != 0 && currentSpeculationDef->nbLoads != 0){
-		//We've succesfully built a speculation group, we now commit it
+      int imm = 0;
 
-		//We first add the reset instruction in the block
-		//Dependencies will be added to ensure that the instruction is scheduled after spec stores/loads
-		unsigned int *newInstrs = (unsigned int*) malloc((block->nbInstr+1) * 4 * sizeof(unsigned int));
-		memcpy(newInstrs, block->instructions, 4*block->nbInstr*sizeof(unsigned int));
-		free(block->instructions);
-		block->instructions = newInstrs;
-		write128(block->instructions, block->nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_RST, 256, speculationCounter, 1, currentSpecId, 0, 0));
-		block->nbInstr++;
+      if (imm != 0) {
+        setImmediateValue(block->instructions, graph->idMem[storeIndex], imm << 5);
+      }
 
-		//We modify the instructions
-		for (unsigned int oneStore = 0; oneStore<currentSpeculationDef->nbStores; oneStore++){
-			int storeIndex = currentSpeculationDef->stores[oneStore];
+      block->instructions[4 * graph->idMem[storeIndex]] |= 0x20 | (currentSpecId << 1) | 1;
+    }
 
-			int imm = 0;
+    // We add a dep with the last store only
+    addControlDep(block->instructions, graph->idMem[currentSpeculationDef->stores[currentSpeculationDef->nbStores - 1]],
+                  block->nbInstr - 1);
 
-			if (imm != 0){
-				setImmediateValue(block->instructions, graph->idMem[storeIndex], imm<<5);
-			}
+    for (unsigned int oneLoad = 0; oneLoad < currentSpeculationDef->nbLoads; oneLoad++) {
+      int loadIndex = currentSpeculationDef->loads[oneLoad];
 
-			block->instructions[4*graph->idMem[storeIndex]] |= 0x20 | (currentSpecId<<1) | 1;
-		}
+      int imm = 0;
+      if (imm != 0) {
+        setImmediateValue(block->instructions, graph->idMem[loadIndex], imm << 5);
+      }
 
-		//We add a dep with the last store only
-		addControlDep(block->instructions, graph->idMem[currentSpeculationDef->stores[currentSpeculationDef->nbStores-1]], block->nbInstr-1);
+      block->instructions[4 * graph->idMem[loadIndex]] |= (currentSpecId << 1) | 1;
+      addControlDep(block->instructions, graph->idMem[loadIndex], block->nbInstr - 1);
+    }
 
+    // We also have to insert a spec init in every previous block
+    if (nbPred > 0) {
+      for (unsigned int onePred = 0; onePred < nbPred; onePred++) {
+        IRBlock* predecessor        = predecessors[onePred];
+        unsigned int* newInstrsPred = (unsigned int*)malloc((predecessor->nbInstr + 1) * 4 * sizeof(unsigned int));
+        memcpy(newInstrsPred, predecessor->instructions, 4 * predecessor->nbInstr * sizeof(unsigned int));
+        free(predecessor->instructions);
+        predecessor->instructions = newInstrsPred;
+        write128(predecessor->instructions, predecessor->nbInstr * 16,
+                 assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_INIT, 256, speculationCounter, 1,
+                                                   currentSpecId, 0, 0));
+        predecessor->nbInstr++;
+      }
+    } else {
+      block->printBytecode(Log::logMemoryDisambiguation);
 
-		for (unsigned int oneLoad = 0; oneLoad < currentSpeculationDef->nbLoads; oneLoad++){
-			int loadIndex = currentSpeculationDef->loads[oneLoad];
+      shiftBlock(block, 1);
+      for (unsigned int oneMemOperation = 0; oneMemOperation < graph->size; oneMemOperation++) {
+        graph->idMem[oneMemOperation] += 1;
+      }
+      write128(block->instructions, 0,
+               assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_INIT, 256, speculationCounter, 1,
+                                                 currentSpecId, 0, 0));
+      block->printBytecode(Log::logMemoryDisambiguation);
+    }
 
-			int imm = 0;
-			if (imm != 0){
-				setImmediateValue(block->instructions, graph->idMem[loadIndex], imm<<5);
-			}
+    // The speculation address is written as a block information
+    block->specAddr[currentSpecId] = speculationCounter;
 
-			block->instructions[4*graph->idMem[loadIndex]] |= (currentSpecId<<1) | 1;
-			addControlDep(block->instructions, graph->idMem[loadIndex], block->nbInstr-1);
+    currentSpeculationDef->nbFail = 0;
+    currentSpeculationDef->nbUse  = 0;
+    currentSpeculationDef->type   = 1;
+    currentSpeculationDef->graph  = graph;
+    currentSpeculationDef->init   = 1;
 
-		}
+    // We change for a new speculation group
+    speculationCounter++;
+  }
 
-		//We also have to insert a spec init in every previous block
-		if (nbPred>0){
-			for (unsigned int onePred = 0; onePred<nbPred; onePred++){
-				IRBlock *predecessor = predecessors[onePred];
-				unsigned int *newInstrsPred = (unsigned int*) malloc((predecessor->nbInstr+1) * 4 * sizeof(unsigned int));
-				memcpy(newInstrsPred, predecessor->instructions, 4*predecessor->nbInstr*sizeof(unsigned int));
-				free(predecessor->instructions);
-				predecessor->instructions = newInstrsPred;
-				write128(predecessor->instructions, predecessor->nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_INIT, 256, speculationCounter, 1, currentSpecId, 0, 0));
-				predecessor->nbInstr++;
-			}
-		}
-		else{
-			block->printBytecode(Log::logMemoryDisambiguation);
-
-			shiftBlock(block, 1);
-			for (unsigned int oneMemOperation = 0; oneMemOperation<graph->size; oneMemOperation++){
-				graph->idMem[oneMemOperation] += 1;
-			}
-			write128(block->instructions, 0, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_INIT, 256, speculationCounter, 1, currentSpecId, 0, 0));
-			block->printBytecode(Log::logMemoryDisambiguation);
-
-
-
-		}
-
-		//The speculation address is written as a block information
-		block->specAddr[currentSpecId] = speculationCounter;
-
-		currentSpeculationDef->nbFail = 0;
-		currentSpeculationDef->nbUse = 0;
-		currentSpeculationDef->type = 1;
-		currentSpeculationDef->graph = graph;
-		currentSpeculationDef->init = 1;
-
-		//We change for a new speculation group
-		speculationCounter++;
-	}
-
-
-
-//	bool found = false;
-//	while (!found && index < graph->size){
-//
-//		if (graph->isStore[index] && graph->idMem[index] > 0){
-//			for (int oneOtherMem = index+1; oneOtherMem<graph->size; oneOtherMem++){
-//				if (!graph->isStore[oneOtherMem]){
-//					int imm = 0;
-//					bool hasImm = getImmediateValue(block->instructions, graph->idMem[index], &imm);
-//					if (!(imm > 64 || imm <= -64)){
-//						found = true;
-//						currentSpeculationDef->stores[currentSpeculationDef->nbStores] = index;
-//						currentSpeculationDef->nbStores++;
-//					}
-//				}
-//			}
-//
-//
-//		}
-//		index++;
-//	}
-//
-//	if (found){
-//
-//
-//		//A store has been found, we will go through all memory accesses of the block until we went across 4 load instructions.
-//		//All the memory accesses that have been met will be done speculatively (both loads and stores)
-//		// if we reach 4 loads, the speculation area will be terminated and we will start a new speculation area
-//		int nbLoads = 0;
-//		int nbStores = 1;
-//		int storeIndex = index-1;
-//		bool isSpec = false;
-//
-//		while (index < graph->size && nbLoads < 4){
-//
-//			//If current mem instruction is a store, we check that there is at least one other mem instruction following
-//			if (graph->isStore[index]){
-//				bool isStillSpec = false;
-//				for (int oneOtherMem = index+1; oneOtherMem<graph->size; oneOtherMem++){
-//					if (!graph->isStore[oneOtherMem])
-//						isStillSpec = true;
-//				}
-//				if (!isStillSpec)
-//					break;
-//			}
-//
-//
-//			//We have to update the immadiate value (it will be shifted)
-//			int imm = 0;
-//			bool hasImm = getImmediateValue(block->instructions, graph->idMem[index], &imm);
-//
-//			if (imm > 64 || imm <= -64){
-//				index++;
-//				continue;
-//			}
-//			else if (imm != 0){
-//				setImmediateValue(block->instructions, graph->idMem[index], imm<<5);
-//			}
-//
-//
-//
-//			if (graph->isStore[index]){
-//				//We add the store : we set the specId correctly. In this first step, we profile and thus we store the stores and check the loads
-//				block->instructions[4*graph->idMem[index]] |= 0x20 | (currentSpecId<<1) | 1;
-//				addControlDep(block->instructions, graph->idMem[index], block->nbInstr-1);
-//				currentSpeculationDef->stores[nbStores] = index;
-//			}
-//			else{
-//				//We add the load : In this first step, we profile and thus we store the stores and check the loads
-//				block->instructions[4*graph->idMem[index]] |= (currentSpecId<<1) | 1;
-//				currentSpeculationDef->loads[nbLoads] = index;
-//
-//			}
-//			graph->idSpec[index] = currentSpecId;
-//
-//			//NOTE: We do not remove deps at this step... We just profile
-////			for (int onePreviousInstr = storeIndex; onePreviousInstr<index; onePreviousInstr++){
-////				graph->graph[index*graph->size + onePreviousInstr] = false;
-////			} //
-//
-//			if (!graph->isStore[index])
-//				nbLoads++;
-//			else
-//				nbStores++;
-//
-//			isSpec = true;
-//			index++;
-//		}
-//
-//		if (isSpec){
-//			int imm = 0;
-//			bool hasImm = getImmediateValue(block->instructions, graph->idMem[storeIndex], &imm);
-//			if (imm > 64 || imm <= -64){
-//				fprintf(stderr, "Failed at reducing immediate %d\n", imm);
-//				exit(-1);
-//			}
-//			else if (imm != 0){
-//				setImmediateValue(block->instructions, graph->idMem[storeIndex], imm<<5);
-//			}
-//
-//			currentSpeculationDef->stores[0] = storeIndex;
-//			block->instructions[4*graph->idMem[storeIndex]] |= 0x20 | (currentSpecId<<1) | 1;
-//			graph->idSpec[storeIndex] = currentSpecId;
-//
-//			//We add other values in specDef
-//			currentSpeculationDef->nbLoads = nbLoads;
-//			currentSpeculationDef->nbStores = nbStores;
-//			currentSpeculationDef->type = 1;
-//			currentSpeculationDef->graph = graph;
-//		}
-//
-//
-//
-//		//The speculation address is written as a block information
-//		block->specAddr[currentSpecId] = speculationCounter;
-//
-//		//We first add the reset instruction in the block
-//		//Dependencies will be added to ensure that the instruction is scheduled after spec stores/loads
-//		unsigned int *newInstrs = (unsigned int*) malloc((block->nbInstr+1) * 4 * sizeof(unsigned int));
-//		memcpy(newInstrs, block->instructions, 4*block->nbInstr*sizeof(unsigned int));
-//		free(block->instructions);
-//		block->instructions = newInstrs;
-//		write128(block->instructions, block->nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_RST, 256, speculationCounter, 1, currentSpecId, 0, 0));
-//		block->nbInstr++;
-//		addControlDep(block->instructions, graph->idMem[index-1], block->nbInstr-1);
-//
-//		//We also have to insert a spec init in previous blocks
-//		for (int onePred = 0; onePred<nbPred; onePred++){
-//			IRBlock *predecessor = predecessors[onePred];
-//			unsigned int *newInstrsPred = (unsigned int*) malloc((predecessor->nbInstr+1) * 4 * sizeof(unsigned int));
-//			memcpy(newInstrsPred, predecessor->instructions, 4*predecessor->nbInstr*sizeof(unsigned int));
-//			free(predecessor->instructions);
-//			predecessor->instructions = newInstrsPred;
-//			write128(predecessor->instructions, predecessor->nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_INIT, 256, speculationCounter, 1, currentSpecId, 0, 0));
-//			predecessor->nbInstr++;
-//		}
-//
-//		speculationCounter++;
-//	}
-
-
+  //	bool found = false;
+  //	while (!found && index < graph->size){
+  //
+  //		if (graph->isStore[index] && graph->idMem[index] > 0){
+  //			for (int oneOtherMem = index+1; oneOtherMem<graph->size; oneOtherMem++){
+  //				if (!graph->isStore[oneOtherMem]){
+  //					int imm = 0;
+  //					bool hasImm = getImmediateValue(block->instructions, graph->idMem[index], &imm);
+  //					if (!(imm > 64 || imm <= -64)){
+  //						found = true;
+  //						currentSpeculationDef->stores[currentSpeculationDef->nbStores] = index;
+  //						currentSpeculationDef->nbStores++;
+  //					}
+  //				}
+  //			}
+  //
+  //
+  //		}
+  //		index++;
+  //	}
+  //
+  //	if (found){
+  //
+  //
+  //		//A store has been found, we will go through all memory accesses of the block until we went across 4 load
+  //instructions.
+  //		//All the memory accesses that have been met will be done speculatively (both loads and stores)
+  //		// if we reach 4 loads, the speculation area will be terminated and we will start a new speculation area
+  //		int nbLoads = 0;
+  //		int nbStores = 1;
+  //		int storeIndex = index-1;
+  //		bool isSpec = false;
+  //
+  //		while (index < graph->size && nbLoads < 4){
+  //
+  //			//If current mem instruction is a store, we check that there is at least one other mem instruction
+  //following 			if (graph->isStore[index]){ 				bool isStillSpec = false; 				for (int oneOtherMem = index+1;
+  //oneOtherMem<graph->size; oneOtherMem++){ 					if (!graph->isStore[oneOtherMem]) 						isStillSpec = true;
+  //				}
+  //				if (!isStillSpec)
+  //					break;
+  //			}
+  //
+  //
+  //			//We have to update the immadiate value (it will be shifted)
+  //			int imm = 0;
+  //			bool hasImm = getImmediateValue(block->instructions, graph->idMem[index], &imm);
+  //
+  //			if (imm > 64 || imm <= -64){
+  //				index++;
+  //				continue;
+  //			}
+  //			else if (imm != 0){
+  //				setImmediateValue(block->instructions, graph->idMem[index], imm<<5);
+  //			}
+  //
+  //
+  //
+  //			if (graph->isStore[index]){
+  //				//We add the store : we set the specId correctly. In this first step, we profile and thus we store
+  //the stores and check the loads 				block->instructions[4*graph->idMem[index]] |= 0x20 | (currentSpecId<<1) | 1;
+  //				addControlDep(block->instructions, graph->idMem[index], block->nbInstr-1);
+  //				currentSpeculationDef->stores[nbStores] = index;
+  //			}
+  //			else{
+  //				//We add the load : In this first step, we profile and thus we store the stores and check the
+  //loads 				block->instructions[4*graph->idMem[index]] |= (currentSpecId<<1) | 1; 				currentSpeculationDef->loads[nbLoads] =
+  //index;
+  //
+  //			}
+  //			graph->idSpec[index] = currentSpecId;
+  //
+  //			//NOTE: We do not remove deps at this step... We just profile
+  ////			for (int onePreviousInstr = storeIndex; onePreviousInstr<index; onePreviousInstr++){
+  ////				graph->graph[index*graph->size + onePreviousInstr] = false;
+  ////			} //
+  //
+  //			if (!graph->isStore[index])
+  //				nbLoads++;
+  //			else
+  //				nbStores++;
+  //
+  //			isSpec = true;
+  //			index++;
+  //		}
+  //
+  //		if (isSpec){
+  //			int imm = 0;
+  //			bool hasImm = getImmediateValue(block->instructions, graph->idMem[storeIndex], &imm);
+  //			if (imm > 64 || imm <= -64){
+  //				fprintf(stderr, "Failed at reducing immediate %d\n", imm);
+  //				exit(-1);
+  //			}
+  //			else if (imm != 0){
+  //				setImmediateValue(block->instructions, graph->idMem[storeIndex], imm<<5);
+  //			}
+  //
+  //			currentSpeculationDef->stores[0] = storeIndex;
+  //			block->instructions[4*graph->idMem[storeIndex]] |= 0x20 | (currentSpecId<<1) | 1;
+  //			graph->idSpec[storeIndex] = currentSpecId;
+  //
+  //			//We add other values in specDef
+  //			currentSpeculationDef->nbLoads = nbLoads;
+  //			currentSpeculationDef->nbStores = nbStores;
+  //			currentSpeculationDef->type = 1;
+  //			currentSpeculationDef->graph = graph;
+  //		}
+  //
+  //
+  //
+  //		//The speculation address is written as a block information
+  //		block->specAddr[currentSpecId] = speculationCounter;
+  //
+  //		//We first add the reset instruction in the block
+  //		//Dependencies will be added to ensure that the instruction is scheduled after spec stores/loads
+  //		unsigned int *newInstrs = (unsigned int*) malloc((block->nbInstr+1) * 4 * sizeof(unsigned int));
+  //		memcpy(newInstrs, block->instructions, 4*block->nbInstr*sizeof(unsigned int));
+  //		free(block->instructions);
+  //		block->instructions = newInstrs;
+  //		write128(block->instructions, block->nbInstr*16, assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0,
+  //VEX_SPEC_RST, 256, speculationCounter, 1, currentSpecId, 0, 0)); 		block->nbInstr++;
+  //		addControlDep(block->instructions, graph->idMem[index-1], block->nbInstr-1);
+  //
+  //		//We also have to insert a spec init in previous blocks
+  //		for (int onePred = 0; onePred<nbPred; onePred++){
+  //			IRBlock *predecessor = predecessors[onePred];
+  //			unsigned int *newInstrsPred = (unsigned int*) malloc((predecessor->nbInstr+1) * 4 * sizeof(unsigned
+  //int)); 			memcpy(newInstrsPred, predecessor->instructions, 4*predecessor->nbInstr*sizeof(unsigned int));
+  //			free(predecessor->instructions);
+  //			predecessor->instructions = newInstrsPred;
+  //			write128(predecessor->instructions, predecessor->nbInstr*16,
+  //assembleMemoryBytecodeInstruction(STAGE_CODE_MEMORY, 0, VEX_SPEC_INIT, 256, speculationCounter, 1, currentSpecId, 0,
+  //0)); 			predecessor->nbInstr++;
+  //		}
+  //
+  //		speculationCounter++;
+  //	}
 }
 
-
 /***************************************************
- *  Function updateSpeculationsStatus will go through all speculation defs and check the profiling information to decide whether to insert speculation or not.
+ *  Function updateSpeculationsStatus will go through all speculation defs and check the profiling information to decide
+ *whether to insert speculation or not.
  *
  ***************************************************/
 
-void updateSpeculationsStatus(DBTPlateform *platform, IRApplication *application, int writePlace){
+void updateSpeculationsStatus(DBTPlateform* platform, IRApplication* application, int writePlace)
+{
 
-	for (unsigned int oneSpecDef = 1; oneSpecDef<speculationCounter; oneSpecDef++){
-		struct speculationDef *currentSpecDef = &speculationDefinitions[oneSpecDef];
-		unsigned short newNbUse = platform->specInfo[4*oneSpecDef];
-		unsigned short newNbMiss = platform->specInfo[4*oneSpecDef+1];
+  for (unsigned int oneSpecDef = 1; oneSpecDef < speculationCounter; oneSpecDef++) {
+    struct speculationDef* currentSpecDef = &speculationDefinitions[oneSpecDef];
+    unsigned short newNbUse               = platform->specInfo[4 * oneSpecDef];
+    unsigned short newNbMiss              = platform->specInfo[4 * oneSpecDef + 1];
 
-		if (newNbUse < currentSpecDef->nbUse){
-			currentSpecDef->nbUse = currentSpecDef->nbUse>>6;
-			currentSpecDef->nbFail = currentSpecDef->nbFail>>6;
-		}
+    if (newNbUse < currentSpecDef->nbUse) {
+      currentSpecDef->nbUse  = currentSpecDef->nbUse >> 6;
+      currentSpecDef->nbFail = currentSpecDef->nbFail >> 6;
+    }
 
-		if (newNbUse-currentSpecDef->nbUse > 70 || currentSpecDef->init == 1){
+    if (newNbUse - currentSpecDef->nbUse > 70 || currentSpecDef->init == 1) {
 
-			if (currentSpecDef->type == 1 && ((newNbMiss - currentSpecDef->nbFail) < (newNbUse-currentSpecDef->nbUse)/10 || currentSpecDef->init == 1)){
+      if (currentSpecDef->type == 1 &&
+          ((newNbMiss - currentSpecDef->nbFail) < (newNbUse - currentSpecDef->nbUse) / 10 ||
+           currentSpecDef->init == 1)) {
 
-				//We turn the spec on
+        // We turn the spec on
 
-				for (unsigned int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++){
-					for (unsigned int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++){
-						if (currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]] > currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]){
-							currentSpecDef->graph->graph[currentSpecDef->loads[oneLoad]*currentSpecDef->graph->size + currentSpecDef->stores[oneStore]] = false;
-						}
-					}
-				}
-				for (unsigned int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++)
-					currentSpecDef->block->instructions[4*currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]]] |= 0x20;
+        for (unsigned int oneLoad = 0; oneLoad < currentSpecDef->nbLoads; oneLoad++) {
+          for (unsigned int oneStore = 0; oneStore < currentSpecDef->nbStores; oneStore++) {
+            if (currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]] >
+                currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]) {
+              currentSpecDef->graph->graph[currentSpecDef->loads[oneLoad] * currentSpecDef->graph->size +
+                                           currentSpecDef->stores[oneStore]] = false;
+            }
+          }
+        }
+        for (unsigned int oneLoad = 0; oneLoad < currentSpecDef->nbLoads; oneLoad++)
+          currentSpecDef->block->instructions[4 * currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]]] |= 0x20;
 
-				for (unsigned int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++)
-					currentSpecDef->block->instructions[4*currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]] &= 0xffffffdf;
+        for (unsigned int oneStore = 0; oneStore < currentSpecDef->nbStores; oneStore++)
+          currentSpecDef->block->instructions[4 * currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]] &=
+              0xffffffdf;
 
+        currentSpecDef->graph->applyGraph(currentSpecDef->block);
 
-				currentSpecDef->graph->applyGraph(currentSpecDef->block);
+        inPlaceBlockReschedule(currentSpecDef->block, platform, application, writePlace);
+        currentSpecDef->type = 2;
+        currentSpecDef->init = 0;
 
-				inPlaceBlockReschedule(currentSpecDef->block, platform, application, writePlace);
-				currentSpecDef->type = 2;
-				currentSpecDef->init = 0;
+      } else if (currentSpecDef->type == 2 &&
+                 (newNbMiss - currentSpecDef->nbFail) >= (newNbUse - currentSpecDef->nbUse) / 10) {
 
-			}
-			else if (currentSpecDef->type == 2 && (newNbMiss - currentSpecDef->nbFail) >= (newNbUse-currentSpecDef->nbUse)/10){
+        // We turn the spec off
 
-				//We turn the spec off
- 
-				for (unsigned int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++){
-					for (unsigned int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++){
-						if (currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]] > currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]){
-							currentSpecDef->graph->graph[currentSpecDef->loads[oneLoad]*currentSpecDef->graph->size + currentSpecDef->stores[oneStore]] = true;
-						}
-					}
-				}
-				for (unsigned int oneLoad = 0; oneLoad<currentSpecDef->nbLoads; oneLoad++)
-					currentSpecDef->block->instructions[4*currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]]] &= 0xffffffdf;
+        for (unsigned int oneLoad = 0; oneLoad < currentSpecDef->nbLoads; oneLoad++) {
+          for (unsigned int oneStore = 0; oneStore < currentSpecDef->nbStores; oneStore++) {
+            if (currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]] >
+                currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]) {
+              currentSpecDef->graph->graph[currentSpecDef->loads[oneLoad] * currentSpecDef->graph->size +
+                                           currentSpecDef->stores[oneStore]] = true;
+            }
+          }
+        }
+        for (unsigned int oneLoad = 0; oneLoad < currentSpecDef->nbLoads; oneLoad++)
+          currentSpecDef->block->instructions[4 * currentSpecDef->graph->idMem[currentSpecDef->loads[oneLoad]]] &=
+              0xffffffdf;
 
-				for (unsigned int oneStore = 0; oneStore<currentSpecDef->nbStores; oneStore++)
-					currentSpecDef->block->instructions[4*currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]] |= 0x20;
+        for (unsigned int oneStore = 0; oneStore < currentSpecDef->nbStores; oneStore++)
+          currentSpecDef->block->instructions[4 * currentSpecDef->graph->idMem[currentSpecDef->stores[oneStore]]] |=
+              0x20;
 
+        currentSpecDef->graph->applyGraph(currentSpecDef->block);
 
-				currentSpecDef->graph->applyGraph(currentSpecDef->block);
+        inPlaceBlockReschedule(currentSpecDef->block, platform, application, writePlace);
 
-				inPlaceBlockReschedule(currentSpecDef->block, platform, application, writePlace);
+        currentSpecDef->type = 1;
+      }
 
-
-				currentSpecDef->type = 1;
-			}
-
-
-
-			currentSpecDef->nbUse = newNbUse;
-			currentSpecDef->nbFail = newNbMiss;
-
-
-
-		}
-
-	}
-
-
-
+      currentSpecDef->nbUse  = newNbUse;
+      currentSpecDef->nbFail = newNbMiss;
+    }
+  }
 }
