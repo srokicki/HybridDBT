@@ -8,9 +8,9 @@
 #ifndef INCLUDES_ISA_IRISA_H_
 #define INCLUDES_ISA_IRISA_H_
 
-#include <types.h>
-#include <string>
 #include <dbt/dbtPlateform.h>
+#include <string>
+#include <types.h>
 
 /********************************************************************
  * IR configuration
@@ -42,99 +42,98 @@ class IRApplicationBlocksIterator;
 
 /* IRProcedure is meant to represent a procedure in the binaries.
  * Its current implementation only store its start/end address and a pointer to the basic blocks*/
-class IRProcedure
-{
+class IRProcedure {
 public:
-	IRBlock *entryBlock;			//pointer to the entry block of the procedure
-	IRBlock **blocks;				//A pointer to an array of blocks
-	unsigned int nbBlock;
-	uint8_t configuration, previousConfiguration;
-	int configurationScores[32];
-	signed char state;
-	unsigned int nbInstr;
-	unsigned int procedureState;	//A value to store its state (optimized/translated or other things like that)
+  IRBlock* entryBlock; // pointer to the entry block of the procedure
+  IRBlock** blocks;    // A pointer to an array of blocks
+  unsigned int nbBlock;
+  uint8_t configuration, previousConfiguration;
+  int configurationScores[32];
+  signed char state;
+  unsigned int nbInstr;
+  unsigned int procedureState; // A value to store its state (optimized/translated or other things like that)
 
-	/**
-	 * @brief print: prints the procedure's CFG in .dot format in a file
-	 * @param output: the file to print in
-	 */
-	void print(FILE *output, IRApplication &application);
-	IRProcedure(IRBlock *entryBlock, int nbBlock);
+  /**
+   * @brief print: prints the procedure's CFG in .dot format in a file
+   * @param output: the file to print in
+   */
+  void print(FILE* output, IRApplication& application);
+  IRProcedure(IRBlock* entryBlock, int nbBlock);
 
-	void addBlock(IRBlock &block);
+  void addBlock(IRBlock& block);
 
 private:
-	unsigned int nbAllocatedBlocks;
+  unsigned int nbAllocatedBlocks;
 };
 
 /* IRBlock represent a block in the binaries.
  * The data structure only store start/end address as well as a pointer to some instructions if the IR was stored.*/
-class IRBlock
-{
+class IRBlock {
 public:
-	static bool isUndestroyable; //If set to false, the delete won't free memory (used in dbtInformation that needs to keep it)
+  static bool
+      isUndestroyable; // If set to false, the delete won't free memory (used in dbtInformation that needs to keep it)
 
+  // address of the unique reference to the pointer
+  IRBlock** reference = NULL;
 
-	//address of the unique reference to the pointer
-	IRBlock** reference = NULL;
+  // Link with source binaries
+  unsigned int sourceStartAddress; // This represent the block start address in source binaries
+  unsigned int sourceEndAddress;   // This represent the block end address in source binaries
+  int sourceDestination; // This represent the jump destination if any. If there are no jump of unpredictable jump its
+                         // value is 0.
 
-	//Link with source binaries
-	unsigned int sourceStartAddress; //This represent the block start address in source binaries
-	unsigned int sourceEndAddress;	 //This represent the block end address in source binaries
-	int sourceDestination;	 //This represent the jump destination if any. If there are no jump of unpredictable jump its value is 0.
+  // Link with VLIW binaries
+  unsigned int vliwStartAddress;    // Address of the first instruction in the block
+  unsigned int oldVliwStartAddress; // Address of the first instruction in the block
+  unsigned int vliwEndAddress;      // End address is the address of the first instruction not in the block
 
-	//Link with VLIW binaries
-	unsigned int vliwStartAddress;	//Address of the first instruction in the block
-	unsigned int oldVliwStartAddress;	//Address of the first instruction in the block
-	unsigned int vliwEndAddress;   	//End address is the address of the first instruction not in the block
+  // Control flow graph
+  unsigned char nbSucc;        // Number of successors
+  unsigned int successors[10]; // Souce start address of successors
 
-	//Control flow graph
-	unsigned char nbSucc;					//Number of successors
-	unsigned int successors[10]; 			//Souce start address of successors
+  // Keeping trace of previous organization
+  unsigned int nbMergedBlocks = 0;
+  unsigned int mergedBlocks[10];
 
-	//Keeping trace of previous organization
-	unsigned int nbMergedBlocks = 0;
-	unsigned int mergedBlocks[10];
+  unsigned char nbJumps;
+  unsigned char* jumpIds;
+  unsigned int* jumpPlaces;
 
-	unsigned char nbJumps;
-	unsigned char *jumpIds;
-	unsigned int *jumpPlaces;
+  unsigned int* instructions; // A pointer to an array of uint128 describing the instructions
+  unsigned int nbInstr;       // The number of instructions
 
-	unsigned int *instructions;			//A pointer to an array of uint128 describing the instructions
-	unsigned int nbInstr;					//The number of instructions
+  unsigned int blockState; // A value to store its state (optimized/translated or other things like that)
+  short unrollingFactor;
 
-	unsigned int blockState;		//A value to store its state (optimized/translated or other things like that)
-	short unrollingFactor;
+  unsigned int section;
+  unsigned int procedureSourceStartAddress;
 
-	unsigned int section;
-	unsigned int procedureSourceStartAddress;
+  short sizeOpt0;
+  short sizeOpt1;
+  short sizeOpt2;
+  int placeInProfiler;
 
-	short sizeOpt0;
-	short sizeOpt1;
-	short sizeOpt2;
-	int placeInProfiler;
+  short specAddr[4];
 
-	short specAddr[4];
+  void addJump(unsigned char jumpID, unsigned int jumpPlace);
+  void printBytecode(std::ostream& stream);
+  void printCode(std::ostream& stream, DBTPlateform* platform);
 
-	void addJump(unsigned char jumpID, unsigned int jumpPlace);
-	void printBytecode(std::ostream &stream);
-	void printCode(std::ostream &stream, DBTPlateform *platform);
+  IRBlock(int vliwStartAddress, int vliwEndAddress, int section);
+  ~IRBlock();
 
-
-	IRBlock(int vliwStartAddress, int vliwEndAddress, int section);
-	~IRBlock();
-
-	/**
-	 * @brief print: prints the block's DFG in .dot format in a file
-	 * @param output: the file to print in
-	 */
-	void print(FILE *output);
+  /**
+   * @brief print: prints the block's DFG in .dot format in a file
+   * @param output: the file to print in
+   */
+  void print(FILE* output);
 };
 
 /* Definition of different states possible for the IRBlock:
  * IRBLOCK_STATE_FIRSTPASS the block is simply translated
  * IRBLOCK_STATE_PROFILED the block has been translated and additional code is added to profile it
- * IRBLOCK_STATE_SCHEDULED the block has been elected to be scheduled. As a consequence, instructions* hold the IR instructions
+ * IRBLOCK_STATE_SCHEDULED the block has been elected to be scheduled. As a consequence, instructions* hold the IR
+ * instructions
  */
 
 #define IRBLOCK_STATE_FIRSTPASS 0
@@ -146,56 +145,70 @@ public:
 #define IRBLOCK_UNROLLED 6
 #define IRBLOCK_TRACE 7
 
-
 #define IRBLOCK_STATE_RECONF 8
 
-class IRApplication{
+class IRApplication {
 public:
+  IRProcedure** procedures;
+  unsigned int numberProcedures;
+  unsigned int numberInstructions;
+  unsigned int numberAllocatedProcedures;
 
-	IRProcedure** procedures;
-	unsigned int numberProcedures;
-	unsigned int numberInstructions;
-	unsigned int numberAllocatedProcedures;
+  IRApplication(unsigned int addressStart, unsigned int size);
+  ~IRApplication();
 
-	IRApplication(unsigned int addressStart, unsigned int size);
-	~IRApplication();
+  IRBlock* getBlock(unsigned int blockStartAddressInSources);
+  IRProcedure* getProcedure(unsigned int procedureSourceStartAddress);
 
-	IRBlock* getBlock(unsigned int blockStartAddressInSources);
-	IRProcedure* getProcedure(unsigned int procedureSourceStartAddress);
+  void addBlock(IRBlock* block);
+  void addProcedure(IRProcedure* procedure);
 
-	void addBlock(IRBlock *block);
-	void addProcedure(IRProcedure *procedure);
+  void dumpApplication(char* path, unsigned int greatestAddr);
+  void loadApplication(char* path, unsigned int greatestAddr);
 
-	void dumpApplication(char *path, unsigned int greatestAddr);
-	void loadApplication(char *path, unsigned int greatestAddr);
-
-	//For iterators
-	IRApplicationBlocksIterator begin();
-	IRApplicationBlocksIterator end();
-
+  // For iterators
+  IRApplicationBlocksIterator begin();
+  IRApplicationBlocksIterator end();
 
 private:
-	unsigned int addressStart;
-	unsigned int nbInstr;
-	IRBlock **blocks;
-
+  unsigned int addressStart;
+  unsigned int nbInstr;
+  IRBlock** blocks;
 };
 
 //*****************************************************************
 // IRApplicationBlocksIterator
 
-class IRApplicationBlocksIterator{
+class IRApplicationBlocksIterator {
 public:
-     IRApplicationBlocksIterator(unsigned int addr, IRApplication *application) {this->addr = addr; this->application = application;}
-     IRApplicationBlocksIterator operator++() {this->addr++; while(application->getBlock(this->addr) == NULL){this->addr++;}; return *this; }
-	 IRApplicationBlocksIterator operator--() {this->addr--; while(application->getBlock(this->addr) == NULL){this->addr--;}; return *this; }
-     bool operator!=(const IRApplicationBlocksIterator &other) const { return addr != other.addr; }
-     IRBlock& operator*() { return *(application->getBlock(addr));}
-private:
-	   IRApplication *application;
-	   unsigned int addr;
-};
+  IRApplicationBlocksIterator(unsigned int addr, IRApplication* application)
+  {
+    this->addr        = addr;
+    this->application = application;
+  }
+  IRApplicationBlocksIterator operator++()
+  {
+    this->addr++;
+    while (application->getBlock(this->addr) == NULL) {
+      this->addr++;
+    };
+    return *this;
+  }
+  IRApplicationBlocksIterator operator--()
+  {
+    this->addr--;
+    while (application->getBlock(this->addr) == NULL) {
+      this->addr--;
+    };
+    return *this;
+  }
+  bool operator!=(const IRApplicationBlocksIterator& other) const { return addr != other.addr; }
+  IRBlock& operator*() { return *(application->getBlock(addr)); }
 
+private:
+  IRApplication* application;
+  unsigned int addr;
+};
 
 /********************************************************************
  * Declaration functions to assemble uint128 instruction for IR
@@ -206,39 +219,43 @@ private:
  *
  *******************************************************************/
 
-struct uint128_struct assembleRBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc,
-		unsigned char opcode, short regA, short regB, short regDest,	unsigned char nbDep);
+struct uint128_struct assembleRBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc, unsigned char opcode,
+                                                   short regA, short regB, short regDest, unsigned char nbDep);
 struct uint128_struct assembleFPBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc,
-		unsigned char opcode, unsigned char funct, short regA, short regB, short regDest, unsigned char nbDep);
+                                                    unsigned char opcode, unsigned char funct, short regA, short regB,
+                                                    short regDest, unsigned char nbDep);
 struct uint128_struct assembleRiBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc,
-		unsigned char opcode, short regA, short imm13, short regDest, unsigned char nbDep);
-struct uint128_struct assembleIBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc,
-		unsigned char opcode, short reg, int imm19, unsigned char nbDep);
+                                                    unsigned char opcode, short regA, short imm13, short regDest,
+                                                    unsigned char nbDep);
+struct uint128_struct assembleIBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc, unsigned char opcode,
+                                                   short reg, int imm19, unsigned char nbDep);
 struct uint128_struct assembleMemoryBytecodeInstruction(unsigned char stageCode, unsigned char isAlloc,
-		unsigned char opcode, short regA, short imm12, bool isSpec, unsigned char specId,
-		short regDest, unsigned char nbDep);
-
+                                                        unsigned char opcode, short regA, short imm12, bool isSpec,
+                                                        unsigned char specId, short regDest, unsigned char nbDep);
 
 #ifndef __SW
 #ifndef __HW
 
 ac_int<128, false> assembleRBytecodeInstruction_hw(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
-		ac_int<7, false> opcode, ac_int<9, false> regA, ac_int<9, false> regB, ac_int<9, false> regDest,
-		ac_int<8, false> nbDep);
+                                                   ac_int<7, false> opcode, ac_int<9, false> regA,
+                                                   ac_int<9, false> regB, ac_int<9, false> regDest,
+                                                   ac_int<8, false> nbDep);
 
 ac_int<128, false> assembleRiBytecodeInstruction_hw(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
-		ac_int<7, false> opcode, ac_int<9, false> regA, ac_int<13, false> imm13,
-		ac_int<9, false> regDest, ac_int<8, false> nbDep);
+                                                    ac_int<7, false> opcode, ac_int<9, false> regA,
+                                                    ac_int<13, false> imm13, ac_int<9, false> regDest,
+                                                    ac_int<8, false> nbDep);
 
 ac_int<128, false> assembleIBytecodeInstruction_hw(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
-		ac_int<7, false> opcode, ac_int<9, false> reg, ac_int<19, true> imm19, ac_int<8, false> nbDep);
+                                                   ac_int<7, false> opcode, ac_int<9, false> reg,
+                                                   ac_int<19, true> imm19, ac_int<8, false> nbDep);
 ac_int<128, false> assembleFPBytecodeInstruction_hw(ac_int<2, false> stageCode, ac_int<1, false> isAlloc,
-		ac_int<7, false> opcode, ac_int<5, false> funct, ac_int<9, false> regA, ac_int<9, false> regB, ac_int<9, false> regDest,
-		ac_int<8, false> nbDep);
+                                                    ac_int<7, false> opcode, ac_int<5, false> funct,
+                                                    ac_int<9, false> regA, ac_int<9, false> regB,
+                                                    ac_int<9, false> regDest, ac_int<8, false> nbDep);
 
 #endif
 #endif
-
 
 /********************************************************************
  * Declaration of debug function
@@ -248,7 +265,8 @@ ac_int<128, false> assembleFPBytecodeInstruction_hw(ac_int<2, false> stageCode, 
  *
  *******************************************************************/
 
-std::string printBytecodeInstruction(int index, unsigned int  instructionPart1, unsigned int instructionPart2, unsigned int instructionPart3, unsigned int instructionPart4);
+std::string printBytecodeInstruction(int index, unsigned int instructionPart1, unsigned int instructionPart2,
+                                     unsigned int instructionPart3, unsigned int instructionPart4);
 
 /********************************************************************
  * Declaration utilization functions
@@ -258,28 +276,28 @@ std::string printBytecodeInstruction(int index, unsigned int  instructionPart1, 
  *
  *******************************************************************/
 
-short getDestinationRegister(unsigned int *bytecode, unsigned char index);
-char getOperands(unsigned int *bytecode, unsigned char index, short result[2]);
-void setOperands(unsigned int *bytecode, unsigned char index, short operands[2]);
+short getDestinationRegister(unsigned int* bytecode, unsigned char index);
+char getOperands(unsigned int* bytecode, unsigned char index, short result[2]);
+void setOperands(unsigned int* bytecode, unsigned char index, short operands[2]);
 
-void setImmediateValue(unsigned int *bytecode, unsigned char index, int value);
-bool getImmediateValue(unsigned int *bytecode, unsigned char index, int* result);
+void setImmediateValue(unsigned int* bytecode, unsigned char index, int value);
+bool getImmediateValue(unsigned int* bytecode, unsigned char index, int* result);
 
-char getOpcode(unsigned int *bytecode, unsigned char index);
-void setOpcode(unsigned int *bytecode, unsigned char index, unsigned char newOpcode);
+char getOpcode(unsigned int* bytecode, unsigned char index);
+void setOpcode(unsigned int* bytecode, unsigned char index, unsigned char newOpcode);
 
-void setDestinationRegister(unsigned int *bytecode, unsigned char index, short newDestinationRegister);
-void setAlloc(unsigned int *bytecode, unsigned char index, unsigned char newAlloc);
-void addDataDep(unsigned int *bytecode, unsigned char index, unsigned char successor);
-void addControlDep(unsigned int *bytecode, unsigned char index, unsigned char successor);
-void clearControlDep(unsigned int *ir, unsigned char index);
-char getControlDep(unsigned int *ir, unsigned char index, unsigned char *result);
-void addOffsetToDep(unsigned int *bytecode, unsigned char index, unsigned char offset);
-char getStageCode(unsigned int *bytecode, unsigned char index);
+void setDestinationRegister(unsigned int* bytecode, unsigned char index, short newDestinationRegister);
+void setAlloc(unsigned int* bytecode, unsigned char index, unsigned char newAlloc);
+void addDataDep(unsigned int* bytecode, unsigned char index, unsigned char successor);
+void addControlDep(unsigned int* bytecode, unsigned char index, unsigned char successor);
+void clearControlDep(unsigned int* ir, unsigned char index);
+char getControlDep(unsigned int* ir, unsigned char index, unsigned char* result);
+void addOffsetToDep(unsigned int* bytecode, unsigned char index, unsigned char offset);
+char getStageCode(unsigned int* bytecode, unsigned char index);
 
-int getNbInstr(IRProcedure *procedure);
-int getNbInstr(IRProcedure *procedure, int type);
-void shiftBlock(IRBlock *block, unsigned char value);
+int getNbInstr(IRProcedure* procedure);
+int getNbInstr(IRProcedure* procedure, int type);
+void shiftBlock(IRBlock* block, unsigned char value);
 
 /********************************************************************
  * Declaration of stage codes
@@ -293,6 +311,5 @@ void shiftBlock(IRBlock *block, unsigned char value);
 #define STAGE_CODE_MEMORY 1
 #define STAGE_CODE_ARITH 2
 #define STAGE_CODE_MULT 3
-
 
 #endif /* INCLUDES_ISA_IRISA_H_ */

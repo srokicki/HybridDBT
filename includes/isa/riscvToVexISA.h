@@ -8,8 +8,8 @@
 #ifndef INCLUDES_ISA_RISCVTOVEXISA_H_
 #define INCLUDES_ISA_RISCVTOVEXISA_H_
 
-#include <types.h>
 #include <isa/vexISA.h>
+#include <types.h>
 
 #ifndef __SW
 #ifndef __HW
