@@ -16,11 +16,10 @@
 
 #define MEMORY_SIZE 2300000
 
-
-#include <types.h>
 #include <isa/vexISA.h>
-#include <simulator/genericSimulator.h>
 #include <lib/ac_int.h>
+#include <simulator/genericSimulator.h>
+#include <types.h>
 /****************************************************************************
  * Header file for VEX Simulator
  *************************************
@@ -38,153 +37,216 @@
  *
  *****************************************************************************/
 
-
 /****************************************************************************
  * Definition of structs for the different pipeline stages
  ***************************************************************************/
 
 struct FtoDC {
-	ac_int<64, false> instruction; //Instruction to execute
-	ac_int<64, false> pc;
-	ac_int<1, false> isRollback;
-
+  ac_int<64, false> instruction; // Instruction to execute
+  ac_int<64, false> pc;
+  ac_int<1, false> isRollback;
 };
 
 struct DCtoEx {
-	ac_int<64, true> dataa; //First data from register file
-	ac_int<64, true> datab; //Second data, from register file or immediate value
-	ac_int<64, true> datac; //Third data used only for store instruction and corresponding to rb
-	ac_int<6, false> dest;  //Register to be written
-	ac_int<7, false> opCode;//OpCode of the instruction
-	ac_int<64, true> memValue; //Second data, from register file or immediate value
-	float floatRes, floatValueA, floatValueB, floatValueC;
-	ac_int<5, false> funct;
-	ac_int<1, false> isSpec;
-	ac_int<64, false> pc;
-	ac_int<1, false> isRollback;
+  ac_int<64, true> dataa;    // First data from register file
+  ac_int<64, true> datab;    // Second data, from register file or immediate value
+  ac_int<64, true> datac;    // Third data used only for store instruction and corresponding to rb
+  ac_int<6, false> dest;     // Register to be written
+  ac_int<7, false> opCode;   // OpCode of the instruction
+  ac_int<64, true> memValue; // Second data, from register file or immediate value
+  float floatRes, floatValueA, floatValueB, floatValueC;
+  ac_int<5, false> funct;
+  ac_int<1, false> isSpec;
+  ac_int<64, false> pc;
+  ac_int<1, false> isRollback;
 };
 
 struct ExtoMem {
-	ac_int<64, true> result;	//Result of the EX stage
-	ac_int<64, true> datac;		//Data to be stored in memory (if needed)
-	ac_int<6, false> dest;		//Register to be written at WB stage
-	ac_int<1, false> WBena;		//Is a WB is needed ?
-	ac_int<7, false> opCode;	//OpCode of the operation
-	ac_int<64, true> memValue; //Second data, from register file or immediate value
-	float floatRes;
-	ac_int<1, false> isFloat;
-	ac_int<1, false> isSpec;
-	ac_int<5, false> funct;
-	ac_int<64, false> pc;
-	ac_int<1, false> isRollback;
-
+  ac_int<64, true> result;   // Result of the EX stage
+  ac_int<64, true> datac;    // Data to be stored in memory (if needed)
+  ac_int<6, false> dest;     // Register to be written at WB stage
+  ac_int<1, false> WBena;    // Is a WB is needed ?
+  ac_int<7, false> opCode;   // OpCode of the operation
+  ac_int<64, true> memValue; // Second data, from register file or immediate value
+  float floatRes;
+  ac_int<1, false> isFloat;
+  ac_int<1, false> isSpec;
+  ac_int<5, false> funct;
+  ac_int<64, false> pc;
+  ac_int<1, false> isRollback;
 };
 
 struct MemtoWB {
-	ac_int<64, true> result;	//Result to be written back
-	ac_int<6, false> dest;		//Register to be written at WB stage
-	ac_int<1, false> WBena;		//Is a WB is needed ?
-	float floatRes;
-	ac_int<1, false> isFloat;
-	ac_int<64, false> pc;
+  ac_int<64, true> result; // Result to be written back
+  ac_int<6, false> dest;   // Register to be written at WB stage
+  ac_int<1, false> WBena;  // Is a WB is needed ?
+  float floatRes;
+  ac_int<1, false> isFloat;
+  ac_int<64, false> pc;
 };
 
+/****************************************************************************
+ * Definition of the class for register file
+ ***************************************************************************/
+
+class RegisterFile {
+public:
+  ac_int<64, false> registers[3][64];
+  ac_int<64, false> registers2[64];
+  ac_int<64, false> registers3[64];
+  ac_int<2, false> count[64];
+
+  ac_int<64, false> readRegister(ac_int<6, false> rs)
+  {
+
+    if (count[rs] != 0)
+      printf("WARNING: Reading register %d while counter is %d\n", (int)rs, (int)count[rs]);
+
+    ac_int<64, false> result = 0;
+    ac_int<64, false> val1   = registers[0][rs];
+    ac_int<64, false> val2   = registers[1][rs];
+    ac_int<64, false> val3   = registers[2][rs];
+
+    result = (val1 & val2) | (val1 & val3) | (val2 & val3);
+    printf("reading %x from %d\n", (int)result, (int)rs);
+    return result;
+  };
+
+  void writeRegister(ac_int<6, false> rs, ac_int<64, false> value, bool vote)
+  {
+    printf("Writing %x iin %d (vote)\n", (int)value, (int)rs);
+    if (vote) {
+      printf("Writing %x iin %d (vote)\n", (int)value, (int)rs);
+
+      registers[count[rs]][rs] = value;
+      count[rs]++;
+      if (count[rs] == 3)
+        count[rs] = 0;
+    } else {
+      printf("Writing %x iin %d (unvote)\n", (int)value, (int)rs);
+
+      registers[0][rs] = value;
+      registers[1][rs] = value;
+      registers[2][rs] = value;
+      count[rs]        = 0;
+    }
+  }
+};
 
 /****************************************************************************
  * Definition of the class for VEXSimulator
  ***************************************************************************/
 
-
 #ifndef __CATAPULT
 
 class VexSimulator : public GenericSimulator {
-	public:
+public:
+  int typeInstr[MEMORY_SIZE];
+  int nbCycleType[4] = {0, 0, 0, 0};
 
-	int typeInstr[MEMORY_SIZE];
-	int nbCycleType[4] = {0,0,0,0};
+  RegisterFile regFile;
+  // Instruction memory is a 128-bit memory
+  unsigned int* RI;
 
-	//Instruction memory is a 128-bit memory
-	unsigned int *RI;
+  // Definition of PC and NEXT_PC
+  ac_int<64, false> PC, NEXT_PC;
 
-	//Definition of PC and NEXT_PC
-	ac_int<64, false> PC, NEXT_PC;
+  // Small memory containing profile information and accessed using dedicated instructions
+  ac_int<8, false> profileResult[8192];
 
-	//Small memory containing profile information and accessed using dedicated instructions
-	ac_int<8, false> profileResult[8192];
+  // Definition of the dynamic configuration of the VLIW
+  ac_int<4, false> issueWidth;
+  ac_int<1, false> unitActivation[8];
+  ac_int<1, false> muxValues[3];
 
-	//Definition of the dynamic configuration of the VLIW
-	ac_int<4, false> issueWidth;
-	ac_int<1, false> unitActivation[8];
-	ac_int<1, false> muxValues[3];
+  // Speculation
+  ac_int<1, false> enable;
 
-	//Speculation
-	ac_int<1, false> enable;
+  // Tools for statistics
+  uint64_t nbInstr, lastNbInstr;
+  uint64_t lastNbCycle;
+  uint64_t lastReconf;
+  char currentConfig;
+  uint64_t timeInConfig[32];
 
-	//Tools for statistics
-	uint64_t nbInstr, lastNbInstr;
-	uint64_t lastNbCycle;
-	uint64_t lastReconf;
-	char currentConfig;
-	uint64_t timeInConfig[32];
+  // Object constructor
+  VexSimulator(unsigned int* instructionMemory) : GenericSimulator()
+  {
+    for (int oneReg = 0; oneReg < 64; oneReg++)
+      regFile.writeRegister(oneReg, REG[oneReg], false);
 
-	//Object constructor
-	VexSimulator(unsigned int *instructionMemory): GenericSimulator() {
-		cycle=0;
-		issueWidth = 4;
-		unitActivation[0] = 1;
-		unitActivation[1] = 1;
-		unitActivation[2] = 1;
-		unitActivation[3] = 1;
-		unitActivation[4] = 0;
-		unitActivation[5] = 0;
-		unitActivation[6] = 0;
-		unitActivation[7] = 0;
+    cycle             = 0;
+    issueWidth        = 4;
+    unitActivation[0] = 1;
+    unitActivation[1] = 1;
+    unitActivation[2] = 1;
+    unitActivation[3] = 1;
+    unitActivation[4] = 0;
+    unitActivation[5] = 0;
+    unitActivation[6] = 0;
+    unitActivation[7] = 0;
 
-		this->RI = instructionMemory;
+    this->RI = instructionMemory;
+  };
 
-	};
+  // Objet destructor
+  ~VexSimulator(void) { memory.clear(); }
 
-	//Objet destructor
-	~VexSimulator(void) {
-		memory.clear();
-	}
+  // Tools for initialization/execution
+  void initializeDataMemory(unsigned char* content, unsigned int size, unsigned int start);
+  int initializeRun(int mainPc, int argc, char* argv[]);
+  virtual int doStep();
+  int doStep(unsigned int nbStep);
 
+  // Statistics
+  float getAverageIPC();
 
-	//Tools for initialization/execution
-	void initializeDataMemory(unsigned char* content, unsigned int size, unsigned int start);
-	int initializeRun(int mainPc, int argc, char* argv[]);
-	virtual int doStep();
-	int doStep(unsigned int nbStep);
+protected:
+  // Different parts of the execution
+  virtual void doWB(struct MemtoWB memtoWB);
+  virtual void doMemNoMem(struct ExtoMem extoMem, struct MemtoWB* memtoWB);
+  virtual void doMem(struct ExtoMem extoMem, struct MemtoWB* memtoWB);
+  virtual void doEx(struct DCtoEx dctoEx, struct ExtoMem* extoMem);
+  virtual void doExMult(struct DCtoEx dctoEx, struct ExtoMem* extoMem);
+  virtual void doDC(struct FtoDC ftoDC, struct DCtoEx* dctoEx);
+  virtual void doDCMem(struct FtoDC ftoDC, struct DCtoEx* dctoEx);
+  virtual void doDCBr(struct FtoDC ftoDC, struct DCtoEx* dctoEx);
 
-	//Statistics
-	float getAverageIPC();
-
-
-
-	protected:
-
-	//Different parts of the execution
-	virtual void doWB(struct MemtoWB memtoWB);
-	virtual void doMemNoMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB);
-	virtual void doMem(struct ExtoMem extoMem, struct MemtoWB *memtoWB);
-	virtual void doEx(struct DCtoEx dctoEx, struct ExtoMem *extoMem);
-	virtual void doExMult(struct DCtoEx dctoEx, struct ExtoMem *extoMem);
-	virtual void doDC(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
-	virtual void doDCMem(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
-	virtual void doDCBr(struct FtoDC ftoDC, struct DCtoEx *dctoEx);
-
-
-	struct MemtoWB memtoWB1;	struct MemtoWB memtoWB2;	struct MemtoWB memtoWB3;	struct MemtoWB memtoWB4;	struct MemtoWB memtoWB5; 	struct MemtoWB memtoWB6;	struct MemtoWB memtoWB7;	struct MemtoWB memtoWB8;
-	struct ExtoMem extoMem1;	struct ExtoMem extoMem2;	struct ExtoMem extoMem3;	struct ExtoMem extoMem4;	struct ExtoMem extoMem5;	struct ExtoMem extoMem6;	struct ExtoMem extoMem7;	struct ExtoMem extoMem8;
-	struct DCtoEx dctoEx1; struct DCtoEx dctoEx2;	struct DCtoEx dctoEx3;	struct DCtoEx dctoEx4;	struct DCtoEx dctoEx5;	struct DCtoEx dctoEx6;	struct DCtoEx dctoEx7;	struct DCtoEx dctoEx8;
-	struct FtoDC ftoDC1;	struct FtoDC ftoDC2;	struct FtoDC ftoDC3;	struct FtoDC ftoDC4;	struct FtoDC ftoDC5;	struct FtoDC ftoDC6;	struct FtoDC ftoDC7;	struct FtoDC ftoDC8;
-
-
+  struct MemtoWB memtoWB1;
+  struct MemtoWB memtoWB2;
+  struct MemtoWB memtoWB3;
+  struct MemtoWB memtoWB4;
+  struct MemtoWB memtoWB5;
+  struct MemtoWB memtoWB6;
+  struct MemtoWB memtoWB7;
+  struct MemtoWB memtoWB8;
+  struct ExtoMem extoMem1;
+  struct ExtoMem extoMem2;
+  struct ExtoMem extoMem3;
+  struct ExtoMem extoMem4;
+  struct ExtoMem extoMem5;
+  struct ExtoMem extoMem6;
+  struct ExtoMem extoMem7;
+  struct ExtoMem extoMem8;
+  struct DCtoEx dctoEx1;
+  struct DCtoEx dctoEx2;
+  struct DCtoEx dctoEx3;
+  struct DCtoEx dctoEx4;
+  struct DCtoEx dctoEx5;
+  struct DCtoEx dctoEx6;
+  struct DCtoEx dctoEx7;
+  struct DCtoEx dctoEx8;
+  struct FtoDC ftoDC1;
+  struct FtoDC ftoDC2;
+  struct FtoDC ftoDC3;
+  struct FtoDC ftoDC4;
+  struct FtoDC ftoDC5;
+  struct FtoDC ftoDC6;
+  struct FtoDC ftoDC7;
+  struct FtoDC ftoDC8;
 };
 
-
 #endif
 #endif
-
 
 #endif /* INCLUDES_VEXSIMULATOR_H_ */
