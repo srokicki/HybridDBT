@@ -216,8 +216,32 @@ int compare_blocks(const void* a, const void* b)
          ((*blocka)->sourceStartAddress < (*blockb)->sourceStartAddress);
 }
 
+void annotateFullControlFlow(DBTPlateform& platform, IRApplication& application)
+{
+
+  printf("STARTING FULL ANNOTATION !\n");
+  for (auto block : application) {
+    if (block.nbJumps <= 1) {
+      int sourceDest = block.sourceDestination;
+      if (sourceDest != -1) {
+        IRBlock* destBlock = application.getBlock(sourceDest);
+        if (destBlock == NULL) {
+          printf("Cannot find block for %x\n", sourceDest);
+        } else {
+          block.successors[0] = block.sourceDestination;
+        }
+      }
+    } else {
+      printf("Block already have %d jumps\n", block.nbJumps);
+    }
+  }
+  exit(-1);
+}
+
 int buildAdvancedControlFlow(DBTPlateform* platform, IRBlock* startBlock, IRApplication* application)
 {
+
+  annotateFullControlFlow(*platform, *application);
 
   char incrementInBinaries = (platform->vliwInitialIssueWidth > 4) ? 2 : 1;
   IRBlock* blocksToStudy[TEMP_BLOCK_STORAGE_SIZE];
@@ -307,7 +331,7 @@ int buildAdvancedControlFlow(DBTPlateform* platform, IRBlock* startBlock, IRAppl
                                ((jumpInstruction & 0x7f) == VEX_BLTU) || ((jumpInstruction & 0x7f) == VEX_BGEU);
     bool isJump      = (jumpInstruction & 0x7f) == VEX_GOTO;
     bool isCall      = (jumpInstruction & 0x7f) == VEX_CALL;
-    bool isOtherJump = ((jumpInstruction & 0x7f) != VEX_CALLR) || ((jumpInstruction & 0x7f) != VEX_GOTOR);
+    bool isOtherJump = ((jumpInstruction & 0x7f) == VEX_CALLR) || ((jumpInstruction & 0x7f) == VEX_GOTOR);
     bool isNothing   = !isConditionalBranch && !isJump && !isCall && !isOtherJump;
 
     // We determine the name of successor(s)

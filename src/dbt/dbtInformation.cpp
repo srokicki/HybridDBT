@@ -194,27 +194,25 @@ void updateOpt2BlockSize(IRBlock* block)
   }
 }
 
-IRProcedure* optimizeLevel2(unsigned int address)
+IRProcedure* optimizeLevel2(IRBlock& block)
 {
 
   // We check if the block has already been optimized
-  if (blockInfo[address >> 2].scheduleSizeOpt2 == -1) {
+  if (block.sizeOpt2 == -1) {
 
-    if (blockInfo[address >> 2].block->blockState >= IRBLOCK_ERROR_PROC) {
-      if (blockInfo[address >> 2].scheduleSizeOpt1 == -1)
-        blockInfo[address >> 2].scheduleSizeOpt1 =
-            blockInfo[address >> 2].block->vliwEndAddress - blockInfo[address >> 2].block->vliwStartAddress;
+    if (block.blockState >= IRBLOCK_ERROR_PROC) {
+      if (block.sizeOpt1 == -1)
+        block.sizeOpt1 = block.vliwEndAddress - block.vliwStartAddress;
 
-      blockInfo[address >> 2].scheduleSizeOpt2 =
-          blockInfo[address >> 2].block->vliwEndAddress - blockInfo[address >> 2].block->vliwStartAddress;
-      blockInfo[address >> 2].block->sizeOpt2 = blockInfo[address >> 2].scheduleSizeOpt2;
+      block.sizeOpt2 = block.vliwEndAddress - block.vliwStartAddress;
+      block.sizeOpt2 = block.sizeOpt2;
 
       return NULL;
     } else {
-      int errorCode = buildAdvancedControlFlow(platform, blockInfo[address >> 2].block, application);
+      int errorCode = buildAdvancedControlFlow(platform, &block, application);
 
       if (!errorCode) {
-        blockInfo[address >> 2].block->blockState = IRBLOCK_PROC;
+        block.blockState = IRBLOCK_PROC;
         buildTraces(platform, application->procedures[application->numberProcedures - 1], 100);
         placeCode = rescheduleProcedure(platform, application,
                                         application->procedures[application->numberProcedures - 1], placeCode);
@@ -233,7 +231,8 @@ IRProcedure* optimizeLevel2(unsigned int address)
 
         return application->procedures[application->numberProcedures - 1];
       } else {
-        printf("Met an error while trying to go to opt level 2 for %x (error code %d)\n", address, errorCode);
+        printf("Met an error while trying to go to opt level 2 for %x (error code %d)\n", block.sourceStartAddress,
+               errorCode);
         return NULL;
       }
     }
@@ -241,8 +240,8 @@ IRProcedure* optimizeLevel2(unsigned int address)
     for (int oneProcedure = 0; oneProcedure < application->numberProcedures; oneProcedure++) {
       IRProcedure* procedure = application->procedures[oneProcedure];
       for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++) {
-        IRBlock* block = procedure->blocks[oneBlock];
-        if (block->sourceStartAddress * 4 == address) {
+        IRBlock* otherBlock = procedure->blocks[oneBlock];
+        if (otherBlock->sourceStartAddress * 4 == otherBlock->sourceStartAddress) {
           return procedure;
         }
       }
@@ -257,7 +256,7 @@ void initializeDBTInfo(char* fileName)
 {
 
   int CONFIGURATION = 2;
-  int VERBOSE       = 3;
+  int VERBOSE       = 0;
   Log::Init(VERBOSE, 0);
 
   // We copy the filePath
@@ -382,6 +381,16 @@ void initializeDBTInfo(char* fileName)
     }
   }
 
+  // We allocate blockInfo
+  globalBinarySize = 10 * size;
+  blockInfo        = (BlockInformation*)malloc(10 * size * sizeof(BlockInformation));
+  for (int oneBlockInfo = 0; oneBlockInfo < 10 * size; oneBlockInfo++) {
+    blockInfo[oneBlockInfo].block            = NULL;
+    blockInfo[oneBlockInfo].scheduleSizeOpt0 = -1;
+    blockInfo[oneBlockInfo].scheduleSizeOpt1 = -1;
+    blockInfo[oneBlockInfo].scheduleSizeOpt2 = -1;
+  }
+
   // We check whether the application has already been optimized
   std::ifstream previousExecDump(execPath);
   if (previousExecDump.good()) {
@@ -444,7 +453,7 @@ void initializeDBTInfo(char* fileName)
       nbBlockOptimized = 0;
       for (auto& block : *application) {
         if (block.blockState <= IRBLOCK_STATE_SCHEDULED) {
-          optimizeLevel2(block.sourceStartAddress * 4);
+          optimizeLevel2(block);
         }
 
         // Drawing progress bar
@@ -492,14 +501,6 @@ void initializeDBTInfo(char* fileName)
   }
 
   /********************** We store the size of each block ***********************/
-  globalBinarySize = 10 * size;
-  blockInfo        = (BlockInformation*)malloc(10 * size * sizeof(BlockInformation));
-  for (int oneBlockInfo = 0; oneBlockInfo < 10 * size; oneBlockInfo++) {
-    blockInfo[oneBlockInfo].block            = NULL;
-    blockInfo[oneBlockInfo].scheduleSizeOpt0 = -1;
-    blockInfo[oneBlockInfo].scheduleSizeOpt1 = -1;
-    blockInfo[oneBlockInfo].scheduleSizeOpt2 = -1;
-  }
 
   greatestAddr       = 0;
   int numberOfBlocks = 0;
@@ -621,8 +622,8 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int* nextBlock)
 
     //		if (blockInfo[address>>2].block->blockState == IRBLOCK_UNROLLED)
     //			fprintf(stderr, "Executing an unrolled loop -- Cost is %d instead of %d\n",
-    //blockInfo[address>>2].scheduleSizeOpt2,
-    //blockInfo[address>>2].block->vliwEndAddress-blockInfo[address>>2].block->vliwStartAddress);
+    // blockInfo[address>>2].scheduleSizeOpt2,
+    // blockInfo[address>>2].block->vliwEndAddress-blockInfo[address>>2].block->vliwStartAddress);
 
     // We just return the size of the block at optimization level 2
     return blockInfo[address >> 2].scheduleSizeOpt2;
@@ -735,7 +736,7 @@ char getOptLevel(int address, uint64_t nb_cycle)
           if (blockInfo[oneAddress >> 2].block != NULL &&
               blockInfo[oneAddress >> 2].block->blockState < IRBLOCK_ERROR_PROC) {
 
-            IRProcedure* procedure = optimizeLevel2(oneAddress);
+            IRProcedure* procedure = optimizeLevel2(*blockInfo[oneAddress >> 2].block);
 
             // We compute the size
             if (procedure != NULL) {
