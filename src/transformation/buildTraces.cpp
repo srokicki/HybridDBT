@@ -74,8 +74,8 @@ IRBlock* unrollLoops(IRBlock* block, bool ignoreRegs, short* outputRegsToIgnore,
    *
    * Here are the steps done by the function:
    * 0. We compute some parameters for the transformation:
-   * 		-> isEscapable is set to true if the first block is a conditional block (so if the second block may not be
-   *executed)
+   * 		-> isEscapable is set to true if the first block is a conditional block (so if the second block may not
+   *be executed)
    *
    * 1. We go through the instructions of the first block. Doing so, we keep track of
    * 		-> The last instruction that wrote in a given register
@@ -99,8 +99,8 @@ IRBlock* unrollLoops(IRBlock* block, bool ignoreRegs, short* outputRegsToIgnore,
    *
    * 3. If the block is escapable, then we have to add also some conditional instructions:
    * 		-> One setCond instruction which will set the flag by looking at the condition (found during step 1).
-   * 			Note that this instruction will depend (control dependency) from the conditional instruction found
-   *during step one.
+   * 			Note that this instruction will depend (control dependency) from the conditional instruction
+   *found during step one.
    * 		-> For each register whose value was written on block 2, we insert a setCond which will commit the new
    *value if and only if the condition was fulfilled. This instruction will have a data dependency from the instruction
    *from block 2 that generated the value and a control dependency from the SETCOND instruction and from any previous
@@ -228,9 +228,8 @@ IRBlock* unrollLoops(IRBlock* block, bool ignoreRegs, short* outputRegsToIgnore,
 
   // We insert the first jump
   for (int oneJump = 0; oneJump < block->nbJumps; oneJump++) {
-    result->addJump(block->jumpIds[oneJump], -1);
-    result->successors[result->nbSucc] = block->successors[oneJump + 1];
-    result->nbSucc++;
+    // FIXME why oneJump+1 ?
+    result->addJump(block->jumpTypes[oneJump], block->successors[oneJump + 1], block->jumpIds[oneJump], -1);
   }
 
   //****************************************************************************************************
@@ -361,13 +360,11 @@ IRBlock* unrollLoops(IRBlock* block, bool ignoreRegs, short* outputRegsToIgnore,
 
     // We register the jump
     for (int oneJump = 0; oneJump < block->nbJumps; oneJump++) {
-      result->addJump(block->jumpIds[oneJump] + result->nbInstr, -1);
+      unsigned int destination = block->successors[oneJump];
       if (oneUnroll != unrollingFactor - 1)
-        result->successors[result->nbSucc] = block->successors[oneJump + 1];
-      else
-        result->successors[result->nbSucc] = block->successors[oneJump];
+        destination = block->successors[oneJump + 1];
 
-      result->nbSucc++;
+      result->addJump(block->jumpTypes[oneJump], destination, block->jumpIds[oneJump] + result->nbInstr, -1);
     }
 
     result->nbInstr += block->nbInstr;
@@ -453,8 +450,8 @@ IRBlock* superBlock(IRBlock* entryBlock, IRBlock* secondBlock, bool ignoreRegs, 
    *
    * Here are the steps done by the function:
    * 0. We compute some parameters for the transformation:
-   * 		-> isEscapable is set to true if the first block is a conditional block (so if the second block may not be
-   *executed)
+   * 		-> isEscapable is set to true if the first block is a conditional block (so if the second block may not
+   *be executed)
    *
    * 1. We go through the instructions of the first block. Doing so, we keep track of
    * 		-> The last instruction that wrote in a given register
@@ -478,8 +475,8 @@ IRBlock* superBlock(IRBlock* entryBlock, IRBlock* secondBlock, bool ignoreRegs, 
    *
    * 3. If the block is escapable, then we have to add also some conditional instructions:
    * 		-> One setCond instruction which will set the flag by looking at the condition (found during step 1).
-   * 			Note that this instruction will depend (control dependency) from the conditional instruction found
-   *during step one.
+   * 			Note that this instruction will depend (control dependency) from the conditional instruction
+   *found during step one.
    * 		-> For each register whose value was written on block 2, we insert a setCond which will commit the new
    *value if and only if the condition was fulfilled. This instruction will have a data dependency from the instruction
    *from block 2 that generated the value and a control dependency from the SETCOND instruction and from any previous
@@ -808,41 +805,35 @@ IRBlock* superBlock(IRBlock* entryBlock, IRBlock* secondBlock, bool ignoreRegs, 
    */
 
   for (int oneJump = 0; oneJump < entryBlock->nbJumps; oneJump++) {
-    char jumpOpcode = getOpcode(entryBlock->instructions, entryBlock->jumpIds[oneJump]);
+    jumpType type = entryBlock->jumpTypes[oneJump];
     if (entryBlock == secondBlock) {
       // Loop unrolling
-      result->addJump(entryBlock->jumpIds[oneJump], -1);
-      result->successors[result->nbSucc] = entryBlock->successors[oneJump + 1];
-      result->nbSucc++;
-    } else if (jumpOpcode != VEX_GOTO && jumpOpcode != VEX_GOTOR &&
+      result->addJump(entryBlock->jumpTypes[oneJump], entryBlock->successors[oneJump + 1], entryBlock->jumpIds[oneJump],
+                      -1);
+    } else if (type != DIRECT_JUMP && type != INDIRECT_JUMP &&
                entryBlock->successors[oneJump] != secondBlock->sourceStartAddress) {
-      result->addJump(entryBlock->jumpIds[oneJump], -1);
-      result->successors[result->nbSucc] = entryBlock->successors[oneJump];
-      result->nbSucc++;
+      result->addJump(entryBlock->jumpTypes[oneJump], entryBlock->successors[oneJump], entryBlock->jumpIds[oneJump],
+                      -1);
     }
   }
 
   if (useSetc) {
     for (int oneJump = 0; oneJump < secondBlock->nbJumps; oneJump++) {
+      assert(oneJump < secondBlock->nbSucc); // FIXME: is it usefull to assert that. I removed a if on this condition
 
       // The last jump is moved while using setc
       if (oneJump == secondBlock->nbJumps - 1)
-        result->addJump(indexOfSecondJump, -1);
+        result->addJump(secondBlock->jumpTypes[oneJump], secondBlock->successors[oneJump], indexOfSecondJump, -1);
       else
-        result->addJump(secondBlock->jumpIds[oneJump] + entryBlock->nbInstr, -1);
-
-      if (oneJump < secondBlock->nbSucc) {
-        result->successors[result->nbSucc] = secondBlock->successors[oneJump];
-        result->nbSucc++;
-      }
+        result->addJump(secondBlock->jumpTypes[oneJump], secondBlock->successors[oneJump],
+                        secondBlock->jumpIds[oneJump] + entryBlock->nbInstr, -1);
     }
   } else {
     for (int oneJump = 0; oneJump < secondBlock->nbJumps; oneJump++) {
-      result->addJump(secondBlock->jumpIds[oneJump] + entryBlock->nbInstr, -1);
-      if (oneJump < secondBlock->nbSucc) {
-        result->successors[result->nbSucc] = secondBlock->successors[oneJump];
-        result->nbSucc++;
-      }
+      assert(oneJump < secondBlock->nbSucc); // FIXME: is it usefull to assert that. I removed a if on this condition
+
+      result->addJump(secondBlock->jumpTypes[oneJump], secondBlock->successors[oneJump],
+                      secondBlock->jumpIds[oneJump] + entryBlock->nbInstr, -1);
     }
   }
 
@@ -953,9 +944,10 @@ void buildTraces(DBTPlateform* platform, IRProcedure* procedure, int optLevel)
           block->instructions          = oneSuperBlock->instructions;
           oneSuperBlock->instructions  = oldInstruction;
 
+          block->jumpPlaces      = oneSuperBlock->jumpPlaces;
+          block->jumpTypes       = oneSuperBlock->jumpTypes;
           block->jumpIds         = oneSuperBlock->jumpIds;
           block->nbJumps         = oneSuperBlock->nbJumps;
-          block->jumpPlaces      = oneSuperBlock->jumpPlaces;
           block->nbSucc          = oneSuperBlock->nbSucc;
           block->unrollingFactor = oneSuperBlock->unrollingFactor;
 
@@ -974,11 +966,14 @@ void buildTraces(DBTPlateform* platform, IRProcedure* procedure, int optLevel)
           if (nbIgnoredRegs > 0) {
 
             //						IRBlock *newBlock = new IRBlock(0,0,block->section);
-            //						newBlock->sourceStartAddress = block->successors[block->nbSucc-1]->sourceStartAddress -
-            //1; 						newBlock->sourceEndAddress = newBlock->sourceStartAddress + 1;
+            //						newBlock->sourceStartAddress =
+            // block->successors[block->nbSucc-1]->sourceStartAddress
+            //- 1; 						newBlock->sourceEndAddress =
+            // newBlock->sourceStartAddress + 1;
             //
-            //						newBlock->instructions = (unsigned int*) malloc(nbIgnoredRegs * 4 * sizeof(unsigned
-            //int)); 						newBlock->nbInstr = nbIgnoredRegs;
+            //						newBlock->instructions = (unsigned int*) malloc(nbIgnoredRegs *
+            // 4
+            //* sizeof(unsigned int)); 						newBlock->nbInstr = nbIgnoredRegs;
 
             // New, extra instruction for reallocation are now inserted at the end of the block.
             // TODO do that in the buildSuperBlock
@@ -987,9 +982,10 @@ void buildTraces(DBTPlateform* platform, IRProcedure* procedure, int optLevel)
             //						unsigned int availableReg = 256+34;
             //						for (int oneReg=0; oneReg<128; oneReg++){
             //							if (writeRegs[oneReg]){
-            //								write128(block->instructions, block->nbInstr*16, assembleRBytecodeInstruction(2, 0,
-            //VEX_ADD, writeRegs[oneReg], 256, 256+oneReg, 0)); 								addDataDep(block->instructions, writeRegs[oneReg],
-            //block->nbInstr); 								addControlDep(block->instructions, block->jumpIds[0], block->nbInstr);
+            //								write128(block->instructions, block->nbInstr*16,
+            // assembleRBytecodeInstruction(2, 0, VEX_ADD, writeRegs[oneReg], 256, 256+oneReg, 0));
+            // addDataDep(block->instructions, writeRegs[oneReg], block->nbInstr);
+            // addControlDep(block->instructions, block->jumpIds[0], block->nbInstr);
             //
             //								availableReg++;
             //								block->nbInstr++;
@@ -1116,20 +1112,10 @@ void buildTraces(DBTPlateform* platform, IRProcedure* procedure, int optLevel)
         memcpy(firstPredecessor->instructions, oneSuperBlock->instructions,
                4 * oneSuperBlock->nbInstr * sizeof(unsigned int));
 
-        if (firstPredecessor->nbJumps > 0) {
-          firstPredecessor->nbJumps = 0;
-          free(firstPredecessor->jumpIds);
-          free(firstPredecessor->jumpPlaces);
-        }
-
-        if (oneSuperBlock->nbJumps > 0) {
-          firstPredecessor->jumpIds    = (unsigned char*)malloc(sizeof(unsigned char) * oneSuperBlock->nbJumps);
-          firstPredecessor->jumpPlaces = (unsigned int*)malloc(sizeof(unsigned int) * oneSuperBlock->nbJumps);
-          for (int oneJump = 0; oneJump < oneSuperBlock->nbJumps; oneJump++) {
-            firstPredecessor->jumpIds[oneJump] = oneSuperBlock->jumpIds[oneJump];
-          }
-        }
-        firstPredecessor->nbJumps = oneSuperBlock->nbJumps;
+        firstPredecessor->jumpIds    = oneSuperBlock->jumpIds;
+        firstPredecessor->jumpPlaces = oneSuperBlock->jumpPlaces;
+        firstPredecessor->jumpTypes  = oneSuperBlock->jumpTypes;
+        firstPredecessor->nbJumps    = oneSuperBlock->nbJumps;
 
         firstPredecessor->nbSucc = oneSuperBlock->nbSucc;
         for (int oneSuccessor = 0; oneSuccessor < oneSuperBlock->nbSucc; oneSuccessor++)

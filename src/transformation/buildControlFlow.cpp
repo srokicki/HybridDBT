@@ -96,9 +96,27 @@ void buildBasicControlFlow(DBTPlateform* dbtPlateform, int section, int mipsStar
       unsigned int oneJumpInitialDestination = dbtPlateform->unresolvedJumps[unresolvedJumpIndex];
       unsigned int oneJumpType               = dbtPlateform->unresolvedJumps_type[unresolvedJumpIndex];
 
+      // We build the jumpType to be inserted in the block
+      jumpType cleansedOneJumpType;
+      if (((oneJumpType & 0x7f) == VEX_BR) || ((oneJumpType & 0x7f) == VEX_BRF) || ((oneJumpType & 0x7f) == VEX_BLT) ||
+          ((oneJumpType & 0x7f) == VEX_BGE) || ((oneJumpType & 0x7f) == VEX_BLTU) ||
+          ((oneJumpType & 0x7f) == VEX_BGEU)) {
+        cleansedOneJumpType = CONDITIONAL_JUMP;
+      } else if ((oneJumpType & 0x7f) == VEX_GOTO) {
+        cleansedOneJumpType = DIRECT_JUMP;
+      } else if ((oneJumpType & 0x7f) == VEX_CALL) {
+        cleansedOneJumpType = DIRECT_CALL;
+      } else if ((oneJumpType & 0x7f) == VEX_CALLR) {
+        cleansedOneJumpType = INDIRECT_CALL;
+      } else if ((oneJumpType & 0x7f) == VEX_GOTOR) {
+        cleansedOneJumpType = INDIRECT_JUMP;
+      }
+
       if (newBlock->vliwEndAddress - 2 * offsetInBinaries == oneJumpSource) {
-        // We save the destination
+        // We save the destination and the jump type
         newBlock->sourceDestination = oneJumpInitialDestination + (sectionStartAddress >> 2);
+        newBlock->setJump(cleansedOneJumpType, newBlock->sourceDestination, -1, -1);
+
         unsigned char isAbsolute =
             ((oneJumpType & 0x7f) != VEX_BR) && ((oneJumpType & 0x7f) != VEX_BRF && (oneJumpType & 0x7f) != VEX_BLTU) &&
             ((oneJumpType & 0x7f) != VEX_BGE && (oneJumpType & 0x7f) != VEX_BGEU) && ((oneJumpType & 0x7f) != VEX_BLT);
@@ -155,11 +173,20 @@ void buildBasicControlFlow(DBTPlateform* dbtPlateform, int section, int mipsStar
             splittedBlock->sourceStartAddress = newBlock->sourceDestination;
             splittedBlock->sourceEndAddress   = blockToSplit->sourceEndAddress;
             splittedBlock->sourceDestination  = blockToSplit->sourceDestination;
+            splittedBlock->jumpIds            = blockToSplit->jumpIds;
+            splittedBlock->jumpPlaces         = blockToSplit->jumpPlaces;
+            splittedBlock->jumpTypes          = blockToSplit->jumpTypes;
+            splittedBlock->successors[0]      = blockToSplit->successors[0];
+            splittedBlock->successors[1]      = blockToSplit->successors[1];
+            splittedBlock->nbJumps            = blockToSplit->nbJumps;
+            splittedBlock->nbSucc             = blockToSplit->nbSucc;
 
             // We set meta info for old block
             blockToSplit->sourceEndAddress  = newBlock->sourceDestination;
             blockToSplit->sourceDestination = -1;
             blockToSplit->vliwEndAddress    = destinationInVLIWFromNewMethod;
+            blockToSplit->nbJumps           = 0;
+            blockToSplit->nbSucc            = 0;
 
             application->addBlock(splittedBlock);
           }
@@ -268,11 +295,6 @@ int buildAdvancedControlFlow(DBTPlateform* platform, IRBlock* startBlock, IRAppl
     numberBlockToStudy--;
 
     unsigned int endAddress = currentBlock->vliwEndAddress;
-    unsigned int placeofJump =
-        currentBlock->nbJumps != 0 ? currentBlock->jumpPlaces[0] * 16 : (endAddress - 2 * incrementInBinaries) * 16;
-    unsigned int jumpInstruction = readInt(platform->vliwBinaries, placeofJump);
-    if ((endAddress - 2 * incrementInBinaries) < currentBlock->vliwStartAddress)
-      jumpInstruction = 0;
 
     // If the block is marked as IRBLOCK_PROC, we ensure that it is owned by the procedure being built
     if (currentBlock->blockState == IRBLOCK_PROC) {
@@ -325,89 +347,19 @@ int buildAdvancedControlFlow(DBTPlateform* platform, IRBlock* startBlock, IRAppl
      *
      ******************************************************************************************/
 
-    // We determine the kind of jump we face
-    bool isConditionalBranch = ((jumpInstruction & 0x7f) == VEX_BR) || ((jumpInstruction & 0x7f) == VEX_BRF) ||
-                               ((jumpInstruction & 0x7f) == VEX_BLT) || ((jumpInstruction & 0x7f) == VEX_BGE) ||
-                               ((jumpInstruction & 0x7f) == VEX_BLTU) || ((jumpInstruction & 0x7f) == VEX_BGEU);
-    bool isJump      = (jumpInstruction & 0x7f) == VEX_GOTO;
-    bool isCall      = (jumpInstruction & 0x7f) == VEX_CALL;
-    bool isOtherJump = ((jumpInstruction & 0x7f) == VEX_CALLR) || ((jumpInstruction & 0x7f) == VEX_GOTOR);
-    bool isNothing   = !isConditionalBranch && !isJump && !isCall && !isOtherJump;
+    for (int oneSucc = 0; oneSucc < currentBlock->nbSucc; oneSucc++) {
+      blocksToStudy[numberBlockToStudy] = application->getBlock(currentBlock->successors[oneSucc]);
+      numberBlockToStudy++;
 
-    // We determine the name of successor(s)
-    int successor1, successor2, nbSucc;
-    if (isConditionalBranch) {
-      if (currentBlock->sourceDestination == -1)
-        currentBlock->printCode(std::cerr, platform);
-      successor1 = currentBlock->sourceDestination;
-      successor2 = currentBlock->sourceEndAddress;
-      nbSucc     = 2;
-      if (currentBlock->nbJumps == 0)
-        currentBlock->addJump(-1, (endAddress - 2 * incrementInBinaries));
-    } else if (isJump) {
-      if (currentBlock->sourceDestination != -1) {
-        successor1 = currentBlock->sourceDestination;
-        nbSucc     = 1;
+      if (application->getBlock(currentBlock->successors[oneSucc] == NULL)) {
+        Log::logScheduleProc
+            << "In build advanced control flow, a successor has not been found. Cancelling procedure construction !\n";
+        for (int oneBlockInProc = 0; oneBlockInProc < numberBlockInProcedure; oneBlockInProc++)
+          blockInProcedure[oneBlockInProc]->blockState = IRBLOCK_ERROR_PROC;
 
-        if (currentBlock->nbJumps == 0)
-          currentBlock->addJump(-1, (endAddress - 2 * incrementInBinaries));
-
-      } else {
-        nbSucc = 0;
-        if (currentBlock->nbJumps == 0)
-          currentBlock->addJump(-1, (endAddress - 2 * incrementInBinaries));
-      }
-    } else if (isCall) {
-      successor1 = currentBlock->sourceEndAddress;
-      nbSucc     = 1;
-      if (currentBlock->nbJumps == 0)
-        currentBlock->addJump(-1, (endAddress - 2 * incrementInBinaries));
-
-    } else if (isOtherJump) {
-      nbSucc = 0;
-      if (currentBlock->nbJumps == 0)
-        currentBlock->addJump(-1, (endAddress - 2 * incrementInBinaries));
-    } else {
-      successor1            = currentBlock->sourceEndAddress;
-      nbSucc                = 1;
-      currentBlock->nbJumps = 0;
-    }
-
-    // We find the corresponding block(s)
-    int numberSuccFound = 0;
-    if (nbSucc > 0) {
-      IRBlock* succ1 = application->getBlock(successor1);
-      if (succ1 != NULL) {
-        currentBlock->successors[0] = successor1;
-        numberSuccFound++;
+        return -4;
       }
     }
-    if (nbSucc > 1) {
-      IRBlock* succ2 = application->getBlock(successor2);
-      if (succ2 != NULL) {
-        currentBlock->successors[1] = successor2;
-        numberSuccFound++;
-      }
-    }
-
-    if (numberSuccFound != nbSucc) {
-      Log::logScheduleProc
-          << "In build advanced control flow, a successor has not been found. Cancelling procedure construction !\n";
-      for (int oneBlockInProc = 0; oneBlockInProc < numberBlockInProcedure; oneBlockInProc++)
-        blockInProcedure[oneBlockInProc]->blockState = IRBLOCK_ERROR_PROC;
-
-      return -4;
-    }
-
-    // We store the result and add the blocks to the list of block to study
-    currentBlock->nbSucc = nbSucc;
-    if (nbSucc > 0) {
-      blocksToStudy[numberBlockToStudy] = application->getBlock(currentBlock->successors[0]);
-    }
-    if (nbSucc > 1) {
-      blocksToStudy[numberBlockToStudy + 1] = application->getBlock(currentBlock->successors[1]);
-    }
-    numberBlockToStudy += nbSucc;
 
     // We search for blowk which may jump to this one
     for (auto& block : *application) {

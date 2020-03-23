@@ -115,6 +115,7 @@ IRProcedure* rescheduleProcedure_schedule(DBTPlateform* platform, IRApplication*
     // We copy and modify the jump ids and their location
     result->blocks[oneBlock]->jumpIds    = (unsigned char*)malloc(block->nbJumps * sizeof(unsigned char));
     result->blocks[oneBlock]->jumpPlaces = (unsigned int*)malloc(block->nbJumps * sizeof(unsigned int));
+    result->blocks[oneBlock]->jumpTypes  = (jumpType*)malloc(block->nbJumps * sizeof(jumpType));
     result->blocks[oneBlock]->nbJumps    = block->nbJumps;
 
     for (unsigned int oneJump = 0; oneJump < block->nbJumps; oneJump++) {

@@ -389,25 +389,61 @@ void IRProcedure::print(FILE* output, IRApplication& application)
 ************************   IR BLOCKS       **********************************
 *****************************************************************************/
 
-void IRBlock::addJump(unsigned char jumpID, unsigned int jumpPlace)
+void IRBlock::setJump(jumpType type, unsigned int destination, unsigned char jumpID, unsigned int jumpPlace)
+{
+
+  this->jumpIds    = (unsigned char*)malloc(sizeof(unsigned char));
+  this->jumpPlaces = (unsigned int*)malloc(sizeof(unsigned int));
+  this->jumpTypes  = (jumpType*)malloc(sizeof(jumpType));
+
+  this->jumpIds[0]    = jumpID;
+  this->jumpPlaces[0] = jumpPlace;
+  this->jumpTypes[0]  = type;
+
+  this->nbJumps = 1;
+
+  // We set successors correctly
+  if (type == CONDITIONAL_JUMP) {
+    // We set two successors
+    this->nbSucc        = 2;
+    this->successors[0] = destination;
+    this->successors[1] = this->sourceEndAddress;
+  } else if (type == DIRECT_JUMP) {
+    // We set one successor
+    this->nbSucc        = 1;
+    this->successors[0] = destination;
+  }
+  // For indirect jumps and calls we do not add successors
+}
+
+void IRBlock::addJump(jumpType type, unsigned int destination, unsigned char jumpID, unsigned int jumpPlace)
 {
   unsigned char* tempJumpIds   = (unsigned char*)malloc(sizeof(unsigned char) * (this->nbJumps + 1));
   unsigned int* tempJumpPlaces = (unsigned int*)malloc(sizeof(unsigned int) * (this->nbJumps + 1));
+  jumpType* tempJumpTypes      = (jumpType*)malloc(sizeof(jumpType) * (this->nbJumps + 1));
 
   memcpy(tempJumpIds, this->jumpIds, sizeof(unsigned char) * this->nbJumps);
   memcpy(tempJumpPlaces, this->jumpPlaces, sizeof(unsigned int) * this->nbJumps);
+  memcpy(tempJumpTypes, this->jumpTypes, sizeof(jumpType) * this->nbJumps);
 
   tempJumpIds[this->nbJumps]    = jumpID;
   tempJumpPlaces[this->nbJumps] = jumpPlace;
+  tempJumpTypes[this->nbJumps]  = type;
 
   if (this->nbJumps > 0) {
     free(this->jumpIds);
     free(this->jumpPlaces);
+    free(this->jumpTypes);
   }
 
   this->nbJumps++;
   this->jumpIds    = tempJumpIds;
   this->jumpPlaces = tempJumpPlaces;
+  this->jumpTypes  = tempJumpTypes;
+
+  // We add a successor
+  this->successors[this->nbSucc] = destination;
+  this->nbSucc++;
 }
 
 void IRBlock::printBytecode(std::ostream& stream)
@@ -569,18 +605,40 @@ IRApplicationBlocksIterator IRApplication::end()
 void IRApplication::dumpApplication(char* path, unsigned int greatestAddr)
 {
 
-  IRBlock* applicationBlocks = (IRBlock*)malloc((greatestAddr / 4) * sizeof(IRBlock));
-  memset(applicationBlocks, 0, (greatestAddr / 4) * sizeof(IRBlock));
-
+  int nbJumps = 0;
   for (auto& block : *this)
-    if (block.sourceStartAddress != 0)
+    nbJumps += block.nbJumps;
+
+  IRBlock* applicationBlocks =
+      (IRBlock*)malloc((greatestAddr / 4) * sizeof(IRBlock) +
+                       nbJumps * (sizeof(unsigned int) + sizeof(unsigned char) + sizeof(jumpType)));
+  char* blocksAsChar = (char*)applicationBlocks;
+
+  memset(applicationBlocks, 0,
+         (greatestAddr / 4) * sizeof(IRBlock) +
+             nbJumps * (sizeof(unsigned int) + sizeof(unsigned char) + sizeof(jumpType)));
+
+  int placeJumps = (greatestAddr / 4) * sizeof(IRBlock);
+  for (auto& block : *this) {
+    if (block.sourceStartAddress != 0) {
       memcpy(&applicationBlocks[block.sourceStartAddress], &block, sizeof(IRBlock));
 
-  char* blocksAsChar = (char*)applicationBlocks;
+      // We copy all jump information
+      for (int oneJump = 0; oneJump < block.nbJumps; oneJump++) {
+        memcpy(&blocksAsChar[placeJumps], &block.jumpTypes[oneJump], sizeof(jumpType));
+        placeJumps += sizeof(jumpType);
+        memcpy(&blocksAsChar[placeJumps], &block.jumpPlaces[oneJump], sizeof(unsigned int));
+        placeJumps += sizeof(unsigned int);
+        memcpy(&blocksAsChar[placeJumps], &block.jumpIds[oneJump], sizeof(unsigned char));
+        placeJumps += sizeof(unsigned char);
+      }
+    }
+  }
 
   std::ofstream fileOut;
   fileOut.open(path);
-  fileOut.write(blocksAsChar, (greatestAddr / 4) * sizeof(IRBlock));
+  fileOut.write(blocksAsChar, (greatestAddr / 4) * sizeof(IRBlock) +
+                                  nbJumps * (sizeof(unsigned int) + sizeof(unsigned char) + sizeof(jumpType)));
   fileOut.close();
 }
 
@@ -589,10 +647,10 @@ void IRApplication::loadApplication(char* path, unsigned int greatestAddr)
 
   std::ifstream fileIn;
   fileIn.open(path);
+  char smallBuffer[sizeof(unsigned int) + sizeof(unsigned char) + sizeof(jumpType)];
 
   char* blocksAsChar = (char*)malloc((greatestAddr / 4) * sizeof(IRBlock));
   fileIn.read(blocksAsChar, (greatestAddr / 4) * sizeof(IRBlock));
-  fileIn.close();
 
   IRBlock* applicationBlocks = (IRBlock*)blocksAsChar;
 
@@ -611,6 +669,24 @@ void IRApplication::loadApplication(char* path, unsigned int greatestAddr)
         }
         procedure->addBlock(applicationBlocks[oneInstr]);
       }
+
+      if (applicationBlocks[oneInstr].nbJumps > 0) {
+        applicationBlocks[oneInstr].jumpPlaces =
+            (unsigned int*)malloc(applicationBlocks[oneInstr].nbJumps * sizeof(unsigned int));
+        applicationBlocks[oneInstr].jumpTypes =
+            (jumpType*)malloc(applicationBlocks[oneInstr].nbJumps * sizeof(jumpType));
+        applicationBlocks[oneInstr].jumpIds =
+            (unsigned char*)malloc(applicationBlocks[oneInstr].nbJumps * sizeof(unsigned char));
+
+        for (int oneJump = 0; oneJump < applicationBlocks[oneInstr].nbJumps; oneJump++) {
+          fileIn.read(smallBuffer, sizeof(unsigned int) + sizeof(unsigned char) + sizeof(jumpType));
+          memcpy(&(applicationBlocks[oneInstr].jumpTypes[oneJump]), smallBuffer, sizeof(jumpType));
+          memcpy(&(applicationBlocks[oneInstr].jumpPlaces[oneJump]), &smallBuffer[sizeof(jumpType)],
+                 sizeof(unsigned int));
+          memcpy(&(applicationBlocks[oneInstr].jumpIds[oneJump]), &smallBuffer[sizeof(jumpType) + sizeof(unsigned int)],
+                 sizeof(unsigned char));
+        }
+      }
     }
   }
 
@@ -623,6 +699,8 @@ void IRApplication::loadApplication(char* path, unsigned int greatestAddr)
 
     procedure->nbInstr = nbInstr;
   }
+
+  fileIn.close();
 }
 
 //*****************************************************************************

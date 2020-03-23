@@ -416,6 +416,8 @@ void initializeDBTInfo(char* fileName)
 
     if (!isOptimized) {
       printf("Starting level 1 optimizations...\n");
+
+      // We count the number of blocks
       int nbBlocks = 0;
       for (auto& block : *application)
         nbBlocks++;

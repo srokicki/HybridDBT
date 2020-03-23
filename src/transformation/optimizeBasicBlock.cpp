@@ -119,11 +119,7 @@ void optimizeBasicBlock(IRBlock* block, DBTPlateform* platform, IRApplication* a
     block->instructions[4 * oneBytecodeInstr + 3] = readInt(platform->bytecode, 16 * oneBytecodeInstr + 12);
   }
 
-  block->nbInstr                  = blockSize;
-  unsigned char opcodeOfLastInstr = jumpInstruction & 0x7f;
-  if ((opcodeOfLastInstr >> 4) == 2 && opcodeOfLastInstr != VEX_MOVI) {
-    block->addJump(blockSize - 1, block->vliwEndAddress - 2 * incrementInBinaries);
-  }
+  block->nbInstr = blockSize;
 
   Log::logScheduleBlocks << "*************************************************************************\n";
   Log::logScheduleBlocks << "Previous version of sources:\n";

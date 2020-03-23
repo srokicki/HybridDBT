@@ -38,7 +38,7 @@ void initializeDBTInfo(char* fileName);
 char useIndirectionTable(int address);
 char getOptLevel(int address, uint64_t nb_cycle);
 void verifyBranchDestination(int addressOfJump, int dest);
-void finalizeDBTInformation();
+void finalizeDBTInformation(void);
 
 #ifdef __cplusplus
 }

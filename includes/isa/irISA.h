@@ -25,6 +25,15 @@
 //#define IR_SUCC
 
 /********************************************************************
+ * Types needed
+ * ******************************************************************
+ *
+ * TODO
+ *
+ *******************************************************************/
+enum jumpType { CONDITIONAL_JUMP, DIRECT_JUMP, INDIRECT_JUMP, DIRECT_CALL, INDIRECT_CALL };
+
+/********************************************************************
  * Declaration of a data structure to represent the control flow of the binaries analyzed.
  * ******************************************************************
  *
@@ -98,6 +107,7 @@ public:
   unsigned char nbJumps;
   unsigned char* jumpIds;
   unsigned int* jumpPlaces;
+  jumpType* jumpTypes;
 
   unsigned int* instructions; // A pointer to an array of uint128 describing the instructions
   unsigned int nbInstr;       // The number of instructions
@@ -115,7 +125,9 @@ public:
 
   short specAddr[4];
 
-  void addJump(unsigned char jumpID, unsigned int jumpPlace);
+  void setJump(jumpType type, unsigned int jumpDestination, unsigned char jumpID, unsigned int jumpPlace);
+  void addJump(jumpType type, unsigned int jumpDestination, unsigned char jumpID, unsigned int jumpPlace);
+
   void printBytecode(std::ostream& stream);
   void printCode(std::ostream& stream, DBTPlateform* platform);
 
