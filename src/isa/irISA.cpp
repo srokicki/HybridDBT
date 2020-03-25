@@ -520,6 +520,8 @@ IRApplication::IRApplication(unsigned int addressStart, unsigned int size)
   this->blocks = (IRBlock**)malloc(this->nbInstr * sizeof(IRBlock*));
   memset(this->blocks, 0, this->nbInstr * sizeof(IRBlock*));
 
+  printf("Allocating %d blocks\n", this->nbInstr);
+
   this->numberAllocatedProcedures = 0;
   this->numberProcedures          = 0;
   this->procedures                = nullptr;
@@ -596,7 +598,7 @@ IRApplicationBlocksIterator IRApplication::end()
 {
   unsigned int end = (addressStart / 4) + nbInstr;
   while (this->getBlock(end) == NULL)
-    end--;
+    end++;
 
   return IRApplicationBlocksIterator(end, this);
 };
@@ -604,6 +606,8 @@ IRApplicationBlocksIterator IRApplication::end()
 // Dump and load operations
 void IRApplication::dumpApplication(char* path, unsigned int greatestAddr)
 {
+
+  greatestAddr += 4; // Greatest addr has to be included
 
   int nbJumps = 0;
   for (auto& block : *this)
@@ -644,6 +648,8 @@ void IRApplication::dumpApplication(char* path, unsigned int greatestAddr)
 
 void IRApplication::loadApplication(char* path, unsigned int greatestAddr)
 {
+
+  greatestAddr += 4; // Greatest addr should be included
 
   std::ifstream fileIn;
   fileIn.open(path);

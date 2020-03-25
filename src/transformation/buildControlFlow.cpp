@@ -108,7 +108,7 @@ void buildBasicControlFlow(DBTPlateform* dbtPlateform, int section, int mipsStar
         cleansedOneJumpType = DIRECT_CALL;
       } else if ((oneJumpType & 0x7f) == VEX_CALLR) {
         cleansedOneJumpType = INDIRECT_CALL;
-      } else if ((oneJumpType & 0x7f) == VEX_GOTOR) {
+      } else {
         cleansedOneJumpType = INDIRECT_JUMP;
       }
 
@@ -268,14 +268,10 @@ void annotateFullControlFlow(DBTPlateform& platform, IRApplication& application)
 int buildAdvancedControlFlow(DBTPlateform* platform, IRBlock* startBlock, IRApplication* application)
 {
 
-  annotateFullControlFlow(*platform, *application);
-
-  char incrementInBinaries = (platform->vliwInitialIssueWidth > 4) ? 2 : 1;
   IRBlock* blocksToStudy[TEMP_BLOCK_STORAGE_SIZE];
   int numberBlockToStudy = 1;
   blocksToStudy[0]       = startBlock;
   IRBlock* entryBlock    = startBlock;
-  int indexEntryBlock    = 0;
 
   IRBlock* blockInProcedure[TEMP_BLOCK_STORAGE_SIZE];
   int numberBlockInProcedure = 0;
@@ -293,8 +289,6 @@ int buildAdvancedControlFlow(DBTPlateform* platform, IRBlock* startBlock, IRAppl
 
     IRBlock* currentBlock = blocksToStudy[numberBlockToStudy - 1];
     numberBlockToStudy--;
-
-    unsigned int endAddress = currentBlock->vliwEndAddress;
 
     // If the block is marked as IRBLOCK_PROC, we ensure that it is owned by the procedure being built
     if (currentBlock->blockState == IRBLOCK_PROC) {
@@ -351,7 +345,7 @@ int buildAdvancedControlFlow(DBTPlateform* platform, IRBlock* startBlock, IRAppl
       blocksToStudy[numberBlockToStudy] = application->getBlock(currentBlock->successors[oneSucc]);
       numberBlockToStudy++;
 
-      if (application->getBlock(currentBlock->successors[oneSucc] == NULL)) {
+      if (application->getBlock(currentBlock->successors[oneSucc]) == NULL) {
         Log::logScheduleProc
             << "In build advanced control flow, a successor has not been found. Cancelling procedure construction !\n";
         for (int oneBlockInProc = 0; oneBlockInProc < numberBlockInProcedure; oneBlockInProc++)
@@ -363,30 +357,8 @@ int buildAdvancedControlFlow(DBTPlateform* platform, IRBlock* startBlock, IRAppl
 
     // We search for blowk which may jump to this one
     for (auto& block : *application) {
-
-      unsigned int jumpInstruction =
-          readInt(platform->vliwBinaries, (block.vliwEndAddress - 2 * incrementInBinaries) * 16);
-
-      bool isConditionalBranch = ((jumpInstruction & 0x7f) == VEX_BR) || ((jumpInstruction & 0x7f) == VEX_BRF) ||
-                                 ((jumpInstruction & 0x7f) == VEX_BLT) || ((jumpInstruction & 0x7f) == VEX_BGE) ||
-                                 ((jumpInstruction & 0x7f) == VEX_BLTU) || ((jumpInstruction & 0x7f) == VEX_BGEU);
-      bool isJump    = (jumpInstruction & 0x7f) == VEX_GOTO;
-      bool isCall    = (jumpInstruction & 0x7f) == VEX_CALL;
-      bool isNothing = ((jumpInstruction & 0x7f) != VEX_CALL) && ((jumpInstruction & 0x7f) != VEX_CALLR) &&
-                       ((jumpInstruction & 0x7f) != VEX_GOTOR) && ((jumpInstruction & 0x7f) != VEX_STOP);
-
-      // We determine the name of successor(s)
-      if (isConditionalBranch && (block.sourceDestination == currentBlock->sourceStartAddress ||
-                                  block.sourceEndAddress == currentBlock->sourceStartAddress)) {
-        blocksToStudy[numberBlockToStudy] = &block;
-        numberBlockToStudy++;
-      } else if (isJump) {
-        if (block.sourceDestination == currentBlock->sourceStartAddress) {
-          blocksToStudy[numberBlockToStudy] = &block;
-          numberBlockToStudy++;
-        }
-      } else if (isCall || isNothing) {
-        if (block.sourceEndAddress == currentBlock->sourceStartAddress) {
+      for (int oneSucc = 0; oneSucc < block.nbSucc; oneSucc++) {
+        if (block.successors[oneSucc] == currentBlock->sourceStartAddress) {
           blocksToStudy[numberBlockToStudy] = &block;
           numberBlockToStudy++;
         }
@@ -395,8 +367,7 @@ int buildAdvancedControlFlow(DBTPlateform* platform, IRBlock* startBlock, IRAppl
 
     // We actualize if needed the entryBlock TODO:check this
     if (entryBlock->vliwStartAddress > currentBlock->vliwStartAddress) {
-      entryBlock      = currentBlock;
-      indexEntryBlock = numberBlockInProcedure;
+      entryBlock = currentBlock;
     }
   }
 
@@ -430,7 +401,7 @@ int buildAdvancedControlFlow(DBTPlateform* platform, IRBlock* startBlock, IRAppl
   application->addProcedure(procedure);
 
   // We create IR for all blocks annd modify the location of their unique reference
-  for (int oneBasicBlock = 0; oneBasicBlock < procedure->nbBlock; oneBasicBlock++) {
+  for (unsigned int oneBasicBlock = 0; oneBasicBlock < procedure->nbBlock; oneBasicBlock++) {
     IRBlock* block = procedure->blocks[oneBasicBlock];
 
     block->procedureSourceStartAddress = procedure->entryBlock->sourceStartAddress;
@@ -468,5 +439,8 @@ int buildAdvancedControlFlow(DBTPlateform* platform, IRBlock* startBlock, IRAppl
     block->oldVliwStartAddress = block->vliwStartAddress;
     block->blockState          = IRBLOCK_PROC;
   }
+
+  printf("Adding a procedure with %d blocks. First blocks goes from %x to %x\n", procedure->nbBlock,
+         procedure->entryBlock->sourceStartAddress, procedure->entryBlock->sourceEndAddress);
   return 0;
 }

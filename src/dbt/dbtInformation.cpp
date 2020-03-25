@@ -123,6 +123,12 @@ void readSourceBinaries(char* path, unsigned char*& code, unsigned int& addressS
                         unsigned int& pcStart, DBTPlateform* platform)
 {
 
+  // We initialize size at 0
+  size                      = 0;
+  unsigned char* resultCode = NULL;
+  unsigned char* buffer;
+  addressStart = 0xfffffff;
+
   // We open the elf file and search for the section that is of interest for us
   ElfFile elfFile(path);
 
@@ -130,21 +136,32 @@ void readSourceBinaries(char* path, unsigned char*& code, unsigned int& addressS
     ElfSection* section = elfFile.sectionTable->at(sectionCounter);
 
     // The section we are looking for is called .text
-    if (!section->getName().compare(".text")) {
+    if (!section->getName().compare(".text") || !section->getName().compare("__libc_freeres_fn")) {
+      if (resultCode == NULL) {
+        resultCode = (unsigned char*)malloc(section->size * sizeof(char));
+      } else {
+        resultCode = (unsigned char*)realloc(resultCode, (size * 4 + section->size) * sizeof(char));
+      }
+      buffer = section->getSectionCode(); // 0x3c
+      memcpy(&resultCode[size * 4], buffer, section->size * sizeof(char));
+      size += section->size / 4 - 0;
 
-      code         = section->getSectionCode(); // 0x3c
-      addressStart = section->address + 0;
-      size         = section->size / 4 - 0;
-
-      if (size > MEMORY_SIZE) {
-        free(platform->vliwBinaries);
-        free(platform->mipsBinaries);
-        free(platform->blockBoundaries);
-        platform->vliwBinaries    = (unsigned int*)malloc(4 * size * 2 * sizeof(unsigned int));
-        platform->mipsBinaries    = (unsigned int*)malloc(4 * size * 2 * sizeof(unsigned int));
-        platform->blockBoundaries = (unsigned char*)malloc(size * 2 * sizeof(unsigned char));
+      free(buffer);
+      if (addressStart > section->address) {
+        addressStart = section->address;
       }
     }
+  }
+
+  code = resultCode;
+
+  if (size > MEMORY_SIZE) {
+    free(platform->vliwBinaries);
+    free(platform->mipsBinaries);
+    free(platform->blockBoundaries);
+    platform->vliwBinaries    = (unsigned int*)malloc(4 * size * 2 * sizeof(unsigned int));
+    platform->mipsBinaries    = (unsigned int*)malloc(4 * size * 2 * sizeof(unsigned int));
+    platform->blockBoundaries = (unsigned char*)malloc(size * 2 * sizeof(unsigned char));
   }
 }
 

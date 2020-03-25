@@ -45,7 +45,12 @@ void readSourceBinaries(char* path, unsigned char*& code, unsigned int& addressS
                         unsigned int& pcStart, DBTPlateform* platform)
 {
 
-#ifndef __NIOS
+  // We initialize size at 0
+  size                      = 0;
+  unsigned char* resultCode = NULL;
+  unsigned char* buffer;
+  addressStart = 0xfffffff;
+
   // We open the elf file and search for the section that is of interest for us
   ElfFile elfFile(path);
 
@@ -53,61 +58,32 @@ void readSourceBinaries(char* path, unsigned char*& code, unsigned int& addressS
     ElfSection* section = elfFile.sectionTable->at(sectionCounter);
 
     // The section we are looking for is called .text
-    if (!section->getName().compare(".text")) {
+    if (!section->getName().compare(".text") || !section->getName().compare("__libc_freeres_fn")) {
+      if (resultCode == NULL) {
+        resultCode = (unsigned char*)malloc(section->size * sizeof(char));
+      } else {
+        resultCode = (unsigned char*)realloc(resultCode, (size * 4 + section->size) * sizeof(char));
+      }
+      buffer = section->getSectionCode(); // 0x3c
+      memcpy(&resultCode[size * 4], buffer, section->size * sizeof(char));
+      size += section->size / 4 - 0;
 
-      code         = section->getSectionCode(); // 0x3c
-      addressStart = section->address + 0;
-      size         = section->size / 4 - 0;
-
-      if (size > MEMORY_SIZE) {
-        Log::logError << "Error: binary file has " << size << " instructions, we currently handle a maximum size of "
-                      << MEMORY_SIZE << "\n";
-        exit(-1);
+      free(buffer);
+      if (addressStart > section->address) {
+        addressStart = section->address;
       }
     }
   }
 
-  unsigned int localHeapAddress = 0;
-  for (unsigned int sectionCounter = 0; sectionCounter < elfFile.sectionTable->size(); sectionCounter++) {
-    ElfSection* section = elfFile.sectionTable->at(sectionCounter);
+  code = resultCode;
 
-    if (section->address != 0) {
-
-      unsigned char* data = section->getSectionCode();
-      platform->vexSimulator->initializeDataMemory(data, section->size, section->address);
-      free(data);
-
-      if (section->address + section->size > localHeapAddress)
-        localHeapAddress = section->address + section->size;
-    }
+  if (size > MEMORY_SIZE) {
+    Log::logError << "Error: binary file has " << size << " instructions, we currently handle a maximum size of "
+                  << MEMORY_SIZE << "\n";
+    exit(-1);
   }
-  platform->vexSimulator->heapAddress = localHeapAddress;
-
-  for (unsigned int oneSymbol = 0; oneSymbol < elfFile.symbols->size(); oneSymbol++) {
-    ElfSymbol* symbol = elfFile.symbols->at(oneSymbol);
-    const char* name =
-        (const char*)&(elfFile.sectionTable->at(elfFile.indexOfSymbolNameSection)->getSectionCode()[symbol->name]);
-
-    if (strcmp(name, "_start") == 0) {
-      pcStart = symbol->offset;
-    }
-  }
-
-#else
-  //	read(0, &addressStart, sizeof(int));
-  //	read(0, &size, sizeof(int));
-  addressStart = tmp_addressStart;
-  size         = tmp_size;
-  code         = tmp_code;
-  //	code = (unsigned char*) malloc(size*sizeof(unsigned char));
-  //
-  //	for (int oneByte = 0; oneByte<size; oneByte++){
-  //		read(0, &code[oneByte], sizeof(char));
-  //	}
-
-  size = size / 4;
-#endif
 }
+
 int cnt = 0;
 int run(DBTPlateform* platform, int nbCycle)
 {
