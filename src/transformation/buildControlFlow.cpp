@@ -108,8 +108,10 @@ void buildBasicControlFlow(DBTPlateform* dbtPlateform, int section, int mipsStar
         cleansedOneJumpType = DIRECT_CALL;
       } else if ((oneJumpType & 0x7f) == VEX_CALLR) {
         cleansedOneJumpType = INDIRECT_CALL;
-      } else {
+      } else if ((oneJumpType & 0x7f) == VEX_GOTOR) {
         cleansedOneJumpType = INDIRECT_JUMP;
+      } else {
+        cleansedOneJumpType = NO_JUMP;
       }
 
       if (newBlock->vliwEndAddress - 2 * offsetInBinaries == oneJumpSource) {
@@ -176,8 +178,7 @@ void buildBasicControlFlow(DBTPlateform* dbtPlateform, int section, int mipsStar
             splittedBlock->jumpIds            = blockToSplit->jumpIds;
             splittedBlock->jumpPlaces         = blockToSplit->jumpPlaces;
             splittedBlock->jumpTypes          = blockToSplit->jumpTypes;
-            splittedBlock->successors[0]      = blockToSplit->successors[0];
-            splittedBlock->successors[1]      = blockToSplit->successors[1];
+            splittedBlock->successors         = blockToSplit->successors;
             splittedBlock->nbJumps            = blockToSplit->nbJumps;
             splittedBlock->nbSucc             = blockToSplit->nbSucc;
 
@@ -185,12 +186,14 @@ void buildBasicControlFlow(DBTPlateform* dbtPlateform, int section, int mipsStar
             blockToSplit->sourceEndAddress  = newBlock->sourceDestination;
             blockToSplit->sourceDestination = -1;
             blockToSplit->vliwEndAddress    = destinationInVLIWFromNewMethod;
-            blockToSplit->nbJumps           = 0;
-            blockToSplit->nbSucc            = 0;
+            blockToSplit->setJump(NO_JUMP, splittedBlock->sourceStartAddress, -1, -1);
 
             application->addBlock(splittedBlock);
           }
         }
+      } else {
+        // No jump found
+        newBlock->setJump(NO_JUMP, -1, -1, -1);
       }
 
       /******************************************************************************************/
@@ -215,6 +218,7 @@ void buildBasicControlFlow(DBTPlateform* dbtPlateform, int section, int mipsStar
       newBlock->sourceStartAddress = previousBlockStartSource + (sectionStartAddress >> 2);
       newBlock->sourceEndAddress   = indexInMipsBinaries + (sectionStartAddress >> 2);
       newBlock->sourceDestination  = -1;
+      newBlock->setJump(NO_JUMP, newBlock->sourceEndAddress, -1, -1);
 
       application->addBlock(newBlock);
 
@@ -241,28 +245,6 @@ int compare_blocks(const void* a, const void* b)
 
   return ((*blocka)->sourceStartAddress > (*blockb)->sourceStartAddress) -
          ((*blocka)->sourceStartAddress < (*blockb)->sourceStartAddress);
-}
-
-void annotateFullControlFlow(DBTPlateform& platform, IRApplication& application)
-{
-
-  printf("STARTING FULL ANNOTATION !\n");
-  for (auto block : application) {
-    if (block.nbJumps <= 1) {
-      int sourceDest = block.sourceDestination;
-      if (sourceDest != -1) {
-        IRBlock* destBlock = application.getBlock(sourceDest);
-        if (destBlock == NULL) {
-          printf("Cannot find block for %x\n", sourceDest);
-        } else {
-          block.successors[0] = block.sourceDestination;
-        }
-      }
-    } else {
-      printf("Block already have %d jumps\n", block.nbJumps);
-    }
-  }
-  exit(-1);
 }
 
 int buildAdvancedControlFlow(DBTPlateform* platform, IRBlock* startBlock, IRApplication* application)
@@ -330,7 +312,6 @@ int buildAdvancedControlFlow(DBTPlateform* platform, IRBlock* startBlock, IRAppl
 
     blockInProcedure[numberBlockInProcedure] = currentBlock;
     numberBlockInProcedure++;
-    currentBlock->nbSucc     = 0;
     currentBlock->blockState = IRBLOCK_PROC;
     /******************************************************************************************
      ******************************  Successor resolution

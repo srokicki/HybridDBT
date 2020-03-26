@@ -40,7 +40,7 @@ void getReadWriteRegisters(IRBlock* block, bool* readRegs, short* writeRegs)
   }
 
   // For every instr, we analyze the register that are read and written
-  for (int oneInstr = 0; oneInstr < block->nbInstr; oneInstr++) {
+  for (unsigned int oneInstr = 0; oneInstr < block->nbInstr; oneInstr++) {
 
     // We mark the written reg
     short writtenReg = getDestinationRegister(block->instructions, oneInstr);
@@ -238,9 +238,8 @@ IRBlock* unrollLoops(IRBlock* block, bool ignoreRegs, short* outputRegsToIgnore,
   for (int oneUnroll = 1; oneUnroll < unrollingFactor; oneUnroll++) {
 
     short indexOfSecondJump = -1;
-    char hasStores          = 0;
 
-    for (int oneInstr = 0; oneInstr < block->nbInstr; oneInstr++) {
+    for (unsigned int oneInstr = 0; oneInstr < block->nbInstr; oneInstr++) {
 
       // We copy the instruction into the new block
       result->instructions[(result->nbInstr + oneInstr) * 4 + 0] = block->instructions[oneInstr * 4 + 0];
@@ -279,7 +278,6 @@ IRBlock* unrollLoops(IRBlock* block, bool ignoreRegs, short* outputRegsToIgnore,
        */
 
       if (shiftedOpcode == (VEX_STD >> 3) || opcode == VEX_FSW) {
-        hasStores = 1;
 
         // If we are in a escapable block, we need to add a dependency from the first jump
         if (isEscape)
@@ -422,8 +420,7 @@ IRBlock* unrollLoops(IRBlock* block, bool ignoreRegs, short* outputRegsToIgnore,
    * 	-> Jumps from second block are inserted
    */
 
-  result->successors[result->nbSucc] = block->successors[block->nbSucc - 1];
-  result->nbSucc++;
+  result->addJump(NO_JUMP, block->successors[block->nbSucc - 1], -1, -1);
 
   result->vliwStartAddress = block->vliwStartAddress;
   result->vliwEndAddress   = block->vliwEndAddress;
@@ -525,8 +522,7 @@ IRBlock* superBlock(IRBlock* entryBlock, IRBlock* secondBlock, bool ignoreRegs, 
   short lastStore                 = -1;
 
   // last jump/condition of entry block 	short indexOfJump = -1;
-  short indexOfJump               = -1;
-  unsigned short indexOfCondition = -1;
+  short indexOfJump = -1;
 
   //****************************************************************************************************
   // We go through the first block to find all written register and memory accesses
@@ -568,21 +564,6 @@ IRBlock* superBlock(IRBlock* entryBlock, IRBlock* secondBlock, bool ignoreRegs, 
         else if (opcode == VEX_BLTU)
           setOpcode(result->instructions, oneInstr, VEX_BGEU);
       }
-
-      if (useSetc) {
-        short operands[2];
-
-        fprintf(stderr, "Error: truying to build a trace using setc while no code has been written to build the "
-                        "condition for the setc...\n");
-        exit(-1);
-        if (operands[0] >= 256) {
-          if (lastWriteReg[operands[0] - 256] != -1)
-            indexOfCondition = lastWriteReg[operands[0] - 256];
-          else
-            indexOfCondition = operands[0];
-        } else
-          indexOfCondition = operands[0];
-      }
     }
 
     // We keep track of last store/load instructions
@@ -607,9 +588,8 @@ IRBlock* superBlock(IRBlock* entryBlock, IRBlock* secondBlock, bool ignoreRegs, 
   //****************************************************************************************************
   // We insert instructions from second block
   short indexOfSecondJump = -1;
-  char hasStores          = 0;
 
-  for (int oneInstr = 0; oneInstr < secondBlock->nbInstr; oneInstr++) {
+  for (unsigned int oneInstr = 0; oneInstr < secondBlock->nbInstr; oneInstr++) {
 
     // We copy the instruction into the new block
     result->instructions[(sizeofEntryBlock + oneInstr) * 4 + 0] = secondBlock->instructions[oneInstr * 4 + 0];
@@ -648,7 +628,6 @@ IRBlock* superBlock(IRBlock* entryBlock, IRBlock* secondBlock, bool ignoreRegs, 
      */
 
     if (shiftedOpcode == (VEX_STD >> 3) || opcode == VEX_FSW) {
-      hasStores = 1;
 
       // If we are in a escapable block, we need to add a dependency from the first jump
       if (isEscape)
@@ -697,84 +676,7 @@ IRBlock* superBlock(IRBlock* entryBlock, IRBlock* secondBlock, bool ignoreRegs, 
 
   // We insert a SETCOND depending on the value of the condition
   // This instruction will depend from all previous cond instrucion (if any)
-  if (isEscape && useSetc) {
-
-    for (int oneReg = 1; oneReg < 64; oneReg++) {
-      if (lastWriteRegForSecond[oneReg] >= 0) {
-
-        char opcodeJump = getOpcode(entryBlock->instructions, indexOfJump);
-        fprintf(stderr, "Error: truying to build a trace using setc while no code has been written to choose the "
-                        "correct setc...\n");
-        exit(-1);
-        char opcodeCond;
-        if (opcodeJump == VEX_BR)
-          opcodeCond = VEX_SETc;
-        else
-          opcodeCond = VEX_SETFc;
-
-        struct uint128_struct bytecodeInstr = assembleRBytecodeInstruction(
-            2, 0, VEX_SETc, indexOfCondition, lastWriteRegForSecond[oneReg], oneReg + 256, 0);
-        result->instructions[(result->nbInstr) * 4 + 0] = bytecodeInstr.word96;
-        result->instructions[(result->nbInstr) * 4 + 1] = bytecodeInstr.word64;
-        result->instructions[(result->nbInstr) * 4 + 2] = bytecodeInstr.word32;
-        result->instructions[(result->nbInstr) * 4 + 3] = bytecodeInstr.word0;
-        addDataDep(result->instructions, lastWriteRegForSecond[oneReg], result->nbInstr);
-        if (lastWriteReg[oneReg] >= 0)
-          addControlDep(result->instructions, lastWriteReg[oneReg], result->nbInstr);
-
-        // We add a data dependency from condition instruction
-        if (indexOfCondition < 256)
-          addDataDep(result->instructions, indexOfCondition, result->nbInstr);
-
-        lastWriteRegForSecond[oneReg] = result->nbInstr;
-
-        // If there are more than 1 jump in first block we also need a dep from the previous jump and set instr
-        if (entryBlock->nbJumps > 1)
-          addControlDep(result->instructions, entryBlock->jumpIds[entryBlock->nbJumps - 2], result->nbInstr);
-
-        result->nbInstr++;
-      }
-    }
-
-    // We correct the jump register if any
-    if (indexOfSecondJump != -1) {
-
-      char jumpopcode = getOpcode(result->instructions, indexOfSecondJump);
-      if (jumpopcode == VEX_BR || jumpopcode == VEX_BRF || jumpopcode == VEX_BGE || jumpopcode == VEX_BLT ||
-          jumpopcode == VEX_BGEU || jumpopcode == VEX_BLTU) {
-        short operands[2];
-        if (operands[0] < 256) {
-          char physicalDest = getDestinationRegister(result->instructions, operands[0]);
-          operands[0]       = lastWriteRegForSecond[physicalDest];
-          addDataDep(result->instructions, operands[0], indexOfSecondJump);
-        }
-        if (operands[1] < 256) {
-          char physicalDest = getDestinationRegister(result->instructions, operands[1]);
-          operands[1]       = lastWriteRegForSecond[physicalDest];
-          addDataDep(result->instructions, operands[1], indexOfSecondJump);
-        }
-
-        setOperands(result->instructions, indexOfSecondJump, operands);
-      }
-
-#ifndef IR_SUCC
-      result->instructions[result->nbInstr * 4 + 0] = result->instructions[indexOfSecondJump * 4 + 0];
-      result->instructions[result->nbInstr * 4 + 1] = result->instructions[indexOfSecondJump * 4 + 1];
-      result->instructions[result->nbInstr * 4 + 2] = result->instructions[indexOfSecondJump * 4 + 2];
-      result->instructions[result->nbInstr * 4 + 3] = result->instructions[indexOfSecondJump * 4 + 3];
-
-      result->instructions[indexOfSecondJump * 4 + 0] = 0;
-      result->instructions[indexOfSecondJump * 4 + 1] = 0;
-      result->instructions[indexOfSecondJump * 4 + 2] = 0;
-      result->instructions[indexOfSecondJump * 4 + 3] = 0;
-
-      indexOfSecondJump = result->nbInstr;
-      result->nbInstr++;
-
-#endif
-    }
-
-  } else if (isEscape) {
+  if (isEscape) {
 
     int firstAvailable = 256 + 34;
     for (int oneReg = 1; oneReg < 64; oneReg++) {
@@ -819,27 +721,28 @@ IRBlock* superBlock(IRBlock* entryBlock, IRBlock* secondBlock, bool ignoreRegs, 
 
   if (useSetc) {
     for (int oneJump = 0; oneJump < secondBlock->nbJumps; oneJump++) {
-      assert(oneJump < secondBlock->nbSucc); // FIXME: is it usefull to assert that. I removed a if on this condition
 
-      // The last jump is moved while using setc
-      if (oneJump == secondBlock->nbJumps - 1)
-        result->addJump(secondBlock->jumpTypes[oneJump], secondBlock->successors[oneJump], indexOfSecondJump, -1);
-      else
-        result->addJump(secondBlock->jumpTypes[oneJump], secondBlock->successors[oneJump],
-                        secondBlock->jumpIds[oneJump] + entryBlock->nbInstr, -1);
+      if (oneJump < secondBlock->nbSucc) {
+
+        // The last jump is moved while using setc
+        if (oneJump == secondBlock->nbJumps - 1)
+          result->addJump(secondBlock->jumpTypes[oneJump], secondBlock->successors[oneJump], indexOfSecondJump, -1);
+        else
+          result->addJump(secondBlock->jumpTypes[oneJump], secondBlock->successors[oneJump],
+                          secondBlock->jumpIds[oneJump] + entryBlock->nbInstr, -1);
+      }
     }
   } else {
     for (int oneJump = 0; oneJump < secondBlock->nbJumps; oneJump++) {
-      assert(oneJump < secondBlock->nbSucc); // FIXME: is it usefull to assert that. I removed a if on this condition
-
-      result->addJump(secondBlock->jumpTypes[oneJump], secondBlock->successors[oneJump],
-                      secondBlock->jumpIds[oneJump] + entryBlock->nbInstr, -1);
+      if (oneJump < secondBlock->nbSucc) {
+        result->addJump(secondBlock->jumpTypes[oneJump], secondBlock->successors[oneJump],
+                        secondBlock->jumpIds[oneJump] + entryBlock->nbInstr, -1);
+      }
     }
   }
 
   if (secondBlock->nbJumps < secondBlock->nbSucc) {
-    result->successors[result->nbSucc] = secondBlock->successors[secondBlock->nbSucc - 1];
-    result->nbSucc++;
+    result->addJump(NO_JUMP, secondBlock->successors[secondBlock->nbSucc - 1], -1, -1);
   }
 
   Log::logScheduleProc << "\n Resulting block is: \n";
@@ -874,7 +777,7 @@ void buildTraces(DBTPlateform* platform, IRProcedure* procedure, int optLevel)
   int nbBlocksToAdd = 0;
 
   int nbBlock = 0;
-  for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++) {
+  for (unsigned int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++) {
     if (procedure->blocks[oneBlock]->nbInstr != 0) {
       nbBlock++;
 
@@ -892,7 +795,7 @@ void buildTraces(DBTPlateform* platform, IRProcedure* procedure, int optLevel)
   short* writeRegs = (short*)malloc(128 * sizeof(short));
 
   // We identify all perfect loops to preserve them
-  for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++) {
+  for (unsigned int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++) {
     if (procedure->blocks[oneBlock]->nbInstr != 0) {
       IRBlock* block = procedure->blocks[oneBlock];
 
@@ -950,9 +853,7 @@ void buildTraces(DBTPlateform* platform, IRProcedure* procedure, int optLevel)
           block->nbJumps         = oneSuperBlock->nbJumps;
           block->nbSucc          = oneSuperBlock->nbSucc;
           block->unrollingFactor = oneSuperBlock->unrollingFactor;
-
-          for (int oneSuccessor = 0; oneSuccessor < 10; oneSuccessor++)
-            block->successors[oneSuccessor] = oneSuperBlock->successors[oneSuccessor];
+          block->successors      = oneSuperBlock->successors;
 
           oneSuperBlock->nbJumps      = 0;
           oneSuperBlock->instructions = NULL;
@@ -1004,7 +905,7 @@ void buildTraces(DBTPlateform* platform, IRProcedure* procedure, int optLevel)
           int nbPred = 0;
           IRBlock* predecessors[1];
 
-          for (int oneOtherBlock = 0; oneOtherBlock < procedure->nbBlock; oneOtherBlock++) {
+          for (unsigned int oneOtherBlock = 0; oneOtherBlock < procedure->nbBlock; oneOtherBlock++) {
             IRBlock* otherBlock = procedure->blocks[oneOtherBlock];
             if (otherBlock != block) {
               for (int oneSuccessor = 0; oneSuccessor < otherBlock->nbSucc; oneSuccessor++) {
@@ -1038,7 +939,7 @@ void buildTraces(DBTPlateform* platform, IRProcedure* procedure, int optLevel)
   while (changeMade) {
 
     changeMade = 0;
-    for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++) {
+    for (unsigned int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++) {
       IRBlock* block = procedure->blocks[oneBlock];
 
       // For the trace to be eligible, we need that only one otherBlock has the block as a successor (and only once) and
@@ -1057,7 +958,7 @@ void buildTraces(DBTPlateform* platform, IRProcedure* procedure, int optLevel)
           continue;
         }
 
-        for (int oneOtherBlock = 0; oneOtherBlock < procedure->nbBlock; oneOtherBlock++) {
+        for (unsigned int oneOtherBlock = 0; oneOtherBlock < procedure->nbBlock; oneOtherBlock++) {
           IRBlock* otherBlock = procedure->blocks[oneOtherBlock];
 
           if (otherBlock->blockState == IRBLOCK_PERFECT_LOOP)
@@ -1155,7 +1056,7 @@ void buildTraces(DBTPlateform* platform, IRProcedure* procedure, int optLevel)
   IRBlock** newBlocks = (IRBlock**)malloc((nbBlock + nbBlocksToAdd) * sizeof(IRBlock*));
   int index           = 0;
   int blockToAddId    = 0;
-  for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++) {
+  for (unsigned int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++) {
 
     // We may insert here one of the new blocks
     if (blockToAddId < nbBlocksToAdd &&
@@ -1198,7 +1099,7 @@ void buildTraces(DBTPlateform* platform, IRProcedure* procedure, int optLevel)
     IRBlock** preds      = (IRBlock**)malloc(procedure->nbBlock * sizeof(IRBlock*));
     bool eligibleForSpec = true;
 
-    for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++) {
+    for (unsigned int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++) {
       IRBlock* block = procedure->blocks[oneBlock];
 
       if (block->blockState == IRBLOCK_PERFECT_LOOP || block->blockState == IRBLOCK_UNROLLED ||
@@ -1212,7 +1113,7 @@ void buildTraces(DBTPlateform* platform, IRProcedure* procedure, int optLevel)
       if (oneBlock == 0)
         eligibleForSpec = false;
 
-      for (int oneOtherBlock = 0; oneOtherBlock < procedure->nbBlock; oneOtherBlock++) {
+      for (unsigned int oneOtherBlock = 0; oneOtherBlock < procedure->nbBlock; oneOtherBlock++) {
         IRBlock* otherBlock = procedure->blocks[oneOtherBlock];
 
         if (otherBlock == block)

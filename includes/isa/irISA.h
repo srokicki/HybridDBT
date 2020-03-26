@@ -31,7 +31,7 @@
  * TODO
  *
  *******************************************************************/
-enum jumpType { CONDITIONAL_JUMP, DIRECT_JUMP, INDIRECT_JUMP, DIRECT_CALL, INDIRECT_CALL };
+enum jumpType { CONDITIONAL_JUMP, DIRECT_JUMP, INDIRECT_JUMP, DIRECT_CALL, INDIRECT_CALL, NO_JUMP };
 
 /********************************************************************
  * Declaration of a data structure to represent the control flow of the binaries analyzed.
@@ -97,8 +97,8 @@ public:
   unsigned int vliwEndAddress;      // End address is the address of the first instruction not in the block
 
   // Control flow graph
-  unsigned char nbSucc;        // Number of successors
-  unsigned int successors[10]; // Souce start address of successors
+  unsigned char nbSucc;     // Number of successors
+  unsigned int* successors; // Souce start address of successors
 
   // Keeping trace of previous organization
   unsigned int nbMergedBlocks = 0;

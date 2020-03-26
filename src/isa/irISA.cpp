@@ -392,6 +392,15 @@ void IRProcedure::print(FILE* output, IRApplication& application)
 void IRBlock::setJump(jumpType type, unsigned int destination, unsigned char jumpID, unsigned int jumpPlace)
 {
 
+  if (type == NO_JUMP) {
+    // Block has no jump, we simply add the next block as successor
+    this->nbJumps       = 0;
+    this->nbSucc        = 1;
+    this->successors    = (unsigned int*)malloc(sizeof(unsigned int));
+    this->successors[0] = this->sourceEndAddress;
+    return;
+  }
+
   this->jumpIds    = (unsigned char*)malloc(sizeof(unsigned char));
   this->jumpPlaces = (unsigned int*)malloc(sizeof(unsigned int));
   this->jumpTypes  = (jumpType*)malloc(sizeof(jumpType));
@@ -406,44 +415,59 @@ void IRBlock::setJump(jumpType type, unsigned int destination, unsigned char jum
   if (type == CONDITIONAL_JUMP) {
     // We set two successors
     this->nbSucc        = 2;
+    this->successors    = (unsigned int*)malloc(2 * sizeof(unsigned int));
     this->successors[0] = destination;
     this->successors[1] = this->sourceEndAddress;
   } else if (type == DIRECT_JUMP) {
     // We set one successor
     this->nbSucc        = 1;
+    this->successors    = (unsigned int*)malloc(1 * sizeof(unsigned int));
     this->successors[0] = destination;
+  } else if (type == DIRECT_CALL || type == INDIRECT_CALL) {
+    this->nbSucc        = 1;
+    this->successors    = (unsigned int*)malloc(1 * sizeof(unsigned int));
+    this->successors[0] = this->sourceEndAddress;
   }
   // For indirect jumps and calls we do not add successors
 }
 
 void IRBlock::addJump(jumpType type, unsigned int destination, unsigned char jumpID, unsigned int jumpPlace)
 {
-  unsigned char* tempJumpIds   = (unsigned char*)malloc(sizeof(unsigned char) * (this->nbJumps + 1));
-  unsigned int* tempJumpPlaces = (unsigned int*)malloc(sizeof(unsigned int) * (this->nbJumps + 1));
-  jumpType* tempJumpTypes      = (jumpType*)malloc(sizeof(jumpType) * (this->nbJumps + 1));
 
-  memcpy(tempJumpIds, this->jumpIds, sizeof(unsigned char) * this->nbJumps);
-  memcpy(tempJumpPlaces, this->jumpPlaces, sizeof(unsigned int) * this->nbJumps);
-  memcpy(tempJumpTypes, this->jumpTypes, sizeof(jumpType) * this->nbJumps);
+  // If type is NO_JUMP, we only add the successor
+  if (type != NO_JUMP) {
 
-  tempJumpIds[this->nbJumps]    = jumpID;
-  tempJumpPlaces[this->nbJumps] = jumpPlace;
-  tempJumpTypes[this->nbJumps]  = type;
+    unsigned char* tempJumpIds   = (unsigned char*)malloc(sizeof(unsigned char) * (this->nbJumps + 1));
+    unsigned int* tempJumpPlaces = (unsigned int*)malloc(sizeof(unsigned int) * (this->nbJumps + 1));
+    jumpType* tempJumpTypes      = (jumpType*)malloc(sizeof(jumpType) * (this->nbJumps + 1));
 
-  if (this->nbJumps > 0) {
-    free(this->jumpIds);
-    free(this->jumpPlaces);
-    free(this->jumpTypes);
+    memcpy(tempJumpIds, this->jumpIds, sizeof(unsigned char) * this->nbJumps);
+    memcpy(tempJumpPlaces, this->jumpPlaces, sizeof(unsigned int) * this->nbJumps);
+    memcpy(tempJumpTypes, this->jumpTypes, sizeof(jumpType) * this->nbJumps);
+
+    tempJumpIds[this->nbJumps]    = jumpID;
+    tempJumpPlaces[this->nbJumps] = jumpPlace;
+    tempJumpTypes[this->nbJumps]  = type;
+
+    if (this->nbJumps > 0) {
+      free(this->jumpIds);
+      free(this->jumpPlaces);
+      free(this->jumpTypes);
+    }
+
+    this->nbJumps++;
+    this->jumpIds    = tempJumpIds;
+    this->jumpPlaces = tempJumpPlaces;
+    this->jumpTypes  = tempJumpTypes;
   }
 
-  this->nbJumps++;
-  this->jumpIds    = tempJumpIds;
-  this->jumpPlaces = tempJumpPlaces;
-  this->jumpTypes  = tempJumpTypes;
-
-  // We add a successor
-  this->successors[this->nbSucc] = destination;
+  unsigned int* tempSuccessors = (unsigned int*)malloc(sizeof(unsigned int) * this->nbSucc + 1);
+  memcpy(tempSuccessors, this->successors, sizeof(unsigned int) * this->nbSucc);
+  tempSuccessors[this->nbSucc] = destination;
+  if (this->nbSucc > 0)
+    free(this->successors);
   this->nbSucc++;
+  this->successors = tempSuccessors;
 }
 
 void IRBlock::printBytecode(std::ostream& stream)
@@ -485,6 +509,7 @@ IRBlock::IRBlock(int startAddress, int endAddress, int section)
   this->nbJumps          = 0;
   this->placeInProfiler  = -1;
   this->instructions     = NULL;
+  this->successors       = NULL;
   this->specAddr[0]      = 0;
   this->specAddr[1]      = 0;
   this->specAddr[2]      = 0;
@@ -610,24 +635,29 @@ void IRApplication::dumpApplication(char* path, unsigned int greatestAddr)
   greatestAddr += 4; // Greatest addr has to be included
 
   int nbJumps = 0;
-  for (auto& block : *this)
+  int nbSucc  = 0;
+  for (auto& block : *this) {
     nbJumps += block.nbJumps;
+    nbSucc += block.nbSucc;
+  }
 
-  IRBlock* applicationBlocks =
-      (IRBlock*)malloc((greatestAddr / 4) * sizeof(IRBlock) +
-                       nbJumps * (sizeof(unsigned int) + sizeof(unsigned char) + sizeof(jumpType)));
+  IRBlock* applicationBlocks = (IRBlock*)malloc(
+      (greatestAddr / 4) * sizeof(IRBlock) +
+      nbJumps * (sizeof(unsigned int) + sizeof(unsigned char) + sizeof(jumpType)) + nbSucc * sizeof(unsigned int));
   char* blocksAsChar = (char*)applicationBlocks;
 
-  memset(applicationBlocks, 0,
+  memset(blocksAsChar, 0,
          (greatestAddr / 4) * sizeof(IRBlock) +
-             nbJumps * (sizeof(unsigned int) + sizeof(unsigned char) + sizeof(jumpType)));
+             nbJumps * (sizeof(unsigned int) + sizeof(unsigned char) + sizeof(jumpType)) +
+             nbSucc * sizeof(unsigned int));
 
   int placeJumps = (greatestAddr / 4) * sizeof(IRBlock);
+
   for (auto& block : *this) {
     if (block.sourceStartAddress != 0) {
-      memcpy(&applicationBlocks[block.sourceStartAddress], &block, sizeof(IRBlock));
+      memcpy(&blocksAsChar[block.sourceStartAddress * sizeof(IRBlock)], &block, sizeof(IRBlock));
 
-      // We copy all jump information
+      // We copy all jump information and successors
       for (int oneJump = 0; oneJump < block.nbJumps; oneJump++) {
         memcpy(&blocksAsChar[placeJumps], &block.jumpTypes[oneJump], sizeof(jumpType));
         placeJumps += sizeof(jumpType);
@@ -635,6 +665,10 @@ void IRApplication::dumpApplication(char* path, unsigned int greatestAddr)
         placeJumps += sizeof(unsigned int);
         memcpy(&blocksAsChar[placeJumps], &block.jumpIds[oneJump], sizeof(unsigned char));
         placeJumps += sizeof(unsigned char);
+      }
+      for (unsigned int oneSucc = 0; oneSucc < block.nbSucc; oneSucc++) {
+        memcpy(&blocksAsChar[placeJumps], &block.successors[oneSucc], sizeof(jumpType));
+        placeJumps += sizeof(unsigned int);
       }
     }
   }
@@ -660,15 +694,16 @@ void IRApplication::loadApplication(char* path, unsigned int greatestAddr)
 
   IRBlock* applicationBlocks = (IRBlock*)blocksAsChar;
 
-  for (int oneInstr = 0; oneInstr < greatestAddr / 4; oneInstr++) {
+  for (unsigned int oneInstr = 0; oneInstr < greatestAddr / 4; oneInstr++) {
     if (applicationBlocks[oneInstr].sourceStartAddress != 0) {
-      applicationBlocks[oneInstr].blockState   = 0;
-      applicationBlocks[oneInstr].instructions = NULL;
+      IRBlock* block      = &applicationBlocks[oneInstr];
+      block->blockState   = 0;
+      block->instructions = NULL;
 
       this->addBlock(&applicationBlocks[oneInstr]);
 
-      if (applicationBlocks[oneInstr].procedureSourceStartAddress != 0) {
-        IRProcedure* procedure = this->getProcedure(applicationBlocks[oneInstr].procedureSourceStartAddress);
+      if (block->procedureSourceStartAddress != 0) {
+        IRProcedure* procedure = this->getProcedure(block->procedureSourceStartAddress);
         if (procedure == NULL) {
           procedure = new IRProcedure(&applicationBlocks[oneInstr], 20);
           this->addProcedure(procedure);
@@ -676,21 +711,23 @@ void IRApplication::loadApplication(char* path, unsigned int greatestAddr)
         procedure->addBlock(applicationBlocks[oneInstr]);
       }
 
-      if (applicationBlocks[oneInstr].nbJumps > 0) {
-        applicationBlocks[oneInstr].jumpPlaces =
-            (unsigned int*)malloc(applicationBlocks[oneInstr].nbJumps * sizeof(unsigned int));
-        applicationBlocks[oneInstr].jumpTypes =
-            (jumpType*)malloc(applicationBlocks[oneInstr].nbJumps * sizeof(jumpType));
-        applicationBlocks[oneInstr].jumpIds =
-            (unsigned char*)malloc(applicationBlocks[oneInstr].nbJumps * sizeof(unsigned char));
+      if (block->nbJumps > 0) {
+        block->jumpPlaces = (unsigned int*)malloc(block->nbJumps * sizeof(unsigned int));
+        block->jumpTypes  = (jumpType*)malloc(block->nbJumps * sizeof(jumpType));
+        block->jumpIds    = (unsigned char*)malloc(block->nbJumps * sizeof(unsigned char));
 
-        for (int oneJump = 0; oneJump < applicationBlocks[oneInstr].nbJumps; oneJump++) {
+        for (int oneJump = 0; oneJump < block->nbJumps; oneJump++) {
           fileIn.read(smallBuffer, sizeof(unsigned int) + sizeof(unsigned char) + sizeof(jumpType));
-          memcpy(&(applicationBlocks[oneInstr].jumpTypes[oneJump]), smallBuffer, sizeof(jumpType));
-          memcpy(&(applicationBlocks[oneInstr].jumpPlaces[oneJump]), &smallBuffer[sizeof(jumpType)],
-                 sizeof(unsigned int));
-          memcpy(&(applicationBlocks[oneInstr].jumpIds[oneJump]), &smallBuffer[sizeof(jumpType) + sizeof(unsigned int)],
+          memcpy(&(block->jumpTypes[oneJump]), smallBuffer, sizeof(jumpType));
+          memcpy(&(block->jumpPlaces[oneJump]), &smallBuffer[sizeof(jumpType)], sizeof(unsigned int));
+          memcpy(&(block->jumpIds[oneJump]), &smallBuffer[sizeof(jumpType) + sizeof(unsigned int)],
                  sizeof(unsigned char));
+        }
+
+        block->successors = (unsigned int*)malloc(block->nbSucc * sizeof(unsigned int));
+        for (unsigned int oneSucc = 0; oneSucc < block->nbSucc; oneSucc++) {
+          fileIn.read(smallBuffer, sizeof(unsigned int));
+          memcpy(&(block->successors[oneSucc]), smallBuffer, sizeof(unsigned int));
         }
       }
     }
