@@ -193,13 +193,15 @@ void updateOpt2BlockSize(IRBlock* block)
   if (block->blockState == IRBLOCK_TRACE)
     for (int oneSourceCycle = block->sourceStartAddress + 1; oneSourceCycle < block->sourceEndAddress;
          oneSourceCycle++) {
-      if (blockInfo[oneSourceCycle].block != NULL) {
+      // TODO: use block iterator ?
+      if (application->getBlock(oneSourceCycle) != NULL) {
+        IRBlock* otherBlock = application->getBlock(oneSourceCycle);
         if (currentjumpId >= block->nbJumps) {
-          blockInfo[oneSourceCycle].scheduleSizeOpt2 = (block->vliwEndAddress - block->vliwStartAddress) / 2;
-          blockInfo[oneSourceCycle].block->sizeOpt2  = blockInfo[block->sourceStartAddress].scheduleSizeOpt2;
+          // blockInfo[oneSourceCycle].scheduleSizeOpt2 = (block->vliwEndAddress - block->vliwStartAddress) / 2;
+          otherBlock->sizeOpt2 = blockInfo[block->sourceStartAddress].scheduleSizeOpt2;
         } else {
-          blockInfo[oneSourceCycle].scheduleSizeOpt2 = block->vliwEndAddress - block->jumpPlaces[currentjumpId];
-          blockInfo[oneSourceCycle].block->sizeOpt2  = blockInfo[block->sourceStartAddress].scheduleSizeOpt2;
+          // blockInfo[oneSourceCycle].scheduleSizeOpt2 = block->vliwEndAddress - block->jumpPlaces[currentjumpId];
+          otherBlock->sizeOpt2 = blockInfo[block->sourceStartAddress].scheduleSizeOpt2;
         }
         currentjumpId++;
         nbBlockAdded++;
@@ -207,7 +209,8 @@ void updateOpt2BlockSize(IRBlock* block)
     }
 
   if (nbBlockAdded != block->nbMergedBlocks) {
-    printf("Added %d block infor while there are %d merged blocks\n", nbBlockAdded, block->nbMergedBlocks);
+    printf("Added %d block infor while there are %d merged blocks and %d jumps\n", nbBlockAdded, block->nbMergedBlocks,
+           block->nbJumps);
   }
 }
 
@@ -425,6 +428,11 @@ void initializeDBTInfo(char* fileName)
     // We check if application has been optimized...
     bool isOptimized = true;
     for (auto& block : *application) {
+      blockInfo[block.sourceStartAddress].block            = &block;
+      blockInfo[block.sourceStartAddress].scheduleSizeOpt0 = block.sizeOpt0;
+      blockInfo[block.sourceStartAddress].scheduleSizeOpt1 = block.sizeOpt1;
+      blockInfo[block.sourceStartAddress].scheduleSizeOpt2 = block.sizeOpt2;
+
       if (block.sizeOpt2 == -1) {
         isOptimized = false;
         break;
