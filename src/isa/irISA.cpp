@@ -483,7 +483,7 @@ void IRBlock::addMergedBlocks(IRBlock* block)
   unsigned int* tempMergedBlocks =
       (unsigned int*)malloc((this->nbMergedBlocks + argNbMergedBlocks + 1) * sizeof(unsigned int));
   memcpy(tempMergedBlocks, this->mergedBlocks, this->nbMergedBlocks * sizeof(unsigned int));
-  tempMergedBlocks[this->nbMergedBlocks + 1] = block->sourceStartAddress;
+  tempMergedBlocks[this->nbMergedBlocks] = block->sourceStartAddress;
   memcpy(&tempMergedBlocks[this->nbMergedBlocks + 1], argMergedBlocks, argNbMergedBlocks * sizeof(unsigned int));
 
   // We free the previous array
