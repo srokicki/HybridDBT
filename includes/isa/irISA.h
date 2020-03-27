@@ -102,7 +102,7 @@ public:
 
   // Keeping trace of previous organization
   unsigned int nbMergedBlocks = 0;
-  unsigned int mergedBlocks[10];
+  unsigned int* mergedBlocks;
 
   unsigned char nbJumps;
   unsigned char* jumpIds;
@@ -127,6 +127,7 @@ public:
 
   void setJump(jumpType type, unsigned int jumpDestination, unsigned char jumpID, unsigned int jumpPlace);
   void addJump(jumpType type, unsigned int jumpDestination, unsigned char jumpID, unsigned int jumpPlace);
+  void addMergedBlocks(IRBlock* block);
 
   void printBytecode(std::ostream& stream);
   void printCode(std::ostream& stream, DBTPlateform* platform);

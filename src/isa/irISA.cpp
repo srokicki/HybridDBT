@@ -414,16 +414,19 @@ void IRBlock::setJump(jumpType type, unsigned int destination, unsigned char jum
   // We set successors correctly
   if (type == CONDITIONAL_JUMP) {
     // We set two successors
+    assert(destination != -1);
     this->nbSucc        = 2;
     this->successors    = (unsigned int*)malloc(2 * sizeof(unsigned int));
     this->successors[0] = destination;
     this->successors[1] = this->sourceEndAddress;
   } else if (type == DIRECT_JUMP) {
     // We set one successor
+    assert(destination != -1);
     this->nbSucc        = 1;
     this->successors    = (unsigned int*)malloc(1 * sizeof(unsigned int));
     this->successors[0] = destination;
   } else if (type == DIRECT_CALL || type == INDIRECT_CALL) {
+    assert(destination != -1);
     this->nbSucc        = 1;
     this->successors    = (unsigned int*)malloc(1 * sizeof(unsigned int));
     this->successors[0] = this->sourceEndAddress;
@@ -463,11 +466,36 @@ void IRBlock::addJump(jumpType type, unsigned int destination, unsigned char jum
 
   unsigned int* tempSuccessors = (unsigned int*)malloc(sizeof(unsigned int) * this->nbSucc + 1);
   memcpy(tempSuccessors, this->successors, sizeof(unsigned int) * this->nbSucc);
+  assert(destination != -1);
   tempSuccessors[this->nbSucc] = destination;
   if (this->nbSucc > 0)
     free(this->successors);
   this->nbSucc++;
   this->successors = tempSuccessors;
+}
+
+void IRBlock::addMergedBlocks(IRBlock* block)
+{
+  unsigned int argNbMergedBlocks = block->nbMergedBlocks;
+  unsigned int* argMergedBlocks  = block->mergedBlocks;
+
+  unsigned int* tempMergedBlocks =
+      (unsigned int*)malloc((this->nbMergedBlocks + argNbMergedBlocks + 1) * sizeof(unsigned int));
+  memcpy(tempMergedBlocks, this->mergedBlocks, this->nbMergedBlocks * sizeof(unsigned int));
+  tempMergedBlocks[this->nbMergedBlocks + 1] = block->sourceStartAddress;
+  memcpy(&tempMergedBlocks[this->nbMergedBlocks + 1], argMergedBlocks, argNbMergedBlocks * sizeof(unsigned int));
+
+  if (this->nbMergedBlocks != 0) {
+    free(this->mergedBlocks);
+  }
+
+  if (block->nbMergedBlocks != 0) {
+    block->nbMergedBlocks = 0;
+    free(block->mergedBlocks);
+  }
+
+  this->mergedBlocks = tempMergedBlocks;
+  this->nbMergedBlocks += argNbMergedBlocks;
 }
 
 void IRBlock::printBytecode(std::ostream& stream)
@@ -507,7 +535,9 @@ IRBlock::IRBlock(int startAddress, int endAddress, int section)
   this->section          = section;
   this->nbInstr          = 0;
   this->nbJumps          = 0;
+  this->nbMergedBlocks   = 0;
   this->placeInProfiler  = -1;
+  this->mergedBlocks     = NULL;
   this->instructions     = NULL;
   this->successors       = NULL;
   this->specAddr[0]      = 0;
@@ -667,7 +697,7 @@ void IRApplication::dumpApplication(char* path, unsigned int greatestAddr)
         placeJumps += sizeof(unsigned char);
       }
       for (unsigned int oneSucc = 0; oneSucc < block.nbSucc; oneSucc++) {
-        memcpy(&blocksAsChar[placeJumps], &block.successors[oneSucc], sizeof(jumpType));
+        memcpy(&blocksAsChar[placeJumps], &block.successors[oneSucc], sizeof(unsigned int));
         placeJumps += sizeof(unsigned int);
       }
     }
@@ -676,7 +706,8 @@ void IRApplication::dumpApplication(char* path, unsigned int greatestAddr)
   std::ofstream fileOut;
   fileOut.open(path);
   fileOut.write(blocksAsChar, (greatestAddr / 4) * sizeof(IRBlock) +
-                                  nbJumps * (sizeof(unsigned int) + sizeof(unsigned char) + sizeof(jumpType)));
+                                  nbJumps * (sizeof(unsigned int) + sizeof(unsigned char) + sizeof(jumpType)) +
+                                  nbSucc * sizeof(unsigned int));
   fileOut.close();
 }
 
@@ -723,7 +754,8 @@ void IRApplication::loadApplication(char* path, unsigned int greatestAddr)
           memcpy(&(block->jumpIds[oneJump]), &smallBuffer[sizeof(jumpType) + sizeof(unsigned int)],
                  sizeof(unsigned char));
         }
-
+      }
+      if (block->nbSucc > 0) {
         block->successors = (unsigned int*)malloc(block->nbSucc * sizeof(unsigned int));
         for (unsigned int oneSucc = 0; oneSucc < block->nbSucc; oneSucc++) {
           fileIn.read(smallBuffer, sizeof(unsigned int));

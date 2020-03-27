@@ -421,7 +421,5 @@ int buildAdvancedControlFlow(DBTPlateform* platform, IRBlock* startBlock, IRAppl
     block->blockState          = IRBLOCK_PROC;
   }
 
-  printf("Adding a procedure with %d blocks. First blocks goes from %x to %x\n", procedure->nbBlock,
-         procedure->entryBlock->sourceStartAddress, procedure->entryBlock->sourceEndAddress);
   return 0;
 }

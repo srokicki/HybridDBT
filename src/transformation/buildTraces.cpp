@@ -1033,12 +1033,7 @@ void buildTraces(DBTPlateform* platform, IRProcedure* procedure, int optLevel)
         firstPredecessor->blockState = IRBLOCK_TRACE;
 
         // We add the merged block in the predecessor's list of merged blockState
-        if (firstPredecessor->nbMergedBlocks < 10) {
-          firstPredecessor->mergedBlocks[firstPredecessor->nbMergedBlocks] = block->sourceStartAddress;
-          firstPredecessor->nbMergedBlocks++;
-        } else {
-          Log::logError << "Error while building a trace: trying to add a merged block while there's no place left\n";
-        }
+        firstPredecessor->addMergedBlocks(block);
 
         firstPredecessor->sourceEndAddress = block->sourceEndAddress;
 
