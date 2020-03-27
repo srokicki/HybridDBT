@@ -259,13 +259,10 @@ IRProcedure* optimizeLevel2(IRBlock& block)
   } else {
     for (int oneProcedure = 0; oneProcedure < application->numberProcedures; oneProcedure++) {
       IRProcedure* procedure = application->procedures[oneProcedure];
-      for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++) {
-        IRBlock* otherBlock = procedure->blocks[oneBlock];
-        if (otherBlock->sourceStartAddress * 4 == otherBlock->sourceStartAddress) {
-          return procedure;
-        }
-      }
+      if (procedure->entryBlock->sourceStartAddress == block.procedureSourceStartAddress)
+        return procedure;
     }
+    printf("Proc not found\n");
     return NULL;
   }
 }
@@ -602,7 +599,7 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int* nextBlock)
   }
 
   if (blockInfo[address >> 2].block == NULL) {
-
+    printf("Add to coorect address of block (was %x)\n", address);
     int currentAddress = address;
     while (blockInfo[currentAddress >> 2].block == NULL) {
       currentAddress -= 4;
