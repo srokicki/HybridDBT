@@ -479,23 +479,27 @@ void IRBlock::addMergedBlocks(IRBlock* block)
   unsigned int argNbMergedBlocks = block->nbMergedBlocks;
   unsigned int* argMergedBlocks  = block->mergedBlocks;
 
+  // We allocate a new array and add/copy the information inside
   unsigned int* tempMergedBlocks =
       (unsigned int*)malloc((this->nbMergedBlocks + argNbMergedBlocks + 1) * sizeof(unsigned int));
   memcpy(tempMergedBlocks, this->mergedBlocks, this->nbMergedBlocks * sizeof(unsigned int));
   tempMergedBlocks[this->nbMergedBlocks + 1] = block->sourceStartAddress;
   memcpy(&tempMergedBlocks[this->nbMergedBlocks + 1], argMergedBlocks, argNbMergedBlocks * sizeof(unsigned int));
 
+  // We free the previous array
   if (this->nbMergedBlocks != 0) {
     free(this->mergedBlocks);
   }
 
+  // We set the newly allocated array increment the nbMergedBlocks
+  this->mergedBlocks = tempMergedBlocks;
+  this->nbMergedBlocks += argNbMergedBlocks + 1;
+
+  // We remove the merged blocks of the second block
   if (block->nbMergedBlocks != 0) {
     block->nbMergedBlocks = 0;
     free(block->mergedBlocks);
   }
-
-  this->mergedBlocks = tempMergedBlocks;
-  this->nbMergedBlocks += argNbMergedBlocks;
 }
 
 void IRBlock::printBytecode(std::ostream& stream)
