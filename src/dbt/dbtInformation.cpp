@@ -34,7 +34,7 @@
 
 #include <dbt/dbtInformation.h>
 #include <vector>
-#include <algorithm>
+//#include <algorithm>
 
 #ifndef __NIOS
 #include <lib/elfFile.h>
@@ -511,6 +511,7 @@ void initializeDBTInfo(char* fileName)
           printf("For block %d, opt 1 is not computed\n", block.sourceStartAddress);
         }
 
+    //it would be better to compare the cost too
         if (block.sizeOpt2 == -1) {
           printf("For block %d, opt 2 is not computed (state is %d)\n", block.sourceStartAddress, block.blockState);
           block.sizeOpt2 = block.sizeOpt1;
@@ -815,16 +816,28 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
   newEntry.block     = block;
   newEntry.size      = size;
   newEntry.cost      = size;
-  if() // TODO si opt1, *2 si OPT2, *100 
-  if (procedure != NULL)
+  if (procedure != NULL) {
     newEntry.isBlock = false;
-  else
+    newEntry.cost   *= COST_OPT_2;
+  } else {
     newEntry.isBlock = true;
+    newEntry.cost   *= COST_OPT_1;
+  }
 
   int currentSize = contentTranslationCache();
   if (SIZE_TC == 0 || currentSize + size < SIZE_TC) {
     // We can store the translated element in the translation cache without having to evict anything
-    translationCacheContent->push_back(newEntry);
+    // sorting at the insertion, might be cheaper in time. algorithm not needed anymore
+    bool inserted = false;
+    for (int idInsertion = 0; idInsertion < translationCacheContent->size() && !inserted; idInsertion ++) {
+      if (sortFunction(newEntry, translationCacheContent->at(idInsertion))) {
+        inserted = true;
+        translationCacheContent->insert(translationCacheContent->begin() + idInsertion, newEntry);
+      }
+    }
+    if (!inserted)
+      translationCacheContent->push_back(newEntry);
+
     return true;
   } else {
     // We have to evict something
@@ -839,7 +852,7 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
     printf("\033[0m");
     printf("\n");
 
-    sort(translationCacheContent->begin(), translationCacheContent->end(), sortFunction);
+    //sort(translationCacheContent->begin(), translationCacheContent->end(), sortFunction);
     int idEndSelection = 0, sumSize = 0;
     while (currentSize + size > SIZE_TC + sumSize) {
       if (idEndSelection >= translationCacheContent->size()) {
@@ -860,25 +873,39 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
       sumSize += translationCacheContent->at(--idStartSelection).size;
     }
 
+
+    // this is usseless --------------------------------------------------------
     printf("suppressed components : ");
     for (int i = idStartSelection; i < idEndSelection; i ++) {
       struct entryInTranslationCache theEntry = translationCacheContent->at(i);
+
       if (theEntry.procedure == NULL) printf("\033[0;33m");
       else printf("\033[0;32m");
 
       printf("%d ",theEntry.size);
-      currentSize -= theEntry.size;
+      // pourrait a terme remplacer l'appel de contentTranslationCache
+      // currentSize -= theEntry.size;
     }
     printf("\033[0m\n");
     printf("\n");
+    // -------------------------------------------------------------------------
+
     // making space in the cache
     translationCacheContent->erase(
         translationCacheContent->begin() + idStartSelection,
         translationCacheContent->begin() + idEndSelection);
 
-    // store the new element
-    translationCacheContent->push_back(newEntry);
-    currentSize -= size;
+    // store the new element, now that there is enough space
+    bool inserted = false;
+    for (int idInsertion = 0; idInsertion < translationCacheContent->size() && !inserted; idInsertion ++) {
+      if (sortFunction(newEntry, translationCacheContent->at(idInsertion))) {
+        inserted = true;
+        translationCacheContent->insert(translationCacheContent->begin() + idInsertion, newEntry);
+      }
+    }
+    if (!inserted)
+      translationCacheContent->push_back(newEntry);
+    //currentSize += size;
     return true;
   }
 }
@@ -985,8 +1012,7 @@ bool sortFunction(struct entryInTranslationCache a, struct entryInTranslationCac
   if (a.isBlock != b.isBlock) {
     return a.isBlock;
   } else {
-    //it would be better to compare the cost too
-    return a.size < b.size;
+    return a.cost < b.cost;
   }
 
 }
