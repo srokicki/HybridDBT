@@ -34,6 +34,7 @@
 
 #include <dbt/dbtInformation.h>
 #include <vector>
+#include <algorithm>
 
 #ifndef __NIOS
 #include <lib/elfFile.h>
@@ -54,7 +55,7 @@ extern "C"
 #define COST_OPT_1 10
 #define COST_OPT_2 100
 
-#define SIZE_TC 0
+#define SIZE_TC 1024
 
     /****************************************************************************************************************************/
 
@@ -107,6 +108,7 @@ bool isExploreOpts = false;
 // Definition of internal function that are not visible from outside
 
 bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block);
+bool sortFunction(struct entryInTranslationCache a, struct entryInTranslationCache b);
 
 /****************************************************************************************************************************/
 
@@ -812,6 +814,8 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
   newEntry.procedure = procedure;
   newEntry.block     = block;
   newEntry.size      = size;
+  newEntry.cost      = size;
+  if() // TODO si opt1, *2 si OPT2, *100 
   if (procedure != NULL)
     newEntry.isBlock = false;
   else
@@ -824,8 +828,58 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
     return true;
   } else {
     // We have to evict something
-    fprintf(stderr, "Stopped optimizing because replacement policy has not been encoded\n");
-    return false;
+
+    printf("stocked translation : %d, size of the new entry : %d\n", currentSize, size);
+    for ( int i = 0; i < translationCacheContent->size(); i ++) {
+      struct entryInTranslationCache theEntry = translationCacheContent->at(i);
+      if (theEntry.procedure == NULL) printf("\033[0;33m");
+      else printf("\033[0;32m");
+      printf("%d ", theEntry.size);
+    }
+    printf("\033[0m");
+    printf("\n");
+
+    sort(translationCacheContent->begin(), translationCacheContent->end(), sortFunction);
+    int idEndSelection = 0, sumSize = 0;
+    while (currentSize + size > SIZE_TC + sumSize) {
+      if (idEndSelection >= translationCacheContent->size()) {
+        fprintf(stderr, "cache policy : false returned -> do not fit in the tc\n\n");
+        return false;
+      }
+      if (sortFunction(newEntry, translationCacheContent->at(idEndSelection))) {
+        fprintf(stderr, "cache policy : false returned -> not valuable enough\n\n");
+        return false;
+      }
+      sumSize += translationCacheContent->at(idEndSelection++).size;
+    }
+    int idStartSelection = 0;
+    while (currentSize + size < SIZE_TC + sumSize) {
+      sumSize -= translationCacheContent->at(idStartSelection++).size;
+    }
+    if (currentSize + size > SIZE_TC + sumSize) {
+      sumSize += translationCacheContent->at(--idStartSelection).size;
+    }
+
+    printf("suppressed components : ");
+    for (int i = idStartSelection; i < idEndSelection; i ++) {
+      struct entryInTranslationCache theEntry = translationCacheContent->at(i);
+      if (theEntry.procedure == NULL) printf("\033[0;33m");
+      else printf("\033[0;32m");
+
+      printf("%d ",theEntry.size);
+      currentSize -= theEntry.size;
+    }
+    printf("\033[0m\n");
+    printf("\n");
+    // making space in the cache
+    translationCacheContent->erase(
+        translationCacheContent->begin() + idStartSelection,
+        translationCacheContent->begin() + idEndSelection);
+
+    // store the new element
+    translationCacheContent->push_back(newEntry);
+    currentSize -= size;
+    return true;
   }
 }
 
@@ -924,4 +978,15 @@ void finalizeDBTInformation()
   if (isExploreOpts) {
     application->dumpApplication(execPath, greatestAddr * 4);
   }
+}
+
+bool sortFunction(struct entryInTranslationCache a, struct entryInTranslationCache b)
+{
+  if (a.isBlock != b.isBlock) {
+    return a.isBlock;
+  } else {
+    //it would be better to compare the cost too
+    return a.size < b.size;
+  }
+
 }
