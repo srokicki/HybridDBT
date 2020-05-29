@@ -34,7 +34,7 @@
 
 #include <dbt/dbtInformation.h>
 #include <vector>
-//#include <algorithm>
+#include <algorithm>
 
 #ifndef __NIOS
 #include <lib/elfFile.h>
@@ -55,7 +55,7 @@ extern "C"
 #define COST_OPT_1 10
 #define COST_OPT_2 100
 
-#define SIZE_TC 1024
+#define SIZE_TC 32768
 
     /****************************************************************************************************************************/
 
@@ -79,6 +79,7 @@ struct indirectionTableEntry {
   uint8_t counter;
   bool isInTC;
   char optLevel;
+  int lastCycleTouch;     // Needed to set a LRU policy
   unsigned int sizeInTC;  // Reprensent the size of the binaries in the TC (counter as the number of instruction)
   uint64_t timeAvailable; // Reprensent the timestamp where the optimization is finished. If current cycle number is
                           // lower we take the optimization level just below
@@ -511,7 +512,6 @@ void initializeDBTInfo(char* fileName)
           printf("For block %d, opt 1 is not computed\n", block.sourceStartAddress);
         }
 
-    //it would be better to compare the cost too
         if (block.sizeOpt2 == -1) {
           printf("For block %d, opt 2 is not computed (state is %d)\n", block.sourceStartAddress, block.blockState);
           block.sizeOpt2 = block.sizeOpt1;
@@ -703,6 +703,7 @@ char getOptLevel(int address, uint64_t nb_cycle)
           optLevel = indirectionTable[oneWay][setNumber].optLevel - 1;
       }
 
+      indirectionTable[oneWay][setNumber].lastCycleTouch= nb_cycle;
       found = true;
     }
   }
@@ -715,6 +716,7 @@ char getOptLevel(int address, uint64_t nb_cycle)
         indirectionTable[oneWay][setNumber].counter       = 1;
         indirectionTable[oneWay][setNumber].optLevel      = 0;
         indirectionTable[oneWay][setNumber].timeAvailable = nb_cycle;
+        indirectionTable[oneWay][setNumber].lastCycleTouch= nb_cycle;
         break;
 
       } else {
@@ -750,6 +752,7 @@ char getOptLevel(int address, uint64_t nb_cycle)
               indirectionTable[oneWay][oneSet].timeAvailable  = nb_cycle + COST_OPT_1 * size;
               indirectionTable[oneWay][oneSet].costOfBinaries = COST_OPT_1 * size;
               indirectionTable[oneWay][oneSet].sizeInTC       = size;
+              indirectionTable[oneWay][oneSet].lastCycleTouch = nb_cycle;
               sizeLeftInTC -= size;
               nextAvailabilityDBTProc = nb_cycle + COST_OPT_1 * size;
             }
@@ -782,6 +785,7 @@ char getOptLevel(int address, uint64_t nb_cycle)
                 indirectionTable[oneWay][oneSet].timeAvailable  = nb_cycle + COST_OPT_2 * size;
                 indirectionTable[oneWay][oneSet].costOfBinaries = COST_OPT_2 * size;
                 indirectionTable[oneWay][oneSet].sizeInTC       = size;
+                indirectionTable[oneWay][oneSet].lastCycleTouch = nb_cycle;
                 sizeLeftInTC -= size;
                 nextAvailabilityDBTProc = nb_cycle + COST_OPT_2 * size;
               }
@@ -827,17 +831,7 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
   int currentSize = contentTranslationCache();
   if (SIZE_TC == 0 || currentSize + size < SIZE_TC) {
     // We can store the translated element in the translation cache without having to evict anything
-    // sorting at the insertion, might be cheaper in time. algorithm not needed anymore
-    bool inserted = false;
-    for (int idInsertion = 0; idInsertion < translationCacheContent->size() && !inserted; idInsertion ++) {
-      if (sortFunction(newEntry, translationCacheContent->at(idInsertion))) {
-        inserted = true;
-        translationCacheContent->insert(translationCacheContent->begin() + idInsertion, newEntry);
-      }
-    }
-    if (!inserted)
-      translationCacheContent->push_back(newEntry);
-
+    translationCacheContent->push_back(newEntry);
     return true;
   } else {
     // We have to evict something
@@ -852,7 +846,7 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
     printf("\033[0m");
     printf("\n");
 
-    //sort(translationCacheContent->begin(), translationCacheContent->end(), sortFunction);
+    sort(translationCacheContent->begin(), translationCacheContent->end(), sortFunction);
     int idEndSelection = 0, sumSize = 0;
     while (currentSize + size > SIZE_TC + sumSize) {
       if (idEndSelection >= translationCacheContent->size()) {
@@ -873,39 +867,25 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
       sumSize += translationCacheContent->at(--idStartSelection).size;
     }
 
-
-    // this is usseless --------------------------------------------------------
     printf("suppressed components : ");
     for (int i = idStartSelection; i < idEndSelection; i ++) {
       struct entryInTranslationCache theEntry = translationCacheContent->at(i);
-
       if (theEntry.procedure == NULL) printf("\033[0;33m");
       else printf("\033[0;32m");
 
       printf("%d ",theEntry.size);
-      // pourrait a terme remplacer l'appel de contentTranslationCache
-      // currentSize -= theEntry.size;
+      currentSize -= theEntry.size;
     }
     printf("\033[0m\n");
     printf("\n");
-    // -------------------------------------------------------------------------
-
     // making space in the cache
     translationCacheContent->erase(
         translationCacheContent->begin() + idStartSelection,
         translationCacheContent->begin() + idEndSelection);
 
-    // store the new element, now that there is enough space
-    bool inserted = false;
-    for (int idInsertion = 0; idInsertion < translationCacheContent->size() && !inserted; idInsertion ++) {
-      if (sortFunction(newEntry, translationCacheContent->at(idInsertion))) {
-        inserted = true;
-        translationCacheContent->insert(translationCacheContent->begin() + idInsertion, newEntry);
-      }
-    }
-    if (!inserted)
-      translationCacheContent->push_back(newEntry);
-    //currentSize += size;
+    // store the new element
+    translationCacheContent->push_back(newEntry);
+    currentSize -= size;
     return true;
   }
 }
@@ -1012,7 +992,31 @@ bool sortFunction(struct entryInTranslationCache a, struct entryInTranslationCac
   if (a.isBlock != b.isBlock) {
     return a.isBlock;
   } else {
-    return a.cost < b.cost;
-  }
 
+    int addressA = 0, addressB = 0;
+
+    if (a.isBlock) {
+      addressA = a.block->sourceStartAddress;
+      addressB = b.block->sourceStartAddress;
+    } else {
+      addressA = a.procedure->entryBlock->sourceStartAddress;
+      addressB = b.procedure->entryBlock->sourceStartAddress;
+    }
+
+    int lastTouchA = 1, lastTouchB = 1;
+    int counterA = 0, counterB = 0;
+    int setA = (addressA >> 2) & 0x7, setB = (addressB >> 2) & 0x7;
+
+    for(int i = 0; i < IT_NB_WAY; i++) {
+      if (indirectionTable[i][setA].address == addressA) {
+        lastTouchA = indirectionTable[i][setA].lastCycleTouch;
+        counterA   = indirectionTable[i][setA].counter;
+      }
+      if (indirectionTable[i][setB].address == addressB) {
+        lastTouchB = indirectionTable[i][setB].lastCycleTouch;
+        counterB   = indirectionTable[i][setB].counter;
+      }
+    }
+    return lastTouchA * a.size * (counterA+1) < lastTouchB * b.size * (counterB+1);
+  }
 }
