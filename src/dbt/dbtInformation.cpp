@@ -845,8 +845,18 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
     }
     printf("\033[0m");
     printf("\n");
-
+    /*
+    printf("IndirectionTable counters : ");
+    for (int way = 0; way < IT_NB_WAY; way ++) {
+      printf("\n%d ", way);
+      for (int set = 0; set < IT_NB_SET; set ++) {
+        printf("\t%d", indirectionTable[way][set].counter);
+      }
+    }
+    printf("\n");
+    */
     sort(translationCacheContent->begin(), translationCacheContent->end(), sortFunction);
+    // set the end of the selection
     int idEndSelection = 0, sumSize = 0;
     while (currentSize + size > SIZE_TC + sumSize) {
       if (idEndSelection >= translationCacheContent->size()) {
@@ -859,6 +869,8 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
       }
       sumSize += translationCacheContent->at(idEndSelection++).size;
     }
+
+    // set the end of the selection
     int idStartSelection = 0;
     while (currentSize + size < SIZE_TC + sumSize) {
       sumSize -= translationCacheContent->at(idStartSelection++).size;
@@ -866,6 +878,9 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
     if (currentSize + size > SIZE_TC + sumSize) {
       sumSize += translationCacheContent->at(--idStartSelection).size;
     }
+
+
+
 
     printf("suppressed components : ");
     for (int i = idStartSelection; i < idEndSelection; i ++) {
@@ -875,6 +890,22 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
 
       printf("%d ",theEntry.size);
       currentSize -= theEntry.size;
+
+      // processing of the eviction
+      long unsigned int address = 0;
+      if (theEntry.procedure != NULL) {
+        address = theEntry.procedure->entryBlock->sourceStartAddress;
+      } else {
+        address = theEntry.block->sourceEndAddress;
+      }
+      unsigned int set = (address >> 2) & 0x7;
+      for (int oneWay = 0; oneWay < IT_NB_WAY; oneWay ++) {
+        if (indirectionTable[oneWay][set].address = address) {
+          indirectionTable[oneWay][set].counter = 0;
+          indirectionTable[oneWay][set].optLevel = 0;
+          break;
+        }
+      }
     }
     printf("\033[0m\n");
     printf("\n");
@@ -989,34 +1020,34 @@ void finalizeDBTInformation()
 
 bool sortFunction(struct entryInTranslationCache a, struct entryInTranslationCache b)
 {
-  if (a.isBlock != b.isBlock) {
-    return a.isBlock;
-  } else {
-
-    int addressA = 0, addressB = 0;
-
-    if (a.isBlock) {
-      addressA = a.block->sourceStartAddress;
-      addressB = b.block->sourceStartAddress;
-    } else {
-      addressA = a.procedure->entryBlock->sourceStartAddress;
-      addressB = b.procedure->entryBlock->sourceStartAddress;
-    }
-
-    int lastTouchA = 1, lastTouchB = 1;
-    int counterA = 0, counterB = 0;
-    int setA = (addressA >> 2) & 0x7, setB = (addressB >> 2) & 0x7;
-
-    for(int i = 0; i < IT_NB_WAY; i++) {
-      if (indirectionTable[i][setA].address == addressA) {
-        lastTouchA = indirectionTable[i][setA].lastCycleTouch;
-        counterA   = indirectionTable[i][setA].counter;
-      }
-      if (indirectionTable[i][setB].address == addressB) {
-        lastTouchB = indirectionTable[i][setB].lastCycleTouch;
-        counterB   = indirectionTable[i][setB].counter;
-      }
-    }
-    return lastTouchA * a.size * (counterA+1) < lastTouchB * b.size * (counterB+1);
+  unsigned int addressA = 0, addressB = 0;
+// peut-etre vout-il mieux ne pas se servir du counter, il pourrait amener des aberrations
+  if (a.block != NULL) {
+    addressA = a.block->sourceStartAddress;
+  } else if (a.procedure != NULL){
+    addressA = a.procedure->entryBlock->sourceStartAddress;
   }
+
+  if (b.block != NULL) {
+    addressB = b.block->sourceStartAddress;
+  } else if (a.procedure != NULL){
+    addressB = b.procedure->entryBlock->sourceStartAddress;
+  }
+
+  unsigned int lastTouchA = 1, lastTouchB = 1;
+  unsigned int counterA = 1, counterB = 1;
+  int setA = (addressA >> 2) & 0x7, setB = (addressB >> 2) & 0x7;
+
+  for(int oneWay = 0; oneWay < IT_NB_WAY; oneWay++) {
+    if (indirectionTable[oneWay][setA].address == addressA) {
+      lastTouchA = indirectionTable[oneWay][setA].lastCycleTouch;
+      counterA   = indirectionTable[oneWay][setA].counter;
+    }
+    if (indirectionTable[oneWay][setB].address == addressB) {
+      lastTouchB = indirectionTable[oneWay][setB].lastCycleTouch;
+      counterB   = indirectionTable[oneWay][setB].counter;
+    }
+  }
+  return lastTouchA * a.size * (counterA+1) < lastTouchB * b.size * (counterB+1);
+
 }
