@@ -34,7 +34,7 @@
 
 #include <dbt/dbtInformation.h>
 #include <vector>
-#include <algorithm>
+#include <list>
 
 #ifndef __NIOS
 #include <lib/elfFile.h>
@@ -55,7 +55,7 @@ extern "C"
 #define COST_OPT_1 10
 #define COST_OPT_2 100
 
-#define SIZE_TC 32768
+#define SIZE_TC 2048
 
     /****************************************************************************************************************************/
 
@@ -109,7 +109,7 @@ bool isExploreOpts = false;
 // Definition of internal function that are not visible from outside
 
 bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block);
-bool sortFunction(struct entryInTranslationCache a, struct entryInTranslationCache b);
+int evalFunction(struct entryInTranslationCache a, int* way, int* set);
 
 /****************************************************************************************************************************/
 
@@ -602,7 +602,7 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int* nextBlock)
   }
 
   if (blockInfo[address >> 2].block == NULL) {
-    printf("Add to coorect address of block (was %x)\n", address);
+    printf("Add to correct address of block (was %x)\n", address);
     int currentAddress = address;
     while (blockInfo[currentAddress >> 2].block == NULL) {
       currentAddress -= 4;
@@ -809,7 +809,6 @@ char getOptLevel(int address, uint64_t nb_cycle)
 
 bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block)
 {
-
   // If first use, we initialize the data structure
   if (translationCacheContent == NULL)
     translationCacheContent = new std::vector<struct entryInTranslationCache>();
@@ -833,90 +832,116 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
     // We can store the translated element in the translation cache without having to evict anything
     translationCacheContent->push_back(newEntry);
     return true;
-  } else {
+  } else { //V5
+    if (size > SIZE_TC) {
+      // fprintf(stderr, "entry do not fit in the tc\n");
+      return false;
+    }
     // We have to evict something
 
-    printf("stocked translation : %d, size of the new entry : %d\n", currentSize, size);
+
+    fprintf(stderr,"stocked translation : %d, size of the new entry : %d\n", currentSize, size);
     for ( int i = 0; i < translationCacheContent->size(); i ++) {
       struct entryInTranslationCache theEntry = translationCacheContent->at(i);
-      if (theEntry.procedure == NULL) printf("\033[0;33m");
-      else printf("\033[0;32m");
-      printf("%d ", theEntry.size);
+      if (theEntry.procedure == NULL) fprintf(stderr,"\033[0;33m");
+      else fprintf(stderr,"\033[0;32m");
+      fprintf(stderr,"%d ", theEntry.size);
     }
-    printf("\033[0m");
-    printf("\n");
-    /*
-    printf("IndirectionTable counters : ");
-    for (int way = 0; way < IT_NB_WAY; way ++) {
-      printf("\n%d ", way);
-      for (int set = 0; set < IT_NB_SET; set ++) {
-        printf("\t%d", indirectionTable[way][set].counter);
+    fprintf(stderr,"\033[0m");
+    fprintf(stderr,"\n");
+
+
+    // need to speed up this part
+    // sort(translationCacheContent->begin(), translationCacheContent->end(), sortFunction);
+    int nbElement = translationCacheContent->size();
+    std::vector<int> *evalValuesList = new std::vector<int>();
+    std::vector<int> *ItWays = new std::vector<int>();
+    std::vector<int> *ItSets = new std::vector<int>();
+    int idmax = 0, valmax = 0;
+    // set up the vectors
+    for(int entry = 0; entry < nbElement; entry ++){
+      int way = -1, set = -1;
+      int entryEval = evalFunction(translationCacheContent->at(entry), &way, &set);
+      evalValuesList->push_back(entryEval);
+      ItWays->push_back(way);
+      ItSets->push_back(set);
+      if (valmax < entryEval) {
+        valmax = entryEval;
+        idmax  = entry;
       }
     }
-    printf("\n");
-    */
-    sort(translationCacheContent->begin(), translationCacheContent->end(), sortFunction);
-    // set the end of the selection
-    int idEndSelection = 0, sumSize = 0;
+
+    // select elements to make space
+    std::list<int> *idTCselected = new std::list<int>();
+    int tmp;
+    int newEntryEval = evalFunction(newEntry, &tmp,&tmp);
+    int sumSize = 0; // sum of removed components sizes
+    int nbSelected = 0; // number of elements selected to be removed from tc
     while (currentSize + size > SIZE_TC + sumSize) {
-      if (idEndSelection >= translationCacheContent->size()) {
-        fprintf(stderr, "cache policy : false returned -> do not fit in the tc\n\n");
+      int idmin = idmax, valmin = valmax;
+
+      // find the less valuable entry in translation cache
+      for(int i = 0; i < nbElement; i ++)
+        if (evalValuesList->at(i) < valmin){
+          bool inSelection = false;
+          std::list<int>::iterator it = idTCselected->begin(),
+                                  end = idTCselected->end();
+          while (it != end ) {
+            if(*it == i){
+              inSelection = true;
+              break;
+            }
+            it++;
+          }
+          if (!inSelection) {
+            idmin = i;
+            valmin = evalValuesList->at(i);
+          }
+        }
+
+      if (valmin > newEntryEval) { // => can't make enough space in tc
         return false;
       }
-      if (sortFunction(newEntry, translationCacheContent->at(idEndSelection))) {
-        fprintf(stderr, "cache policy : false returned -> not valuable enough\n\n");
-        return false;
+
+      sumSize += translationCacheContent->at(idmin).size;
+      idTCselected->push_back(idmin);
+      nbSelected ++;
+      struct entryInTranslationCache tmpEntry = translationCacheContent->at(nbElement-nbSelected);
+      translationCacheContent->at(nbElement - nbSelected) = translationCacheContent->at(idmin);
+      translationCacheContent->at(idmin) = tmpEntry;
+
+    }
+
+    // adjust selection : restore the more valuable elements not needed to be removed
+    std::list<int>::reverse_iterator i = idTCselected->rbegin(), end = idTCselected->rend();
+    while (i != end) {
+      if (translationCacheContent->at(*i).size < SIZE_TC + sumSize - size - currentSize) {
+        sumSize -= translationCacheContent->at(*i).size;
+        struct entryInTranslationCache tmpEntry = translationCacheContent->at(nbElement-nbSelected);
+        translationCacheContent->at(nbElement - nbSelected) = translationCacheContent->at(*i);
+        translationCacheContent->at(*i) = tmpEntry;
+        nbSelected--;
+        idTCselected->erase(std::next(i).base());
       }
-      sumSize += translationCacheContent->at(idEndSelection++).size;
+      ++i;
     }
-
-    // set the end of the selection
-    int idStartSelection = 0;
-    while (currentSize + size < SIZE_TC + sumSize) {
-      sumSize -= translationCacheContent->at(idStartSelection++).size;
-    }
-    if (currentSize + size > SIZE_TC + sumSize) {
-      sumSize += translationCacheContent->at(--idStartSelection).size;
-    }
-
-
-
-
-    printf("suppressed components : ");
-    for (int i = idStartSelection; i < idEndSelection; i ++) {
-      struct entryInTranslationCache theEntry = translationCacheContent->at(i);
-      if (theEntry.procedure == NULL) printf("\033[0;33m");
-      else printf("\033[0;32m");
-
-      printf("%d ",theEntry.size);
+    fprintf(stderr, "suppressed components : ");
+    for (std::list<int>::iterator i = idTCselected->begin(), end = idTCselected->end(); i != end; i ++){
+      struct entryInTranslationCache theEntry = translationCacheContent->at(*i);
       currentSize -= theEntry.size;
 
+      fprintf(stderr, "%d ",theEntry.size);
       // processing of the eviction
-      long unsigned int address = 0;
-      if (theEntry.procedure != NULL) {
-        address = theEntry.procedure->entryBlock->sourceStartAddress;
-      } else {
-        address = theEntry.block->sourceEndAddress;
-      }
-      unsigned int set = (address >> 2) & 0x7;
-      for (int oneWay = 0; oneWay < IT_NB_WAY; oneWay ++) {
-        if (indirectionTable[oneWay][set].address = address) {
-          indirectionTable[oneWay][set].counter = 0;
-          indirectionTable[oneWay][set].optLevel = 0;
-          break;
-        }
+      if (ItWays->at(*i) > -1) {
+        indirectionTable[ItWays->at(*i)][ItSets->at(*i)].counter = 0;
+        indirectionTable[ItWays->at(*i)][ItSets->at(*i)].optLevel = 0;
       }
     }
-    printf("\033[0m\n");
-    printf("\n");
-    // making space in the cache
-    translationCacheContent->erase(
-        translationCacheContent->begin() + idStartSelection,
-        translationCacheContent->begin() + idEndSelection);
-
+    fprintf(stderr, "\n" );
+    translationCacheContent->erase(translationCacheContent->end() - nbSelected, translationCacheContent->end());
     // store the new element
     translationCacheContent->push_back(newEntry);
-    currentSize -= size;
+    currentSize += size;
     return true;
   }
 }
@@ -1018,36 +1043,28 @@ void finalizeDBTInformation()
   }
 }
 
-bool sortFunction(struct entryInTranslationCache a, struct entryInTranslationCache b)
-{
-  unsigned int addressA = 0, addressB = 0;
-// peut-etre vout-il mieux ne pas se servir du counter, il pourrait amener des aberrations
-  if (a.block != NULL) {
-    addressA = a.block->sourceStartAddress;
-  } else if (a.procedure != NULL){
-    addressA = a.procedure->entryBlock->sourceStartAddress;
+int evalFunction(struct entryInTranslationCache entry, int* way, int* set) {
+  unsigned int address = 0;
+  if (entry.block != NULL) {
+    address = entry.block->sourceStartAddress;
+  } else if (entry.procedure != NULL){
+    address = entry.procedure->entryBlock->sourceStartAddress;
   }
 
-  if (b.block != NULL) {
-    addressB = b.block->sourceStartAddress;
-  } else if (a.procedure != NULL){
-    addressB = b.procedure->entryBlock->sourceStartAddress;
-  }
+  unsigned int lastTouch = 1;
+  unsigned int counter = 1;
+  char optLevel = 0;
+  int setvalue = (address >> 2) & 0x7;
 
-  unsigned int lastTouchA = 1, lastTouchB = 1;
-  unsigned int counterA = 1, counterB = 1;
-  int setA = (addressA >> 2) & 0x7, setB = (addressB >> 2) & 0x7;
-
-  for(int oneWay = 0; oneWay < IT_NB_WAY; oneWay++) {
-    if (indirectionTable[oneWay][setA].address == addressA) {
-      lastTouchA = indirectionTable[oneWay][setA].lastCycleTouch;
-      counterA   = indirectionTable[oneWay][setA].counter;
+  for(int oneWay = 0; oneWay < IT_NB_WAY; oneWay++)
+    if (indirectionTable[oneWay][setvalue].address == address) {
+      lastTouch = indirectionTable[oneWay][setvalue].lastCycleTouch;
+      counter   = indirectionTable[oneWay][setvalue].counter;
+      optLevel  = indirectionTable[oneWay][setvalue].optLevel;
+      *way = oneWay;
+      *set = setvalue;
+      break;
     }
-    if (indirectionTable[oneWay][setB].address == addressB) {
-      lastTouchB = indirectionTable[oneWay][setB].lastCycleTouch;
-      counterB   = indirectionTable[oneWay][setB].counter;
-    }
-  }
-  return lastTouchA * a.size * (counterA+1) < lastTouchB * b.size * (counterB+1);
 
+  return lastTouch * (optLevel+1) * (counter+1);
 }
