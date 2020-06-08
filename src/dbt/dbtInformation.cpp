@@ -839,22 +839,10 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
     }
     // We have to evict something
 
-
-    fprintf(stderr,"stocked translation : %d, size of the new entry : %d\n", currentSize, size);
-    for ( int i = 0; i < translationCacheContent->size(); i ++) {
-      struct entryInTranslationCache theEntry = translationCacheContent->at(i);
-      if (theEntry.procedure == NULL) fprintf(stderr,"\033[0;33m");
-      else fprintf(stderr,"\033[0;32m");
-      fprintf(stderr,"%d ", theEntry.size);
-    }
-    fprintf(stderr,"\033[0m");
-    fprintf(stderr,"\n");
-
-
     // need to speed up this part
     // sort(translationCacheContent->begin(), translationCacheContent->end(), sortFunction);
     int nbElement = translationCacheContent->size();
-    std::vector<int> *evalValuesList = new std::vector<int>();
+    std::vector<int> *evalValues = new std::vector<int>();
     std::vector<int> *ItWays = new std::vector<int>();
     std::vector<int> *ItSets = new std::vector<int>();
     int idmax = 0, valmax = 0;
@@ -862,7 +850,7 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
     for(int entry = 0; entry < nbElement; entry ++){
       int way = -1, set = -1;
       int entryEval = evalFunction(translationCacheContent->at(entry), &way, &set);
-      evalValuesList->push_back(entryEval);
+      evalValues->push_back(entryEval);
       ItWays->push_back(way);
       ItSets->push_back(set);
       if (valmax < entryEval) {
@@ -870,6 +858,18 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
         idmax  = entry;
       }
     }
+
+    fprintf(stderr,"stocked translation : %d, size of the new entry : %d\n", currentSize, size);
+    for ( int i = 0; i < translationCacheContent->size(); i ++) {
+      struct entryInTranslationCache theEntry = translationCacheContent->at(i);
+      if (theEntry.procedure == NULL) fprintf(stderr,"\033[0;33m");
+      else fprintf(stderr,"\033[0;32m");
+      fprintf(stderr,"%d(%d) ", theEntry.size, evalValues->at(i));
+    }
+    fprintf(stderr,"\033[0m");
+    fprintf(stderr,"\n");
+
+
 
     // select elements to make space
     std::list<int> *idTCselected = new std::list<int>();
@@ -882,7 +882,7 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
 
       // find the less valuable entry in translation cache
       for(int i = 0; i < nbElement; i ++)
-        if (evalValuesList->at(i) < valmin){
+        if (evalValues->at(i) < valmin){
           bool inSelection = false;
           std::list<int>::iterator it = idTCselected->begin(),
                                   end = idTCselected->end();
@@ -895,7 +895,7 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
           }
           if (!inSelection) {
             idmin = i;
-            valmin = evalValuesList->at(i);
+            valmin = evalValues->at(i);
           }
         }
 
@@ -906,15 +906,16 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
       sumSize += translationCacheContent->at(idmin).size;
       idTCselected->push_back(idmin);
       nbSelected ++;
+      // palce the element to be removed at the end of the tc
       struct entryInTranslationCache tmpEntry = translationCacheContent->at(nbElement-nbSelected);
       translationCacheContent->at(nbElement - nbSelected) = translationCacheContent->at(idmin);
       translationCacheContent->at(idmin) = tmpEntry;
 
     }
-
+    int control = nbSelected;
     // adjust selection : restore the more valuable elements not needed to be removed
-    std::list<int>::reverse_iterator i = idTCselected->rbegin(), end = idTCselected->rend();
-    while (i != end) {
+    std::list<int>::reverse_iterator i = idTCselected->rbegin();
+    while (--control > 0) {
       if (translationCacheContent->at(*i).size < SIZE_TC + sumSize - size - currentSize) {
         sumSize -= translationCacheContent->at(*i).size;
         struct entryInTranslationCache tmpEntry = translationCacheContent->at(nbElement-nbSelected);
@@ -922,22 +923,29 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
         translationCacheContent->at(*i) = tmpEntry;
         nbSelected--;
         idTCselected->erase(std::next(i).base());
+        i++;
+
+      } else {
+        i++;
       }
-      ++i;
     }
     fprintf(stderr, "suppressed components : ");
-    for (std::list<int>::iterator i = idTCselected->begin(), end = idTCselected->end(); i != end; i ++){
-      struct entryInTranslationCache theEntry = translationCacheContent->at(*i);
+    if(nbSelected != idTCselected->size()) exit(1);
+    std::list<int>::iterator anIdSelected, end = idTCselected->end();
+    for (anIdSelected = idTCselected->begin(); anIdSelected != end; anIdSelected ++){
+      struct entryInTranslationCache theEntry = translationCacheContent->at(*anIdSelected);
       currentSize -= theEntry.size;
 
-      fprintf(stderr, "%d ",theEntry.size);
+      fprintf(stderr, "%d ",theEntry.size, evalValues->at(*anIdSelected));
       // processing of the eviction
-      if (ItWays->at(*i) > -1) {
-        indirectionTable[ItWays->at(*i)][ItSets->at(*i)].counter = 0;
-        indirectionTable[ItWays->at(*i)][ItSets->at(*i)].optLevel = 0;
+      if (ItWays->at(*anIdSelected) > -1 && ItSets->at(*anIdSelected) > -1) {
+        indirectionTable[ItWays->at(*anIdSelected)][ItSets->at(*anIdSelected)].counter = 0;
+        indirectionTable[ItWays->at(*anIdSelected)][ItSets->at(*anIdSelected)].optLevel = 0;
       }
     }
-    fprintf(stderr, "\n" );
+    fprintf(stderr, "\n\n" );
+
+
     translationCacheContent->erase(translationCacheContent->end() - nbSelected, translationCacheContent->end());
     // store the new element
     translationCacheContent->push_back(newEntry);
