@@ -34,7 +34,6 @@
 
 #include <dbt/dbtInformation.h>
 #include <vector>
-#include <list>
 
 #ifndef __NIOS
 #include <lib/elfFile.h>
@@ -703,7 +702,7 @@ char getOptLevel(int address, uint64_t nb_cycle)
           optLevel = indirectionTable[oneWay][setNumber].optLevel - 1;
       }
 
-      indirectionTable[oneWay][setNumber].lastCycleTouch= nb_cycle;
+      indirectionTable[oneWay][setNumber].lastCycleTouch = nb_cycle;
       found = true;
     }
   }
@@ -858,7 +857,9 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
         idmax  = entry;
       }
     }
+    fprintf(stderr, "\n" );
 
+    // display
     fprintf(stderr,"stocked translation : %d, size of the new entry : %d\n", currentSize, size);
     for ( int i = 0; i < translationCacheContent->size(); i ++) {
       struct entryInTranslationCache theEntry = translationCacheContent->at(i);
@@ -866,13 +867,20 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
       else fprintf(stderr,"\033[0;32m");
       fprintf(stderr,"%d(%d) ", theEntry.size, evalValues->at(i));
     }
+    fprintf(stderr,"\033[0m\n");
+
+    /*
+    fprintf(stderr,"\033[31m");
+    fprintf(stderr, "IndirectionTable : \n" );
+    for (int set = 0; set < IT_NB_SET; set ++) {
+      for(int way = 0; way < IT_NB_WAY; way ++)
+        fprintf(stderr, "%d\t", (indirectionTable[way][set].address));
+      fprintf(stderr, "\n" );
+    }
     fprintf(stderr,"\033[0m");
-    fprintf(stderr,"\n");
-
-
+    */
 
     // select elements to make space
-    std::list<int> *idTCselected = new std::list<int>();
     int tmp;
     int newEntryEval = evalFunction(newEntry, &tmp,&tmp);
     int sumSize = 0; // sum of removed components sizes
@@ -881,22 +889,12 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
       int idmin = idmax, valmin = valmax;
 
       // find the less valuable entry in translation cache
-      for(int i = 0; i < nbElement; i ++)
+      for(int i = 0; i < nbElement - nbSelected; i ++)
         if (evalValues->at(i) < valmin){
-          bool inSelection = false;
-          std::list<int>::iterator it = idTCselected->begin(),
-                                  end = idTCselected->end();
-          while (it != end ) {
-            if(*it == i){
-              inSelection = true;
-              break;
-            }
-            it++;
-          }
-          if (!inSelection) {
-            idmin = i;
-            valmin = evalValues->at(i);
-          }
+
+          idmin = i;
+          valmin = evalValues->at(i);
+
         }
 
       if (valmin > newEntryEval) { // => can't make enough space in tc
@@ -904,43 +902,36 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
       }
 
       sumSize += translationCacheContent->at(idmin).size;
-      idTCselected->push_back(idmin);
       nbSelected ++;
       // palce the element to be removed at the end of the tc
       struct entryInTranslationCache tmpEntry = translationCacheContent->at(nbElement-nbSelected);
       translationCacheContent->at(nbElement - nbSelected) = translationCacheContent->at(idmin);
       translationCacheContent->at(idmin) = tmpEntry;
-
     }
-    int control = nbSelected;
-    // adjust selection : restore the more valuable elements not needed to be removed
-    std::list<int>::reverse_iterator i = idTCselected->rbegin();
-    while (--control > 0) {
-      if (translationCacheContent->at(*i).size < SIZE_TC + sumSize - size - currentSize) {
-        sumSize -= translationCacheContent->at(*i).size;
-        struct entryInTranslationCache tmpEntry = translationCacheContent->at(nbElement-nbSelected);
-        translationCacheContent->at(nbElement - nbSelected) = translationCacheContent->at(*i);
-        translationCacheContent->at(*i) = tmpEntry;
-        nbSelected--;
-        idTCselected->erase(std::next(i).base());
-        i++;
 
-      } else {
-        i++;
+    // adjust selection : restore the more valuable elements not needed to be removed
+    for (int i = nbElement - nbSelected; i < nbElement; i ++) {
+      if (size + currentSize <= SIZE_TC + sumSize - translationCacheContent->at(i).size) {
+        sumSize -= translationCacheContent->at(i).size;
+        //swap elements, to keep the removables at the end of the vector
+        struct entryInTranslationCache tmpEntry = translationCacheContent->at(nbElement-nbSelected);
+        translationCacheContent->at(nbElement - nbSelected) = translationCacheContent->at(i);
+        translationCacheContent->at(i) = tmpEntry;
+        nbSelected--;
       }
     }
-    fprintf(stderr, "suppressed components : ");
-    if(nbSelected != idTCselected->size()) exit(1);
-    std::list<int>::iterator anIdSelected, end = idTCselected->end();
-    for (anIdSelected = idTCselected->begin(); anIdSelected != end; anIdSelected ++){
-      struct entryInTranslationCache theEntry = translationCacheContent->at(*anIdSelected);
+
+
+    fprintf(stderr, "suppressed components (%d to remove): ", nbSelected);
+    for (int anEntry = nbElement-nbSelected; anEntry < nbElement; anEntry ++) {
+      struct entryInTranslationCache theEntry = translationCacheContent->at(anEntry);
       currentSize -= theEntry.size;
 
-      fprintf(stderr, "%d ",theEntry.size, evalValues->at(*anIdSelected));
+      fprintf(stderr, "%d ",theEntry.size, evalValues->at(anEntry));
       // processing of the eviction
-      if (ItWays->at(*anIdSelected) > -1 && ItSets->at(*anIdSelected) > -1) {
-        indirectionTable[ItWays->at(*anIdSelected)][ItSets->at(*anIdSelected)].counter = 0;
-        indirectionTable[ItWays->at(*anIdSelected)][ItSets->at(*anIdSelected)].optLevel = 0;
+      if (ItWays->at(anEntry) > -1 && ItSets->at(anEntry) > -1) {
+        indirectionTable[ItWays->at(anEntry)][ItSets->at(anEntry)].counter = 0;
+        indirectionTable[ItWays->at(anEntry)][ItSets->at(anEntry)].optLevel = 0;
       }
     }
     fprintf(stderr, "\n\n" );
@@ -1057,15 +1048,18 @@ int evalFunction(struct entryInTranslationCache entry, int* way, int* set) {
     address = entry.block->sourceStartAddress;
   } else if (entry.procedure != NULL){
     address = entry.procedure->entryBlock->sourceStartAddress;
+  } else {
+    fprintf(stderr, "%d not in the IR\n",entry.size );
   }
 
   unsigned int lastTouch = 1;
   unsigned int counter = 1;
   char optLevel = 0;
   int setvalue = (address >> 2) & 0x7;
-
+  fprintf(stderr, "%d ", setvalue);
   for(int oneWay = 0; oneWay < IT_NB_WAY; oneWay++)
     if (indirectionTable[oneWay][setvalue].address == address) {
+      fprintf(stderr, "Element found in IT : [ %d %d ] : %d\n",oneWay,setvalue,address );
       lastTouch = indirectionTable[oneWay][setvalue].lastCycleTouch;
       counter   = indirectionTable[oneWay][setvalue].counter;
       optLevel  = indirectionTable[oneWay][setvalue].optLevel;
@@ -1074,5 +1068,5 @@ int evalFunction(struct entryInTranslationCache entry, int* way, int* set) {
       break;
     }
 
-  return lastTouch * (optLevel+1) * (counter+1);
+  return lastTouch * (optLevel+1) * counter;
 }
