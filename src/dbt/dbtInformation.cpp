@@ -54,7 +54,7 @@ extern "C"
 #define COST_OPT_1 10
 #define COST_OPT_2 100
 
-#define SIZE_TC 2048
+#define SIZE_TC 4096
 
     /****************************************************************************************************************************/
 
@@ -63,6 +63,10 @@ extern "C"
   int scheduleSizeOpt0 = -1;
   int scheduleSizeOpt1 = -1;
   int scheduleSizeOpt2 = -1;
+  int nbChargement     = 0;
+  int nbOpti1          = 0;
+  int nbOpti2          = 0;
+  int nbExecution      = 0;
 } BlockInformation;
 
 struct entryInTranslationCache {
@@ -104,6 +108,7 @@ int globalBinarySize;
 
 bool isExploreOpts = false;
 
+char* filenameMetric;
 /****************************************************************************************************************************/
 // Definition of internal function that are not visible from outside
 
@@ -282,12 +287,32 @@ void initializeDBTInfo(char* fileName)
   execPath = (char*)malloc(strlen(fileName) + 10);
   strcpy(execPath, fileName);
 
+  filenameMetric = (char*)malloc(strlen(execPath) + 50);
+  char* iteratorString = (char*)malloc(strlen(execPath)+10);
+
   int execPathLength           = strlen(execPath);
   execPath[execPathLength]     = '.';
   execPath[execPathLength + 1] = 'd';
   execPath[execPathLength + 2] = 'b';
   execPath[execPathLength + 3] = 't';
   execPath[execPathLength + 4] = 0;
+
+  strcpy(iteratorString, execPath);
+  iteratorString = strtok(iteratorString, "/");
+  char *progname = execPath;
+
+  while(iteratorString != NULL){
+    //fprintf(stderr, "%s\n", iteratorString);
+    progname = iteratorString;
+    iteratorString = strtok(NULL, "/");
+  }
+  strcpy(filenameMetric, "~/Documents/metrix/");
+  strcat(filenameMetric,progname);
+  int len = strlen(filenameMetric);
+  filenameMetric[len-3] = 't';
+  filenameMetric[len-2] = 'x';
+  filenameMetric[len-1] = 't';
+  fprintf(stderr, "%s\n", filenameMetric);
 
   /***********************************
    *  Initialization of the DBT platform
@@ -408,6 +433,10 @@ void initializeDBTInfo(char* fileName)
     blockInfo[oneBlockInfo].scheduleSizeOpt0 = -1;
     blockInfo[oneBlockInfo].scheduleSizeOpt1 = -1;
     blockInfo[oneBlockInfo].scheduleSizeOpt2 = -1;
+    blockInfo[oneBlockInfo].nbChargement     = 0; //number of times the block is load in IT
+    blockInfo[oneBlockInfo].nbOpti1          = 0; //number of times the block is optimize to level 1
+    blockInfo[oneBlockInfo].nbOpti2          = 0; //number of times the block is optimize to level 2
+    blockInfo[oneBlockInfo].nbExecution      = 0; //number of times the block is executed
   }
 
   // We check whether the application has already been optimized
@@ -540,7 +569,6 @@ void initializeDBTInfo(char* fileName)
 
     numberOfBlocks++;
   }
-
   /************************** We create a copy of the platform which is used to re-optimize ***********************/
 
   nonOptPlatform = (DBTPlateform*)malloc(sizeof(DBTPlateform));
@@ -619,6 +647,8 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int* nextBlock)
     end++;
   }
   *nextBlock = end * 4;
+  blockInfo[address>>2].nbExecution ++;
+
 
   if (optLevel == 1) { // Opt level 1
     if (blockInfo[address >> 2].scheduleSizeOpt1 == -1) {
@@ -716,6 +746,9 @@ char getOptLevel(int address, uint64_t nb_cycle)
         indirectionTable[oneWay][setNumber].optLevel      = 0;
         indirectionTable[oneWay][setNumber].timeAvailable = nb_cycle;
         indirectionTable[oneWay][setNumber].lastCycleTouch= nb_cycle;
+
+        blockInfo[address>>2].nbChargement++;
+
         break;
 
       } else {
@@ -754,6 +787,8 @@ char getOptLevel(int address, uint64_t nb_cycle)
               indirectionTable[oneWay][oneSet].lastCycleTouch = nb_cycle;
               sizeLeftInTC -= size;
               nextAvailabilityDBTProc = nb_cycle + COST_OPT_1 * size;
+
+              blockInfo[oneAddress>>2].nbOpti1 ++;
             }
           }
         } else if (indirectionTable[oneWay][oneSet].counter >= 7 && indirectionTable[oneWay][oneSet].optLevel <= 1) {
@@ -772,9 +807,9 @@ char getOptLevel(int address, uint64_t nb_cycle)
 
               // We measure the sum of all blocks in the procedure
               int size = 0;
-              for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++)
+              for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++){
                 size += procedure->blocks[oneBlock]->nbInstr;
-
+              }
               bool fitsInTranslationCache = allocateInTranslationCache(size, procedure, NULL);
 
               // We see if it fits the TC
@@ -787,6 +822,9 @@ char getOptLevel(int address, uint64_t nb_cycle)
                 indirectionTable[oneWay][oneSet].lastCycleTouch = nb_cycle;
                 sizeLeftInTC -= size;
                 nextAvailabilityDBTProc = nb_cycle + COST_OPT_2 * size;
+                for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++){
+                  blockInfo[procedure->blocks[oneBlock]->sourceStartAddress].nbOpti2 ++;
+                }
               }
             }
           }
@@ -1041,6 +1079,34 @@ void finalizeDBTInformation()
   if (isExploreOpts) {
     application->dumpApplication(execPath, greatestAddr * 4);
   }
+
+// --------------------- Metric ------------------------------------------------
+  printf("print metrics\n" );
+  FILE* metrix;
+  metrix = fopen(filenameMetric,"w");
+  if (metrix == NULL) {
+    printf("ERRROR FILE %s\n",filenameMetric );
+  } else {
+    fprintf(metrix, "start | tc size : %d, nb instructions : %d\n",
+      SIZE_TC, application->numberInstructions);
+    fprintf(metrix, "adBlock\tnbIT\tnbO1\tnbO2\tnbExec\tblockSize\n");
+    for (int i = 0; i < greatestAddr; i++) {
+      if (blockInfo[i].nbExecution > 0){
+        int nbInstr = blockInfo[i].block->sourceEndAddress -
+                   blockInfo[i].block->sourceStartAddress;
+        fprintf(metrix, "%d\t%d\t%d\t%d\t%d\t%d\n", i,
+          blockInfo[i].nbChargement,
+          blockInfo[i].nbOpti1,
+          blockInfo[i].nbOpti2,
+          blockInfo[i].nbExecution, nbInstr);
+      }
+    }
+    fprintf(metrix, "end\n" );
+    fclose(metrix);
+  }
+// -----------------------------------------------------------------------------
+
+
 }
 
 int evalFunction(struct entryInTranslationCache entry, int* way, int* set) {
