@@ -306,7 +306,6 @@ void initializeDBTInfo(char* fileName)
     progname = iteratorString;
     iteratorString = strtok(NULL, "/");
   }
-  strcpy(filenameMetric, "~/Documents/metrix/");
   strcat(filenameMetric,progname);
   int len = strlen(filenameMetric);
   filenameMetric[len-3] = 't';
@@ -1081,17 +1080,16 @@ void finalizeDBTInformation()
   }
 
 // --------------------- Metric ------------------------------------------------
-  printf("print metrics\n" );
   FILE* metrix;
   metrix = fopen(filenameMetric,"w");
   if (metrix == NULL) {
     printf("ERRROR FILE %s\n",filenameMetric );
   } else {
     fprintf(metrix, "start | tc size : %d, nb instructions : %d\n",
-      SIZE_TC, application->numberInstructions);
+      SIZE_TC, sizeof(blockInfo)/(sizeof(blockInfo[0])*10));
     fprintf(metrix, "adBlock\tnbIT\tnbO1\tnbO2\tnbExec\tblockSize\n");
     for (int i = 0; i < greatestAddr; i++) {
-      if (blockInfo[i].nbExecution > 0){
+      if (blockInfo[i].nbExecution > 0 || blockInfo[i].nbChargement > 0){
         int nbInstr = blockInfo[i].block->sourceEndAddress -
                    blockInfo[i].block->sourceStartAddress;
         fprintf(metrix, "%d\t%d\t%d\t%d\t%d\t%d\n", i,
