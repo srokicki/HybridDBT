@@ -54,7 +54,7 @@ extern "C"
 #define COST_OPT_1 10
 #define COST_OPT_2 100
 
-#define SIZE_TC 4096
+#define SIZE_TC 0
 
     /****************************************************************************************************************************/
 
@@ -306,6 +306,7 @@ void initializeDBTInfo(char* fileName)
     progname = iteratorString;
     iteratorString = strtok(NULL, "/");
   }
+  strcpy(filenameMetric, "/home/lsavary/Documents/metrix/");
   strcat(filenameMetric,progname);
   int len = strlen(filenameMetric);
   filenameMetric[len-3] = 't';
@@ -422,6 +423,7 @@ void initializeDBTInfo(char* fileName)
       if (instructionBeforePreviousDestination != 0)
         writeInt(platform->vliwBinaries, 16 * (source + 1) + 12, instructionBeforePreviousDestination);
     }
+
   }
 
   // We allocate blockInfo
@@ -1085,8 +1087,16 @@ void finalizeDBTInformation()
   if (metrix == NULL) {
     printf("ERRROR FILE %s\n",filenameMetric );
   } else {
-    fprintf(metrix, "start | tc size : %d, nb instructions : %d\n",
-      SIZE_TC, sizeof(blockInfo)/(sizeof(blockInfo[0])*10));
+    fprintf(stderr, "addressStart : %u, greatestAddr : %d\n",addressStart, greatestAddr);
+    for (unsigned int i = 0; i < application->numberProcedures; i ++) {
+      IRProcedure* proc = application->procedures[i];
+      unsigned int size = 0;
+      for (int oneBlock = 0; oneBlock < proc->nbBlock; oneBlock++){
+        size += proc->blocks[oneBlock]->nbInstr;
+      }
+      fprintf(metrix, "%u\t",size );
+    }
+    fprintf(metrix, "\n");
     fprintf(metrix, "adBlock\tnbIT\tnbO1\tnbO2\tnbExec\tblockSize\n");
     for (int i = 0; i < greatestAddr; i++) {
       if (blockInfo[i].nbExecution > 0 || blockInfo[i].nbChargement > 0){
