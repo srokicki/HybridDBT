@@ -761,8 +761,9 @@ char getOptLevel(int address, uint64_t nb_cycle)
 
   if (!found) {
     inTranslationCache = false;
+    bool putInIT       = 1;
     for (int oneWay = 0; oneWay < IT_NB_WAY; oneWay++) {
-      if (indirectionTable[oneWay][setNumber].counter == 0) {
+      if (putInIT == 1 && indirectionTable[oneWay][setNumber].counter <= 0) {
         indirectionTable[oneWay][setNumber].address        = address;
         indirectionTable[oneWay][setNumber].counter        = 1;
         indirectionTable[oneWay][setNumber].optLevel       = 0;
@@ -771,9 +772,10 @@ char getOptLevel(int address, uint64_t nb_cycle)
 
         blockInfo[address >> 2].nbChargement++;
 
-        break;
+        putInIT = 0;
 
-      } else {
+      } else if (indirectionTable[oneWay][setNumber].counter > 0) {
+
         indirectionTable[oneWay][setNumber].counter--;
       }
     }
