@@ -54,7 +54,7 @@ extern "C"
 #define COST_OPT_1 10
 #define COST_OPT_2 100
 
-#define SIZE_TC 0
+#define SIZE_TC 16000
 
     /****************************************************************************************************************************/
 
@@ -185,6 +185,10 @@ int contentTranslationCache()
 
 void updateOpt2BlockSize(IRBlock* block)
 {
+  // No need to compute if we already have a value
+  if (block->sizeOpt2 != -1)
+    return;
+
   blockInfo[block->sourceStartAddress].scheduleSizeOpt2 = block->vliwEndAddress - block->vliwStartAddress;
   block->sizeOpt2                                       = block->vliwEndAddress - block->vliwStartAddress;
 
@@ -197,23 +201,39 @@ void updateOpt2BlockSize(IRBlock* block)
   int currentjumpId = 0;
 
   int nbBlockAdded = 0;
-  if (block->blockState == IRBLOCK_TRACE)
+  if (block->blockState == IRBLOCK_TRACE && block->nbMergedBlocks != 0) {
+
     for (int oneSourceCycle = block->sourceStartAddress + 1; oneSourceCycle < block->sourceEndAddress;
          oneSourceCycle++) {
       // TODO: use block iterator ?
       if (application->getBlock(oneSourceCycle) != NULL) {
-        IRBlock* otherBlock = application->getBlock(oneSourceCycle);
-        if (currentjumpId >= block->nbJumps) {
-          // blockInfo[oneSourceCycle].scheduleSizeOpt2 = (block->vliwEndAddress - block->vliwStartAddress) / 2;
-          otherBlock->sizeOpt2 = blockInfo[block->sourceStartAddress].scheduleSizeOpt2;
-        } else {
-          // blockInfo[oneSourceCycle].scheduleSizeOpt2 = block->vliwEndAddress - block->jumpPlaces[currentjumpId];
-          otherBlock->sizeOpt2 = blockInfo[block->sourceStartAddress].scheduleSizeOpt2;
-        }
-        currentjumpId++;
+        IRBlock* otherBlock  = application->getBlock(oneSourceCycle);
+        otherBlock->sizeOpt2 = block->sizeOpt2 / (block->nbMergedBlocks + 1);
+
+        //
+        // if (block->nbJumps == 0) {
+        //   otherBlock->sizeOpt2 = block->sizeOpt2 / block->nbMergedBlocks;
+        // } else if (currentjumpId >= block->nbJumps) {
+        //   // blockInfo[oneSourceCycle].scheduleSizeOpt2 = (block->vliwEndAddress - block->vliwStartAddress) / 2;
+        //   otherBlock->sizeOpt2 = block->vliwEndAddress - block->jumpPlaces[block->nbJumps];
+        // } else {
+        //   // blockInfo[oneSourceCycle].scheduleSizeOpt2 = block->vliwEndAddress - block->jumpPlaces[currentjumpId];
+        //   otherBlock->sizeOpt2 = block->jumpPlaces[currentjumpId + 1] - block->jumpPlaces[currentjumpId];
+        // }
+        //
+        // currentjumpId++;
         nbBlockAdded++;
       }
     }
+
+    block->sizeOpt2 = block->sizeOpt2 / (block->nbMergedBlocks + 1);
+
+    // if (block->nbJumps == 0) {
+    //   block->sizeOpt2 = block->sizeOpt2 / block->nbMergedBlocks;
+    // } else {
+    //   block->sizeOpt2 = block->jumpPlaces[0] - block->vliwStartAddress;
+    // }
+  }
 
   if (nbBlockAdded != block->nbMergedBlocks) {
     printf("Added %d block infor while there are %d merged blocks and %d jumps\n", nbBlockAdded, block->nbMergedBlocks,
@@ -287,8 +307,8 @@ void initializeDBTInfo(char* fileName)
   execPath = (char*)malloc(strlen(fileName) + 10);
   strcpy(execPath, fileName);
 
-  filenameMetric = (char*)malloc(strlen(execPath) + 50);
-  char* iteratorString = (char*)malloc(strlen(execPath)+10);
+  filenameMetric       = (char*)malloc(strlen(execPath) + 50);
+  char* iteratorString = (char*)malloc(strlen(execPath) + 10);
 
   int execPathLength           = strlen(execPath);
   execPath[execPathLength]     = '.';
@@ -299,19 +319,19 @@ void initializeDBTInfo(char* fileName)
 
   strcpy(iteratorString, execPath);
   iteratorString = strtok(iteratorString, "/");
-  char *progname = execPath;
+  char* progname = execPath;
 
-  while(iteratorString != NULL){
-    //fprintf(stderr, "%s\n", iteratorString);
-    progname = iteratorString;
+  while (iteratorString != NULL) {
+    // fprintf(stderr, "%s\n", iteratorString);
+    progname       = iteratorString;
     iteratorString = strtok(NULL, "/");
   }
   strcpy(filenameMetric, "/home/lsavary/Documents/metrix/");
-  strcat(filenameMetric,progname);
-  int len = strlen(filenameMetric);
-  filenameMetric[len-3] = 't';
-  filenameMetric[len-2] = 'x';
-  filenameMetric[len-1] = 't';
+  strcat(filenameMetric, progname);
+  int len                 = strlen(filenameMetric);
+  filenameMetric[len - 3] = 't';
+  filenameMetric[len - 2] = 'x';
+  filenameMetric[len - 1] = 't';
   fprintf(stderr, "%s\n", filenameMetric);
 
   /***********************************
@@ -423,7 +443,6 @@ void initializeDBTInfo(char* fileName)
       if (instructionBeforePreviousDestination != 0)
         writeInt(platform->vliwBinaries, 16 * (source + 1) + 12, instructionBeforePreviousDestination);
     }
-
   }
 
   // We allocate blockInfo
@@ -434,10 +453,10 @@ void initializeDBTInfo(char* fileName)
     blockInfo[oneBlockInfo].scheduleSizeOpt0 = -1;
     blockInfo[oneBlockInfo].scheduleSizeOpt1 = -1;
     blockInfo[oneBlockInfo].scheduleSizeOpt2 = -1;
-    blockInfo[oneBlockInfo].nbChargement     = 0; //number of times the block is load in IT
-    blockInfo[oneBlockInfo].nbOpti1          = 0; //number of times the block is optimize to level 1
-    blockInfo[oneBlockInfo].nbOpti2          = 0; //number of times the block is optimize to level 2
-    blockInfo[oneBlockInfo].nbExecution      = 0; //number of times the block is executed
+    blockInfo[oneBlockInfo].nbChargement     = 0; // number of times the block is load in IT
+    blockInfo[oneBlockInfo].nbOpti1          = 0; // number of times the block is optimize to level 1
+    blockInfo[oneBlockInfo].nbOpti2          = 0; // number of times the block is optimize to level 2
+    blockInfo[oneBlockInfo].nbExecution      = 0; // number of times the block is executed
   }
 
   // We check whether the application has already been optimized
@@ -461,6 +480,9 @@ void initializeDBTInfo(char* fileName)
       blockInfo[block.sourceStartAddress].scheduleSizeOpt0 = block.sizeOpt0;
       blockInfo[block.sourceStartAddress].scheduleSizeOpt1 = block.sizeOpt1;
       blockInfo[block.sourceStartAddress].scheduleSizeOpt2 = block.sizeOpt2;
+
+      // printf("For block %x, %d %d %d  (unrolling = %d, trace = %d)\n", block.sourceStartAddress, block.sizeOpt0,
+      //        block.sizeOpt1, block.sizeOpt2, block.unrollingFactor, block.nbMergedBlocks);
 
       if (block.sizeOpt2 == -1) {
         isOptimized = false;
@@ -648,8 +670,7 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int* nextBlock)
     end++;
   }
   *nextBlock = end * 4;
-  blockInfo[address>>2].nbExecution ++;
-
+  blockInfo[address >> 2].nbExecution++;
 
   if (optLevel == 1) { // Opt level 1
     if (blockInfo[address >> 2].scheduleSizeOpt1 == -1) {
@@ -734,7 +755,7 @@ char getOptLevel(int address, uint64_t nb_cycle)
       }
 
       indirectionTable[oneWay][setNumber].lastCycleTouch = nb_cycle;
-      found = true;
+      found                                              = true;
     }
   }
 
@@ -742,13 +763,13 @@ char getOptLevel(int address, uint64_t nb_cycle)
     inTranslationCache = false;
     for (int oneWay = 0; oneWay < IT_NB_WAY; oneWay++) {
       if (indirectionTable[oneWay][setNumber].counter == 0) {
-        indirectionTable[oneWay][setNumber].address       = address;
-        indirectionTable[oneWay][setNumber].counter       = 1;
-        indirectionTable[oneWay][setNumber].optLevel      = 0;
-        indirectionTable[oneWay][setNumber].timeAvailable = nb_cycle;
-        indirectionTable[oneWay][setNumber].lastCycleTouch= nb_cycle;
+        indirectionTable[oneWay][setNumber].address        = address;
+        indirectionTable[oneWay][setNumber].counter        = 1;
+        indirectionTable[oneWay][setNumber].optLevel       = 0;
+        indirectionTable[oneWay][setNumber].timeAvailable  = nb_cycle;
+        indirectionTable[oneWay][setNumber].lastCycleTouch = nb_cycle;
 
-        blockInfo[address>>2].nbChargement++;
+        blockInfo[address >> 2].nbChargement++;
 
         break;
 
@@ -789,7 +810,7 @@ char getOptLevel(int address, uint64_t nb_cycle)
               sizeLeftInTC -= size;
               nextAvailabilityDBTProc = nb_cycle + COST_OPT_1 * size;
 
-              blockInfo[oneAddress>>2].nbOpti1 ++;
+              blockInfo[oneAddress >> 2].nbOpti1++;
             }
           }
         } else if (indirectionTable[oneWay][oneSet].counter >= 7 && indirectionTable[oneWay][oneSet].optLevel <= 1) {
@@ -808,7 +829,7 @@ char getOptLevel(int address, uint64_t nb_cycle)
 
               // We measure the sum of all blocks in the procedure
               int size = 0;
-              for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++){
+              for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++) {
                 size += procedure->blocks[oneBlock]->nbInstr;
               }
               bool fitsInTranslationCache = allocateInTranslationCache(size, procedure, NULL);
@@ -823,8 +844,8 @@ char getOptLevel(int address, uint64_t nb_cycle)
                 indirectionTable[oneWay][oneSet].lastCycleTouch = nb_cycle;
                 sizeLeftInTC -= size;
                 nextAvailabilityDBTProc = nb_cycle + COST_OPT_2 * size;
-                for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++){
-                  blockInfo[procedure->blocks[oneBlock]->sourceStartAddress].nbOpti2 ++;
+                for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++) {
+                  blockInfo[procedure->blocks[oneBlock]->sourceStartAddress].nbOpti2++;
                 }
               }
             }
@@ -859,10 +880,10 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
   newEntry.cost      = size;
   if (procedure != NULL) {
     newEntry.isBlock = false;
-    newEntry.cost   *= COST_OPT_2;
+    newEntry.cost *= COST_OPT_2;
   } else {
     newEntry.isBlock = true;
-    newEntry.cost   *= COST_OPT_1;
+    newEntry.cost *= COST_OPT_1;
   }
 
   int currentSize = contentTranslationCache();
@@ -870,7 +891,7 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
     // We can store the translated element in the translation cache without having to evict anything
     translationCacheContent->push_back(newEntry);
     return true;
-  } else { //V5
+  } else { // V5
     if (size > SIZE_TC) {
       // fprintf(stderr, "entry do not fit in the tc\n");
       return false;
@@ -879,14 +900,14 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
 
     // need to speed up this part
     // sort(translationCacheContent->begin(), translationCacheContent->end(), sortFunction);
-    int nbElement = translationCacheContent->size();
-    std::vector<int> *evalValues = new std::vector<int>();
-    std::vector<int> *ItWays = new std::vector<int>();
-    std::vector<int> *ItSets = new std::vector<int>();
+    int nbElement                = translationCacheContent->size();
+    std::vector<int>* evalValues = new std::vector<int>();
+    std::vector<int>* ItWays     = new std::vector<int>();
+    std::vector<int>* ItSets     = new std::vector<int>();
     int idmax = 0, valmax = 0;
 
     // set up the vectors
-    for(int entry = 0; entry < nbElement; entry ++){
+    for (int entry = 0; entry < nbElement; entry++) {
       int way = -1, set = -1;
       int entryEval = evalFunction(translationCacheContent->at(entry), &way, &set);
       evalValues->push_back(entryEval);
@@ -898,43 +919,42 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
       }
     }
 
-/*
-    // display
-    fprintf(stderr,"stocked translation : %d, size of the new entry : %d\n", currentSize, size);
-    for ( int i = 0; i < translationCacheContent->size(); i ++) {
-      struct entryInTranslationCache theEntry = translationCacheContent->at(i);
-      if (theEntry.procedure == NULL) fprintf(stderr,"\033[0;33m");
-      else fprintf(stderr,"\033[0;32m");
-      fprintf(stderr,"%d(%d) ", theEntry.size, evalValues->at(i));
-    }
-    fprintf(stderr,"\033[0m\n");
-*/
-/*
-    fprintf(stderr,"\033[31m");
-    fprintf(stderr, "IndirectionTable : \n" );
-    for (int set = 0; set < IT_NB_SET; set ++) {
-      for(int way = 0; way < IT_NB_WAY; way ++)
-        fprintf(stderr, "%d\t", (indirectionTable[way][set].address));
-      fprintf(stderr, "\n" );
-    }
-    fprintf(stderr,"\033[0m");
-*/
+    /*
+        // display
+        fprintf(stderr,"stocked translation : %d, size of the new entry : %d\n", currentSize, size);
+        for ( int i = 0; i < translationCacheContent->size(); i ++) {
+          struct entryInTranslationCache theEntry = translationCacheContent->at(i);
+          if (theEntry.procedure == NULL) fprintf(stderr,"\033[0;33m");
+          else fprintf(stderr,"\033[0;32m");
+          fprintf(stderr,"%d(%d) ", theEntry.size, evalValues->at(i));
+        }
+        fprintf(stderr,"\033[0m\n");
+    */
+    /*
+        fprintf(stderr,"\033[31m");
+        fprintf(stderr, "IndirectionTable : \n" );
+        for (int set = 0; set < IT_NB_SET; set ++) {
+          for(int way = 0; way < IT_NB_WAY; way ++)
+            fprintf(stderr, "%d\t", (indirectionTable[way][set].address));
+          fprintf(stderr, "\n" );
+        }
+        fprintf(stderr,"\033[0m");
+    */
 
     // select elements to make space
     int tmp;
-    int newEntryEval = evalFunction(newEntry, &tmp,&tmp);
-    int sumSize = 0; // sum of removed components sizes
-    int nbSelected = 0; // number of elements selected to be removed from tc
+    int newEntryEval = evalFunction(newEntry, &tmp, &tmp);
+    int sumSize      = 0; // sum of removed components sizes
+    int nbSelected   = 0; // number of elements selected to be removed from tc
     while (currentSize + size > SIZE_TC + sumSize) {
       int idmin = idmax, valmin = valmax;
 
       // find the less valuable entry in translation cache
-      for(int i = 0; i < nbElement - nbSelected; i ++)
-        if (evalValues->at(i) < valmin){
+      for (int i = 0; i < nbElement - nbSelected; i++)
+        if (evalValues->at(i) < valmin) {
 
-          idmin = i;
+          idmin  = i;
           valmin = evalValues->at(i);
-
         }
 
       if (valmin > newEntryEval) { // => can't make enough space in tc
@@ -942,40 +962,38 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
       }
 
       sumSize += translationCacheContent->at(idmin).size;
-      nbSelected ++;
+      nbSelected++;
       // palce the element to be removed at the end of the tc
-      struct entryInTranslationCache tmpEntry = translationCacheContent->at(nbElement-nbSelected);
+      struct entryInTranslationCache tmpEntry             = translationCacheContent->at(nbElement - nbSelected);
       translationCacheContent->at(nbElement - nbSelected) = translationCacheContent->at(idmin);
-      translationCacheContent->at(idmin) = tmpEntry;
+      translationCacheContent->at(idmin)                  = tmpEntry;
     }
 
     // adjust selection : restore the more valuable elements not needed to be removed
-    for (int i = nbElement - nbSelected; i < nbElement; i ++) {
+    for (int i = nbElement - nbSelected; i < nbElement; i++) {
       if (size + currentSize <= SIZE_TC + sumSize - translationCacheContent->at(i).size) {
         sumSize -= translationCacheContent->at(i).size;
-        //swap elements, to keep the removables at the end of the vector
-        struct entryInTranslationCache tmpEntry = translationCacheContent->at(nbElement-nbSelected);
+        // swap elements, to keep the removables at the end of the vector
+        struct entryInTranslationCache tmpEntry             = translationCacheContent->at(nbElement - nbSelected);
         translationCacheContent->at(nbElement - nbSelected) = translationCacheContent->at(i);
-        translationCacheContent->at(i) = tmpEntry;
+        translationCacheContent->at(i)                      = tmpEntry;
         nbSelected--;
       }
     }
 
-
-    //fprintf(stderr, "suppressed components (%d to remove): ", nbSelected);
-    for (int anEntry = nbElement-nbSelected; anEntry < nbElement; anEntry ++) {
+    // fprintf(stderr, "suppressed components (%d to remove): ", nbSelected);
+    for (int anEntry = nbElement - nbSelected; anEntry < nbElement; anEntry++) {
       struct entryInTranslationCache theEntry = translationCacheContent->at(anEntry);
       currentSize -= theEntry.size;
 
-      //fprintf(stderr, "%d ",theEntry.size, evalValues->at(anEntry));
+      // fprintf(stderr, "%d ",theEntry.size, evalValues->at(anEntry));
       // processing of the eviction
       if (ItWays->at(anEntry) > -1 && ItSets->at(anEntry) > -1) {
-        indirectionTable[ItWays->at(anEntry)][ItSets->at(anEntry)].counter = 0;
+        indirectionTable[ItWays->at(anEntry)][ItSets->at(anEntry)].counter  = 0;
         indirectionTable[ItWays->at(anEntry)][ItSets->at(anEntry)].optLevel = 0;
       }
     }
-    //fprintf(stderr, "\n\n" );
-
+    // fprintf(stderr, "\n\n" );
 
     translationCacheContent->erase(translationCacheContent->end() - nbSelected, translationCacheContent->end());
     // store the new element
@@ -1081,66 +1099,61 @@ void finalizeDBTInformation()
     application->dumpApplication(execPath, greatestAddr * 4);
   }
 
-// --------------------- Metric ------------------------------------------------
+  // --------------------- Metric ------------------------------------------------
   FILE* metrix;
-  metrix = fopen(filenameMetric,"w");
+  metrix = fopen(filenameMetric, "w");
   if (metrix == NULL) {
-    printf("ERRROR FILE %s\n",filenameMetric );
+    printf("ERRROR FILE %s\n", filenameMetric);
   } else {
-    fprintf(stderr, "addressStart : %u, greatestAddr : %d\n",addressStart, greatestAddr);
-    for (unsigned int i = 0; i < application->numberProcedures; i ++) {
+    fprintf(stderr, "addressStart : %u, greatestAddr : %d\n", addressStart, greatestAddr);
+    for (unsigned int i = 0; i < application->numberProcedures; i++) {
       IRProcedure* proc = application->procedures[i];
       unsigned int size = 0;
-      for (int oneBlock = 0; oneBlock < proc->nbBlock; oneBlock++){
+      for (int oneBlock = 0; oneBlock < proc->nbBlock; oneBlock++) {
         size += proc->blocks[oneBlock]->nbInstr;
       }
-      fprintf(metrix, "%u\t",size );
+      fprintf(metrix, "%u\t", size);
     }
     fprintf(metrix, "\n");
     fprintf(metrix, "adBlock\tnbIT\tnbO1\tnbO2\tnbExec\tblockSize\n");
     for (int i = 0; i < greatestAddr; i++) {
-      if (blockInfo[i].nbExecution > 0 || blockInfo[i].nbChargement > 0){
-        int nbInstr = blockInfo[i].block->sourceEndAddress -
-                   blockInfo[i].block->sourceStartAddress;
-        fprintf(metrix, "%d\t%d\t%d\t%d\t%d\t%d\n", i,
-          blockInfo[i].nbChargement,
-          blockInfo[i].nbOpti1,
-          blockInfo[i].nbOpti2,
-          blockInfo[i].nbExecution, nbInstr);
+      if (blockInfo[i].nbExecution > 0 || blockInfo[i].nbChargement > 0) {
+        int nbInstr = blockInfo[i].block->sourceEndAddress - blockInfo[i].block->sourceStartAddress;
+        fprintf(metrix, "%d\t%d\t%d\t%d\t%d\t%d\n", i, blockInfo[i].nbChargement, blockInfo[i].nbOpti1,
+                blockInfo[i].nbOpti2, blockInfo[i].nbExecution, nbInstr);
       }
     }
-    fprintf(metrix, "end\n" );
+    fprintf(metrix, "end\n");
     fclose(metrix);
   }
-// -----------------------------------------------------------------------------
-
-
+  // -----------------------------------------------------------------------------
 }
 
-int evalFunction(struct entryInTranslationCache entry, int* way, int* set) {
+int evalFunction(struct entryInTranslationCache entry, int* way, int* set)
+{
   unsigned int address = 0;
   if (entry.block != NULL) {
     address = entry.block->sourceStartAddress;
-  } else if (entry.procedure != NULL){
+  } else if (entry.procedure != NULL) {
     address = entry.procedure->entryBlock->sourceStartAddress;
   }
 
   unsigned int lastTouch = 1;
-  unsigned int counter = 1;
-  char optLevel = 0;
-  int setvalue = (address) & 0x7;
-  address = address << 2;
-  //fprintf(stderr, "%d ", address);
-  for(int oneWay = 0; oneWay < IT_NB_WAY; oneWay++)
+  unsigned int counter   = 1;
+  char optLevel          = 0;
+  int setvalue           = (address)&0x7;
+  address                = address << 2;
+  // fprintf(stderr, "%d ", address);
+  for (int oneWay = 0; oneWay < IT_NB_WAY; oneWay++)
     if (indirectionTable[oneWay][setvalue].address == address) {
-    //  fprintf(stderr, "Element found in IT : [ %d %d ] : %d\n",oneWay,setvalue,address );
+      //  fprintf(stderr, "Element found in IT : [ %d %d ] : %d\n",oneWay,setvalue,address );
       lastTouch = indirectionTable[oneWay][setvalue].lastCycleTouch;
       counter   = indirectionTable[oneWay][setvalue].counter;
       optLevel  = indirectionTable[oneWay][setvalue].optLevel;
-      *way = oneWay;
-      *set = setvalue;
+      *way      = oneWay;
+      *set      = setvalue;
       break;
     }
 
-  return (lastTouch>>4) * (optLevel+1) * (optLevel+1) * counter;
+  return (lastTouch >> 4) * (optLevel + 1) * (optLevel + 1) * counter;
 }
