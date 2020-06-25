@@ -548,8 +548,9 @@ IRBlock::IRBlock(int startAddress, int endAddress, int section)
   this->specAddr[1]      = 0;
   this->specAddr[2]      = 0;
   this->specAddr[3]      = 0;
-
-  this->sizeOpt0 = endAddress - startAddress;
+  this->unrollingFactor  = 0;
+  this->nbMergedBlocks   = 0;
+  this->sizeOpt0         = endAddress - startAddress;
   this->sizeOpt1 = this->sizeOpt2 = -1;
 }
 

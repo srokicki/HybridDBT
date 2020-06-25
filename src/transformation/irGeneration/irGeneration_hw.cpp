@@ -667,7 +667,7 @@ unsigned int irGenerator_hw(ac_int<128, false> srcBinaries[1024], ac_int<32, fal
     } else if (isProfile) {
       oneBytecode = assembleRiBytecodeInstruction_hw(1, 0, opcode, 256, imm13, 256, 0);
     } else if (isFMADD) {
-      oneBytecode = assembleRiBytecodeInstruction_hw(1, 0, opcode, 256, imm13, 256, 0); // TODO
+      oneBytecode = assembleFPBytecodeInstruction_hw(3, alloc, opcode, funct, pred2, pred1, destination, 0);
     } else if (isFP) {
       oneBytecode = assembleFPBytecodeInstruction_hw(3, alloc, opcode, funct, pred2, pred1, destination, 0);
     } else if (isSpecMemType) {
