@@ -774,7 +774,6 @@ char getOptLevel(int address, uint64_t nb_cycle)
         blockInfo[address >> 2].nbChargement++;
 
         putInIT = 0;
-        found = true;
       } else if (indirectionTable[oneWay][setNumber].counter > 0) {
 
         indirectionTable[oneWay][setNumber].counter--;
@@ -1172,7 +1171,7 @@ int evalFunction(struct entryInTranslationCache entry, int* way, int* set)
     for (int oneWay = 0; oneWay < IT_NB_WAY; oneWay++) {
       if (indirectionTable[oneWay][setvalue].address == address) {
         //  fprintf(stderr, "Element found in IT : [ %d %d ] : %d\n",oneWay,setvalue,address );
-        lastTouch-= indirectionTable[oneWay][setvalue].lastCycleTouch -1;
+        lastTouch-= indirectionTable[oneWay][setvalue].lastCycleTouch;
         counter   = indirectionTable[oneWay][setvalue].counter;
         optLevel  = indirectionTable[oneWay][setvalue].optLevel;
         *way      = oneWay;
@@ -1182,7 +1181,7 @@ int evalFunction(struct entryInTranslationCache entry, int* way, int* set)
     }
     if (optLevel == -1) return 0;
     fprintf(stderr, "%d\n",lastTouch );
-    eval += (optLevel + 1) * (optLevel + 1) * (counter + 1) / (lastTouch);
+    eval += ((optLevel + 1) * (optLevel + 1) * (counter + 1)) / (lastTouch==0?1:lastTouch);
   }
   return eval;
 }
