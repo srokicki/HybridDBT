@@ -54,7 +54,7 @@ extern "C"
 #define COST_OPT_1 10
 #define COST_OPT_2 100
 
-#define SIZE_TC 0
+#define SIZE_TC 8000
 
     /****************************************************************************************************************************/
 
@@ -773,7 +773,7 @@ char getOptLevel(int address, uint64_t nb_cycle)
         blockInfo[address >> 2].nbChargement++;
 
         putInIT = 0;
-
+        found = true;
       } else if (indirectionTable[oneWay][setNumber].counter > 0) {
 
         indirectionTable[oneWay][setNumber].counter--;
@@ -961,6 +961,9 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
         }
 
       if (valmin > newEntryEval) { // => can't make enough space in tc
+        if (!newEntry.isBlock) {
+          fprintf(stderr, "procedure refusee : eval %d\n", newEntryEval);
+        }
         return false;
       }
 
@@ -989,7 +992,7 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
       struct entryInTranslationCache theEntry = translationCacheContent->at(anEntry);
       currentSize -= theEntry.size;
 
-      // fprintf(stderr, "%d ",theEntry.size, evalValues->at(anEntry));
+      // fprintf(stderr, "%d(%d) ",theEntry.size, evalValues->at(anEntry));
       // processing of the eviction
       if (ItWays->at(anEntry) > -1 && ItSets->at(anEntry) > -1) {
         indirectionTable[ItWays->at(anEntry)][ItSets->at(anEntry)].counter  = 0;
@@ -1141,29 +1144,33 @@ void finalizeDBTInformation()
 */
 int evalFunction(struct entryInTranslationCache entry, int* way, int* set)
 {
-  unsigned int address = 0;
+  std::vector<unsigned int> *addresses = new std::vector<unsigned int>();
   if (entry.block != NULL) {
-    address = entry.block->sourceStartAddress;
+    addresses->push_back(entry.block->sourceStartAddress);
   } else if (entry.procedure != NULL) {
-    address = entry.procedure->entryBlock->sourceStartAddress;
+    for (int i = 0; i < entry.procedure->nbBlock; i ++)
+    addresses->push_back( entry.procedure->entryBlock->sourceStartAddress);
   }
-
-  unsigned int lastTouch = 1;
-  unsigned int counter   = 1;
-  char optLevel          = 0;
-  int setvalue           = (address)&0x7;
-  address                = address << 2;
-  // fprintf(stderr, "%d ", address);
-  for (int oneWay = 0; oneWay < IT_NB_WAY; oneWay++)
-    if (indirectionTable[oneWay][setvalue].address == address) {
-      //  fprintf(stderr, "Element found in IT : [ %d %d ] : %d\n",oneWay,setvalue,address );
-      lastTouch = indirectionTable[oneWay][setvalue].lastCycleTouch;
-      counter   = indirectionTable[oneWay][setvalue].counter;
-      optLevel  = indirectionTable[oneWay][setvalue].optLevel;
-      *way      = oneWay;
-      *set      = setvalue;
-      break;
-    }
-
-  return (lastTouch >> 4) * (optLevel + 1) * (optLevel + 1) * counter;
+  int eval = 0;
+  for (int i = 0; i < addresses->size(); i ++) {
+    unsigned int address = addresses->at(i);
+    unsigned int lastTouch = 1;
+    unsigned int counter   = 1;
+    char optLevel          = -1;
+    int setvalue           = (address)&0x7;
+    address                = address << 2;
+    // fprintf(stderr, "%d ", address);
+    for (int oneWay = 0; oneWay < IT_NB_WAY; oneWay++)
+      if (indirectionTable[oneWay][setvalue].address == address) {
+        //  fprintf(stderr, "Element found in IT : [ %d %d ] : %d\n",oneWay,setvalue,address );
+        lastTouch = indirectionTable[oneWay][setvalue].lastCycleTouch;
+        counter   = indirectionTable[oneWay][setvalue].counter;
+        optLevel  = indirectionTable[oneWay][setvalue].optLevel;
+        *way      = oneWay;
+        *set      = setvalue;
+        break;
+      }
+      eval +=  (lastTouch >> 4) * (optLevel + 1) * (optLevel + 1) * (counter + 1);
+  }
+  return eval;
 }
