@@ -109,6 +109,7 @@ int globalBinarySize;
 bool isExploreOpts = false;
 
 char* filenameMetric;
+uint64_t nb_cycle_for_eval;
 /****************************************************************************************************************************/
 // Definition of internal function that are not visible from outside
 
@@ -735,7 +736,7 @@ char getOptLevel(int address, uint64_t nb_cycle)
 
   bool inTranslationCache = false;
   char optLevel           = 0;
-
+  nb_cycle_for_eval = nb_cycle;
   /************************************************************************************
    *	Step 1: Simulation of the indirection table: is the branch profiled ? 			*/
 
@@ -900,8 +901,7 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
     }
     // We have to evict something
 
-    // need to speed up this part
-    // sort(translationCacheContent->begin(), translationCacheContent->end(), sortFunction);
+
     int nbElement                = translationCacheContent->size();
     std::vector<int>* evalValues = new std::vector<int>();
     std::vector<int>* ItWays     = new std::vector<int>();
@@ -909,15 +909,23 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
     int idmax = 0, valmax = 0;
 
     // set up the vectors
+    // and start by remove elements which are not in the IT anymore
     for (int entry = 0; entry < nbElement; entry++) {
       int way = -1, set = -1;
       int entryEval = evalFunction(translationCacheContent->at(entry), &way, &set);
-      evalValues->push_back(entryEval);
-      ItWays->push_back(way);
-      ItSets->push_back(set);
-      if (valmax < entryEval) {
-        valmax = entryEval;
-        idmax  = entry;
+
+      if (entryEval == 0) {
+        currentSize-=translationCacheContent->at(entry).size;
+        translationCacheContent->erase(translationCacheContent->begin() + (entry--));
+        nbElement --;
+      } else {
+        evalValues->push_back(entryEval);
+        ItWays->push_back(way);
+        ItSets->push_back(set);
+        if (valmax < entryEval) {
+          valmax = entryEval;
+          idmax  = entry;
+        }
       }
     }
 
@@ -997,6 +1005,7 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
       if (ItWays->at(anEntry) > -1 && ItSets->at(anEntry) > -1) {
         indirectionTable[ItWays->at(anEntry)][ItSets->at(anEntry)].counter  = 0;
         indirectionTable[ItWays->at(anEntry)][ItSets->at(anEntry)].optLevel = 0;
+        indirectionTable[ItWays->at(anEntry)][ItSets->at(anEntry)].isInTC   = 0;
       }
     }
     // fprintf(stderr, "\n\n" );
@@ -1154,23 +1163,26 @@ int evalFunction(struct entryInTranslationCache entry, int* way, int* set)
   int eval = 0;
   for (int i = 0; i < addresses->size(); i ++) {
     unsigned int address = addresses->at(i);
-    unsigned int lastTouch = 1;
+    unsigned int lastTouch = nb_cycle_for_eval;
     unsigned int counter   = 1;
     char optLevel          = -1;
     int setvalue           = (address)&0x7;
     address                = address << 2;
     // fprintf(stderr, "%d ", address);
-    for (int oneWay = 0; oneWay < IT_NB_WAY; oneWay++)
+    for (int oneWay = 0; oneWay < IT_NB_WAY; oneWay++) {
       if (indirectionTable[oneWay][setvalue].address == address) {
         //  fprintf(stderr, "Element found in IT : [ %d %d ] : %d\n",oneWay,setvalue,address );
-        lastTouch = indirectionTable[oneWay][setvalue].lastCycleTouch;
+        lastTouch-= indirectionTable[oneWay][setvalue].lastCycleTouch -1;
         counter   = indirectionTable[oneWay][setvalue].counter;
         optLevel  = indirectionTable[oneWay][setvalue].optLevel;
         *way      = oneWay;
         *set      = setvalue;
         break;
       }
-      eval +=  (lastTouch >> 4) * (optLevel + 1) * (optLevel + 1) * (counter + 1);
+    }
+    if (optLevel == -1) return 0;
+    fprintf(stderr, "%d\n",lastTouch );
+    eval += (optLevel + 1) * (optLevel + 1) * (counter + 1) / (lastTouch);
   }
   return eval;
 }
