@@ -1181,7 +1181,11 @@ int evalFunction(struct entryInTranslationCache entry, int* way, int* set)
     }
     if (optLevel == -1) return 0;
     fprintf(stderr, "%d\n",lastTouch );
+<<<<<<< HEAD
     eval += ((optLevel + 1) * (optLevel + 1) * (counter + 1)) / (lastTouch==0?1:lastTouch);
+=======
+    eval += (optLevel + 1) * (optLevel + 1) * (counter + 1) / (lastTouch==0?1000000:lastTouch);
+>>>>>>> e6ca19db72d9d9f7dcc3dfd61b5377ff82ec1829
   }
   return eval;
 }
