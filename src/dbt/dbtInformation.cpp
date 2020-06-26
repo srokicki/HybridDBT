@@ -54,7 +54,7 @@ extern "C"
 #define COST_OPT_1 10
 #define COST_OPT_2 100
 
-#define SIZE_TC 16000
+#define SIZE_TC 0
 
     /****************************************************************************************************************************/
 
@@ -893,7 +893,7 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
     // We can store the translated element in the translation cache without having to evict anything
     translationCacheContent->push_back(newEntry);
     return true;
-  } else { // V5
+  } else {
     if (size > SIZE_TC) {
       // fprintf(stderr, "entry do not fit in the tc\n");
       return false;
@@ -943,9 +943,10 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
         fprintf(stderr,"\033[0m");
     */
 
-    // select elements to make space
-    int tmp;
+    int tmp; // we do not need the IT coords of the new entry
     int newEntryEval = evalFunction(newEntry, &tmp, &tmp);
+
+    // select elements to make space
     int sumSize      = 0; // sum of removed components sizes
     int nbSelected   = 0; // number of elements selected to be removed from tc
     while (currentSize + size > SIZE_TC + sumSize) {
@@ -1131,6 +1132,13 @@ void finalizeDBTInformation()
   // -----------------------------------------------------------------------------
 }
 
+
+/**
+*   grade an entry of the TC by its IT counter, optLevel and lastCycleTouch
+*
+*   int* way and set are used to return the IT coords of the entry
+*
+*/
 int evalFunction(struct entryInTranslationCache entry, int* way, int* set)
 {
   unsigned int address = 0;
