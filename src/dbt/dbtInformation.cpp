@@ -594,12 +594,12 @@ void initializeDBTInfo(char* fileName)
     numberOfBlocks++;
   }
   /************************** We create a copy of the platform which is used to re-optimize ***********************/
-
-  nonOptPlatform = (DBTPlateform*)malloc(sizeof(DBTPlateform));
-  memcpy(nonOptPlatform, platform, sizeof(DBTPlateform));
-
-  nonOptPlatform->vliwBinaries = (unsigned int*)malloc(4 * MEMORY_SIZE * sizeof(unsigned int));
-  memcpy(nonOptPlatform->vliwBinaries, platform->vliwBinaries, 4 * MEMORY_SIZE * sizeof(unsigned int));
+  //
+  // nonOptPlatform = (DBTPlateform*)malloc(sizeof(DBTPlateform));
+  // memcpy(nonOptPlatform, platform, sizeof(DBTPlateform));
+  //
+  // nonOptPlatform->vliwBinaries = (unsigned int*)malloc(4 * MEMORY_SIZE * sizeof(unsigned int));
+  // memcpy(nonOptPlatform->vliwBinaries, platform->vliwBinaries, 4 * MEMORY_SIZE * sizeof(unsigned int));
 }
 
 /******************************************************************************************************
@@ -1071,6 +1071,10 @@ void verifyBranchDestination(int addressOfJump, int dest)
 
     if (initialState > IRBLOCK_STATE_FIRSTPASS) {
 
+      //NOTE SIMON: we should never enter this section with the new execution scheme.
+      assert(false);
+
+
       unsigned int oldVliwStartAddress = containingBlock->vliwStartAddress;
       unsigned int oldVliwEndAddress   = containingBlock->vliwEndAddress;
 
@@ -1080,8 +1084,8 @@ void verifyBranchDestination(int addressOfJump, int dest)
           solveUnresolvedJump(platform, containingBlock->sourceEndAddress - addressStart / 4);
       containingBlock->blockState = IRBLOCK_STATE_FIRSTPASS;
 
-      optimizeBasicBlock(containingBlock, nonOptPlatform, application, placeCode);
-      optimizeBasicBlock(newBlock, nonOptPlatform, application, placeCode);
+      // optimizeBasicBlock(containingBlock, nonOptPlatform, application, placeCode);
+      // optimizeBasicBlock(newBlock, nonOptPlatform, application, placeCode);
 
       // We add information on block size
       blockInfo[containingBlock->sourceStartAddress].scheduleSizeOpt1 =
