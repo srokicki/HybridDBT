@@ -54,8 +54,10 @@ extern "C"
 #define COST_OPT_1 10
 #define COST_OPT_2 100
 
-#define SIZE_TC 5031
+#define SIZE_TC 0
 #define MAX_IT_COUNTER 20
+#define THRESHOLD_OPTI1 3
+#define THRESHOLD_OPTI2 7
     /****************************************************************************************************************************/
 
     typedef struct BlockInformation {
@@ -792,7 +794,7 @@ char getOptLevel(int address, uint64_t nb_cycle)
 
         unsigned int oneAddress = indirectionTable[oneWay][oneSet].address;
 
-        if (indirectionTable[oneWay][oneSet].counter >= 3 && indirectionTable[oneWay][oneSet].optLevel <= 0) {
+        if (indirectionTable[oneWay][oneSet].counter >= THRESHOLD_OPTI1 && indirectionTable[oneWay][oneSet].optLevel <= 0) {
           // We should trigger opt level 1
 
           // TODO: measuring how much place there is in the TC
@@ -817,7 +819,7 @@ char getOptLevel(int address, uint64_t nb_cycle)
               blockInfo[oneAddress >> 2].nbOpti1++;
             }
           }
-        } else if (indirectionTable[oneWay][oneSet].counter >= 7 && indirectionTable[oneWay][oneSet].optLevel <= 1) {
+        } else if (indirectionTable[oneWay][oneSet].counter >= THRESHOLD_OPTI2 && indirectionTable[oneWay][oneSet].optLevel <= 1) {
           // We trigger opt level 2
 
           // TODO: measuring how much place there is in the TC
@@ -1141,11 +1143,11 @@ void finalizeDBTInformation()
 
     while (blockIterator != end) {
       struct BlockInformation block = blockInfo[(*blockIterator).sourceStartAddress];
-
-      int nbInstr = block.block->sourceEndAddress - block.block->sourceStartAddress;
-      fprintf(metrix, "%d\t%d\t%d\t%d\t%d\t%d\n", block.block->sourceStartAddress, block.nbChargement, block.nbOpti1,
-              block.nbOpti2, block.nbExecution, nbInstr);
-
+      if (block.nbExecution > 0 || block.nbChargement > 0 || block.nbOpti2 > 0) {}
+        int nbInstr = block.block->sourceEndAddress - block.block->sourceStartAddress;
+        fprintf(metrix, "%d\t%d\t%d\t%d\t%d\t%d\n", block.block->sourceStartAddress, block.nbChargement, block.nbOpti1,
+                block.nbOpti2, block.nbExecution, nbInstr);
+      }
       ++blockIterator;
     }
     fprintf(metrix, "end\n");
