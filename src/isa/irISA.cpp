@@ -657,8 +657,8 @@ IRApplicationBlocksIterator IRApplication::begin()
 IRApplicationBlocksIterator IRApplication::end()
 {
   unsigned int end = (addressStart / 4) + nbInstr;
-  while (this->getBlock(end) == NULL)
-    end++;
+  // while (this->getBlock(end) == NULL)
+  //   end--;
 
   return IRApplicationBlocksIterator(end, this);
 };

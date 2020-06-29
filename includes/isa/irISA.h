@@ -183,9 +183,10 @@ public:
   IRApplicationBlocksIterator begin();
   IRApplicationBlocksIterator end();
 
-private:
   unsigned int addressStart;
   unsigned int nbInstr;
+
+private:
   IRBlock** blocks;
 };
 
@@ -201,8 +202,9 @@ public:
   }
   IRApplicationBlocksIterator operator++()
   {
+    unsigned int end = (application->addressStart / 4) + application->nbInstr;
     this->addr++;
-    while (application->getBlock(this->addr) == NULL) {
+    while (this->addr < end && application->getBlock(this->addr) == NULL) {
       this->addr++;
     };
     return *this;
