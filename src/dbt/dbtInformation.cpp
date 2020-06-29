@@ -54,8 +54,8 @@ extern "C"
 #define COST_OPT_1 10
 #define COST_OPT_2 100
 
-#define SIZE_TC 1631
-
+#define SIZE_TC 5031
+#define MAX_IT_COUNTER 20
     /****************************************************************************************************************************/
 
     typedef struct BlockInformation {
@@ -746,8 +746,10 @@ char getOptLevel(int address, uint64_t nb_cycle)
     if (indirectionTable[oneWay][setNumber].address == address) {
       // The destination of the branch is in the indirection table.
 
-      // We increment the use counter
-      indirectionTable[oneWay][setNumber].counter++;
+      if (indirectionTable[oneWay][setNumber].counter < MAX_IT_COUNTER) {
+        // We increment the use counter
+        indirectionTable[oneWay][setNumber].counter++;
+      }
       if (indirectionTable[oneWay][setNumber].isInTC) {
         if (indirectionTable[oneWay][setNumber].timeAvailable < nb_cycle)
           optLevel = indirectionTable[oneWay][setNumber].optLevel;
@@ -914,6 +916,7 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
       int entryEval = evalFunction(translationCacheContent->at(entry), &way, &set);
 
       if (entryEval == 0) {
+        // we evict all elements that the IT do not target anymore
         currentSize-=translationCacheContent->at(entry).size;
         translationCacheContent->erase(translationCacheContent->begin() + (entry--));
         nbElement --;
@@ -1134,12 +1137,16 @@ void finalizeDBTInformation()
     }
     fprintf(metrix, "\n");
     fprintf(metrix, "adBlock\tnbIT\tnbO1\tnbO2\tnbExec\tblockSize\n");
-    for (int i = 0; i < greatestAddr; i++) {
-      if (blockInfo[i].nbExecution > 0 || blockInfo[i].nbChargement > 0) {
-        int nbInstr = blockInfo[i].block->sourceEndAddress - blockInfo[i].block->sourceStartAddress;
-        fprintf(metrix, "%d\t%d\t%d\t%d\t%d\t%d\n", i, blockInfo[i].nbChargement, blockInfo[i].nbOpti1,
-                blockInfo[i].nbOpti2, blockInfo[i].nbExecution, nbInstr);
-      }
+    IRApplicationBlocksIterator blockIterator = application->begin(), end = application->end();
+
+    while (blockIterator != end) {
+      struct BlockInformation block = blockInfo[(*blockIterator).sourceStartAddress];
+
+      int nbInstr = block.block->sourceEndAddress - block.block->sourceStartAddress;
+      fprintf(metrix, "%d\t%d\t%d\t%d\t%d\t%d\n", block.block->sourceStartAddress, block.nbChargement, block.nbOpti1,
+              block.nbOpti2, block.nbExecution, nbInstr);
+
+      ++blockIterator;
     }
     fprintf(metrix, "end\n");
     fclose(metrix);
