@@ -54,7 +54,7 @@ extern "C"
 #define COST_OPT_1 10
 #define COST_OPT_2 100
 
-#define SIZE_TC 8000
+#define SIZE_TC 1631
 
     /****************************************************************************************************************************/
 
@@ -1179,13 +1179,8 @@ int evalFunction(struct entryInTranslationCache entry, int* way, int* set)
         break;
       }
     }
-    if (optLevel == -1) return 0;
-    fprintf(stderr, "%d\n",lastTouch );
-<<<<<<< HEAD
+    // if (optLevel == -1) return 0;
     eval += ((optLevel + 1) * (optLevel + 1) * (counter + 1)) / (lastTouch==0?1:lastTouch);
-=======
-    eval += (optLevel + 1) * (optLevel + 1) * (counter + 1) / (lastTouch==0?1000000:lastTouch);
->>>>>>> e6ca19db72d9d9f7dcc3dfd61b5377ff82ec1829
   }
   return eval;
 }
