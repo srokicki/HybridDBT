@@ -54,7 +54,7 @@ extern "C"
 #define COST_OPT_1 10
 #define COST_OPT_2 100
 
-#define SIZE_TC 0
+#define SIZE_TC 5496
 #define MAX_IT_COUNTER 20
 #define THRESHOLD_OPTI1 3
 #define THRESHOLD_OPTI2 7
@@ -112,6 +112,8 @@ bool isExploreOpts = false;
 
 char* filenameMetric;
 uint64_t nb_cycle_for_eval;
+unsigned int nb_max_counter = 0, nb_tc_too_small = 0, nb_tc_too_full = 0,
+              nb_try_proc_in_tc = 0;
 /****************************************************************************************************************************/
 // Definition of internal function that are not visible from outside
 
@@ -336,6 +338,11 @@ void initializeDBTInfo(char* fileName)
   filenameMetric[len - 2] = 'x';
   filenameMetric[len - 1] = 't';
   fprintf(stderr, "%s\n", filenameMetric);
+
+  nb_max_counter    = 0;
+  nb_tc_too_full    = 0;
+  nb_tc_too_small   = 0;
+  nb_try_proc_in_tc = 0;
 
   /***********************************
    *  Initialization of the DBT platform
@@ -751,6 +758,8 @@ char getOptLevel(int address, uint64_t nb_cycle)
       if (indirectionTable[oneWay][setNumber].counter < MAX_IT_COUNTER) {
         // We increment the use counter
         indirectionTable[oneWay][setNumber].counter++;
+        if (indirectionTable[oneWay][setNumber].counter == MAX_IT_COUNTER)
+          nb_max_counter ++;
       }
       if (indirectionTable[oneWay][setNumber].isInTC) {
         if (indirectionTable[oneWay][setNumber].timeAvailable < nb_cycle)
@@ -839,7 +848,7 @@ char getOptLevel(int address, uint64_t nb_cycle)
                 size += procedure->blocks[oneBlock]->nbInstr;
               }
               bool fitsInTranslationCache = allocateInTranslationCache(size, procedure, NULL);
-
+              nb_try_proc_in_tc ++;
               // We see if it fits the TC
               if (fitsInTranslationCache) {
                 indirectionTable[oneWay][oneSet].optLevel       = 2;
@@ -899,6 +908,7 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
     return true;
   } else {
     if (size > SIZE_TC) {
+      nb_tc_too_small ++;
       // fprintf(stderr, "entry do not fit in the tc\n");
       return false;
     }
@@ -973,9 +983,10 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
         }
 
       if (valmin > newEntryEval) { // => can't make enough space in tc
-        if (!newEntry.isBlock) {
+        if (newEntry.block == NULL) {
           fprintf(stderr, "procedure refusee : eval %d\n", newEntryEval);
         }
+        nb_tc_too_full ++;
         return false;
       }
 
@@ -1128,7 +1139,6 @@ void finalizeDBTInformation()
   if (metrix == NULL) {
     printf("ERRROR FILE %s\n", filenameMetric);
   } else {
-    fprintf(stderr, "addressStart : %u, greatestAddr : %d\n", addressStart, greatestAddr);
     for (unsigned int i = 0; i < application->numberProcedures; i++) {
       IRProcedure* proc = application->procedures[i];
       unsigned int size = 0;
@@ -1138,12 +1148,14 @@ void finalizeDBTInformation()
       fprintf(metrix, "%u\t", size);
     }
     fprintf(metrix, "\n");
-    fprintf(metrix, "adBlock\tnbIT\tnbO1\tnbO2\tnbExec\tblockSize\n");
+    fprintf(metrix, "nb_max_counter : \t%u\tnb_tc_too_full : \t%u\tnb_tc_too_small : \t%u\tnb_try_proc_in_tc : \t%u\n",
+      nb_max_counter, nb_tc_too_full, nb_tc_too_small, nb_try_proc_in_tc);
+    // fprintf(metrix, "adBlock\tnbIT\tnbO1\tnbO2\tnbExec\tblockSize\n");
     IRApplicationBlocksIterator blockIterator = application->begin(), end = application->end();
 
     while (blockIterator != end) {
       struct BlockInformation block = blockInfo[(*blockIterator).sourceStartAddress];
-      if (block.nbExecution > 0 || block.nbChargement > 0 || block.nbOpti2 > 0) {}
+      if (block.nbExecution > 0 || block.nbChargement > 0 || block.nbOpti2 > 0) {
         int nbInstr = block.block->sourceEndAddress - block.block->sourceStartAddress;
         fprintf(metrix, "%d\t%d\t%d\t%d\t%d\t%d\n", block.block->sourceStartAddress, block.nbChargement, block.nbOpti1,
                 block.nbOpti2, block.nbExecution, nbInstr);
@@ -1152,6 +1164,7 @@ void finalizeDBTInformation()
     }
     fprintf(metrix, "end\n");
     fclose(metrix);
+
   }
   // -----------------------------------------------------------------------------
 }
