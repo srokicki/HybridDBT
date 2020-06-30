@@ -52,15 +52,14 @@ extern "C"
 #define IT_NB_WAY 8
 
 #define COST_OPT_1 10
-#define COST_OPT_2 100
+#define COST_OPT_2 200
 
-#define SIZE_TC 5496
-#define MAX_IT_COUNTER 20
+#define MAX_IT_COUNTER 30
 #define THRESHOLD_OPTI1 3
 #define THRESHOLD_OPTI2 7
     /****************************************************************************************************************************/
 
-    typedef struct BlockInformation {
+typedef struct BlockInformation {
   IRBlock* block;
   int scheduleSizeOpt0 = -1;
   int scheduleSizeOpt1 = -1;
@@ -114,6 +113,8 @@ char* filenameMetric;
 uint64_t nb_cycle_for_eval;
 unsigned int nb_max_counter = 0, nb_tc_too_small = 0, nb_tc_too_full = 0,
               nb_try_proc_in_tc = 0, nb_proc_in_tc = 0;
+
+unsigned int SIZE_TC = 0;
 /****************************************************************************************************************************/
 // Definition of internal function that are not visible from outside
 
@@ -331,13 +332,17 @@ void initializeDBTInfo(char* fileName)
     progname       = iteratorString;
     iteratorString = strtok(NULL, "/");
   }
-  strcpy(filenameMetric, "/home/lsavary/Documents/metrix/");
+  strcpy(filenameMetric, "/home/lsavary/Documents/v8metrix/");
   strcat(filenameMetric, progname);
   int len                 = strlen(filenameMetric);
+
   filenameMetric[len - 3] = 't';
   filenameMetric[len - 2] = 'x';
   filenameMetric[len - 1] = 't';
   fprintf(stderr, "%s\n", filenameMetric);
+
+
+  SIZE_TC = atoi(getenv("SIZE_TC"));
 
   nb_max_counter    = 0;
   nb_tc_too_full    = 0;
@@ -1193,7 +1198,7 @@ int evalFunction(struct entryInTranslationCache entry, int* way, int* set)
     addresses->push_back(entry.block->sourceStartAddress);
   } else if (entry.procedure != NULL) {
     for (int i = 0; i < entry.procedure->nbBlock; i ++)
-    addresses->push_back( entry.procedure->entryBlock->sourceStartAddress);
+    addresses->push_back( entry.procedure->blocks[i]->sourceStartAddress);
   }
   int eval = 0;
   for (int i = 0; i < addresses->size(); i ++) {
