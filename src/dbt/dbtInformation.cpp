@@ -1202,11 +1202,15 @@ int evalFunction(struct entryInTranslationCache entry, int* way, int* set)
         optLevel  = indirectionTable[oneWay][setvalue].optLevel;
         *way      = oneWay;
         *set      = setvalue;
+        // fprintf(stderr, "%d\t%d\t%u\t%d\t%u\n", *way, *set, lastTouch, optLevel, counter );
         break;
       }
     }
     // if (optLevel == -1) return 0;
-    eval += ((optLevel + 1) * (optLevel + 1) * (counter + 1)) / (lastTouch==0?1:lastTouch);
+    // eval += ((optLevel + 1) * (optLevel + 1) * (counter + 1)) / (lastTouch==0?1:lastTouch);
+    if (optLevel != -1) {
+      eval += ((optLevel + 1) * (optLevel + 1) * (counter + 1)) * 10000000 / (lastTouch + 10000000);
+    }
   }
   return eval;
 }
