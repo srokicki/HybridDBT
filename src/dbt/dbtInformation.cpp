@@ -113,7 +113,7 @@ bool isExploreOpts = false;
 char* filenameMetric;
 uint64_t nb_cycle_for_eval;
 unsigned int nb_max_counter = 0, nb_tc_too_small = 0, nb_tc_too_full = 0,
-              nb_try_proc_in_tc = 0;
+              nb_try_proc_in_tc = 0, nb_proc_in_tc = 0;
 /****************************************************************************************************************************/
 // Definition of internal function that are not visible from outside
 
@@ -343,6 +343,7 @@ void initializeDBTInfo(char* fileName)
   nb_tc_too_full    = 0;
   nb_tc_too_small   = 0;
   nb_try_proc_in_tc = 0;
+  nb_proc_in_tc     = 0;
 
   /***********************************
    *  Initialization of the DBT platform
@@ -739,7 +740,6 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int* nextBlock)
 
 char getOptLevel(int address, uint64_t nb_cycle)
 {
-
   if (isExploreOpts)
     return 0;
 
@@ -905,11 +905,12 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
   if (SIZE_TC == 0 || currentSize + size < SIZE_TC) {
     // We can store the translated element in the translation cache without having to evict anything
     translationCacheContent->push_back(newEntry);
+    // fprintf(stderr, "allocateInTranslationCache : il y a la place\n" );
     return true;
   } else {
     if (size > SIZE_TC) {
       nb_tc_too_small ++;
-      // fprintf(stderr, "entry do not fit in the tc\n");
+      // fprintf(stderr, "allocateInTranslationCache : entry do not fit in the tc %d\n", size);
       return false;
     }
     // We have to evict something
@@ -921,6 +922,7 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
     std::vector<int>* ItSets     = new std::vector<int>();
     int idmax = 0, valmax = 0;
 
+    int default_eviction_size = 0;
     // set up the vectors
     // and start by remove elements which are not in the IT anymore
     for (int entry = 0; entry < nbElement; entry++) {
@@ -928,10 +930,14 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
       int entryEval = evalFunction(translationCacheContent->at(entry), &way, &set);
 
       if (entryEval == 0) {
+
         // we evict all elements that the IT do not target anymore
-        currentSize-=translationCacheContent->at(entry).size;
-        translationCacheContent->erase(translationCacheContent->begin() + (entry--));
+        default_eviction_size += translationCacheContent->at(entry).size;
+        translationCacheContent->erase(translationCacheContent->begin() + entry);
+        entry--;
         nbElement --;
+
+
       } else {
         evalValues->push_back(entryEval);
         ItWays->push_back(way);
@@ -942,7 +948,8 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
         }
       }
     }
-
+    // fprintf(stderr, "currentSize : %d, default_eviction_size : %d\n",currentSize, default_eviction_size );
+    currentSize -= default_eviction_size;
     /*
         // display
         fprintf(stderr,"stocked translation : %d, size of the new entry : %d\n", currentSize, size);
@@ -1026,6 +1033,9 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
     // fprintf(stderr, "\n\n" );
 
     translationCacheContent->erase(translationCacheContent->end() - nbSelected, translationCacheContent->end());
+
+    if (procedure != NULL) nb_proc_in_tc ++;
+
     // store the new element
     translationCacheContent->push_back(newEntry);
     currentSize += size;
@@ -1148,8 +1158,8 @@ void finalizeDBTInformation()
       fprintf(metrix, "%u\t", size);
     }
     fprintf(metrix, "\n");
-    fprintf(metrix, "nb_max_counter : \t%u\tnb_tc_too_full : \t%u\tnb_tc_too_small : \t%u\tnb_try_proc_in_tc : \t%u\n",
-      nb_max_counter, nb_tc_too_full, nb_tc_too_small, nb_try_proc_in_tc);
+    fprintf(metrix, "nb_max_counter : \t%u\tnb_tc_too_full : \t%u\tnb_tc_too_small : \t%u\tnb_try_proc_in_tc : \t%u\tnb_proc_in_tc : \t%u\n",
+      nb_max_counter, nb_tc_too_full, nb_tc_too_small, nb_try_proc_in_tc, nb_proc_in_tc);
     // fprintf(metrix, "adBlock\tnbIT\tnbO1\tnbO2\tnbExec\tblockSize\n");
     IRApplicationBlocksIterator blockIterator = application->begin(), end = application->end();
 
