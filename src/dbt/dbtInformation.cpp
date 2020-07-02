@@ -341,8 +341,13 @@ void initializeDBTInfo(char* fileName)
   filenameMetric[len - 1] = 't';
   fprintf(stderr, "%s\n", filenameMetric);
 
-
-  SIZE_TC = atoi(getenv("SIZE_TC"));
+  char* str_size_tc = getenv("SIZE_TC");
+  if (str_size_tc != NULL)
+    SIZE_TC = atoi(str_size_tc);
+  else {
+    SIZE_TC = 0;
+    fprintf(stderr, "SIZE_TC not found, set at 0 by default\n");
+  }
 
   nb_max_counter    = 0;
   nb_tc_too_full    = 0;
@@ -922,9 +927,9 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
 
 
     int nbElement                = translationCacheContent->size();
-    std::vector<int>* evalValues = new std::vector<int>();
-    std::vector<int>* ItWays     = new std::vector<int>();
-    std::vector<int>* ItSets     = new std::vector<int>();
+    std::vector<int> evalValues;
+    std::vector<int> waysInIT ;
+    std::vector<int> setsInIT ;
     int idmax = 0, valmax = 0;
 
     int default_eviction_size = 0;
@@ -944,9 +949,9 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
 
 
       } else {
-        evalValues->push_back(entryEval);
-        ItWays->push_back(way);
-        ItSets->push_back(set);
+        evalValues.push_back(entryEval);
+        waysInIT.push_back(way);
+        setsInIT.push_back(set);
         if (valmax < entryEval) {
           valmax = entryEval;
           idmax  = entry;
@@ -962,7 +967,7 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
           struct entryInTranslationCache theEntry = translationCacheContent->at(i);
           if (theEntry.procedure == NULL) fprintf(stderr,"\033[0;33m");
           else fprintf(stderr,"\033[0;32m");
-          fprintf(stderr,"%d(%d) ", theEntry.size, evalValues->at(i));
+          fprintf(stderr,"%d(%d) ", theEntry.size, waysInIT[i]);
         }
         fprintf(stderr,"\033[0m\n");
     */
@@ -988,10 +993,10 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
 
       // find the less valuable entry in translation cache
       for (int i = 0; i < nbElement - nbSelected; i++)
-        if (evalValues->at(i) < valmin) {
+        if (waysInIT[i] < valmin) {
 
           idmin  = i;
-          valmin = evalValues->at(i);
+          valmin = waysInIT[i];
         }
 
       if (valmin > newEntryEval) { // => can't make enough space in tc
@@ -1027,12 +1032,12 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
       struct entryInTranslationCache theEntry = translationCacheContent->at(anEntry);
       currentSize -= theEntry.size;
 
-      // fprintf(stderr, "%d(%d) ",theEntry.size, evalValues->at(anEntry));
+      // fprintf(stderr, "%d(%d) ",theEntry.size, waysInIT[anEntry]);
       // processing of the eviction
-      if (ItWays->at(anEntry) > -1 && ItSets->at(anEntry) > -1) {
-        indirectionTable[ItWays->at(anEntry)][ItSets->at(anEntry)].counter  = 0;
-        indirectionTable[ItWays->at(anEntry)][ItSets->at(anEntry)].optLevel = 0;
-        indirectionTable[ItWays->at(anEntry)][ItSets->at(anEntry)].isInTC   = 0;
+      if (waysInIT[anEntry] > -1 && setsInIT[anEntry] > -1) {
+        indirectionTable[waysInIT[anEntry]][setsInIT[anEntry]].counter  = 0;
+        indirectionTable[waysInIT[anEntry]][setsInIT[anEntry]].optLevel = 0;
+        indirectionTable[waysInIT[anEntry]][setsInIT[anEntry]].isInTC   = 0;
       }
     }
     // fprintf(stderr, "\n\n" );
@@ -1182,6 +1187,11 @@ void finalizeDBTInformation()
 
   }
   // -----------------------------------------------------------------------------
+  delete(platform);
+  delete(application);
+  delete(blockInfo);
+  delete(filenameMetric);
+  delete(execPath);
 }
 
 
@@ -1193,16 +1203,16 @@ void finalizeDBTInformation()
 */
 int evalFunction(struct entryInTranslationCache entry, int* way, int* set)
 {
-  std::vector<unsigned int> *addresses = new std::vector<unsigned int>();
+  std::vector<unsigned int> addresses;
   if (entry.block != NULL) {
-    addresses->push_back(entry.block->sourceStartAddress);
+    addresses.push_back(entry.block->sourceStartAddress);
   } else if (entry.procedure != NULL) {
     for (int i = 0; i < entry.procedure->nbBlock; i ++)
-    addresses->push_back( entry.procedure->blocks[i]->sourceStartAddress);
+    addresses.push_back( entry.procedure->blocks[i]->sourceStartAddress);
   }
   int eval = 0;
-  for (int i = 0; i < addresses->size(); i ++) {
-    unsigned int address = addresses->at(i);
+  for (int i = 0; i < addresses.size(); i ++) {
+    unsigned int address = addresses[i];
     unsigned int lastTouch = nb_cycle_for_eval;
     unsigned int counter   = 1;
     char optLevel          = -1;
