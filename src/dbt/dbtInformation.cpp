@@ -804,45 +804,80 @@ char getOptLevel(int address, uint64_t nb_cycle)
     }
   }
 
+  /************************************************************************************
+   *	Step 3: Simulation of the call stack: we have to decide whether the return goes *
+   *			inside the translation cache or inside the first pass translation		*/
+
+  // TODO
+
+
+  if (optLevel < 0)
+    optLevel = 0;
+  return optLevel;
+}
+
+void triggerOptimization(uint64_t nb_cycle) {
+
   /***********************************************************************************
    * Triggering the optimization if the DBT proc is available						   */
 
-  for (int oneWay = 0; oneWay < IT_NB_WAY; oneWay++) {
-    for (int oneSet = 0; oneSet < IT_NB_SET; oneSet++) {
-      if (nextAvailabilityDBTProc <= nb_cycle) {
+  if (nextAvailabilityDBTProc <= nb_cycle) {
+    bool search_entry_to_opt = true;
+    float max_eval = float(MAX_IT_COUNTER)*10.0f;
 
-        unsigned int oneAddress = indirectionTable[oneWay][oneSet].address;
+    while (search_entry_to_opt) {
+      // find the more valuable IT entry to optimize ---------------------------
+      float best_eval = 0; // in the interval [0;MAX_IT_COUNTER]
+      std::vector<int> sets, ways;
 
-        if (indirectionTable[oneWay][oneSet].counter >= THRESHOLD_OPTI1 && indirectionTable[oneWay][oneSet].optLevel <= 0) {
-          // We should trigger opt level 1
-
-          // TODO: measuring how much place there is in the TC
-          // TODO: Optionally remove something from the cache
-
-          if (blockInfo[oneAddress >> 2].block != NULL) {
-
-            int size = blockInfo[oneAddress >> 2].block->sourceEndAddress -
-                       blockInfo[oneAddress >> 2].block->sourceStartAddress;
-            bool fitsInTranslationCache = allocateInTranslationCache(size, NULL, blockInfo[oneAddress >> 2].block);
-
-            if (fitsInTranslationCache) {
-              indirectionTable[oneWay][oneSet].optLevel       = 1;
-              indirectionTable[oneWay][oneSet].isInTC         = true;
-              indirectionTable[oneWay][oneSet].timeAvailable  = nb_cycle + COST_OPT_1 * size;
-              indirectionTable[oneWay][oneSet].costOfBinaries = COST_OPT_1 * size;
-              indirectionTable[oneWay][oneSet].sizeInTC       = size;
-              indirectionTable[oneWay][oneSet].lastCycleTouch = nb_cycle;
-              sizeLeftInTC -= size;
-              nextAvailabilityDBTProc = nb_cycle + COST_OPT_1 * size;
-
-              blockInfo[oneAddress >> 2].nbOpti1++;
+      for (int oneWay = 0; oneWay < IT_NB_WAY; oneWay++) {
+        for (int oneSet = 0; oneSet < IT_NB_SET; oneSet++) {
+          if (indirectionTable[oneWay][oneSet].counter >= THRESHOLD_OPTI1 && indirectionTable[oneWay][oneSet].optLevel < 2) {
+            struct indirectionTableEntry entry = indirectionTable[oneWay][oneSet];
+            // int size = 1;
+            // evaluation :
+            if (entry.optLevel == 1) {
+              IRProcedure * proc = optimizeLevel2(*blockInfo[entry.address >> 2].block);
+              if (proc != NULL && ( proc->nbInstr > SIZE_TC || proc->nbInstr > 13000 )) {
+                continue;
+                // the level 2 optimization is too big for the tc, no need to evaluate
+              }
+              /*
+              if (proc != NULL)
+                size = proc->nbInstr;
+              */
+            } /*else {
+              size = blockInfo[entry.address >> 2].block->sourceEndAddress -
+                     blockInfo[entry.address >> 2].block->sourceStartAddress;
+            }*/
+            float eval = float(entry.counter) * float(entry.lastCycleTouch) / float(nb_cycle);
+            //fprintf(stderr, "eval %f\n",eval);
+            if (eval - best_eval < FLOAT_PRECISION && eval - best_eval > -1.0 * FLOAT_PRECISION) {
+              sets.push_back(oneSet);
+              ways.push_back(oneWay);
+            } else if (eval - best_eval >= FLOAT_PRECISION && max_eval - eval > FLOAT_PRECISION) {
+              sets.clear();
+              ways.clear();
+              best_eval = eval;
+              sets.push_back(oneSet);
+              ways.push_back(oneWay);
             }
           }
-        } else if (indirectionTable[oneWay][oneSet].counter >= THRESHOLD_OPTI2 && indirectionTable[oneWay][oneSet].optLevel <= 1) {
-          // We trigger opt level 2
+        }
+      }
+      // -----------------------------------------------------------------------
 
-          // TODO: measuring how much place there is in the TC
-          // TODO: Optionally remove something from the cache
+      if (best_eval <= FLOAT_PRECISION) {
+        break;
+        // leave the while
+      }
+
+      for (int i = 0; i < sets.size() && search_entry_to_opt; i++) {
+
+        indirectionTableEntry * entry_to_opt = &(indirectionTable[ways[i]][sets[i]]);
+        unsigned int oneAddress = entry_to_opt->address;
+        if (entry_to_opt->counter >= THRESHOLD_OPTI2 && entry_to_opt->optLevel <= 1) {
+         // We trigger opt level 2
 
           if (blockInfo[oneAddress >> 2].block != NULL &&
               blockInfo[oneAddress >> 2].block->blockState < IRBLOCK_ERROR_PROC) {
@@ -853,46 +888,123 @@ char getOptLevel(int address, uint64_t nb_cycle)
             if (procedure != NULL) {
 
               // We measure the sum of all blocks in the procedure
-              int size = 0;
-              for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++) {
-                size += procedure->blocks[oneBlock]->nbInstr;
-              }
+              int size = procedure->nbInstr;
               bool fitsInTranslationCache = allocateInTranslationCache(size, procedure, NULL);
               nb_try_proc_in_tc ++;
               // We see if it fits the TC
               if (fitsInTranslationCache) {
-                indirectionTable[oneWay][oneSet].optLevel       = 2;
-                indirectionTable[oneWay][oneSet].isInTC         = true;
-                indirectionTable[oneWay][oneSet].timeAvailable  = nb_cycle + COST_OPT_2 * size;
-                indirectionTable[oneWay][oneSet].costOfBinaries = COST_OPT_2 * size;
-                indirectionTable[oneWay][oneSet].sizeInTC       = size;
-                indirectionTable[oneWay][oneSet].lastCycleTouch = nb_cycle;
-                sizeLeftInTC -= size;
+                entry_to_opt->optLevel       = 2;
+                entry_to_opt->isInTC         = true;
+                entry_to_opt->timeAvailable  = nb_cycle + COST_OPT_2 * size;
+                entry_to_opt->costOfBinaries = COST_OPT_2 * size;
+                entry_to_opt->sizeInTC       = size;
+                entry_to_opt->lastCycleTouch = nb_cycle;
+
+                nb_proc_in_tc ++;
+                nb_traduction ++;
+                // fprintf(stderr, "%d\n", size);
+                search_entry_to_opt = false;
                 nextAvailabilityDBTProc = nb_cycle + COST_OPT_2 * size;
                 for (int oneBlock = 0; oneBlock < procedure->nbBlock; oneBlock++) {
                   blockInfo[procedure->blocks[oneBlock]->sourceStartAddress].nbOpti2++;
                 }
+
+                //redirect the others blocks of the procedure on the optimised procedure
+                for (int w = 0; w < IT_NB_WAY; w ++)
+                  for (int s = 0; s < IT_NB_SET; s ++) {
+                    IRBlock * block = blockInfo[indirectionTable[w][s].address >> 2].block;
+                    if ( block != NULL && block->procedureSourceStartAddress == procedure->entryBlock->sourceStartAddress)
+                      indirectionTable[w][s].optLevel = 2;
+                  }
+
+
               }
             }
           }
         }
+        if (entry_to_opt->counter >= THRESHOLD_OPTI1 && entry_to_opt->optLevel <= 0 && search_entry_to_opt ) {
+          // We should trigger opt level 1
+
+
+          if (blockInfo[oneAddress >> 2].block != NULL) {
+
+            int size = blockInfo[oneAddress >> 2].block->sourceEndAddress -
+                       blockInfo[oneAddress >> 2].block->sourceStartAddress;
+            bool fitsInTranslationCache = allocateInTranslationCache(size, NULL, blockInfo[oneAddress >> 2].block);
+
+            if (fitsInTranslationCache) {
+              entry_to_opt->optLevel       = 1;
+              entry_to_opt->isInTC         = true;
+              entry_to_opt->timeAvailable  = nb_cycle + COST_OPT_1 * size;
+              entry_to_opt->costOfBinaries = COST_OPT_1 * size;
+              entry_to_opt->sizeInTC       = size;
+              entry_to_opt->lastCycleTouch = nb_cycle;
+              nextAvailabilityDBTProc = nb_cycle + COST_OPT_1 * size;
+
+              nb_traduction++;
+              search_entry_to_opt = false;
+              blockInfo[oneAddress >> 2].nbOpti1++;
+            }
+          }
+        }
+      }
+
+      //we need another thing to optimize
+      max_eval = best_eval;
+
+    }//while
+  }//if
+
+
+
+  if (lastAvailability < nextAvailabilityDBTProc && timescaledLog != NULL) {
+    lastAvailability = nextAvailabilityDBTProc;
+    int nb_element = 0;
+    int size_last_tc_content = 0;
+    int opt_level = 0;
+    uint64_t block_address = 0;
+    if (translationCacheContent != NULL) {
+      nb_element = translationCacheContent->size();
+      size_last_tc_content = translationCacheContent->at(nb_element-1).size;
+      opt_level = (translationCacheContent->at(nb_element-1).isBlock ? 1 : 2);
+      if (opt_level == 1) {
+        block_address = translationCacheContent->at(nb_element -1).block->sourceStartAddress;
+      } else {
+        block_address = translationCacheContent->at(nb_element -1).procedure->entryBlock->sourceStartAddress;
       }
     }
+    int tc_filling = 0, tc_o2_filling = 0;
+    for (int tc_entry = 0; tc_entry < translationCacheContent->size(); tc_entry ++) {
+      tc_filling += translationCacheContent->at(tc_entry).size;
+      if (!translationCacheContent->at(tc_entry).isBlock)
+        tc_o2_filling += translationCacheContent->at(tc_entry).size;
+    }
+
+    fprintf(timescaledLog, "%lu,%lu,%d,%d,%lu,%d,%d\n", nb_cycle, nextAvailabilityDBTProc, tc_filling, tc_o2_filling, block_address, size_last_tc_content, opt_level);
   }
 
-  /************************************************************************************
-   *	Step 3: Simulation of the call stack: we have to decide whether the return goes *
-   *			inside the translation cache or inside the first pass translation		*/
 
-  // TODO
 
-  if (optLevel < 0)
-    optLevel = 0;
-  return optLevel;
-}
+}//triggerOptimization
+
 
 bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block)
 {
+  count_alloc++;
+
+  if (size > SIZE_TC && SIZE_TC != 0) {
+    nb_tc_too_small ++;
+    // it is not even worth the try
+    return false;
+  }
+
+  // reject too large procedures, because it take too long to optimize it
+  // (ex : heat-3d has a 20 000 instr procedure -> it takes 40M cycles to optimize)
+  if (size > 13000) {
+    fprintf(stderr, "too large procedure : not put in tc \n");
+    return false;
+  }
+  // fprintf(stderr, "\rallocateInTrans 1 " );
   // If first use, we initialize the data structure
   if (translationCacheContent == NULL)
     translationCacheContent = new std::vector<struct entryInTranslationCache>();
