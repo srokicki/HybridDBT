@@ -51,12 +51,15 @@ extern "C"
 #define IT_NB_SET 8
 #define IT_NB_WAY 8
 
-#define COST_OPT_1 10
-#define COST_OPT_2 200
+// #define SIZE_TC 0
+
+// #define COST_OPT_1 10
+// #define COST_OPT_2 200
 
 #define MAX_IT_COUNTER 30
-#define THRESHOLD_OPTI1 3
-#define THRESHOLD_OPTI2 7
+// #define THRESHOLD_OPTI1 2
+// #define THRESHOLD_OPTI2 5
+#define FLOAT_PRECISION 0.01
     /****************************************************************************************************************************/
 
 typedef struct BlockInformation {
@@ -112,14 +115,23 @@ bool isExploreOpts = false;
 char* filenameMetric;
 uint64_t nb_cycle_for_eval;
 unsigned int nb_max_counter = 0, nb_tc_too_small = 0, nb_tc_too_full = 0,
-              nb_try_proc_in_tc = 0, nb_proc_in_tc = 0;
+              nb_try_proc_in_tc = 0, nb_proc_in_tc = 0, nb_traduction = 0;
 
-unsigned int SIZE_TC = 0;
+unsigned int count_eval = 0, count_alloc = 0, count_getoptLevel = 0, count_getsizeblock = 0;
+
+unsigned int SIZE_TC          = 0;
+unsigned int COST_OPT_1       = 10;
+unsigned int COST_OPT_2       = 200;
+unsigned int THRESHOLD_OPTI1  = 3;
+unsigned int THRESHOLD_OPTI2  = 7;
+
+FILE * timescaledLog;
+unsigned int lastAvailability;
 /****************************************************************************************************************************/
 // Definition of internal function that are not visible from outside
 
 bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block);
-int evalFunction(struct entryInTranslationCache a, int* way, int* set);
+int evalFunction(struct entryInTranslationCache a, std::vector<int>* way, std::vector<int>* set);
 
 /****************************************************************************************************************************/
 
@@ -139,7 +151,7 @@ void readSourceBinaries(char* path, unsigned char*& code, unsigned int& addressS
   // We initialize size at 0
   size                      = 0;
   unsigned char* resultCode = NULL;
-  unsigned char* buffer;
+  unsigned char* buffer     = NULL;
   addressStart = 0xfffffff;
 
   // We open the elf file and search for the section that is of interest for us
@@ -180,6 +192,7 @@ void readSourceBinaries(char* path, unsigned char*& code, unsigned int& addressS
 
 int contentTranslationCache()
 {
+  if (translationCacheContent == NULL) return 0;
   int size = 0;
   for (int oneElement = 0; oneElement < translationCacheContent->size(); oneElement++) {
     struct entryInTranslationCache entry = translationCacheContent->at(oneElement);
@@ -304,7 +317,7 @@ unsigned int addressStart;
 
 void initializeDBTInfo(char* fileName)
 {
-
+  // fprintf(stderr, "initializeDBTInfo" );
   int CONFIGURATION = 2;
   int VERBOSE       = 0;
   Log::Init(VERBOSE, 0);
@@ -313,15 +326,22 @@ void initializeDBTInfo(char* fileName)
   execPath = (char*)malloc(strlen(fileName) + 10);
   strcpy(execPath, fileName);
 
-  filenameMetric       = (char*)malloc(strlen(execPath) + 50);
-  char* iteratorString = (char*)malloc(strlen(execPath) + 10);
-
   int execPathLength           = strlen(execPath);
   execPath[execPathLength]     = '.';
   execPath[execPathLength + 1] = 'd';
   execPath[execPathLength + 2] = 'b';
   execPath[execPathLength + 3] = 't';
   execPath[execPathLength + 4] = 0;
+
+  filenameMetric = getenv("METRIC_PATH");
+  if (filenameMetric == NULL) {
+    filenameMetric       = (char*)malloc(strlen(execPath) + 50);
+    strcpy(filenameMetric, "");
+  }
+
+  char* iteratorString = (char*)malloc(strlen(execPath) + 10);
+  // strcpy(iteratorString, strrev(execPath));
+  // iteratorString = strtok(iteratorString, "/");
 
   strcpy(iteratorString, execPath);
   iteratorString = strtok(iteratorString, "/");
@@ -332,21 +352,60 @@ void initializeDBTInfo(char* fileName)
     progname       = iteratorString;
     iteratorString = strtok(NULL, "/");
   }
-  strcpy(filenameMetric, "/home/lsavary/Documents/v8metrix/");
+
+  // strcat(filenameMetric, strrev(iteratorString));
   strcat(filenameMetric, progname);
   int len                 = strlen(filenameMetric);
-
   filenameMetric[len - 3] = 't';
   filenameMetric[len - 2] = 'x';
   filenameMetric[len - 1] = 't';
-  fprintf(stderr, "%s\n", filenameMetric);
 
-  char* str_size_tc = getenv("SIZE_TC");
-  if (str_size_tc != NULL)
-    SIZE_TC = atoi(str_size_tc);
-  else {
-    SIZE_TC = 0;
+  char* str_file = (char*)malloc(len *sizeof(char));
+  strcpy(str_file, filenameMetric);
+  str_file[len - 3] = 'c';
+  str_file[len - 2] = 's';
+  str_file[len - 1] = 'v';
+  timescaledLog = fopen(str_file, "w");
+  if (timescaledLog == NULL) {
+    fprintf(stderr, "can't create file %s\n",str_file );
+  }
+  // fprintf(timescaledLog, "%d\t%d\t%d\n", nb_cycle_for_eval, translationCacheContent->size(), nextAvailabilityDBTProc);
+
+// settings of the DBT
+
+  char* str_var_env = getenv("SIZE_TC");
+  if (str_var_env != NULL) {
+    SIZE_TC = atoi(str_var_env);
+  } else {
     fprintf(stderr, "SIZE_TC not found, set at 0 by default\n");
+  }
+
+  str_var_env = getenv("COST_OPT_1");
+  if (str_var_env != NULL) {
+    COST_OPT_1 = atoi(str_var_env);
+  } else {
+    fprintf(stderr, "COST_OPT_1 not found, set at 10 by default\n");
+  }
+
+  str_var_env = getenv("COST_OPT_2");
+  if (str_var_env != NULL) {
+    COST_OPT_2 = atoi(str_var_env);
+  } else {
+    fprintf(stderr, "COST_OPT_2 not found, set at 200 by default\n");
+  }
+
+  str_var_env = getenv("THRESHOLD_OPTI1");
+  if (str_var_env != NULL) {
+    THRESHOLD_OPTI1 = atoi(str_var_env);
+  } else {
+    fprintf(stderr, "THRESHOLD_OPTI1 not found, set at 3 by default\n");
+  }
+
+  str_var_env = getenv("THRESHOLD_OPTI2");
+  if (str_var_env != NULL) {
+    THRESHOLD_OPTI2 = atoi(str_var_env);
+  } else {
+    fprintf(stderr, "THRESHOLD_OPTI2 not found, set at 7 by default\n");
   }
 
   nb_max_counter    = 0;
@@ -354,6 +413,18 @@ void initializeDBTInfo(char* fileName)
   nb_tc_too_small   = 0;
   nb_try_proc_in_tc = 0;
   nb_proc_in_tc     = 0;
+  lastAvailability  = 0;
+
+  for (int w = 0; w < IT_NB_WAY; w ++)
+    for (int s = 0; s < IT_NB_SET; s ++) {
+      indirectionTable[w][s].address        = 0;
+      indirectionTable[w][s].counter        = 0;
+      indirectionTable[w][s].isInTC         = false;
+      indirectionTable[w][s].optLevel       = 0;
+      indirectionTable[w][s].lastCycleTouch = 0;
+      indirectionTable[w][s].sizeInTC       = 0;
+      indirectionTable[w][s].costOfBinaries = 0;
+    }
 
   /***********************************
    *  Initialization of the DBT platform
@@ -665,7 +736,8 @@ char useIndirectionTable(int address)
 
 int getBlockSize(int address, int optLevel, int timeFromSwitch, int* nextBlock)
 {
-
+  count_getsizeblock++;
+  // fprintf(stderr, "\rgetBlockSize" );
   // printf("Asking for %d\n", address>>2);
   if ((address >> 2) >= globalBinarySize) {
     fprintf(stderr, "too large !!\n");
@@ -678,7 +750,7 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int* nextBlock)
     while (blockInfo[currentAddress >> 2].block == NULL) {
       currentAddress -= 4;
     }
-    if (currentAddress - address < 9)
+    if (address - currentAddress < 9)
       address = currentAddress;
     else {
       fprintf(stderr, "Failed at finding block at %x   nearest is in %x\n", address >> 2, currentAddress >> 2);
@@ -691,7 +763,24 @@ int getBlockSize(int address, int optLevel, int timeFromSwitch, int* nextBlock)
     end++;
   }
   *nextBlock = end * 4;
+
+  // Metrics -------------------------------------------------------------------
+/*
   blockInfo[address >> 2].nbExecution++;
+  FILE* metrics = fopen(filenameMetric, "a");
+  if (metrics != NULL) {
+    fprintf(metrics, "%d\t%d\t%d\%d\t", nb_cycle_for_eval, address, IT_NB_WAY, IT_NB_SET);
+    for (int w = 0; w < IT_NB_WAY; w++)
+      for (int s = 0; s < IT_NB_SET; s++) {
+        struct indirectionTableEntry entry = indirectionTable[w][s];
+        float eval = float(entry.counter) * float(entry.lastCycleTouch) / float(nb_cycle_for_eval);
+        fprintf(metrics, "%lu\t%f\t", entry.address, eval);
+      }
+    fprintf(metrics, "\n");
+    fclose(metrics);
+  }
+*/
+  // ---------------------------------------------------------------------------
 
   if (optLevel == 1) { // Opt level 1
     if (blockInfo[address >> 2].scheduleSizeOpt1 == -1) {
@@ -752,7 +841,8 @@ char getOptLevel(int address, uint64_t nb_cycle)
 {
   if (isExploreOpts)
     return 0;
-
+  count_getoptLevel++;
+  // fprintf(stderr, "\rgetOptLevel" );
   bool inTranslationCache = false;
   char optLevel           = 0;
   nb_cycle_for_eval = nb_cycle;
@@ -793,6 +883,11 @@ char getOptLevel(int address, uint64_t nb_cycle)
         indirectionTable[oneWay][setNumber].optLevel       = 0;
         indirectionTable[oneWay][setNumber].timeAvailable  = nb_cycle;
         indirectionTable[oneWay][setNumber].lastCycleTouch = nb_cycle;
+
+        if (indirectionTable[oneWay][setNumber].timeAvailable > nb_cycle) {
+          // interrupt the current translation
+          nextAvailabilityDBTProc == nb_cycle;
+        }
 
         blockInfo[address >> 2].nbChargement++;
 
@@ -1030,27 +1125,23 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
     // fprintf(stderr, "allocateInTranslationCache : il y a la place\n" );
     return true;
   } else {
-    if (size > SIZE_TC) {
-      nb_tc_too_small ++;
-      // fprintf(stderr, "allocateInTranslationCache : entry do not fit in the tc %d\n", size);
-      return false;
-    }
     // We have to evict something
 
 
-    int nbElement                = translationCacheContent->size();
+    int nbElement = translationCacheContent->size();
     std::vector<int> evalValues;
-    std::vector<int> waysInIT ;
-    std::vector<int> setsInIT ;
+    std::vector<std::vector<int>> waysInIT ;
+    std::vector<std::vector<int>> setsInIT ;
     int idmax = 0, valmax = 0;
 
     int default_eviction_size = 0;
     // set up the vectors
     // and start by remove elements which are not in the IT anymore
     for (int entry = 0; entry < nbElement; entry++) {
-      int way = -1, set = -1;
+      std::vector<int> way, set;
       int entryEval = evalFunction(translationCacheContent->at(entry), &way, &set);
 
+      // fprintf(stderr, "\rallocateInTrans 2 " );
       if (entryEval == 0) {
 
         // we evict all elements that the IT do not target anymore
@@ -1058,7 +1149,6 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
         translationCacheContent->erase(translationCacheContent->begin() + entry);
         entry--;
         nbElement --;
-
 
       } else {
         evalValues.push_back(entryEval);
@@ -1094,27 +1184,28 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
         fprintf(stderr,"\033[0m");
     */
 
-    int tmp; // we do not need the IT coords of the new entry
-    int newEntryEval = evalFunction(newEntry, &tmp, &tmp);
+    // we do not need the IT coords of the new entry
+    int newEntryEval = evalFunction(newEntry, NULL, NULL);
 
+    // fprintf(stderr, "\rallocateInTrans 3 " );
     // select elements to make space
     int sumSize      = 0; // sum of removed components sizes
     int nbSelected   = 0; // number of elements selected to be removed from tc
     while (currentSize + size > SIZE_TC + sumSize) {
+      // initialization of the research variables
       int idmin = idmax, valmin = valmax;
 
       // find the less valuable entry in translation cache
       for (int i = 0; i < nbElement - nbSelected; i++)
-        if (waysInIT[i] < valmin) {
-
+        if (evalValues[i] < valmin) {
           idmin  = i;
-          valmin = waysInIT[i];
+          valmin = evalValues[i];
         }
 
       if (valmin > newEntryEval) { // => can't make enough space in tc
-        if (newEntry.block == NULL) {
-          fprintf(stderr, "procedure refusee : eval %d\n", newEntryEval);
-        }
+        // if (newEntry.block == NULL) {
+        //   fprintf(stderr, "procedure refusee : eval %d\n", newEntryEval);
+        // }
         nb_tc_too_full ++;
         return false;
       }
@@ -1146,17 +1237,17 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
 
       // fprintf(stderr, "%d(%d) ",theEntry.size, waysInIT[anEntry]);
       // processing of the eviction
-      if (waysInIT[anEntry] > -1 && setsInIT[anEntry] > -1) {
-        indirectionTable[waysInIT[anEntry]][setsInIT[anEntry]].counter  = 0;
-        indirectionTable[waysInIT[anEntry]][setsInIT[anEntry]].optLevel = 0;
-        indirectionTable[waysInIT[anEntry]][setsInIT[anEntry]].isInTC   = 0;
+      for (int i = 0; i < waysInIT[anEntry].size(); i++) {
+        indirectionTable[waysInIT[anEntry][i]][setsInIT[anEntry][i]].counter  = 0;
+        indirectionTable[waysInIT[anEntry][i]][setsInIT[anEntry][i]].optLevel = 0;
+        indirectionTable[waysInIT[anEntry][i]][setsInIT[anEntry][i]].isInTC   = 0;
       }
     }
-    // fprintf(stderr, "\n\n" );
-
     translationCacheContent->erase(translationCacheContent->end() - nbSelected, translationCacheContent->end());
 
-    if (procedure != NULL) nb_proc_in_tc ++;
+    // fprintf(stderr, "\n\n" );
+
+
 
     // store the new element
     translationCacheContent->push_back(newEntry);
@@ -1261,13 +1352,15 @@ void verifyBranchDestination(int addressOfJump, int dest)
 void finalizeDBTInformation()
 {
 
+  // fprintf(stderr, "\rfinalizeDBT" );
+
   if (isExploreOpts) {
     application->dumpApplication(execPath, greatestAddr * 4);
   }
 
   // --------------------- Metric ------------------------------------------------
   FILE* metrix;
-  metrix = fopen(filenameMetric, "w");
+  metrix = fopen(filenameMetric, "a");
   if (metrix == NULL) {
     printf("ERRROR FILE %s\n", filenameMetric);
   } else {
@@ -1296,14 +1389,19 @@ void finalizeDBTInformation()
     }
     fprintf(metrix, "end\n");
     fclose(metrix);
-
+    fprintf(stderr, "\n" );
+    fprintf(stderr, "nb_max_counter : \t%u\nnb_tc_too_full : \t%u\nnb_tc_too_small : \t%u\nnb_try_proc_in_tc : \t%u\nnb_proc_in_tc : \t%u\n",
+      nb_max_counter, nb_tc_too_full, nb_tc_too_small, nb_try_proc_in_tc, nb_proc_in_tc);
+    fprintf(stderr, "nb getsize :\t%u\nnb get optLevel :\t%u\nnb alloc :\t%u\nnb eval :\t%u\nnb trad :\t%u\n\n", count_getsizeblock, count_getoptLevel, count_alloc, count_eval, nb_traduction );
   }
   // -----------------------------------------------------------------------------
-  delete(platform);
-  delete(application);
   delete(blockInfo);
-  delete(filenameMetric);
-  delete(execPath);
+  if (getenv("METRIC_PATH") == NULL) {
+    delete(filenameMetric);
+  }
+  if (timescaledLog != NULL) {
+    fclose(timescaledLog);
+  }
 }
 
 
@@ -1313,18 +1411,17 @@ void finalizeDBTInformation()
 *   int* way and set are used to return the IT coords of the entry
 *
 */
-int evalFunction(struct entryInTranslationCache entry, int* way, int* set)
+int evalFunction(struct entryInTranslationCache entry, std::vector<int>* way, std::vector<int>* set)
 {
-  std::vector<unsigned int> addresses;
-  if (entry.block != NULL) {
-    addresses.push_back(entry.block->sourceStartAddress);
-  } else if (entry.procedure != NULL) {
-    for (int i = 0; i < entry.procedure->nbBlock; i ++)
-    addresses.push_back( entry.procedure->blocks[i]->sourceStartAddress);
-  }
+  // fprintf(stderr, "\revalFunction " );
+  count_eval++;
+
+  uint64_t  address;
   int eval = 0;
-  for (int i = 0; i < addresses.size(); i ++) {
-    unsigned int address = addresses[i];
+  if (entry.block != NULL) {
+    // block evaluation
+
+    address = entry.block->sourceStartAddress;
     unsigned int lastTouch = nb_cycle_for_eval;
     unsigned int counter   = 1;
     char optLevel          = -1;
@@ -1337,17 +1434,41 @@ int evalFunction(struct entryInTranslationCache entry, int* way, int* set)
         lastTouch-= indirectionTable[oneWay][setvalue].lastCycleTouch;
         counter   = indirectionTable[oneWay][setvalue].counter;
         optLevel  = indirectionTable[oneWay][setvalue].optLevel;
-        *way      = oneWay;
-        *set      = setvalue;
+        if (way != NULL) way->push_back(oneWay);
+        if (set != NULL) set->push_back(setvalue);
         // fprintf(stderr, "%d\t%d\t%u\t%d\t%u\n", *way, *set, lastTouch, optLevel, counter );
+        eval += ((optLevel + 1) * (optLevel + 1) * (counter + 1) * 10000000) / (lastTouch + 10000000);
         break;
       }
     }
-    // if (optLevel == -1) return 0;
-    // eval += ((optLevel + 1) * (optLevel + 1) * (counter + 1)) / (lastTouch==0?1:lastTouch);
-    if (optLevel != -1) {
-      eval += ((optLevel + 1) * (optLevel + 1) * (counter + 1)) * 10000000 / (lastTouch + 10000000);
-    }
+
+  } else if (entry.procedure != NULL) {
+    // proc evaluation
+
+    // fprintf(stderr, "\revalFunction proc " );
+    address = entry.procedure->entryBlock->sourceStartAddress;
+
+    for (int w = 0; w < IT_NB_WAY; w ++)
+      for (int s = 0; s < IT_NB_SET; s++){
+        uint64_t ad = indirectionTable[w][s].address >> 2;
+        // fprintf(stderr, "\r%d %d %d %ld pre .block ", w, s,  globalBinarySize, ad);
+        // if (blockInfo[indirectionTable[w][s].address >> 2].block != NULL) { // to avoid segfaults
+        //   fprintf(stderr, "\r%d %d .block ", w, s );
+        if (ad < globalBinarySize && blockInfo[ad].block != NULL && blockInfo[ad].block->procedureSourceStartAddress == address) {
+          // evaluate the block and add it to the proc evaluation
+          // fprintf(stderr, "\r%d %d pas .block ", w, s );
+          struct indirectionTableEntry  entry = indirectionTable[w][s];
+
+          unsigned int lastTouch = nb_cycle_for_eval - entry.lastCycleTouch;
+          unsigned int counter   = entry.counter;
+          char optLevel          = entry.optLevel;
+          if (way != NULL) way->push_back(w);
+          if (set != NULL) set->push_back(s);
+          eval += ((optLevel + 1) * (optLevel + 1) * (counter + 1) * 10000000) / (lastTouch + 10000000);
+        }
+
+      }
   }
   return eval;
+
 }
