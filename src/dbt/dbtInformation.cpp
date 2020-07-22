@@ -911,6 +911,16 @@ char getOptLevel(int address, uint64_t nb_cycle)
   return optLevel;
 }
 
+/**********************************************************************************
+ *  Function triggerOptmization(uint64_t nb_cycle)
+ ***************************
+ * called just after getOptLevel
+ * if the DBT proc isn't optimizing yet,
+ * it search a block of code in the IndirectionTable to take it to the next level optimization.
+ *
+ * Only called when a branch is handled. May have a too large granularity, but close enough of reality.
+ *********************************************************************************/
+
 void triggerOptimization(uint64_t nb_cycle) {
 
   /***********************************************************************************
@@ -933,10 +943,10 @@ void triggerOptimization(uint64_t nb_cycle) {
             // evaluation :
             if (entry.optLevel == 1) {
               IRProcedure * proc = optimizeLevel2(*blockInfo[entry.address >> 2].block);
-              if (proc != NULL && ( proc->nbInstr > SIZE_TC || proc->nbInstr > 13000 )) {
-                continue;
-                // the level 2 optimization is too big for the tc, no need to evaluate
-              }
+              // if (proc != NULL && ( proc->nbInstr > SIZE_TC || proc->nbInstr > 13000 )) {
+              //   continue;
+              //   // the level 2 optimization is too big for the tc, no need to evaluate
+              // }
               /*
               if (proc != NULL)
                 size = proc->nbInstr;
@@ -1094,9 +1104,9 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
   }
 
   // reject too large procedures, because it take too long to optimize it
-  // (ex : heat-3d has a 20 000 instr procedure -> it takes 40M cycles to optimize)
+  // (ex : heat-3d has a 20 000 instr procedure -> it takes 4M cycles to optimize)
   if (size > 13000) {
-    fprintf(stderr, "too large procedure : not put in tc \n");
+    // fprintf(stderr, "too large procedure : not put in tc \n");
     return false;
   }
   // fprintf(stderr, "\rallocateInTrans 1 " );
@@ -1212,10 +1222,17 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
 
       sumSize += translationCacheContent->at(idmin).size;
       nbSelected++;
-      // palce the element to be removed at the end of the tc
+      // place the element to be removed at the end of the tc
       struct entryInTranslationCache tmpEntry             = translationCacheContent->at(nbElement - nbSelected);
       translationCacheContent->at(nbElement - nbSelected) = translationCacheContent->at(idmin);
       translationCacheContent->at(idmin)                  = tmpEntry;
+      // must do the same for the IndirectionTable coords vetors.
+      std::vector<int> tmpVector        = waysInIT[nbElement - nbSelected];
+      waysInIT[nbElement - nbSelected]  = waysInIT[idmin];
+      waysInIT[idmin]                   = tmpVector;
+      tmpVector                         = setsInIT[nbElement - nbSelected];
+      setsInIT[nbElement - nbSelected]  = setsInIT[idmin];
+      setsInIT[idmin]                   = tmpVector;
     }
 
     // adjust selection : restore the more valuable elements not needed to be removed
@@ -1226,6 +1243,14 @@ bool allocateInTranslationCache(int size, IRProcedure* procedure, IRBlock* block
         struct entryInTranslationCache tmpEntry             = translationCacheContent->at(nbElement - nbSelected);
         translationCacheContent->at(nbElement - nbSelected) = translationCacheContent->at(i);
         translationCacheContent->at(i)                      = tmpEntry;
+        // must do the same for the IndirectionTable coords vetors.
+        std::vector<int> tmpVector        = waysInIT[nbElement - nbSelected];
+        waysInIT[nbElement - nbSelected]  = waysInIT[i];
+        waysInIT[i]                       = tmpVector;
+        tmpVector                         = setsInIT[nbElement - nbSelected];
+        setsInIT[nbElement - nbSelected]  = setsInIT[i];
+        setsInIT[i]                       = tmpVector;
+
         nbSelected--;
       }
     }
